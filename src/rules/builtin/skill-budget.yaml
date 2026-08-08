@@ -1,0 +1,13 @@
+id: budget.skills
+description: Project skill inventory above research risk band (>30)
+when:
+  count:
+    of: skills
+    gt: 30
+then:
+  action: warn
+  severity: info
+  subject: "budget:skills"
+  message: "Skill inventory above risk band ({{count}} > {{threshold}})"
+  reason: "Research (Aug 2026) sweet spot is ~8–12 skills for day-to-day agents; above ~30 raises decision noise even with progressive disclosure. Not a runtime bug. Default text hides this as info; use --verbose. Override thresholds.skills in .skillscanrc.json."
+  suggest: "Prune unused skills, ignoreRules: [budget.skills], or set thresholds.skills higher if intentional"

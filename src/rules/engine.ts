@@ -1,4 +1,6 @@
+import { basename } from "node:path";
 import type { SkillscanConfig } from "../config/schema";
+import { defaultThresholds } from "../config/schema";
 import { coerceVersion, gte, lt } from "../facts/semver";
 import type { Facts, Finding, SkillFact } from "../facts/types";
 import { DEP_SKILL_MAP, skillMatchesPattern } from "./map";
@@ -9,6 +11,9 @@ type Evidence = Finding["evidence"][number];
 type MatchContext = {
   matchedSkill?: SkillFact;
   evidence: Evidence[];
+  /** For budget templates {{count}} / {{threshold}} */
+  count?: number;
+  threshold?: number;
 };
 
 type ClauseResult =
@@ -187,7 +192,100 @@ function evalClause(facts: Facts, clause: unknown): ClauseResult {
     return evalPackageManagerClause(facts, clause.packageManager);
   }
 
+  if ("count" in clause && isRecord(clause.count)) {
+    return evalCountClause(facts, clause.count);
+  }
+
+  if ("policyLines" in clause && isRecord(clause.policyLines)) {
+    return evalPolicyLinesClause(facts, clause.policyLines);
+  }
+
   // Unknown / empty clause: treat as non-matching for safety
+  return { ok: false };
+}
+
+type CountOf = "skills" | "mcp" | "agents" | "hooks";
+
+function collectionSize(facts: Facts, of: CountOf): number {
+  switch (of) {
+    case "skills":
+      return facts.skills.length;
+    case "mcp":
+      return facts.mcp.length;
+    case "agents":
+      return facts.agents.length;
+    case "hooks":
+      return facts.hooks.length;
+  }
+}
+
+/**
+ * `{ count: { of: skills|mcp|agents|hooks, gt: N } }`
+ * Optional `thresholdKey` on count object is not used — gt is absolute.
+ * Config thresholds are applied in evaluateRule by rewriting gt before eval
+ * when using builtin budget rules (YAML carries default gt).
+ */
+function evalCountClause(
+  facts: Facts,
+  count: Record<string, unknown>,
+): ClauseResult {
+  const of = count.of;
+  if (
+    of !== "skills" &&
+    of !== "mcp" &&
+    of !== "agents" &&
+    of !== "hooks"
+  ) {
+    return { ok: false };
+  }
+  const gtRaw = count.gt;
+  if (typeof gtRaw !== "number" || !Number.isFinite(gtRaw)) {
+    return { ok: false };
+  }
+  const threshold = gtRaw;
+  const n = collectionSize(facts, of);
+  if (!(n > threshold)) {
+    return { ok: false };
+  }
+  return {
+    ok: true,
+    evidence: [
+      { kind: "count", value: `${of}=${n}` },
+      { kind: "threshold", value: String(threshold) },
+    ],
+  };
+}
+
+/**
+ * `{ policyLines: { file: "AGENTS.md", gt: 150 } }`
+ * Matches policyFiles entry by basename.
+ */
+function evalPolicyLinesClause(
+  facts: Facts,
+  pl: Record<string, unknown>,
+): ClauseResult {
+  const file = pl.file;
+  const gtRaw = pl.gt;
+  if (typeof file !== "string" || typeof gtRaw !== "number") {
+    return { ok: false };
+  }
+  const threshold = gtRaw;
+  for (const policy of facts.policyFiles) {
+    if (basename(policy.path) !== file) {
+      continue;
+    }
+    const lines = policy.text.length === 0 ? 0 : policy.text.split(/\r?\n/).length;
+    if (lines > threshold) {
+      return {
+        ok: true,
+        evidence: [
+          { kind: "policy", value: policy.path },
+          { kind: "count", value: `lines=${lines}` },
+          { kind: "threshold", value: String(threshold) },
+        ],
+      };
+    }
+  }
   return { ok: false };
 }
 
@@ -256,7 +354,33 @@ function applyTemplate(
 ): string {
   return template
     .replaceAll("{{matchedSkill}}", ctx.matchedSkill?.id ?? "")
-    .replaceAll("{{matchedSkillPath}}", ctx.matchedSkill?.path ?? "");
+    .replaceAll("{{matchedSkillPath}}", ctx.matchedSkill?.path ?? "")
+    .replaceAll("{{count}}", ctx.count !== undefined ? String(ctx.count) : "")
+    .replaceAll(
+      "{{threshold}}",
+      ctx.threshold !== undefined ? String(ctx.threshold) : "",
+    );
+}
+
+/** Pull count/threshold from evidence for budget templates. */
+function enrichCtxFromEvidence(ctx: MatchContext): MatchContext {
+  let count = ctx.count;
+  let threshold = ctx.threshold;
+  for (const e of ctx.evidence) {
+    if (e.kind === "count") {
+      const m = /(?:=)(\d+)$/.exec(e.value) ?? /^(\d+)$/.exec(e.value);
+      if (m?.[1]) {
+        count = Number.parseInt(m[1], 10);
+      }
+    }
+    if (e.kind === "threshold") {
+      const n = Number.parseInt(e.value, 10);
+      if (Number.isFinite(n)) {
+        threshold = n;
+      }
+    }
+  }
+  return { ...ctx, count, threshold };
 }
 
 function skillIdFromSubject(subject: string, ctx: MatchContext): string | null {
@@ -274,11 +398,12 @@ function buildFinding(
   ctx: MatchContext,
 ): Finding {
   const then = rule.then;
-  const subject = applyTemplate(then.subject ?? `rule:${rule.id}`, ctx);
-  const message = applyTemplate(then.message, ctx);
-  const reason = applyTemplate(then.reason ?? then.message, ctx);
+  const full = enrichCtxFromEvidence(ctx);
+  const subject = applyTemplate(then.subject ?? `rule:${rule.id}`, full);
+  const message = applyTemplate(then.message, full);
+  const reason = applyTemplate(then.reason ?? then.message, full);
   const suggest =
-    then.suggest !== undefined ? applyTemplate(then.suggest, ctx) : undefined;
+    then.suggest !== undefined ? applyTemplate(then.suggest, full) : undefined;
 
   const evidence = [...ctx.evidence];
   if (
@@ -318,11 +443,69 @@ function shouldIgnoreFinding(
   return false;
 }
 
+/**
+ * Apply config.thresholds defaults onto count/policyLines clauses so users
+ * can override via .skillscanrc.json without editing YAML.
+ */
+function applyThresholdOverrides(
+  when: unknown,
+  config: SkillscanConfig,
+): unknown {
+  const t = config.thresholds ?? defaultThresholds;
+  if (!isRecord(when)) {
+    return when;
+  }
+  if (isRecord(when.count) && typeof when.count.of === "string") {
+    const of = when.count.of;
+    const gt =
+      of === "skills"
+        ? t.skills
+        : of === "mcp"
+          ? t.mcp
+          : of === "agents"
+            ? t.agents
+            : typeof when.count.gt === "number"
+              ? when.count.gt
+              : undefined;
+    if (gt !== undefined) {
+      return {
+        ...when,
+        count: { ...when.count, gt },
+      };
+    }
+  }
+  if (isRecord(when.policyLines) && typeof when.policyLines.file === "string") {
+    const file = when.policyLines.file;
+    const gt =
+      file === "AGENTS.md"
+        ? t.agentsMdLines
+        : file === "CLAUDE.md"
+          ? t.claudeMdLines
+          : typeof when.policyLines.gt === "number"
+            ? when.policyLines.gt
+            : undefined;
+    if (gt !== undefined) {
+      return {
+        ...when,
+        policyLines: { ...when.policyLines, gt },
+      };
+    }
+  }
+  if (Array.isArray(when.all)) {
+    return {
+      ...when,
+      all: when.all.map((c) => applyThresholdOverrides(c, config)),
+    };
+  }
+  return when;
+}
+
 function evaluateRule(
   facts: Facts,
   rule: RuleDefinition,
+  config: SkillscanConfig,
 ): Array<{ finding: Finding; ctx: MatchContext }> {
-  const when = rule.when;
+  const when = applyThresholdOverrides(rule.when, config);
 
   // Top-level perSkill orphan
   if (isRecord(when) && isRecord(when.perSkill) && when.perSkill.orphan === true) {
@@ -378,7 +561,9 @@ function evaluateRule(
       "hasConfig" in when ||
       "policyMatches" in when ||
       "packageManager" in when ||
-      "not" in when
+      "not" in when ||
+      "count" in when ||
+      "policyLines" in when
     ) {
       const result = evalClause(facts, when);
       if (!result.ok) {
@@ -422,7 +607,7 @@ export function runRules(
     if (ignoreRules.has(rule.id)) {
       continue;
     }
-    const produced = evaluateRule(facts, rule);
+    const produced = evaluateRule(facts, rule, config);
     for (const { finding, ctx } of produced) {
       if (shouldIgnoreFinding(finding, ctx, ignoreSkills)) {
         continue;

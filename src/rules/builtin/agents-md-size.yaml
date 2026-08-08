@@ -1,0 +1,13 @@
+id: budget.agents-md
+description: AGENTS.md longer than recommended policy size (>150 lines)
+when:
+  policyLines:
+    file: AGENTS.md
+    gt: 150
+then:
+  action: warn
+  severity: info
+  subject: "budget:AGENTS.md"
+  message: "AGENTS.md is long ({{count}} lines > {{threshold}})"
+  reason: "Community guidance keeps AGENTS.md under ~150 lines (index/TOC, not encyclopedia). Long files crowd always-on agent context. Not a build failure."
+  suggest: "Split into linked docs or set thresholds.agentsMdLines in .skillscanrc.json"

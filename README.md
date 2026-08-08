@@ -129,9 +129,18 @@ Optional `.skillscanrc.json` (create with `skillscan init`):
   "ignoreSkills": [],
   "ignoreRules": [],
   "failOn": "never",
-  "includeGlobal": false
+  "includeGlobal": false,
+  "thresholds": {
+    "skills": 30,
+    "mcp": 5,
+    "agentsMdLines": 150,
+    "claudeMdLines": 200,
+    "agents": 8
+  }
 }
 ```
+
+Budget rules are **info** (hidden unless `--verbose`) so they do not flood default text or CI with `--fail-on warning`.
 
 ## How to add a rule
 
@@ -165,6 +174,8 @@ Useful `when` matchers (v1):
 - `policyMatches: "substring"`
 - `hasConfig: <key>`
 - `perSkill: { orphan: true }`
+- `count: { of: skills|mcp|agents|hooks, gt: N }` (gt overridden by `thresholds` when of is skills/mcp/agents)
+- `policyLines: { file: AGENTS.md|CLAUDE.md, gt: N }`
 - combinators: `all`, `not` (v1 — no `any` yet)
 
 List what loaded:
@@ -179,8 +190,13 @@ bunx skillscan rules
 |----|--------|
 | `next.redundant-cache-components-skill` | DELETE redundant Next cache skills when `next >= 16` |
 | `better-auth.missing-skill` | ADD when `better-auth` dep lacks a matching skill |
-| `skill.orphan` | DELETE skills with no dep map hit and no policy mention |
+| `skill.orphan` | INFO/WARN unmapped skills (collapsed to ORPHAN line in default text) |
 | `policy.package-manager-drift` | DRIFT when policy says `npm install` but PM is bun |
+| `budget.skills` | INFO when skill count > thresholds.skills (default 30) |
+| `budget.mcp` | INFO when MCP count > 5 |
+| `budget.agents` | INFO when agent files > 8 |
+| `budget.agents-md` | INFO when AGENTS.md lines > 150 |
+| `budget.claude-md` | INFO when CLAUDE.md lines > 200 |
 
 ## Development
 

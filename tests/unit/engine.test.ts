@@ -267,4 +267,94 @@ describe("runRules", () => {
     expect(kinds).toContain("dep");
     expect(kinds).toContain("skill");
   });
+
+  const skillBudgetRule: RuleDefinition = {
+    id: "budget.skills",
+    when: { count: { of: "skills", gt: 30 } },
+    then: {
+      action: "warn",
+      severity: "info",
+      subject: "budget:skills",
+      message: "Skill inventory above risk band ({{count}} > {{threshold}})",
+      reason: "too many skills",
+      suggest: "prune",
+    },
+  };
+
+  test("count skills > threshold → budget finding with templates", () => {
+    const skills = Array.from({ length: 31 }, (_, i) => skill(`s-${i}`));
+    const facts = baseFacts({ skills });
+    const findings = runRules(facts, [skillBudgetRule], defaultConfig);
+    expect(findings).toHaveLength(1);
+    const f = findings[0]!;
+    expect(f.ruleId).toBe("budget.skills");
+    expect(f.severity).toBe("info");
+    expect(f.message).toContain("31");
+    expect(f.message).toContain("30");
+    expect(f.id).toBe("budget.skills:budget:skills");
+  });
+
+  test("count skills at threshold does not fire", () => {
+    const skills = Array.from({ length: 30 }, (_, i) => skill(`s-${i}`));
+    const findings = runRules(
+      baseFacts({ skills }),
+      [skillBudgetRule],
+      defaultConfig,
+    );
+    expect(findings).toHaveLength(0);
+  });
+
+  test("config thresholds.skills overrides YAML gt", () => {
+    const skills = Array.from({ length: 10 }, (_, i) => skill(`s-${i}`));
+    const findings = runRules(baseFacts({ skills }), [skillBudgetRule], {
+      ...defaultConfig,
+      thresholds: { ...defaultConfig.thresholds, skills: 5 },
+    });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.message).toContain("10");
+    expect(findings[0]!.message).toContain("5");
+  });
+
+  const agentsMdRule: RuleDefinition = {
+    id: "budget.agents-md",
+    when: { policyLines: { file: "AGENTS.md", gt: 150 } },
+    then: {
+      action: "warn",
+      severity: "info",
+      subject: "budget:AGENTS.md",
+      message: "AGENTS.md is long ({{count}} lines > {{threshold}})",
+      reason: "policy size",
+    },
+  };
+
+  test("policyLines over threshold → finding", () => {
+    const lines = Array.from({ length: 151 }, (_, i) => `line ${i}`).join("\n");
+    const facts = baseFacts({
+      policyFiles: [{ path: "/tmp/proj/AGENTS.md", text: lines }],
+    });
+    const findings = runRules(facts, [agentsMdRule], defaultConfig);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.message).toContain("151");
+    expect(findings[0]!.message).toContain("150");
+  });
+
+  test("mcp count budget", () => {
+    const rule: RuleDefinition = {
+      id: "budget.mcp",
+      when: { count: { of: "mcp", gt: 5 } },
+      then: {
+        action: "warn",
+        severity: "info",
+        subject: "budget:mcp",
+        message: "MCP {{count}} > {{threshold}}",
+      },
+    };
+    const mcp = Array.from({ length: 6 }, (_, i) => ({
+      name: `s${i}`,
+      path: ".mcp.json",
+      hasCommand: true,
+    }));
+    const findings = runRules(baseFacts({ mcp }), [rule], defaultConfig);
+    expect(findings).toHaveLength(1);
+  });
 });

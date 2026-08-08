@@ -1,0 +1,13 @@
+id: budget.mcp
+description: Project MCP server count above practical sweet spot (>5)
+when:
+  count:
+    of: mcp
+    gt: 5
+then:
+  action: warn
+  severity: info
+  subject: "budget:mcp"
+  message: "MCP surface above sweet spot ({{count}} > {{threshold}})"
+  reason: "Most 2026 guidance keeps ~3–5 MCP servers eagerly available; more increases tool-selection noise (lazy load helps cost, not always pick quality). Counts project MCP config files only."
+  suggest: "Disable unused servers in mcp.json or set thresholds.mcp in .skillscanrc.json"

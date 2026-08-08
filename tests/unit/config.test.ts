@@ -12,6 +12,8 @@ describe("loadConfig", () => {
     const cfg = loadConfig(root);
     expect(cfg.failOn).toBe("never");
     expect(cfg.skillPaths).toEqual(defaultConfig.skillPaths);
+    expect(cfg.thresholds.skills).toBe(30);
+    expect(cfg.thresholds.mcp).toBe(5);
   });
 
   test("merges .skillscanrc.json", () => {

@@ -1,0 +1,13 @@
+id: budget.agents
+description: Project agent roster larger than focused set (>8)
+when:
+  count:
+    of: agents
+    gt: 8
+then:
+  action: warn
+  severity: info
+  subject: "budget:agents"
+  message: "Agent roster large ({{count}} > {{threshold}} definitions)"
+  reason: "Focused agent sets are usually 2–4; above 8 often means unused templates. Counts .claude/agents files only."
+  suggest: "Archive unused agents or set thresholds.agents in .skillscanrc.json"
