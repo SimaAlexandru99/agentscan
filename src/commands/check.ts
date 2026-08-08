@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { runChecks } from "../checks/index";
 import { loadConfig } from "../config/load";
 import type { SkillscanConfig } from "../config/schema";
 import { resolveRoot } from "../discover/index";
@@ -55,7 +56,22 @@ export async function runCheck(options: CheckOptions): Promise<CheckResult> {
     ignoreRules: config.ignoreRules,
   });
 
-  const findings = sortFindings(runRules(facts, rules, config));
+  const ignoredSkills = new Set(config.ignoreSkills);
+  const ignoredRules = new Set(config.ignoreRules);
+
+  const structural = runChecks(facts, { requireLock: config.requireLock }).filter(
+    (f) =>
+      !ignoredRules.has(f.ruleId) &&
+      !(
+        f.subject.startsWith("skill:") &&
+        ignoredSkills.has(f.subject.slice("skill:".length))
+      ),
+  );
+
+  const findings = sortFindings([
+    ...runRules(facts, rules, config),
+    ...structural,
+  ]);
 
   const stdout = options.json
     ? renderJson({ version: VERSION, root, facts, findings })

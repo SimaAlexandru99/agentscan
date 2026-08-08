@@ -16,6 +16,7 @@ export const defaultConfig = {
   ignoreRules: [] as string[],
   failOn: "never" as const,
   includeGlobal: false,
+  requireLock: false,
   thresholds: defaultThresholds,
 };
 
@@ -43,6 +44,7 @@ export const configSchema = z.object({
   ignoreRules: z.array(z.string()).default([]),
   failOn: z.enum(["never", "warning", "error"]).default("never"),
   includeGlobal: z.boolean().default(false),
+  requireLock: z.boolean().default(false),
   thresholds: thresholdsSchema.default(defaultThresholds),
 });
 

@@ -180,5 +180,8 @@ export function extractFacts(
     hooks: surface.hooks,
     mcp: surface.mcp,
     policyFiles: surface.policyFiles,
+    lockedSkills: surface.lockedSkills,
+    hasSkillsLock: surface.hasSkillsLock,
+    configErrors: surface.configErrors,
   };
 }

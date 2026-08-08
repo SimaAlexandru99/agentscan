@@ -1,21 +1,18 @@
-import {
-  existsSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-} from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import type { SkillscanConfig } from "../config/schema";
 import type {
   AgentFact,
+  ConfigErrorFact,
   HookFact,
+  LockedSkillFact,
   McpFact,
   SkillFact,
 } from "../facts/types";
 
 const POLICY_CAP = 100_000;
-const SKILL_MD_CAP = 4_096;
+const SKILL_MD_CAP = 8_192;
 
 export type AgentSurface = {
   skills: SkillFact[];
@@ -23,6 +20,9 @@ export type AgentSurface = {
   hooks: HookFact[];
   mcp: McpFact[];
   policyFiles: { path: string; text: string }[];
+  lockedSkills: LockedSkillFact[];
+  hasSkillsLock: boolean;
+  configErrors: ConfigErrorFact[];
 };
 
 /** Walk up from startDir for nearest package.json; throw if none. */
@@ -42,39 +42,87 @@ export function resolveRoot(startDir: string): string {
   }
 }
 
-function readFrontmatterDescription(skillMdPath: string): string | undefined {
-  if (!existsSync(skillMdPath)) {
+/**
+ * Read a JSON config. A malformed file is a config issue — the thing this tool
+ * exists to report — so it is recorded rather than skipped.
+ */
+function readJsonConfig(
+  path: string,
+  errors: ConfigErrorFact[],
+): unknown | undefined {
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch (err) {
+    errors.push({
+      path,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
     return undefined;
   }
+  try {
+    return JSON.parse(text) as unknown;
+  } catch (err) {
+    errors.push({
+      path,
+      kind: "invalid-json",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return undefined;
+  }
+}
+
+type Frontmatter = {
+  hasFrontmatter: boolean;
+  name?: string;
+  description?: string;
+};
+
+function stripQuotes(value: string): string {
+  const v = value.trim();
+  if (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'"))
+  ) {
+    return v.slice(1, -1);
+  }
+  return v;
+}
+
+function readFrontmatter(skillMdPath: string): Frontmatter {
   let text: string;
   try {
     const buf = readFileSync(skillMdPath);
     text = buf.subarray(0, SKILL_MD_CAP).toString("utf8");
   } catch {
-    return undefined;
+    return { hasFrontmatter: false };
   }
-  // Optional YAML frontmatter between --- fences
   if (!text.startsWith("---")) {
-    return undefined;
+    return { hasFrontmatter: false };
   }
   const end = text.indexOf("\n---", 3);
   if (end === -1) {
-    return undefined;
+    return { hasFrontmatter: false };
   }
   const block = text.slice(3, end);
+  const out: Frontmatter = { hasFrontmatter: true };
+
+  const nameMatch = block.match(/^name:\s*(.+)$/m);
+  if (nameMatch?.[1]) {
+    const name = stripQuotes(nameMatch[1]);
+    if (name.length > 0) {
+      out.name = name;
+    }
+  }
   const descMatch = block.match(/^description:\s*(.+)$/m);
-  if (!descMatch?.[1]) {
-    return undefined;
+  if (descMatch?.[1]) {
+    const desc = stripQuotes(descMatch[1]);
+    if (desc.length > 0) {
+      out.description = desc;
+    }
   }
-  let value = descMatch[1].trim();
-  // strip surrounding quotes
-  if (
-    (value.startsWith('"') && value.endsWith('"')) ||
-    (value.startsWith("'") && value.endsWith("'"))
-  ) {
-    value = value.slice(1, -1);
-  }
-  return value || undefined;
+  return out;
 }
 
 function discoverSkillsInDir(
@@ -103,14 +151,23 @@ function discoverSkillsInDir(
       continue;
     }
     const skillMd = join(skillDir, "SKILL.md");
-    const description = readFrontmatterDescription(skillMd);
+    const hasSkillMd = existsSync(skillMd);
+    const fm = hasSkillMd
+      ? readFrontmatter(skillMd)
+      : { hasFrontmatter: false as const };
+
     const fact: SkillFact = {
       id: name,
       path: skillDir,
       source,
+      hasSkillMd,
+      hasFrontmatter: fm.hasFrontmatter,
     };
-    if (description !== undefined) {
-      fact.description = description;
+    if (fm.description !== undefined) {
+      fact.description = fm.description;
+    }
+    if (fm.name !== undefined) {
+      fact.frontmatterName = fm.name;
     }
     try {
       fact.mtimeMs = st.mtimeMs;
@@ -122,15 +179,11 @@ function discoverSkillsInDir(
   return skills;
 }
 
-function parseMcpServers(
-  raw: unknown,
-  filePath: string,
-): McpFact[] {
+function parseMcpServers(raw: unknown, filePath: string): McpFact[] {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     return [];
   }
   const obj = raw as Record<string, unknown>;
-  // Prefer mcpServers wrapper; else treat top-level object map as servers
   let servers: Record<string, unknown>;
   if (
     "mcpServers" in obj &&
@@ -154,17 +207,45 @@ function parseMcpServers(
   const facts: McpFact[] = [];
   for (const [name, value] of Object.entries(servers)) {
     let hasCommand = false;
+    let hasUrl = false;
+    const literalEnvKeys: string[] = [];
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       const entry = value as Record<string, unknown>;
       hasCommand =
         typeof entry.command === "string" && entry.command.length > 0;
+      hasUrl = typeof entry.url === "string" && entry.url.length > 0;
+      const env = entry.env;
+      if (env !== null && typeof env === "object" && !Array.isArray(env)) {
+        for (const [key, val] of Object.entries(env as Record<string, unknown>)) {
+          // ${VAR} / $VAR indirection is the correct shape; a long literal is not
+          if (
+            typeof val === "string" &&
+            val.length >= 20 &&
+            !val.includes("${") &&
+            !val.startsWith("$")
+          ) {
+            literalEnvKeys.push(key);
+          }
+        }
+      }
     }
-    facts.push({ name, path: filePath, hasCommand });
+    facts.push({
+      name,
+      path: filePath,
+      hasCommand,
+      hasUrl,
+      literalEnvKeys,
+      raw: JSON.stringify(value),
+    });
   }
   return facts;
 }
 
-function discoverMcp(root: string, mcpPaths: string[]): McpFact[] {
+function discoverMcp(
+  root: string,
+  mcpPaths: string[],
+  errors: ConfigErrorFact[],
+): McpFact[] {
   const facts: McpFact[] = [];
   const seen = new Set<string>();
   for (const rel of mcpPaths) {
@@ -172,10 +253,8 @@ function discoverMcp(root: string, mcpPaths: string[]): McpFact[] {
     if (!existsSync(filePath)) {
       continue;
     }
-    let raw: unknown;
-    try {
-      raw = JSON.parse(readFileSync(filePath, "utf8")) as unknown;
-    } catch {
+    const raw = readJsonConfig(filePath, errors);
+    if (raw === undefined) {
       continue;
     }
     for (const fact of parseMcpServers(raw, filePath)) {
@@ -190,7 +269,107 @@ function discoverMcp(root: string, mcpPaths: string[]): McpFact[] {
   return facts;
 }
 
-function discoverHooks(root: string): HookFact[] {
+const INTERPRETERS = /^(?:bash|sh|zsh|python3?|node|bun|deno)$/;
+/** Flags that mean "the next argument is source code, not a file". */
+const INLINE_CODE_FLAGS = /^-(?:e|p|c)$/;
+/** Anything that makes the command a shell program rather than one invocation. */
+const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&/;
+
+/**
+ * Pull the script path out of a hook command, so a hook whose script is gone can
+ * be reported. Returns undefined whenever the answer is not certain.
+ *
+ * Deliberately conservative: a wrong "this hook is broken" on a guard hook is as
+ * damaging as missing a real one. Shell programs (`a && b`, `$(...)`, pipes) are
+ * skipped outright, because a command like `[ ! -f x ] || node x` handles the
+ * missing file itself and flagging it would be a false positive.
+ */
+export function hookScriptPath(command: string): string | undefined {
+  const trimmed = command.trim();
+  if (trimmed.length === 0 || SHELL_METACHARS.test(trimmed)) {
+    return undefined;
+  }
+
+  const tokens = trimmed.match(/"[^"]*"|'[^']*'|\S+/g);
+  if (tokens === null || tokens.length === 0) {
+    return undefined;
+  }
+
+  const unquote = (t: string): string =>
+    (t.startsWith('"') && t.endsWith('"')) ||
+    (t.startsWith("'") && t.endsWith("'"))
+      ? t.slice(1, -1)
+      : t;
+
+  let i = 0;
+  const first = unquote(tokens[0] as string);
+  if (INTERPRETERS.test(first)) {
+    i = 1;
+    while (i < tokens.length) {
+      const flag = unquote(tokens[i] as string);
+      if (!flag.startsWith("-")) {
+        break;
+      }
+      // `node -e "<code>"` — the next token is source, never a path
+      if (INLINE_CODE_FLAGS.test(flag)) {
+        return undefined;
+      }
+      i += 1;
+    }
+  }
+
+  const candidate = tokens[i] === undefined ? undefined : unquote(tokens[i] as string);
+  if (candidate === undefined || !candidate.includes("/")) {
+    return undefined;
+  }
+  // A drive-letter path cannot be resolved here; do not guess.
+  if (/^[A-Za-z]:[/\\]/.test(candidate)) {
+    return undefined;
+  }
+  // Only CLAUDE_PROJECT_DIR has a defined meaning; other vars are unknowable.
+  if (candidate.startsWith("$")) {
+    return /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\})/.test(candidate)
+      ? candidate
+      : undefined;
+  }
+  if (
+    candidate.startsWith("/") ||
+    candidate.startsWith("./") ||
+    candidate.startsWith("../") ||
+    candidate.startsWith("~/") ||
+    candidate.startsWith(".")
+  ) {
+    return candidate;
+  }
+  return undefined;
+}
+
+function resolveHookScript(
+  root: string,
+  raw: string,
+): { scriptPath: string; exists: boolean } | undefined {
+  const extracted = hookScriptPath(raw);
+  if (extracted === undefined) {
+    return undefined;
+  }
+  let expanded = extracted;
+  if (expanded.startsWith("~/")) {
+    expanded = join(homedir(), expanded.slice(2));
+  } else if (expanded.startsWith("$")) {
+    // CLAUDE_PROJECT_DIR is the project root by definition
+    expanded = expanded.replace(
+      /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\})\/?/,
+      "",
+    );
+  }
+  const abs = isAbsolute(expanded) ? expanded : join(root, expanded);
+  return { scriptPath: extracted, exists: existsSync(abs) };
+}
+
+function discoverHooks(
+  root: string,
+  errors: ConfigErrorFact[],
+): HookFact[] {
   const files = [
     join(root, ".claude", "settings.json"),
     join(root, ".claude", "settings.local.json"),
@@ -200,28 +379,78 @@ function discoverHooks(root: string): HookFact[] {
     if (!existsSync(filePath)) {
       continue;
     }
-    let raw: unknown;
-    try {
-      raw = JSON.parse(readFileSync(filePath, "utf8")) as unknown;
-    } catch {
+    const raw = readJsonConfig(filePath, errors);
+    if (raw === undefined) {
       continue;
     }
     if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      errors.push({
+        path: filePath,
+        kind: "unexpected-shape",
+        detail: "settings file is not a JSON object",
+      });
       continue;
     }
     const hooks = (raw as Record<string, unknown>).hooks;
-    if (hooks === null || typeof hooks !== "object" || Array.isArray(hooks)) {
+    if (hooks === undefined) {
       continue;
     }
-    for (const event of Object.keys(hooks as Record<string, unknown>)) {
-      facts.push({
-        name: event,
+    if (hooks === null || typeof hooks !== "object" || Array.isArray(hooks)) {
+      errors.push({
         path: filePath,
-        event,
+        kind: "unexpected-shape",
+        detail: "`hooks` is not an object",
       });
+      continue;
+    }
+
+    for (const [event, groups] of Object.entries(
+      hooks as Record<string, unknown>,
+    )) {
+      const commands = collectHookCommands(groups);
+      if (commands.length === 0) {
+        facts.push({ name: event, path: filePath, event });
+        continue;
+      }
+      for (const command of commands) {
+        const fact: HookFact = { name: event, path: filePath, event, command };
+        const resolved = resolveHookScript(root, command);
+        if (resolved !== undefined) {
+          fact.scriptPath = resolved.scriptPath;
+          fact.scriptExists = resolved.exists;
+        }
+        facts.push(fact);
+      }
     }
   }
   return facts;
+}
+
+/** `hooks[event]` is an array of matcher groups, each with a `hooks` array. */
+function collectHookCommands(groups: unknown): string[] {
+  if (!Array.isArray(groups)) {
+    return [];
+  }
+  const out: string[] = [];
+  for (const group of groups) {
+    if (group === null || typeof group !== "object" || Array.isArray(group)) {
+      continue;
+    }
+    const inner = (group as Record<string, unknown>).hooks;
+    if (!Array.isArray(inner)) {
+      continue;
+    }
+    for (const entry of inner) {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        continue;
+      }
+      const command = (entry as Record<string, unknown>).command;
+      if (typeof command === "string" && command.length > 0) {
+        out.push(command);
+      }
+    }
+  }
+  return out;
 }
 
 function discoverAgents(root: string): AgentFact[] {
@@ -246,7 +475,6 @@ function discoverAgents(root: string): AgentFact[] {
     } catch {
       continue;
     }
-    // strip extension for display name when present
     const base = name.replace(/\.[^.]+$/, "");
     facts.push({ name: base || name, path: filePath });
   }
@@ -275,14 +503,71 @@ function discoverPolicyFiles(
 }
 
 /**
- * Enumerate project (and optionally global) agent surface: skills, agents, hooks, MCP, policy.
- * Never throws on unknown shapes for hooks/MCP — empty lists instead.
+ * skills-lock.json — the oracle for which skills are managed installs pinned to
+ * an upstream source, and which are local and unpinned.
+ */
+function discoverSkillsLock(
+  root: string,
+  errors: ConfigErrorFact[],
+): { locked: LockedSkillFact[]; present: boolean } {
+  const filePath = join(root, "skills-lock.json");
+  if (!existsSync(filePath)) {
+    return { locked: [], present: false };
+  }
+  const raw = readJsonConfig(filePath, errors);
+  if (raw === undefined) {
+    return { locked: [], present: true };
+  }
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "skills-lock.json is not a JSON object",
+    });
+    return { locked: [], present: true };
+  }
+  const skills = (raw as Record<string, unknown>).skills;
+  if (skills === null || typeof skills !== "object" || Array.isArray(skills)) {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "skills-lock.json has no `skills` object",
+    });
+    return { locked: [], present: true };
+  }
+
+  const locked: LockedSkillFact[] = [];
+  for (const [id, value] of Object.entries(skills as Record<string, unknown>)) {
+    const entry: LockedSkillFact = { id };
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      const v = value as Record<string, unknown>;
+      if (typeof v.source === "string") {
+        entry.source = v.source;
+      }
+      if (typeof v.skillPath === "string") {
+        entry.skillPath = v.skillPath;
+      }
+      if (typeof v.computedHash === "string") {
+        entry.computedHash = v.computedHash;
+      }
+    }
+    locked.push(entry);
+  }
+  return { locked, present: true };
+}
+
+/**
+ * Enumerate project (and optionally global) agent surface: skills, agents, hooks,
+ * MCP, policy, lockfile. Config files that cannot be parsed are reported through
+ * `configErrors` instead of being silently dropped.
  */
 export function discoverAgentSurface(
   root: string,
   config: SkillscanConfig,
   opts: { includeGlobal: boolean },
 ): AgentSurface {
+  const configErrors: ConfigErrorFact[] = [];
+
   const skills: SkillFact[] = [];
   for (const rel of config.skillPaths) {
     skills.push(...discoverSkillsInDir(join(root, rel), "project"));
@@ -298,12 +583,17 @@ export function discoverAgentSurface(
     );
   }
 
+  const lock = discoverSkillsLock(root, configErrors);
+
   return {
     skills: dedupeSkillsById(skills),
     agents: discoverAgents(root),
-    hooks: discoverHooks(root),
-    mcp: discoverMcp(root, config.mcpPaths),
+    hooks: discoverHooks(root, configErrors),
+    mcp: discoverMcp(root, config.mcpPaths, configErrors),
     policyFiles: discoverPolicyFiles(root, config.policyFiles),
+    lockedSkills: lock.locked,
+    hasSkillsLock: lock.present,
+    configErrors,
   };
 }
 
@@ -319,7 +609,6 @@ function dedupeSkillsById(skills: SkillFact[]): SkillFact[] {
       byId.set(skill.id, skill);
       continue;
     }
-    // Prefer project source over global if we see project later
     if (existing.source === "global" && skill.source === "project") {
       byId.set(skill.id, skill);
     }
