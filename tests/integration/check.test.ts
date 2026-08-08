@@ -82,14 +82,27 @@ describe("runCheck integration", () => {
     expect(orphanFinding?.action).toBe("warn");
   });
 
-  test("orphan hidden in default text report", async () => {
+  test("orphan collapsed in default text report", async () => {
     const result = await runCheck({
       dir: join(fixturesRoot, "orphan-skill"),
       failOn: "never",
     });
     expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("ORPHAN");
+    expect(result.stdout).toMatch(/1 skills/);
     expect(result.stdout).not.toContain("totally-orphan-xyz");
-    expect(result.stdout).toMatch(/info hidden/);
+    expect(result.stdout).not.toMatch(/info hidden/);
+  });
+
+  test("orphan listed when verbose", async () => {
+    const result = await runCheck({
+      dir: join(fixturesRoot, "orphan-skill"),
+      failOn: "never",
+      verbose: true,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("totally-orphan-xyz");
+    expect(result.stdout).not.toMatch(/ORPHAN  \d+ skills/);
   });
 
   test("clean → zero high-signal actionable findings", async () => {
