@@ -1,0 +1,27 @@
+import type { Facts, Finding } from "../facts/types";
+import { sortFindings } from "./sort";
+
+export function renderJson(args: {
+  version: string;
+  root: string;
+  facts: Facts;
+  findings: Finding[];
+}): string {
+  const { version, root, facts, findings } = args;
+  const depCount =
+    Object.keys(facts.dependencies).length +
+    Object.keys(facts.devDependencies).length;
+
+  const payload = {
+    version,
+    root,
+    factsSummary: {
+      packageManager: facts.packageManager,
+      depCount,
+      skillCount: facts.skills.length,
+    },
+    findings: sortFindings(findings),
+  };
+
+  return `${JSON.stringify(payload, null, 2)}\n`;
+}
