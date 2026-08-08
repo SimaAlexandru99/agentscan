@@ -1,0 +1,27 @@
+{
+  "name": "skillscan",
+  "version": "0.1.0",
+  "description": "Inventory agent skills/agents/hooks/MCP against package.json",
+  "type": "module",
+  "bin": {
+    "skillscan": "./src/cli.ts"
+  },
+  "scripts": {
+    "skillscan": "bun run src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "check": "bun run src/cli.ts check"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "yaml": "^2.7.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.8.0"
+  }
+}

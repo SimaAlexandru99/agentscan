@@ -19,3 +19,12 @@ bunx skillscan explain <findingId>
 ```
 
 No disk writes in v1 (no `apply` / install).
+
+## Scripts
+
+| Script | Command |
+|--------|---------|
+| `skillscan` | `bun run src/cli.ts` |
+| `typecheck` | `tsc --noEmit` |
+| `test` | `bun test` |
+| `check` | `bun run src/cli.ts check` |
