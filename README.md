@@ -58,7 +58,7 @@ Stack: next@16.3.0 · packageManager=unknown
 
 DELETE  skill:next-cache-components
         rule:next.redundant-cache-components-skill
-        Redundant Next cache skill — prefer node_modules/next docs
+        Redundant with Next 16+ framework docs (not a security issue)
         evidence: dep next@16.3.0 · skill …/.agents/skills/next-cache-components
 
 Summary: 1 delete · 0 add · 0 refresh · 0 drift · 0 warn
@@ -82,7 +82,7 @@ JSON shape (abridged):
       "action": "delete",
       "severity": "warning",
       "subject": "skill:next-cache-components",
-      "message": "Redundant Next cache skill — prefer node_modules/next docs",
+      "message": "Redundant with Next 16+ framework docs (not a security issue)",
       "reason": "next >= 16 documents cache components in framework docs",
       "evidence": [{ "kind": "dep", "value": "next@16.3.0" }],
       "suggest": "rm -rf …/next-cache-components"

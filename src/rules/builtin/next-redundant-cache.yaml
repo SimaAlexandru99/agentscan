@@ -1,5 +1,5 @@
 id: next.redundant-cache-components-skill
-description: Next 16+ docs cover cache components; local skill often redundant
+description: Next 16+ ships cache-components docs; local skill is often duplicate/stale
 when:
   all:
     - dep: next
@@ -11,6 +11,6 @@ then:
   action: delete
   severity: warning
   subject: "skill:{{matchedSkill}}"
-  message: "Redundant Next cache skill — prefer node_modules/next docs"
-  reason: "next >= 16 documents cache components in framework docs"
-  suggest: "rm -rf {{matchedSkillPath}}"
+  message: "Redundant with Next 16+ framework docs (not a security issue)"
+  reason: "This project has next >= 16.0.0, which documents Cache Components under node_modules/next. A separate agent skill often drifts from that version and adds decision noise when picking skills. Safe to remove unless the skill has team-specific notes beyond upstream docs."
+  suggest: "rm -rf {{matchedSkillPath}}   # or add to ignoreSkills if you keep a custom fork"

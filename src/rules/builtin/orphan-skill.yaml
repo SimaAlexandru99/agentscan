@@ -1,5 +1,5 @@
 id: skill.orphan
-description: Skill with no dependency mapping and not mentioned in policy (info — hidden unless --verbose)
+description: Skill not mapped to a dependency and not named in policy (info; collapsed in default text)
 when:
   perSkill:
     orphan: true
@@ -7,6 +7,6 @@ then:
   action: warn
   severity: info
   subject: "skill:{{matchedSkill}}"
-  message: "Orphan skill — no matching dependency and not referenced in AGENTS.md/CLAUDE.md"
-  reason: "No dep→skill map hit and name not in policy files (info-level; use --verbose to list)"
-  suggest: "rm -rf {{matchedSkillPath}}   # only if intentional; or ignoreSkills / mention in AGENTS.md"
+  message: "Unmapped skill — decision noise, not a runtime bug"
+  reason: "No installed dependency matches skillscan's dep→skill map, and the skill id is not mentioned in AGENTS.md/CLAUDE.md. Large skill inventories (research sweet spot ~8–12) make agents pick worse. Default report collapses these into one ORPHAN line; this detail is for --verbose/JSON."
+  suggest: "Keep if intentional (ignoreSkills or mention id in AGENTS.md). Prune only packs you do not use: rm -rf {{matchedSkillPath}}"
