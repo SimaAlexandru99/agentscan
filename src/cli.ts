@@ -18,6 +18,7 @@ Usage:
   skillscan --version
   skillscan --help
 
+
 check options:
   --json                 JSON report
   --quiet                Summary only

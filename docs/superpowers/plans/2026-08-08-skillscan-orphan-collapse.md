@@ -1,5 +1,9 @@
 # skillscan orphan collapse Implementation Plan
 
+> **COMPLETED / historical.** Shipped across commits `cc3fbc2`…`310b131`; the
+> `- [ ]` checkboxes below were never ticked during execution. Current behavior
+> lives in `README.md`, not here.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Default human text report collapses `skill.orphan` findings into one `ORPHAN` line with count + top 3 skill families; JSON and `--verbose` stay fully expanded.

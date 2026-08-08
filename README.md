@@ -1,10 +1,16 @@
 # skillscan
 
-Deterministic CLI: inventory agent **skills / agents / hooks / MCP** against `package.json` and recommend keep / delete / add / refresh.
+Deterministic CLI that finds **issues in a project's agent configuration** — skills, `skills-lock.json`, hooks, MCP servers, agent definitions and policy files.
+
+It reports broken and inconsistent config: a hook whose script is gone, an MCP server that can never start, a credential pasted into a config file, a skill whose frontmatter name disagrees with its directory, a lockfile that disagrees with what is installed.
 
 > *shadscan for agent stack hygiene* — inverse of autoskills (report only in v1; no auto-install).
 
-**Spec:** [docs/superpowers/specs/2026-08-08-skillscan-design.md](docs/superpowers/specs/2026-08-08-skillscan-design.md)
+**This README is the source of truth for current behavior.** The docs under
+`docs/superpowers/specs/` are the original design and have been **superseded** —
+several decisions changed during implementation: Bun-only runtime, the dep→skill
+"orphan" heuristic dropped in favour of `skills-lock.json`, budget rules added,
+and structural config checks added. Read them as history.
 
 ## Install
 
@@ -26,7 +32,7 @@ bunx skillscan check                 # text report (cwd)
 bunx skillscan check ./my-app        # explicit root
 bunx skillscan check --json          # machine-readable
 bunx skillscan check --quiet         # summary only
-bunx skillscan check --verbose       # include KEEP + info (orphans)
+bunx skillscan check --verbose       # include KEEP and info-severity findings
 bunx skillscan check --fail-on warning
 bunx skillscan check --global        # also scan global skill dirs
 
@@ -41,7 +47,7 @@ Flags for `check`:
 |------|---------|
 | `--json` | JSON report |
 | `--quiet` | Summary line only |
-| `--verbose` | Show KEEP + info-severity findings (e.g. orphans) |
+| `--verbose` | Show KEEP + info-severity findings |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--global` | Include global skill directories |
 | `--config <path>` | Config file path |
@@ -52,17 +58,29 @@ Flags for `check`:
 ## Sample output
 
 ```text
-skillscan v0.1.0 — next16-redundant-skill
+skillscan v0.1.0 — touchagency
 
-Stack: next@16.3.0 · packageManager=unknown
+Stack: shadcn@^4.16.0 · zod@^4.4.3 · +44 more · packageManager=bun
 
-DELETE  skill:next-cache-components
-        rule:next.redundant-cache-components-skill
-        Redundant with Next 16+ framework docs (not a security issue)
-        evidence: dep next@16.3.0 · skill …/.agents/skills/next-cache-components
+WARN    hook:PreToolUse:.claude/hooks/protect-env.js
+        rule:hook.missing-script
+        PreToolUse hook points at a script that does not exist: .claude/hooks/protect-env.js
+        evidence: hook PreToolUse @ …/.claude/settings.json · script .claude/hooks/protect-env.js
 
-Summary: 1 delete · 0 add · 0 refresh · 0 drift · 0 warn
+WARN    skill:composition-patterns
+        rule:skill.name-mismatch
+        Frontmatter name "vercel-composition-patterns" does not match directory "composition-patterns"
+        evidence: skill …/.agents/skills/composition-patterns/SKILL.md · name vercel-composition-patterns
+
+Summary: 0 delete · 0 add · 0 refresh · 0 drift · 8 warn · 4 info hidden (--verbose)
 ```
+
+That first finding is the one worth having: a `PreToolUse` hook named
+`protect-env.js` was registered and the script is gone, so the protection the
+config claims has silently not been in effect.
+
+The `Stack:` line lists only the deps skillscan reasons about (the ones in
+`DEP_SKILL_MAP`) plus a count of the rest — a real app has 100+ dependencies.
 
 JSON shape (abridged):
 
@@ -91,7 +109,8 @@ JSON shape (abridged):
 }
 ```
 
-Same tree → same sorted findings (stable `id`s).
+Same tree → same sorted findings (stable, unique `id`s — one rule per id, so a
+user rule that reuses a builtin id replaces it rather than doubling it).
 
 ## Exit codes
 
@@ -130,6 +149,7 @@ Optional `.skillscanrc.json` (create with `skillscan init`):
   "ignoreRules": [],
   "failOn": "never",
   "includeGlobal": false,
+  "requireLock": false,
   "thresholds": {
     "skills": 30,
     "mcp": 5,
@@ -166,17 +186,38 @@ then:
   suggest: "Add a better-auth* skill for agent auth guidance"
 ```
 
-Useful `when` matchers (v1):
+A user rule whose `id` matches a builtin **replaces** that builtin. Use
+`ignoreRules` to switch one off entirely.
+
+Supported `when` matchers:
 
 - `dep: <name>` with optional `gte` / `lt` semver
-- `skillMatches: [patterns]` (`*` wildcard)
+- `skillMatches: [patterns]` — `*` wildcard, prefix (`next-*`) or suffix (`*prisma`) only
 - `packageManager: bun|npm|…`
-- `policyMatches: "substring"`
-- `hasConfig: <key>`
-- `perSkill: { orphan: true }`
-- `count: { of: skills|mcp|agents|hooks, gt: N }` (gt overridden by `thresholds` when of is skills/mcp/agents)
+- `policyMatches: "needle"` — plain substring, **not** a regex
+- `hasConfig: <key>` — flat key on the configs fact (`shadcn`, `biome`, `ultracite`, `next`); no nested paths
+- `perSkill: { orphan: true }` — one finding per skill that matches no `DEP_SKILL_MAP` entry for an installed dep and is not named in a policy file. Prefer `skill.not-in-lock` when the project has a `skills-lock.json`: the lockfile is a real oracle, the map is a 7-entry approximation.
+- `count: { of: skills|mcp|agents|hooks, gt: N }`
 - `policyLines: { file: AGENTS.md|CLAUDE.md, gt: N }`
-- combinators: `all`, `not` (v1 — no `any` yet)
+- combinators: `all`, `not` — no `any`
+
+**Opting into config thresholds.** `gt` is absolute. To let `.skillscanrc.json`
+retune it, add `thresholdKey` naming a key under `thresholds`:
+
+```yaml
+when:
+  count:
+    of: skills
+    gt: 30                 # default
+    thresholdKey: skills   # users override via thresholds.skills
+```
+
+Without `thresholdKey` your `gt` is always respected. All five builtin budget
+rules opt in; nothing rewrites a rule that did not ask for it.
+
+**Unknown clauses do not fire and do not warn.** `when` is opaque JSON, so a
+typo (`depp:` for `dep:`) silently produces a rule that never matches. Check with
+`skillscan rules` that it loaded, then test against a fixture.
 
 List what loaded:
 
@@ -190,13 +231,56 @@ bunx skillscan rules
 |----|--------|
 | `next.redundant-cache-components-skill` | DELETE redundant Next cache skills when `next >= 16` |
 | `better-auth.missing-skill` | ADD when `better-auth` dep lacks a matching skill |
-| `skill.orphan` | INFO/WARN unmapped skills (collapsed to ORPHAN line in default text) |
 | `policy.package-manager-drift` | DRIFT when policy says `npm install` but PM is bun |
 | `budget.skills` | INFO when skill count > thresholds.skills (default 30) |
 | `budget.mcp` | INFO when MCP count > 5 |
 | `budget.agents` | INFO when agent files > 8 |
 | `budget.agents-md` | INFO when AGENTS.md lines > 150 |
 | `budget.claude-md` | INFO when CLAUDE.md lines > 200 |
+
+## What it checks
+
+Structural checks run on every `check` — they live in `src/checks/`, not in the
+YAML rules, because they validate each discovered item against its own file on
+disk rather than matching aggregate facts.
+
+| id | Severity | Catches |
+|----|----------|---------|
+| `config.unreadable` | error | A config file that is not valid JSON, so whatever it declares is silently not in effect |
+| `hook.missing-script` | error | A registered hook whose script does not exist — it never runs |
+| `hook.unknown-event` | error | A hook registered under an event name that is never dispatched |
+| `mcp.no-launch` | error | An MCP server with neither `command` nor `url`; its tools are never available |
+| `mcp.hardcoded-secret` | error | A token-shaped literal in MCP config (the value is never echoed back) |
+| `mcp.literal-env` | warning | Long literal `env` values that should be `${VAR}` |
+| `skill.missing-skill-md` | warning | A directory under a skill path with no `SKILL.md` |
+| `skill.missing-frontmatter` | warning | `SKILL.md` with no `---` block |
+| `skill.missing-name` / `skill.missing-description` | warning | Frontmatter missing a required field |
+| `skill.name-mismatch` | warning | Frontmatter `name` differs from the directory name |
+| `skill.locked-not-installed` | warning | `skills-lock.json` pins a skill that is not on disk |
+| `skill.not-in-lock` | info | A skill on disk that the lockfile does not track — local and unpinned |
+| `skill.no-lockfile` | info | Skills present with no lockfile at all (only with `requireLock`) |
+
+`hook.missing-script` is deliberately conservative. A command is only resolved
+when it is a single invocation with a path-like argument; shell programs
+(`a && b`, `$(...)`, pipes) are skipped, because a hook written as
+`[ ! -f x ] || node x` already handles the missing file and flagging it would be
+a false positive. `node -e "<code>"` is never treated as a path. Only
+`$CLAUDE_PROJECT_DIR` is expanded — other variables are left alone rather than
+guessed at.
+
+## Known limits
+
+- **`DEP_SKILL_MAP` has 7 entries and is not configurable.** It now drives only
+  `next.redundant-cache-components-skill` and `better-auth.missing-skill`, which
+  together fire on none of the 17 projects it was measured against. The structural
+  checks do not use it. Both rules, and the map, are candidates for deletion.
+- **No rule produces `refresh` or `keep`.** Comparing a skill's content against
+  the `computedHash` in `skills-lock.json` is the obvious `refresh` source; the
+  hash algorithm used by the installing tool is not documented here, and it is
+  not reproducible from `SKILL.md` bytes alone, so it is not implemented.
+- **Bun only.** `import.meta.dir` / `import.meta.main`; it will not run on Node.
+- Policy files are read up to 100 KB, so `policyLines` undercounts past that.
+- Agent definition files under `.claude/agents/` are counted but not validated.
 
 ## Development
 

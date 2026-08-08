@@ -1,5 +1,13 @@
 # skillscan — Design Spec
 
+> **SUPERSEDED — historical design document.**
+> Behavior drifted during implementation; `README.md` is the source of truth.
+> Known divergences: Bun-only runtime (no Node), orphans are a facts-derived
+> observation (`orphanSkills`) rather than a DELETE finding, budget rules and the
+> `count` / `policyLines` / `packageManager` clauses were added by later council
+> decision (`.orch/bloat-thresholds/council/03_decision.md`), `policyMatches` is a
+> substring not a regex, and `hasMcp` / `hasHook` / `any` were never built.
+
 **Date:** 2026-08-08  
 **Status:** Approved (brainstorming)  
 **License (target):** MIT  
