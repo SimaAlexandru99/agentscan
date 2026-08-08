@@ -1,6 +1,9 @@
 #!/usr/bin/env bun
 import { parseArgs } from "node:util";
 import { runCheck } from "./commands/check";
+import { runExplain } from "./commands/explain";
+import { runInit } from "./commands/init";
+import { runRulesCommand } from "./commands/rules";
 import type { FailOn } from "./report/exit-code";
 import { VERSION } from "./version";
 
@@ -9,9 +12,9 @@ function printHelp(): void {
 
 Usage:
   skillscan check [dir] [options]
-  skillscan explain <findingId>
-  skillscan rules
-  skillscan init
+  skillscan explain <findingId> [dir]
+  skillscan rules [dir]
+  skillscan init [dir] [--force]
   skillscan --version
   skillscan --help
 
@@ -23,6 +26,9 @@ check options:
   --global               Also scan global skill dirs
   --config <path>        Config file path
   --rules-dir <path>     User rules directory
+
+init options:
+  --force                Overwrite existing .skillscanrc.json
 `;
   process.stdout.write(`${text}\n`);
 }
@@ -40,6 +46,7 @@ export async function main(argv: string[]): Promise<number> {
     global?: boolean;
     config?: string;
     "rules-dir"?: string;
+    force?: boolean;
     help?: boolean;
     version?: boolean;
   };
@@ -56,6 +63,7 @@ export async function main(argv: string[]): Promise<number> {
         global: { type: "boolean", default: false },
         config: { type: "string" },
         "rules-dir": { type: "string" },
+        force: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
         version: { type: "boolean", short: "V", default: false },
       },
@@ -110,13 +118,47 @@ export async function main(argv: string[]): Promise<number> {
         process.stdout.write(result.stdout);
         return result.exitCode;
       }
-      case "explain":
-      case "rules":
-      case "init":
-        process.stderr.write(
-          `Command "${command}" is not implemented yet\n`,
-        );
-        return 2;
+      case "explain": {
+        const findingId = positionals[1];
+        if (findingId === undefined || findingId.length === 0) {
+          process.stderr.write("Usage: skillscan explain <findingId> [dir]\n");
+          return 2;
+        }
+        const result = await runExplain(findingId, {
+          dir: positionals[2],
+          global: values.global,
+          configPath: values.config,
+          rulesDir: values["rules-dir"],
+        });
+        if (result.stderr.length > 0) {
+          process.stderr.write(result.stderr);
+        }
+        if (result.stdout.length > 0) {
+          process.stdout.write(result.stdout);
+        }
+        return result.exitCode;
+      }
+      case "rules": {
+        const result = await runRulesCommand({
+          dir: positionals[1],
+          configPath: values.config,
+          rulesDir: values["rules-dir"],
+        });
+        process.stdout.write(result.stdout);
+        return result.exitCode;
+      }
+      case "init": {
+        const result = await runInit(positionals[1], {
+          force: values.force,
+        });
+        if (result.stderr.length > 0) {
+          process.stderr.write(result.stderr);
+        }
+        if (result.stdout.length > 0) {
+          process.stdout.write(result.stdout);
+        }
+        return result.exitCode;
+      }
       case "help":
         printHelp();
         return 0;
