@@ -37,7 +37,7 @@ bunx skillscan check --fail-on warning
 bunx skillscan check --global        # also scan global skill dirs
 
 bunx skillscan explain <findingId>   # detail one finding
-bunx skillscan rules                 # list loaded rule ids
+bunx skillscan rules                 # every check + rule id that can fire
 bunx skillscan init                  # write .skillscanrc.json
 ```
 
@@ -242,7 +242,8 @@ bunx skillscan rules
 
 Structural checks run on every `check` — they live in `src/checks/`, not in the
 YAML rules, because they validate each discovered item against its own file on
-disk rather than matching aggregate facts.
+disk rather than matching aggregate facts. `skillscan rules` lists them together
+with the YAML rules, and `skillscan explain <id>` works for either.
 
 | id | Severity | Catches |
 |----|----------|---------|

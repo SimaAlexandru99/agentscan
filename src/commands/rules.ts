@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { STRUCTURAL_CHECKS } from "../checks/index";
 import { loadConfig } from "../config/load";
 import { resolveRoot } from "../discover/index";
 import { loadRules } from "../rules/load";
@@ -15,7 +16,8 @@ export type RulesCommandResult = {
 };
 
 /**
- * Load builtin + user rules and print `id` + description (one per line).
+ * Print every id that can produce a finding — structural checks first, then
+ * YAML rules — as `id  description`, one per line.
  */
 export async function runRulesCommand(
   options: RulesCommandOptions = {},
@@ -32,13 +34,21 @@ export async function runRulesCommand(
     ignoreRules: config.ignoreRules,
   });
 
-  const lines = rules.map((rule) => {
-    const desc = rule.description ?? "";
-    return desc.length > 0 ? `${rule.id}  ${desc}` : rule.id;
-  });
+  const ignored = new Set(config.ignoreRules);
+  const lines: string[] = [];
 
-  const stdout =
-    lines.length > 0 ? `${lines.join("\n")}\n` : "";
+  for (const check of STRUCTURAL_CHECKS) {
+    if (ignored.has(check.id)) {
+      continue;
+    }
+    lines.push(`${check.id}  ${check.description}`);
+  }
+  for (const rule of rules) {
+    const desc = rule.description ?? "";
+    lines.push(desc.length > 0 ? `${rule.id}  ${desc}` : rule.id);
+  }
+
+  const stdout = lines.length > 0 ? `${lines.join("\n")}\n` : "";
 
   return { exitCode: 0, stdout };
 }

@@ -21,6 +21,20 @@ describe("runExplain", () => {
     expect(result.stdout).toContain("evidence:");
   });
 
+  test("explains a structural check finding, not just rule findings", async () => {
+    const dir = join(fixturesRoot, "lock-drift");
+    const result = await runExplain(
+      "skill.locked-not-installed:skill:pinned-but-gone",
+      { dir },
+    );
+
+    expect(result.stderr).toBe("");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("rule: skill.locked-not-installed");
+    expect(result.stdout).toContain("reason:");
+    expect(result.stdout).toContain("suggest:");
+  });
+
   test("exits 1 when finding id is missing", async () => {
     const dir = join(fixturesRoot, "clean-repo");
     const result = await runExplain("no.such:finding", { dir });
@@ -46,5 +60,23 @@ describe("runRulesCommand", () => {
     expect(result.stdout).toMatch(
       /next\.redundant-cache-components-skill\s+.+/,
     );
+  });
+
+  test("lists structural checks alongside YAML rules", async () => {
+    const dir = join(fixturesRoot, "clean-repo");
+    const result = await runRulesCommand({ dir });
+
+    // the checks that actually find things must not be invisible here
+    for (const id of [
+      "hook.missing-script",
+      "hook.unknown-event",
+      "mcp.hardcoded-secret",
+      "skill.name-mismatch",
+      "skill.not-in-lock",
+      "config.unreadable",
+    ]) {
+      expect(result.stdout).toContain(id);
+    }
+    expect(result.stdout).toMatch(/hook\.missing-script\s+.+/);
   });
 });

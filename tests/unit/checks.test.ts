@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Facts, HookFact, McpFact, SkillFact } from "../../src/facts/types";
-import { runChecks } from "../../src/checks/index";
+import { runChecks, STRUCTURAL_CHECKS } from "../../src/checks/index";
 
 function skill(partial: Partial<SkillFact> & Pick<SkillFact, "id">): SkillFact {
   return {
@@ -312,6 +312,85 @@ describe("mcp checks", () => {
       }),
     );
     expect(findings).toEqual([]);
+  });
+});
+
+describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
+  test("declared ids and emitted ids are the same set", () => {
+    // `skill.no-lockfile` needs no lockfile while the lock checks need one, so
+    // the emitted set is the union of two runs.
+    const withLock = baseFacts({
+      configErrors: [
+        { path: "/tmp/proj/.mcp.json", kind: "invalid-json", detail: "x" },
+      ],
+      hooks: [
+        {
+          name: "Nope",
+          path: "/tmp/proj/.claude/settings.json",
+          event: "Nope",
+        },
+        {
+          name: "PreToolUse",
+          path: "/tmp/proj/.claude/settings.json",
+          event: "PreToolUse",
+          command: "node gone.js",
+          scriptPath: "./gone.js",
+          scriptExists: false,
+        },
+      ],
+      hasSkillsLock: true,
+      lockedSkills: [{ id: "pinned-gone" }],
+      skills: [
+        skill({ id: "no-md", hasSkillMd: false, hasFrontmatter: false }),
+        skill({ id: "no-fm", hasFrontmatter: false }),
+        skill({ id: "no-name-no-desc" }),
+        skill({ id: "mismatch", frontmatterName: "other", description: "d" }),
+      ],
+      mcp: [
+        {
+          name: "dead",
+          path: "/tmp/proj/.mcp.json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "leaky",
+          path: "/tmp/proj/.mcp.json",
+          hasCommand: true,
+          hasUrl: false,
+          literalEnvKeys: [],
+          raw: '{"env":{"T":"ghp_abcdefghij0123456789abcd"}}',
+        },
+        {
+          name: "literal",
+          path: "/tmp/proj/.mcp.json",
+          hasCommand: true,
+          hasUrl: false,
+          literalEnvKeys: ["API_KEY"],
+          raw: "{}",
+        },
+      ],
+    });
+
+    const noLock = baseFacts({
+      hasSkillsLock: false,
+      skills: [skill({ id: "a", frontmatterName: "a", description: "d" })],
+    });
+
+    const emitted = new Set([
+      ...runChecks(withLock).map((f) => f.ruleId),
+      ...runChecks(noLock, { requireLock: true }).map((f) => f.ruleId),
+    ]);
+    const declared = new Set(STRUCTURAL_CHECKS.map((c) => c.id));
+
+    expect([...emitted].sort()).toEqual([...declared].sort());
+  });
+
+  test("declared ids are unique", () => {
+    const ids = STRUCTURAL_CHECKS.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
 

@@ -14,6 +14,67 @@ export type CheckOptions = {
   requireLock?: boolean;
 };
 
+/**
+ * Every id `runChecks` can emit, so `skillscan rules` can show the whole picture
+ * rather than only the YAML half. Keep in sync with the functions below — the
+ * `checks emit only declared ids` test fails if they drift.
+ */
+export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
+  {
+    id: "config.unreadable",
+    description: "Config file is not valid JSON or cannot be read",
+  },
+  {
+    id: "hook.unknown-event",
+    description: "Hook registered under an event name that is never dispatched",
+  },
+  {
+    id: "hook.missing-script",
+    description: "Hook points at a script that does not exist, so it never runs",
+  },
+  {
+    id: "skill.missing-skill-md",
+    description: "Skill directory has no SKILL.md",
+  },
+  {
+    id: "skill.missing-frontmatter",
+    description: "SKILL.md has no YAML frontmatter block",
+  },
+  { id: "skill.missing-name", description: "SKILL.md frontmatter has no name" },
+  {
+    id: "skill.missing-description",
+    description: "SKILL.md frontmatter has no description",
+  },
+  {
+    id: "skill.name-mismatch",
+    description: "Frontmatter name disagrees with the directory name",
+  },
+  {
+    id: "skill.not-in-lock",
+    description: "Skill on disk is not tracked by skills-lock.json",
+  },
+  {
+    id: "skill.locked-not-installed",
+    description: "skills-lock.json pins a skill that is not installed",
+  },
+  {
+    id: "skill.no-lockfile",
+    description: "Skills present with no skills-lock.json (requireLock only)",
+  },
+  {
+    id: "mcp.no-launch",
+    description: "MCP server declares neither command nor url",
+  },
+  {
+    id: "mcp.hardcoded-secret",
+    description: "MCP config contains a token-shaped literal",
+  },
+  {
+    id: "mcp.literal-env",
+    description: "MCP env value is a long literal instead of ${VAR}",
+  },
+];
+
 /** Token shapes worth failing a build over. Deliberately narrow — no entropy guessing. */
 const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
   { label: "OpenAI-style key", re: /\bsk-[A-Za-z0-9_-]{16,}/ },

@@ -1,15 +1,7 @@
-import { join } from "node:path";
-import { runChecks } from "../checks/index";
-import { loadConfig } from "../config/load";
-import type { SkillscanConfig } from "../config/schema";
-import { resolveRoot } from "../discover/index";
-import { extractFacts } from "../facts/extract";
+import { analyze } from "../analyze";
 import { exitCode, type FailOn } from "../report/exit-code";
 import { renderJson } from "../report/json";
-import { sortFindings } from "../report/sort";
 import { renderText } from "../report/text";
-import { runRules } from "../rules/engine";
-import { loadRules } from "../rules/load";
 import { VERSION } from "../version";
 
 export type CheckOptions = {
@@ -29,49 +21,17 @@ export type CheckResult = {
 };
 
 /**
- * Run the full check pipeline (discover → facts → rules → report).
+ * Run the full check pipeline (discover → facts → rules + checks → report).
  * Returns exit code + stdout for testability; CLI prints and process.exit.
  */
 export async function runCheck(options: CheckOptions): Promise<CheckResult> {
-  const root = resolveRoot(options.dir ?? process.cwd());
-  const loaded = loadConfig(root, options.configPath);
-
-  const config: SkillscanConfig = {
-    ...loaded,
-    ...(options.failOn !== undefined ? { failOn: options.failOn } : {}),
-    ...(options.global !== undefined
-      ? { includeGlobal: options.global }
-      : {}),
-  };
-
-  const includeGlobal = options.global ?? config.includeGlobal;
-  const facts = extractFacts(root, config, { includeGlobal });
-
-  const builtinDir = join(import.meta.dir, "../rules/builtin");
-  const userRulesDir =
-    options.rulesDir ?? join(root, ".skillscan", "rules");
-  const rules = loadRules({
-    builtinDir,
-    userRulesDir,
-    ignoreRules: config.ignoreRules,
+  const { root, config, facts, findings } = analyze({
+    dir: options.dir,
+    global: options.global,
+    configPath: options.configPath,
+    rulesDir: options.rulesDir,
+    failOn: options.failOn,
   });
-
-  const ignoredSkills = new Set(config.ignoreSkills);
-  const ignoredRules = new Set(config.ignoreRules);
-
-  const structural = runChecks(facts, { requireLock: config.requireLock }).filter(
-    (f) =>
-      !ignoredRules.has(f.ruleId) &&
-      !(
-        f.subject.startsWith("skill:") &&
-        ignoredSkills.has(f.subject.slice("skill:".length))
-      ),
-  );
-
-  const findings = sortFindings([
-    ...runRules(facts, rules, config),
-    ...structural,
-  ]);
 
   const stdout = options.json
     ? renderJson({ version: VERSION, root, facts, findings })

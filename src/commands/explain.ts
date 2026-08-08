@@ -1,11 +1,5 @@
-import { join } from "node:path";
-import { loadConfig } from "../config/load";
-import type { SkillscanConfig } from "../config/schema";
-import { resolveRoot } from "../discover/index";
-import { extractFacts } from "../facts/extract";
+import { analyze } from "../analyze";
 import type { Finding } from "../facts/types";
-import { runRules } from "../rules/engine";
-import { loadRules } from "../rules/load";
 
 export type ExplainOptions = {
   dir?: string;
@@ -28,29 +22,7 @@ export async function runExplain(
   findingId: string,
   options: ExplainOptions = {},
 ): Promise<ExplainResult> {
-  const root = resolveRoot(options.dir ?? process.cwd());
-  const loaded = loadConfig(root, options.configPath);
-
-  const config: SkillscanConfig = {
-    ...loaded,
-    ...(options.global !== undefined
-      ? { includeGlobal: options.global }
-      : {}),
-  };
-
-  const includeGlobal = options.global ?? config.includeGlobal;
-  const facts = extractFacts(root, config, { includeGlobal });
-
-  const builtinDir = join(import.meta.dir, "../rules/builtin");
-  const userRulesDir =
-    options.rulesDir ?? join(root, ".skillscan", "rules");
-  const rules = loadRules({
-    builtinDir,
-    userRulesDir,
-    ignoreRules: config.ignoreRules,
-  });
-
-  const findings = runRules(facts, rules, config);
+  const { findings } = analyze(options);
   const finding = findings.find((f) => f.id === findingId);
 
   if (finding === undefined) {
