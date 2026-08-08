@@ -1,0 +1,16 @@
+id: better-auth.missing-skill
+description: better-auth is installed but no matching agent skill is present
+when:
+  all:
+    - dep: better-auth
+    - not:
+        skillMatches:
+          - better-auth*
+          - best-practices
+then:
+  action: add
+  severity: warning
+  subject: "skill:better-auth"
+  message: "Missing better-auth skill while better-auth is a dependency"
+  reason: "Mapped dep better-auth has no matching skill (better-auth* / best-practices)"
+  suggest: "Add a better-auth* skill for agent auth guidance"

@@ -1,0 +1,12 @@
+id: skill.orphan
+description: Skill with no dependency mapping and not mentioned in policy
+when:
+  perSkill:
+    orphan: true
+then:
+  action: delete
+  severity: warning
+  subject: "skill:{{matchedSkill}}"
+  message: "Orphan skill — no matching dependency and not referenced in AGENTS.md/CLAUDE.md"
+  reason: "No dep→skill map hit and name not in policy files"
+  suggest: "rm -rf {{matchedSkillPath}}"

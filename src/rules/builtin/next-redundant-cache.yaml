@@ -1,0 +1,16 @@
+id: next.redundant-cache-components-skill
+description: Next 16+ docs cover cache components; local skill often redundant
+when:
+  all:
+    - dep: next
+      gte: "16.0.0"
+    - skillMatches:
+        - next-cache-components
+        - next-cache
+then:
+  action: delete
+  severity: warning
+  subject: "skill:{{matchedSkill}}"
+  message: "Redundant Next cache skill — prefer node_modules/next docs"
+  reason: "next >= 16 documents cache components in framework docs"
+  suggest: "rm -rf {{matchedSkillPath}}"
