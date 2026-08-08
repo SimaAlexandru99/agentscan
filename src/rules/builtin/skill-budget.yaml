@@ -4,6 +4,7 @@ when:
   count:
     of: skills
     gt: 30
+    thresholdKey: skills
 then:
   action: warn
   severity: info

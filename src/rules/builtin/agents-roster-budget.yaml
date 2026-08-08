@@ -4,6 +4,7 @@ when:
   count:
     of: agents
     gt: 8
+    thresholdKey: agents
 then:
   action: warn
   severity: info

@@ -136,6 +136,54 @@ then:
     expect(rules.map((r) => r.id)).toEqual(["builtin.a", "user.b"]);
   });
 
+  test("user rule with same id overrides builtin, keeping its position", () => {
+    const builtin = mkdtempSync(join(tmpdir(), "skillscan-builtin-"));
+    const user = mkdtempSync(join(tmpdir(), "skillscan-user-"));
+    writeFileSync(
+      join(builtin, "a.yaml"),
+      `
+id: budget.skills
+when: {}
+then:
+  action: warn
+  severity: info
+  message: builtin version
+`,
+    );
+    writeFileSync(
+      join(builtin, "z.yaml"),
+      `
+id: other.builtin
+when: {}
+then:
+  action: warn
+  severity: info
+  message: untouched
+`,
+    );
+    writeFileSync(
+      join(user, "override.yaml"),
+      `
+id: budget.skills
+when: {}
+then:
+  action: warn
+  severity: warning
+  message: user version
+`,
+    );
+
+    const rules = loadRules({
+      builtinDir: builtin,
+      userRulesDir: user,
+      ignoreRules: [],
+    });
+
+    // exactly one rule per id — no duplicate finding ids downstream
+    expect(rules.map((r) => r.id)).toEqual(["budget.skills", "other.builtin"]);
+    expect(rules[0]?.then.message).toBe("user version");
+  });
+
   test("skips missing userRulesDir without throwing", () => {
     const builtin = mkdtempSync(join(tmpdir(), "skillscan-builtin-"));
     writeFileSync(

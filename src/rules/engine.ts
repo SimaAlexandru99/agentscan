@@ -221,9 +221,8 @@ function collectionSize(facts: Facts, of: CountOf): number {
 
 /**
  * `{ count: { of: skills|mcp|agents|hooks, gt: N } }`
- * Optional `thresholdKey` on count object is not used — gt is absolute.
- * Config thresholds are applied in evaluateRule by rewriting gt before eval
- * when using builtin budget rules (YAML carries default gt).
+ * `gt` is absolute here. A rule that wants users to retune it via
+ * `.skillscanrc.json` opts in with `thresholdKey` — see applyThresholdOverrides.
  */
 function evalCountClause(
   facts: Facts,
@@ -443,61 +442,55 @@ function shouldIgnoreFinding(
   return false;
 }
 
+/** Named config threshold, or undefined when the rule did not opt in. */
+function lookupThreshold(
+  key: unknown,
+  thresholds: SkillscanConfig["thresholds"],
+): number | undefined {
+  if (typeof key !== "string") {
+    return undefined;
+  }
+  const value = (thresholds as Record<string, unknown>)[key];
+  return typeof value === "number" ? value : undefined;
+}
+
 /**
- * Apply config.thresholds defaults onto count/policyLines clauses so users
- * can override via .skillscanrc.json without editing YAML.
+ * Let `.skillscanrc.json` retune a rule's `gt` — but only for rules that opt in
+ * with `thresholdKey`. Keying this on the clause shape instead would silently
+ * rewrite every user rule that happens to count skills/mcp/agents.
  */
 function applyThresholdOverrides(
   when: unknown,
   config: SkillscanConfig,
 ): unknown {
-  const t = config.thresholds ?? defaultThresholds;
   if (!isRecord(when)) {
     return when;
   }
-  if (isRecord(when.count) && typeof when.count.of === "string") {
-    const of = when.count.of;
-    const gt =
-      of === "skills"
-        ? t.skills
-        : of === "mcp"
-          ? t.mcp
-          : of === "agents"
-            ? t.agents
-            : typeof when.count.gt === "number"
-              ? when.count.gt
-              : undefined;
+  const t = config.thresholds ?? defaultThresholds;
+  let out: Record<string, unknown> = when;
+
+  if (isRecord(out.count)) {
+    const gt = lookupThreshold(out.count.thresholdKey, t);
     if (gt !== undefined) {
-      return {
-        ...when,
-        count: { ...when.count, gt },
-      };
+      out = { ...out, count: { ...out.count, gt } };
     }
   }
-  if (isRecord(when.policyLines) && typeof when.policyLines.file === "string") {
-    const file = when.policyLines.file;
-    const gt =
-      file === "AGENTS.md"
-        ? t.agentsMdLines
-        : file === "CLAUDE.md"
-          ? t.claudeMdLines
-          : typeof when.policyLines.gt === "number"
-            ? when.policyLines.gt
-            : undefined;
+  if (isRecord(out.policyLines)) {
+    const gt = lookupThreshold(out.policyLines.thresholdKey, t);
     if (gt !== undefined) {
-      return {
-        ...when,
-        policyLines: { ...when.policyLines, gt },
-      };
+      out = { ...out, policyLines: { ...out.policyLines, gt } };
     }
   }
-  if (Array.isArray(when.all)) {
-    return {
-      ...when,
-      all: when.all.map((c) => applyThresholdOverrides(c, config)),
+  if (Array.isArray(out.all)) {
+    out = {
+      ...out,
+      all: out.all.map((c) => applyThresholdOverrides(c, config)),
     };
   }
-  return when;
+  if ("not" in out) {
+    out = { ...out, not: applyThresholdOverrides(out.not, config) };
+  }
+  return out;
 }
 
 function evaluateRule(

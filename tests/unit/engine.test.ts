@@ -9,7 +9,15 @@ function skill(
   id: string,
   path = `.agents/skills/${id}`,
 ): SkillFact {
-  return { id, path, source: "project" };
+  return {
+    id,
+    path,
+    source: "project",
+    hasSkillMd: true,
+    hasFrontmatter: true,
+    frontmatterName: id,
+    description: "d",
+  };
 }
 
 function baseFacts(overrides: Partial<Facts> = {}): Facts {
@@ -25,6 +33,9 @@ function baseFacts(overrides: Partial<Facts> = {}): Facts {
     hooks: [],
     mcp: [],
     policyFiles: [],
+    lockedSkills: [],
+    hasSkillsLock: false,
+    configErrors: [],
     ...overrides,
   };
 }
@@ -270,7 +281,7 @@ describe("runRules", () => {
 
   const skillBudgetRule: RuleDefinition = {
     id: "budget.skills",
-    when: { count: { of: "skills", gt: 30 } },
+    when: { count: { of: "skills", gt: 30, thresholdKey: "skills" } },
     then: {
       action: "warn",
       severity: "info",
@@ -304,7 +315,7 @@ describe("runRules", () => {
     expect(findings).toHaveLength(0);
   });
 
-  test("config thresholds.skills overrides YAML gt", () => {
+  test("config thresholds.skills overrides gt when rule opts in via thresholdKey", () => {
     const skills = Array.from({ length: 10 }, (_, i) => skill(`s-${i}`));
     const findings = runRules(baseFacts({ skills }), [skillBudgetRule], {
       ...defaultConfig,
@@ -315,9 +326,56 @@ describe("runRules", () => {
     expect(findings[0]!.message).toContain("5");
   });
 
+  test("rule without thresholdKey keeps its own gt", () => {
+    const userRule: RuleDefinition = {
+      id: "my.skills-over-100",
+      when: { count: { of: "skills", gt: 100 } },
+      then: {
+        action: "warn",
+        severity: "warning",
+        subject: "mine:skills",
+        message: "{{count}} > {{threshold}}",
+      },
+    };
+    const skills = Array.from({ length: 35 }, (_, i) => skill(`s-${i}`));
+
+    // config thresholds.skills = 30 must NOT rewrite the rule's own gt: 100
+    expect(runRules(baseFacts({ skills }), [userRule], defaultConfig)).toEqual(
+      [],
+    );
+
+    const many = Array.from({ length: 101 }, (_, i) => skill(`s-${i}`));
+    const fired = runRules(baseFacts({ skills: many }), [userRule], {
+      ...defaultConfig,
+      thresholds: { ...defaultConfig.thresholds, skills: 5 },
+    });
+    expect(fired).toHaveLength(1);
+    expect(fired[0]!.message).toBe("101 > 100");
+  });
+
+  test("policyLines without thresholdKey keeps its own gt", () => {
+    const userRule: RuleDefinition = {
+      id: "my.agents-md-huge",
+      when: { policyLines: { file: "AGENTS.md", gt: 900 } },
+      then: {
+        action: "warn",
+        severity: "warning",
+        subject: "mine:AGENTS.md",
+        message: "{{count}} > {{threshold}}",
+      },
+    };
+    const text = Array.from({ length: 200 }, (_, i) => `line ${i}`).join("\n");
+    const facts = baseFacts({
+      policyFiles: [{ path: "/tmp/proj/AGENTS.md", text }],
+    });
+    expect(runRules(facts, [userRule], defaultConfig)).toEqual([]);
+  });
+
   const agentsMdRule: RuleDefinition = {
     id: "budget.agents-md",
-    when: { policyLines: { file: "AGENTS.md", gt: 150 } },
+    when: {
+      policyLines: { file: "AGENTS.md", gt: 150, thresholdKey: "agentsMdLines" },
+    },
     then: {
       action: "warn",
       severity: "info",
@@ -353,6 +411,9 @@ describe("runRules", () => {
       name: `s${i}`,
       path: ".mcp.json",
       hasCommand: true,
+      hasUrl: false,
+      literalEnvKeys: [] as string[],
+      raw: "{}",
     }));
     const findings = runRules(baseFacts({ mcp }), [rule], defaultConfig);
     expect(findings).toHaveLength(1);

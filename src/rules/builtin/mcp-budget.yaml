@@ -4,6 +4,7 @@ when:
   count:
     of: mcp
     gt: 5
+    thresholdKey: mcp
 then:
   action: warn
   severity: info

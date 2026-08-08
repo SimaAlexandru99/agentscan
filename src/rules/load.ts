@@ -50,6 +50,9 @@ function loadRulesFromDir(dir: string): RuleDefinition[] {
 
 /**
  * Load builtin (+ optional user) YAML rules. Missing dirs → empty.
+ * One rule per id — a user rule replaces the builtin it shadows, keeping the
+ * builtin's position so ordering stays stable. Without this, both would run and
+ * emit two findings sharing one `id`.
  * Filters out ids listed in `ignoreRules`.
  */
 export function loadRules(options: {
@@ -60,10 +63,13 @@ export function loadRules(options: {
   const { builtinDir, userRulesDir, ignoreRules } = options;
   const ignore = new Set(ignoreRules);
 
-  const loaded = [
+  const byId = new Map<string, RuleDefinition>();
+  for (const rule of [
     ...loadRulesFromDir(builtinDir),
     ...(userRulesDir ? loadRulesFromDir(userRulesDir) : []),
-  ];
+  ]) {
+    byId.set(rule.id, rule);
+  }
 
-  return loaded.filter((rule) => !ignore.has(rule.id));
+  return [...byId.values()].filter((rule) => !ignore.has(rule.id));
 }

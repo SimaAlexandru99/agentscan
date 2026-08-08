@@ -4,6 +4,7 @@ when:
   policyLines:
     file: CLAUDE.md
     gt: 200
+    thresholdKey: claudeMdLines
 then:
   action: warn
   severity: info

@@ -4,6 +4,7 @@ when:
   policyLines:
     file: AGENTS.md
     gt: 150
+    thresholdKey: agentsMdLines
 then:
   action: warn
   severity: info
