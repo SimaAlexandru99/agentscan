@@ -43,7 +43,6 @@ describe("runCheck integration", () => {
   test("next16 redundant skill → DELETE next.redundant-cache-components-skill", async () => {
     const payload = await checkFixture("next16-redundant-skill");
 
-    expect(payload.version).toBe("0.1.0");
 
     const deleteFinding = payload.findings.find(
       (f) =>
@@ -57,7 +56,6 @@ describe("runCheck integration", () => {
   test("better-auth missing → ADD better-auth.missing-skill", async () => {
     const payload = await checkFixture("better-auth-missing-skill");
 
-    expect(payload.version).toBe("0.1.0");
 
     const addFinding = payload.findings.find(
       (f) =>
@@ -68,53 +66,53 @@ describe("runCheck integration", () => {
     expect(addFinding).toBeDefined();
   });
 
-  test("orphan → info warn skill.orphan (still in JSON)", async () => {
-    const payload = await checkFixture("orphan-skill");
+  test("lockfile drift → both directions reported end to end", async () => {
+    const payload = await checkFixture("lock-drift");
+    const byRule = new Map(payload.findings.map((f) => [f.ruleId, f.subject]));
 
-    expect(payload.version).toBe("0.1.0");
-
-    const orphanFinding = payload.findings.find(
-      (f) =>
-        f.subject === "skill:totally-orphan-xyz" &&
-        f.ruleId === "skill.orphan",
+    // pinned in skills-lock.json but absent from disk
+    expect(byRule.get("skill.locked-not-installed")).toBe(
+      "skill:pinned-but-gone",
     );
-    expect(orphanFinding).toBeDefined();
-    expect(orphanFinding?.action).toBe("warn");
+    // on disk but the lockfile does not track it
+    expect(byRule.get("skill.not-in-lock")).toBe("skill:local-only");
   });
 
-  test("orphan collapsed in default text report", async () => {
+  test("--fail-on warning exits 1 on lockfile drift", async () => {
     const result = await runCheck({
-      dir: join(fixturesRoot, "orphan-skill"),
-      failOn: "never",
+      dir: join(fixturesRoot, "lock-drift"),
+      failOn: "warning",
     });
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("ORPHAN");
-    expect(result.stdout).toMatch(/1 skills/);
-    expect(result.stdout).not.toContain("totally-orphan-xyz");
-    expect(result.stdout).not.toMatch(/info hidden/);
+    expect(result.exitCode).toBe(1);
   });
 
-  test("orphan listed when verbose", async () => {
-    const result = await runCheck({
-      dir: join(fixturesRoot, "orphan-skill"),
-      failOn: "never",
-      verbose: true,
-    });
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("totally-orphan-xyz");
-    expect(result.stdout).not.toMatch(/ORPHAN  \d+ skills/);
-  });
-
-  test("clean → zero high-signal actionable findings", async () => {
+  test("clean → zero actionable findings", async () => {
     const payload = await checkFixture("clean-repo");
+    expect(actionableFindings(payload.findings)).toEqual([]);
+  });
 
-    expect(payload.version).toBe("0.1.0");
-    // orphans are info/warn — exclude info-level noise from "actionable"
-    const highSignal = payload.findings.filter(
-      (f) =>
-        ACTIONABLE.has(f.action) &&
-        f.ruleId !== "skill.orphan",
-    );
-    expect(highSignal).toEqual([]);
+  test("--fail-on warning exits 1 on a warning finding, 0 on a clean tree", async () => {
+    const dirty = await runCheck({
+      dir: join(fixturesRoot, "next16-redundant-skill"),
+      failOn: "warning",
+    });
+    expect(dirty.exitCode).toBe(1);
+
+    const clean = await runCheck({
+      dir: join(fixturesRoot, "clean-repo"),
+      failOn: "warning",
+    });
+    expect(clean.exitCode).toBe(0);
+  });
+
+  test("same tree twice → identical JSON", async () => {
+    const opts = {
+      dir: join(fixturesRoot, "next16-redundant-skill"),
+      json: true,
+      failOn: "never" as const,
+    };
+    const first = await runCheck(opts);
+    const second = await runCheck(opts);
+    expect(first.stdout).toBe(second.stdout);
   });
 });

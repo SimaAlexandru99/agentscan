@@ -1,9 +1,7 @@
 import { basename } from "node:path";
 import type { Action, Facts, Finding } from "../facts/types";
-import { buildOrphanSummary } from "./orphan-summary";
+import { DEP_SKILL_MAP } from "../rules/map";
 import { sortFindings } from "./sort";
-
-const ORPHAN_RULE = "skill.orphan";
 
 const ACTION_LABEL: Record<Action, string> = {
   keep: "KEEP",
@@ -29,16 +27,10 @@ export function renderText(args: {
   const { version, facts, verbose, quiet } = args;
   const sorted = sortFindings(args.findings);
 
-  // Default / quiet: hide KEEP, info severity, and skill.orphan (collapsed separately).
-  // Verbose: full listing including orphans; no ORPHAN summary line.
+  // Default / quiet: hide KEEP and info severity. Verbose: full listing.
   const visible = verbose
     ? sorted
-    : sorted.filter(
-        (f) =>
-          f.action !== "keep" &&
-          f.severity !== "info" &&
-          f.ruleId !== ORPHAN_RULE,
-      );
+    : sorted.filter((f) => f.action !== "keep" && f.severity !== "info");
 
   const summary = formatSummary(sorted, verbose);
 
@@ -58,14 +50,6 @@ export function renderText(args: {
     lines.push("");
   }
 
-  if (!verbose) {
-    const orphanLine = buildOrphanSummary(sorted);
-    if (orphanLine !== null) {
-      lines.push(orphanLine);
-      lines.push("");
-    }
-  }
-
   lines.push(summary);
   lines.push("");
   return lines.join("\n");
@@ -76,14 +60,22 @@ function projectLabel(root: string): string {
   return base.length > 0 ? base : root;
 }
 
+/**
+ * Only the deps skillscan actually reasons about (DEP_SKILL_MAP), plus a count
+ * of the rest — a real app has 100+ dependencies and listing them all made this
+ * line unreadable without telling the reader anything.
+ */
 function formatStack(facts: Facts): string {
-  const versions = {
-    ...facts.devDependencies,
-    ...facts.dependencies,
-  };
-  const parts = Object.keys(versions)
-    .sort((a, b) => a.localeCompare(b))
-    .map((name) => `${name}@${versions[name]}`);
+  const versions = { ...facts.devDependencies, ...facts.dependencies };
+  const known = [...new Set(DEP_SKILL_MAP.map((e) => e.dep))]
+    .filter((dep) => dep in versions)
+    .sort((a, b) => a.localeCompare(b));
+
+  const parts = known.map((name) => `${name}@${versions[name]}`);
+  const hidden = Object.keys(versions).length - known.length;
+  if (hidden > 0) {
+    parts.push(`+${hidden} more`);
+  }
   parts.push(`packageManager=${facts.packageManager}`);
   return parts.join(" · ");
 }
@@ -112,18 +104,12 @@ function formatSummary(findings: Finding[], verbose: boolean): string {
   let infoHidden = 0;
   for (const f of findings) {
     if (!verbose && f.severity === "info") {
-      // skill.orphan collapsed into ORPHAN line (default) or omitted (quiet);
-      // never inflate "info hidden".
-      if (f.ruleId === ORPHAN_RULE) {
-        continue;
-      }
       infoHidden += 1;
       continue;
     }
     counts[f.action] += 1;
   }
 
-  // Spec §11: Summary: 2 delete · 1 add · 0 drift · 1 warn
   const parts: string[] = [
     `${counts.delete} delete`,
     `${counts.add} add`,

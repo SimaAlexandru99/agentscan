@@ -1,6 +1,6 @@
 // tests/unit/report.test.ts
 import { describe, expect, test } from "bun:test";
-import type { Facts, Finding } from "../../src/facts/types";
+import type { Facts, Finding, SkillFact } from "../../src/facts/types";
 import { exitCode } from "../../src/report/exit-code";
 import { renderJson } from "../../src/report/json";
 import { sortFindings } from "../../src/report/sort";
@@ -17,6 +17,18 @@ function finding(partial: Partial<Finding> & Pick<Finding, "id" | "action" | "se
   };
 }
 
+function skillFact(id: string): SkillFact {
+  return {
+    id,
+    path: `.agents/skills/${id}`,
+    source: "project",
+    hasSkillMd: true,
+    hasFrontmatter: true,
+    frontmatterName: id,
+    description: "d",
+  };
+}
+
 function baseFacts(overrides: Partial<Facts> = {}): Facts {
   return {
     root: "/tmp/my-app",
@@ -25,13 +37,14 @@ function baseFacts(overrides: Partial<Facts> = {}): Facts {
     devDependencies: { typescript: "5.8.0" },
     scripts: {},
     configs: {},
-    skills: [
-      { id: "next-cache-components", path: ".agents/skills/next-cache-components", source: "project" },
-    ],
+    skills: [skillFact("next-cache-components")],
     agents: [],
     hooks: [],
     mcp: [],
     policyFiles: [{ path: "AGENTS.md", text: "huge policy should not appear in json" }],
+    lockedSkills: [],
+    hasSkillsLock: false,
+    configErrors: [],
     ...overrides,
   };
 }
@@ -209,115 +222,51 @@ describe("renderText", () => {
     expect(verboseText).toContain("policy:foo");
   });
 
-  test("collapses orphans into one ORPHAN line by default", () => {
-    const mixed: Finding[] = [
-      finding({
-        id: "d:1",
-        action: "delete",
-        severity: "warning",
-        subject: "skill:next-cache-components",
-        ruleId: "next.redundant-cache-components-skill",
-        message: "Redundant",
-      }),
-      finding({
-        id: "skill.orphan:skill:firebase-a",
-        action: "warn",
-        severity: "info",
-        subject: "skill:firebase-a",
-        ruleId: "skill.orphan",
-        message: "Orphan skill",
-      }),
-      finding({
-        id: "skill.orphan:skill:firebase-b",
-        action: "warn",
-        severity: "info",
-        subject: "skill:firebase-b",
-        ruleId: "skill.orphan",
-        message: "Orphan skill",
-      }),
-    ];
+  const deleteFinding = finding({
+    id: "d:1",
+    action: "delete",
+    severity: "warning",
+    subject: "skill:next-cache-components",
+    ruleId: "next.redundant-cache-components-skill",
+    message: "Redundant",
+  });
+
+  test("Stack line shows only mapped deps plus a count of the rest", () => {
+    const facts = baseFacts({
+      dependencies: { next: "16.3.0", "better-auth": "1.2.0" },
+      devDependencies: {
+        typescript: "5.8.0",
+        vitest: "4.0.0",
+        "some-random-lib": "1.0.0",
+      },
+    });
     const text = renderText({
       version: "0.1.0",
-      facts: baseFacts(),
-      findings: mixed,
+      facts,
+      findings: [],
       verbose: false,
       quiet: false,
     });
-    expect(text).toContain("DELETE");
-    expect(text).toContain("ORPHAN  2 skills");
-    expect(text).toContain("firebase (2)");
-    expect(text).not.toContain("skill:firebase-a");
-    expect(text).not.toMatch(/info hidden/);
+
+    expect(text).toContain(
+      "Stack: better-auth@1.2.0 · next@16.3.0 · +3 more · packageManager=bun",
+    );
+    expect(text).not.toContain("some-random-lib");
   });
 
-  test("verbose lists each orphan subject", () => {
-    const mixed: Finding[] = [
-      finding({
-        id: "d:1",
-        action: "delete",
-        severity: "warning",
-        subject: "skill:next-cache-components",
-        ruleId: "next.redundant-cache-components-skill",
-        message: "Redundant",
-      }),
-      finding({
-        id: "skill.orphan:skill:firebase-a",
-        action: "warn",
-        severity: "info",
-        subject: "skill:firebase-a",
-        ruleId: "skill.orphan",
-        message: "Orphan skill",
-      }),
-      finding({
-        id: "skill.orphan:skill:firebase-b",
-        action: "warn",
-        severity: "info",
-        subject: "skill:firebase-b",
-        ruleId: "skill.orphan",
-        message: "Orphan skill",
-      }),
-    ];
+  test("Stack line with no mapped deps still reports the count", () => {
+    const facts = baseFacts({
+      dependencies: { "some-random-lib": "1.0.0" },
+      devDependencies: {},
+    });
     const text = renderText({
       version: "0.1.0",
-      facts: baseFacts(),
-      findings: mixed,
-      verbose: true,
+      facts,
+      findings: [],
+      verbose: false,
       quiet: false,
     });
-    expect(text).toContain("skill:firebase-a");
-    expect(text).toContain("skill:firebase-b");
-    expect(text).not.toContain("ORPHAN  2 skills");
-  });
-
-  test("quiet excludes orphans from info hidden and has no ORPHAN line", () => {
-    const mixed: Finding[] = [
-      finding({
-        id: "d:1",
-        action: "delete",
-        severity: "warning",
-        subject: "skill:next-cache-components",
-        ruleId: "next.redundant-cache-components-skill",
-        message: "Redundant",
-      }),
-      finding({
-        id: "skill.orphan:skill:firebase-a",
-        action: "warn",
-        severity: "info",
-        subject: "skill:firebase-a",
-        ruleId: "skill.orphan",
-        message: "Orphan skill",
-      }),
-    ];
-    const text = renderText({
-      version: "0.1.0",
-      facts: baseFacts(),
-      findings: mixed,
-      verbose: false,
-      quiet: true,
-    });
-    expect(text.trimStart().startsWith("Summary:")).toBe(true);
-    expect(text).not.toContain("ORPHAN");
-    expect(text).not.toMatch(/info hidden/);
+    expect(text).toContain("Stack: +1 more · packageManager=bun");
   });
 
   test("quiet is summary line only", () => {
@@ -394,4 +343,5 @@ describe("renderJson", () => {
     expect(raw).not.toContain("huge policy");
     expect(raw).toContain("\n"); // pretty
   });
+
 });

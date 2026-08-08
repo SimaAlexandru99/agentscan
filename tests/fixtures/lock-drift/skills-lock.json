@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "pinned-but-gone": {
+      "source": "someone/skills",
+      "sourceType": "github",
+      "skillPath": "skills/pinned-but-gone/SKILL.md",
+      "computedHash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  }
+}

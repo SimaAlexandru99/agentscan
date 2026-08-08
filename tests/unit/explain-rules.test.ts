@@ -39,7 +39,9 @@ describe("runRulesCommand", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("next.redundant-cache-components-skill");
     expect(result.stdout).toContain("better-auth.missing-skill");
-    expect(result.stdout).toContain("skill.orphan");
+    expect(result.stdout).toContain("budget.skills");
+    // orphans are computed from facts, not shipped as a rule
+    expect(result.stdout).not.toContain("skill.orphan");
     // descriptions should appear on the same lines
     expect(result.stdout).toMatch(
       /next\.redundant-cache-components-skill\s+.+/,
