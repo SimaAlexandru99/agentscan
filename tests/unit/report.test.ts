@@ -178,15 +178,16 @@ describe("renderText", () => {
   });
 
   test("hides info severity unless verbose", () => {
+    // Non-orphan info still uses info-hidden path (orphans collapse separately).
     const withInfo = [
       ...findings,
       finding({
-        id: "skill.orphan:skill:foo",
-        action: "warn",
+        id: "policy.x:policy:foo",
+        action: "drift",
         severity: "info",
-        subject: "skill:foo",
-        ruleId: "skill.orphan",
-        message: "Orphan skill",
+        subject: "policy:foo",
+        ruleId: "policy.x",
+        message: "Info drift",
       }),
     ];
     const text = renderText({
@@ -196,7 +197,7 @@ describe("renderText", () => {
       verbose: false,
       quiet: false,
     });
-    expect(text).not.toContain("skill:foo");
+    expect(text).not.toContain("policy:foo");
     expect(text).toMatch(/info hidden \(--verbose\)/);
     const verboseText = renderText({
       version: "0.1.0",
@@ -205,7 +206,118 @@ describe("renderText", () => {
       verbose: true,
       quiet: false,
     });
-    expect(verboseText).toContain("skill:foo");
+    expect(verboseText).toContain("policy:foo");
+  });
+
+  test("collapses orphans into one ORPHAN line by default", () => {
+    const mixed: Finding[] = [
+      finding({
+        id: "d:1",
+        action: "delete",
+        severity: "warning",
+        subject: "skill:next-cache-components",
+        ruleId: "next.redundant-cache-components-skill",
+        message: "Redundant",
+      }),
+      finding({
+        id: "skill.orphan:skill:firebase-a",
+        action: "warn",
+        severity: "info",
+        subject: "skill:firebase-a",
+        ruleId: "skill.orphan",
+        message: "Orphan skill",
+      }),
+      finding({
+        id: "skill.orphan:skill:firebase-b",
+        action: "warn",
+        severity: "info",
+        subject: "skill:firebase-b",
+        ruleId: "skill.orphan",
+        message: "Orphan skill",
+      }),
+    ];
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: mixed,
+      verbose: false,
+      quiet: false,
+    });
+    expect(text).toContain("DELETE");
+    expect(text).toContain("ORPHAN  2 skills");
+    expect(text).toContain("firebase (2)");
+    expect(text).not.toContain("skill:firebase-a");
+    expect(text).not.toMatch(/info hidden/);
+  });
+
+  test("verbose lists each orphan subject", () => {
+    const mixed: Finding[] = [
+      finding({
+        id: "d:1",
+        action: "delete",
+        severity: "warning",
+        subject: "skill:next-cache-components",
+        ruleId: "next.redundant-cache-components-skill",
+        message: "Redundant",
+      }),
+      finding({
+        id: "skill.orphan:skill:firebase-a",
+        action: "warn",
+        severity: "info",
+        subject: "skill:firebase-a",
+        ruleId: "skill.orphan",
+        message: "Orphan skill",
+      }),
+      finding({
+        id: "skill.orphan:skill:firebase-b",
+        action: "warn",
+        severity: "info",
+        subject: "skill:firebase-b",
+        ruleId: "skill.orphan",
+        message: "Orphan skill",
+      }),
+    ];
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: mixed,
+      verbose: true,
+      quiet: false,
+    });
+    expect(text).toContain("skill:firebase-a");
+    expect(text).toContain("skill:firebase-b");
+    expect(text).not.toContain("ORPHAN  2 skills");
+  });
+
+  test("quiet excludes orphans from info hidden and has no ORPHAN line", () => {
+    const mixed: Finding[] = [
+      finding({
+        id: "d:1",
+        action: "delete",
+        severity: "warning",
+        subject: "skill:next-cache-components",
+        ruleId: "next.redundant-cache-components-skill",
+        message: "Redundant",
+      }),
+      finding({
+        id: "skill.orphan:skill:firebase-a",
+        action: "warn",
+        severity: "info",
+        subject: "skill:firebase-a",
+        ruleId: "skill.orphan",
+        message: "Orphan skill",
+      }),
+    ];
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: mixed,
+      verbose: false,
+      quiet: true,
+    });
+    expect(text.trimStart().startsWith("Summary:")).toBe(true);
+    expect(text).not.toContain("ORPHAN");
+    expect(text).not.toMatch(/info hidden/);
   });
 
   test("quiet is summary line only", () => {

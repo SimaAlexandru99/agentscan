@@ -1,6 +1,9 @@
 import { basename } from "node:path";
 import type { Action, Facts, Finding } from "../facts/types";
+import { buildOrphanSummary } from "./orphan-summary";
 import { sortFindings } from "./sort";
+
+const ORPHAN_RULE = "skill.orphan";
 
 const ACTION_LABEL: Record<Action, string> = {
   keep: "KEEP",
@@ -25,10 +28,17 @@ export function renderText(args: {
 }): string {
   const { version, facts, verbose, quiet } = args;
   const sorted = sortFindings(args.findings);
-  // Default report: hide KEEP and info-severity (orphans etc.). JSON still full.
+
+  // Default / quiet: hide KEEP, info severity, and skill.orphan (collapsed separately).
+  // Verbose: full listing including orphans; no ORPHAN summary line.
   const visible = verbose
     ? sorted
-    : sorted.filter((f) => f.action !== "keep" && f.severity !== "info");
+    : sorted.filter(
+        (f) =>
+          f.action !== "keep" &&
+          f.severity !== "info" &&
+          f.ruleId !== ORPHAN_RULE,
+      );
 
   const summary = formatSummary(sorted, verbose);
 
@@ -46,6 +56,14 @@ export function renderText(args: {
   for (const f of visible) {
     lines.push(...formatFinding(f));
     lines.push("");
+  }
+
+  if (!verbose) {
+    const orphanLine = buildOrphanSummary(sorted);
+    if (orphanLine !== null) {
+      lines.push(orphanLine);
+      lines.push("");
+    }
   }
 
   lines.push(summary);
@@ -94,6 +112,11 @@ function formatSummary(findings: Finding[], verbose: boolean): string {
   let infoHidden = 0;
   for (const f of findings) {
     if (!verbose && f.severity === "info") {
+      // skill.orphan collapsed into ORPHAN line (default) or omitted (quiet);
+      // never inflate "info hidden".
+      if (f.ruleId === ORPHAN_RULE) {
+        continue;
+      }
       infoHidden += 1;
       continue;
     }
