@@ -9,14 +9,15 @@ Deterministic CLI: inventory agent **skills / agents / hooks / MCP** against `pa
 ## Install
 
 ```bash
-# project dev dependency
-bun add -d skillscan
+# from this repo (not published yet)
+bun run src/cli.ts check
 
-# or one-shot
+# after publish
+bun add -d skillscan
 bunx skillscan check
 ```
 
-Requires **Bun** (preferred) or **Node ≥ 20**. No network on the `check` path.
+Requires **Bun** (v1.1+). Bin is `./src/cli.ts` via bun — not a Node-built binary in v1. No network on the `check` path.
 
 ## Usage
 
@@ -25,7 +26,7 @@ bunx skillscan check                 # text report (cwd)
 bunx skillscan check ./my-app        # explicit root
 bunx skillscan check --json          # machine-readable
 bunx skillscan check --quiet         # summary only
-bunx skillscan check --verbose       # include KEEP
+bunx skillscan check --verbose       # include KEEP + info (orphans)
 bunx skillscan check --fail-on warning
 bunx skillscan check --global        # also scan global skill dirs
 
@@ -40,7 +41,7 @@ Flags for `check`:
 |------|---------|
 | `--json` | JSON report |
 | `--quiet` | Summary line only |
-| `--verbose` | Show KEEP findings |
+| `--verbose` | Show KEEP + info-severity findings (e.g. orphans) |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--global` | Include global skill directories |
 | `--config <path>` | Config file path |
@@ -164,7 +165,7 @@ Useful `when` matchers (v1):
 - `policyMatches: "substring"`
 - `hasConfig: <key>`
 - `perSkill: { orphan: true }`
-- combinators: `all`, `any`, `not`
+- combinators: `all`, `not` (v1 — no `any` yet)
 
 List what loaded:
 

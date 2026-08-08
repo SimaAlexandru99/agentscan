@@ -25,9 +25,10 @@ export function renderText(args: {
 }): string {
   const { version, facts, verbose, quiet } = args;
   const sorted = sortFindings(args.findings);
+  // Default report: hide KEEP and info-severity (orphans etc.). JSON still full.
   const visible = verbose
     ? sorted
-    : sorted.filter((f) => f.action !== "keep");
+    : sorted.filter((f) => f.action !== "keep" && f.severity !== "info");
 
   const summary = formatSummary(sorted, verbose);
 
@@ -90,7 +91,12 @@ function formatSummary(findings: Finding[], verbose: boolean): string {
     warn: 0,
     drift: 0,
   };
+  let infoHidden = 0;
   for (const f of findings) {
+    if (!verbose && f.severity === "info") {
+      infoHidden += 1;
+      continue;
+    }
     counts[f.action] += 1;
   }
 
@@ -104,6 +110,9 @@ function formatSummary(findings: Finding[], verbose: boolean): string {
   ];
   if (verbose || counts.keep > 0) {
     parts.push(`${counts.keep} keep`);
+  }
+  if (!verbose && infoHidden > 0) {
+    parts.push(`${infoHidden} info hidden (--verbose)`);
   }
 
   return `Summary: ${parts.join(" · ")}`;

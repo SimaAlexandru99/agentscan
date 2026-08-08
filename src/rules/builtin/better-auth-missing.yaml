@@ -6,11 +6,10 @@ when:
     - not:
         skillMatches:
           - better-auth*
-          - best-practices
 then:
   action: add
   severity: warning
   subject: "skill:better-auth"
   message: "Missing better-auth skill while better-auth is a dependency"
-  reason: "Mapped dep better-auth has no matching skill (better-auth* / best-practices)"
+  reason: "Mapped dep better-auth has no matching skill (better-auth*)"
   suggest: "Add a better-auth* skill for agent auth guidance"

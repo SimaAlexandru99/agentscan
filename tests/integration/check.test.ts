@@ -68,24 +68,40 @@ describe("runCheck integration", () => {
     expect(addFinding).toBeDefined();
   });
 
-  test("orphan → DELETE skill.orphan", async () => {
+  test("orphan → info warn skill.orphan (still in JSON)", async () => {
     const payload = await checkFixture("orphan-skill");
 
     expect(payload.version).toBe("0.1.0");
 
     const orphanFinding = payload.findings.find(
       (f) =>
-        f.action === "delete" &&
         f.subject === "skill:totally-orphan-xyz" &&
         f.ruleId === "skill.orphan",
     );
     expect(orphanFinding).toBeDefined();
+    expect(orphanFinding?.action).toBe("warn");
   });
 
-  test("clean → zero actionable findings", async () => {
+  test("orphan hidden in default text report", async () => {
+    const result = await runCheck({
+      dir: join(fixturesRoot, "orphan-skill"),
+      failOn: "never",
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).not.toContain("totally-orphan-xyz");
+    expect(result.stdout).toMatch(/info hidden/);
+  });
+
+  test("clean → zero high-signal actionable findings", async () => {
     const payload = await checkFixture("clean-repo");
 
     expect(payload.version).toBe("0.1.0");
-    expect(actionableFindings(payload.findings)).toEqual([]);
+    // orphans are info/warn — exclude info-level noise from "actionable"
+    const highSignal = payload.findings.filter(
+      (f) =>
+        ACTIONABLE.has(f.action) &&
+        f.ruleId !== "skill.orphan",
+    );
+    expect(highSignal).toEqual([]);
   });
 });

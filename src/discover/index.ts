@@ -299,10 +299,30 @@ export function discoverAgentSurface(
   }
 
   return {
-    skills,
+    skills: dedupeSkillsById(skills),
     agents: discoverAgents(root),
     hooks: discoverHooks(root),
     mcp: discoverMcp(root, config.mcpPaths),
     policyFiles: discoverPolicyFiles(root, config.policyFiles),
   };
+}
+
+/**
+ * One SkillFact per id. First path wins (skillPaths order, then global).
+ * Prefer project over global when the same id appears later as project (re-scan).
+ */
+function dedupeSkillsById(skills: SkillFact[]): SkillFact[] {
+  const byId = new Map<string, SkillFact>();
+  for (const skill of skills) {
+    const existing = byId.get(skill.id);
+    if (!existing) {
+      byId.set(skill.id, skill);
+      continue;
+    }
+    // Prefer project source over global if we see project later
+    if (existing.source === "global" && skill.source === "project") {
+      byId.set(skill.id, skill);
+    }
+  }
+  return [...byId.values()];
 }

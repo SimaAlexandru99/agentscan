@@ -11,7 +11,7 @@ export const DEP_SKILL_MAP: DepSkillMapEntry[] = [
   { dep: "next", skillPatterns: ["next-*"] },
   {
     dep: "better-auth",
-    skillPatterns: ["better-auth*", "best-practices"],
+    skillPatterns: ["better-auth*"],
   },
   { dep: "@tanstack/react-query", skillPatterns: ["tanstack-query*"] },
   { dep: "shadcn", skillPatterns: ["shadcn*"] },

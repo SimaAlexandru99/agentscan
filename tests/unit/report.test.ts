@@ -177,6 +177,37 @@ describe("renderText", () => {
     expect(text).toContain("skill:zod");
   });
 
+  test("hides info severity unless verbose", () => {
+    const withInfo = [
+      ...findings,
+      finding({
+        id: "skill.orphan:skill:foo",
+        action: "warn",
+        severity: "info",
+        subject: "skill:foo",
+        ruleId: "skill.orphan",
+        message: "Orphan skill",
+      }),
+    ];
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: withInfo,
+      verbose: false,
+      quiet: false,
+    });
+    expect(text).not.toContain("skill:foo");
+    expect(text).toMatch(/info hidden \(--verbose\)/);
+    const verboseText = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: withInfo,
+      verbose: true,
+      quiet: false,
+    });
+    expect(verboseText).toContain("skill:foo");
+  });
+
   test("quiet is summary line only", () => {
     const text = renderText({
       version: "0.1.0",

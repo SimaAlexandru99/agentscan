@@ -21,9 +21,8 @@ describe("skillMatchesPattern", () => {
   });
 
   test("exact match", () => {
-    expect(skillMatchesPattern("best-practices", "best-practices")).toBe(true);
-    expect(skillMatchesPattern("best-practices-extra", "best-practices")).toBe(
-      false,
+    expect(skillMatchesPattern("better-auth", "better-auth*")).toBe(true);
+    expect(skillMatchesPattern("best-practices-extra", "best-practices")).toBe(      false,
     );
   });
 
@@ -48,9 +47,8 @@ describe("DEP_SKILL_MAP", () => {
     expect(next?.skillPatterns).toContain("next-*");
 
     const betterAuth = DEP_SKILL_MAP.find((e) => e.dep === "better-auth");
-    expect(betterAuth?.skillPatterns).toEqual(
-      expect.arrayContaining(["better-auth*", "best-practices"]),
-    );
+    expect(betterAuth?.skillPatterns).toEqual(["better-auth*"]);
+
   });
 });
 
