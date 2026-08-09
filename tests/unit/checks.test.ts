@@ -339,6 +339,60 @@ describe("skills-lock integrity", () => {
   });
 });
 
+describe("broken bundled references", () => {
+  test("a body pointing at a missing file is a warning naming it", () => {
+    const findings = runChecks(
+      baseFacts({
+        skills: [
+          skill({
+            id: "s",
+            frontmatterName: "s",
+            description: "d",
+            brokenReferences: ["references/gone.md", "scripts/also-gone.ts"],
+          }),
+        ],
+      }),
+    );
+    expect(findings.map((f) => f.ruleId)).toEqual(["skill.broken-reference"]);
+    expect(findings[0]!.severity).toBe("warning");
+    expect(findings[0]!.message).toContain("references/gone.md");
+    expect(findings[0]!.message).toContain("2 files");
+  });
+
+  test("more than three are summarised, not dumped", () => {
+    const findings = runChecks(
+      baseFacts({
+        skills: [
+          skill({
+            id: "s",
+            frontmatterName: "s",
+            description: "d",
+            brokenReferences: ["a/1.md", "a/2.md", "a/3.md", "a/4.md", "a/5.md"],
+          }),
+        ],
+      }),
+    );
+    expect(findings[0]!.message).toContain("+2 more");
+  });
+
+  test("no broken references produces nothing", () => {
+    const findings = runChecks(
+      baseFacts({
+        skills: [
+          skill({ id: "s", frontmatterName: "s", description: "d" }),
+          skill({
+            id: "t",
+            frontmatterName: "t",
+            description: "d",
+            brokenReferences: [],
+          }),
+        ],
+      }),
+    );
+    expect(findings).toEqual([]);
+  });
+});
+
 describe("skill description budget", () => {
   const withDesc = (id: string, len: number) =>
     skill({ id, description: "x".repeat(len), frontmatterName: id });
@@ -515,6 +569,12 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
         skill({ id: "no-md", hasSkillMd: false, hasFrontmatter: false }),
         skill({ id: "no-fm", hasFrontmatter: false }),
         skill({ id: "no-desc", frontmatterName: "no-desc" }),
+        skill({
+          id: "dangling",
+          frontmatterName: "dangling",
+          description: "d",
+          brokenReferences: ["references/gone.md"],
+        }),
       ],
       mcp: [
         {

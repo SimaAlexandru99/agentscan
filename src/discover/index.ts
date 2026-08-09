@@ -13,7 +13,9 @@ import type {
 } from "../facts/types";
 
 const POLICY_CAP = 100_000;
-const SKILL_MD_CAP = 8_192;
+// The body is read now, not just the frontmatter, so 8 KB truncated most real
+// skills mid-document. Still capped: this reads every skill in the tree.
+const SKILL_MD_CAP = 65_536;
 
 export type AgentSurface = {
   skills: SkillFact[];
@@ -76,6 +78,8 @@ function readJsonConfig(
 
 type Frontmatter = {
   hasFrontmatter: boolean;
+  /** Everything after the closing fence. */
+  body?: string;
   /** The block exists but the parser rejected it — fields are unknown, absent. */
   unparseable?: boolean;
   /** Read failed — say so rather than claiming the file has no frontmatter. */
@@ -83,6 +87,38 @@ type Frontmatter = {
   name?: string;
   description?: string;
 };
+
+/**
+ * Bundled files a SKILL.md body points at, under the conventional directories
+ * a skill ships supporting files in.
+ *
+ * The lookbehind rejects a path nested under something else
+ * (`packages/web/references/x.md`) and any URL (`https://host/scripts/x.md`).
+ */
+const REFERENCE_RE =
+  /(?<![\w/.-])((?:scripts|references|assets|templates|examples)\/[A-Za-z0-9_./-]+\.[a-z]{1,4})\b/g;
+
+/**
+ * Bundled files a SKILL.md body points at.
+ *
+ * Conservative on purpose: a wrong "this skill points at a missing file" costs
+ * the reader more than a missed one. Fenced code blocks are stripped first —
+ * paths in them illustrate usage rather than pointing anywhere.
+ */
+export function skillReferences(body: string): string[] {
+  const prose = body.replace(/```[\s\S]*?(?:```|$)/g, "");
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const match of prose.matchAll(REFERENCE_RE)) {
+    const path = match[1];
+    if (path === undefined || seen.has(path)) {
+      continue;
+    }
+    seen.add(path);
+    out.push(path);
+  }
+  return out;
+}
 
 function scalar(value: unknown): string | undefined {
   if (typeof value === "string") {
@@ -165,7 +201,7 @@ function readFrontmatter(
   }
 
   const record = block as Record<string, unknown>;
-  const out: Frontmatter = { hasFrontmatter: true };
+  const out: Frontmatter = { hasFrontmatter: true, body: text.slice(end + 4) };
   const name = scalar(record.name);
   if (name !== undefined) {
     out.name = name;
@@ -177,10 +213,28 @@ function readFrontmatter(
   return out;
 }
 
+/**
+ * A reference resolves against the skill's own directory or, failing that, the
+ * repo root. Both bases are needed: across 1674 references measured in real
+ * projects, 1645 resolved skill-relative and 12 only at the root — checking one
+ * base alone would report those 12 as broken.
+ */
+function brokenReferences(
+  body: string,
+  skillDir: string,
+  root: string,
+): string[] {
+  return skillReferences(body).filter(
+    (rel) =>
+      !existsSync(join(skillDir, rel)) && !existsSync(join(root, rel)),
+  );
+}
+
 function discoverSkillsInDir(
   dir: string,
   source: "project" | "global",
   errors: ConfigErrorFact[],
+  root: string,
 ): SkillFact[] {
   if (!existsSync(dir)) {
     return [];
@@ -227,6 +281,12 @@ function discoverSkillsInDir(
     }
     if (fm.unparseable === true) {
       fact.unparseableFrontmatter = true;
+    }
+    if (fm.body !== undefined) {
+      const broken = brokenReferences(fm.body, skillDir, root);
+      if (broken.length > 0) {
+        fact.brokenReferences = broken;
+      }
     }
     if (fm.description !== undefined) {
       fact.description = fm.description;
@@ -662,16 +722,16 @@ export function discoverAgentSurface(
   const configErrors: ConfigErrorFact[] = [];
   const skills: SkillFact[] = [];
   for (const rel of config.skillPaths) {
-    skills.push(...discoverSkillsInDir(join(root, rel), "project", configErrors));
+    skills.push(...discoverSkillsInDir(join(root, rel), "project", configErrors, root));
   }
 
   if (opts.includeGlobal) {
     const home = homedir();
     skills.push(
-      ...discoverSkillsInDir(join(home, ".claude", "skills"), "global", configErrors),
+      ...discoverSkillsInDir(join(home, ".claude", "skills"), "global", configErrors, root),
     );
     skills.push(
-      ...discoverSkillsInDir(join(home, ".codex", "skills"), "global", configErrors),
+      ...discoverSkillsInDir(join(home, ".codex", "skills"), "global", configErrors, root),
     );
   }
 

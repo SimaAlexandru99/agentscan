@@ -14,6 +14,8 @@ export type SkillFact = {
   unreadable?: boolean;
   /** A `---` block exists but does not parse; its fields are unknown. */
   unparseableFrontmatter?: boolean;
+  /** Bundled files the body points at that resolve nowhere. */
+  brokenReferences?: string[];
   /** `name:` from frontmatter, when present. */
   frontmatterName?: string;
 };

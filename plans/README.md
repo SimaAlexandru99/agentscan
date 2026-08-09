@@ -15,12 +15,12 @@ rule.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 004 | `bun test` and typecheck run automatically on every push | P1 | S | — | TODO |
-| 005 | A malformed project file produces a finding, never a dead scan | P1 | S | 004 | TODO |
-| 006 | Scanned content cannot forge report lines or drive the terminal | P1 | S | 004 | TODO |
-| 007 | `--global` and `includeGlobal` produce output a user can act on | P2 | S | 004 | TODO |
-| 008 | Findings say true things — parser and message defects | P2 | M | 004 | TODO |
-| 001 | Report skill files pointing at bundled files that do not exist | P1 | M | 004 | TODO |
+| 004 | `bun test` and typecheck run automatically on every push | P1 | S | — | DONE `50686c8` |
+| 005 | A malformed project file produces a finding, never a dead scan | P1 | S | 004 | DONE `5d8db3b` |
+| 006 | Scanned content cannot forge report lines or drive the terminal | P1 | S | 004 | DONE `3a7697b` |
+| 007 | `--global` and `includeGlobal` produce output a user can act on | P2 | S | 004 | DONE `0d89fd2` |
+| 008 | Findings say true things — parser and message defects | P2 | M | 004 | DONE `3430c56` |
+| 001 | Report skill files pointing at bundled files that do not exist | P1 | M | 004 | DONE |
 | 002 | Report skills an agent cannot tell apart | P2 | S | 004 | TODO |
 | 003 | Validate agent definition files instead of only counting them | P3 | S | 008 ✓ | TODO (re-scoped: 4 checks → 2) |
 

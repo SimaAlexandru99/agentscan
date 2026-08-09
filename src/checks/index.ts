@@ -56,6 +56,10 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
     description: "skills-lock.json pins a skill that is not installed",
   },
   {
+    id: "skill.broken-reference",
+    description: "SKILL.md points at a bundled file that does not exist",
+  },
+  {
     id: "skill.description-budget",
     description: "Skill descriptions exceed the startup character budget",
   },
@@ -305,6 +309,26 @@ function checkSkillStructure(facts: Facts): Finding[] {
         }),
       );
       continue;
+    }
+
+    const broken = skill.brokenReferences;
+    if (broken !== undefined && broken.length > 0) {
+      const shown = broken.slice(0, 3).join(", ");
+      const rest = broken.length - Math.min(3, broken.length);
+      out.push(
+        make("skill.broken-reference", `skill:${skill.id}`, {
+          action: "warn",
+          severity: "warning",
+          message: `SKILL.md points at ${broken.length} file${broken.length === 1 ? "" : "s"} that do not exist: ${shown}${rest > 0 ? ` (+${rest} more)` : ""}`,
+          reason:
+            "The skill tells the agent to read a bundled file that is not there. The agent follows the pointer, finds nothing, and the skill quietly does less than it says — the same failure as a hook whose script is missing.",
+          evidence: [
+            ...skillEvidence(skill, skill.path),
+            ...broken.map((r) => ({ kind: "missing", value: r })),
+          ],
+          suggest: `Restore the missing files under ${skill.path}, or drop the references from SKILL.md`,
+        }),
+      );
     }
 
     if (skill.description === undefined) {
