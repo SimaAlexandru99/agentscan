@@ -1,4 +1,4 @@
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { runChecks } from "./checks/index";
 import { loadConfig } from "./config/load";
 import type { AgentscanConfig } from "./config/schema";
@@ -6,15 +6,11 @@ import { resolveRoot } from "./discover/index";
 import { extractFacts } from "./facts/extract";
 import type { Facts, Finding } from "./facts/types";
 import { sortFindings } from "./report/sort";
-import { runRules } from "./rules/engine";
-import { loadRules } from "./rules/load";
-import type { RuleDefinition } from "./rules/schema";
 
 export type AnalyzeOptions = {
   dir?: string;
   global?: boolean;
   configPath?: string;
-  rulesDir?: string;
   failOn?: AgentscanConfig["failOn"];
 };
 
@@ -24,16 +20,14 @@ export type Analysis = {
   resolvedFrom?: string;
   config: AgentscanConfig;
   facts: Facts;
-  rules: RuleDefinition[];
   findings: Finding[];
 };
 
 /**
  * The one definition of "what is wrong with this project".
  *
- * Both YAML rules and structural checks contribute findings, and every command
- * that reports on a project goes through here — `explain` silently missed every
- * structural finding while it built its own pipeline.
+ * Every command that reports on a project goes through here — `explain`
+ * silently missed every structural finding while it built its own pipeline.
  */
 export function analyze(options: AnalyzeOptions = {}): Analysis {
   const requested = resolve(options.dir ?? process.cwd());
@@ -49,18 +43,18 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
   const includeGlobal = options.global ?? config.includeGlobal;
   const facts = extractFacts(root, config, { includeGlobal });
 
-  const rules = loadRules({
-    builtinDir: join(import.meta.dir, "rules/builtin"),
-    userRulesDir: options.rulesDir ?? join(root, ".agentscan", "rules"),
-    ignoreRules: config.ignoreRules,
-  });
-
   const ignoredSkills = new Set(config.ignoreSkills);
   const ignoredRules = new Set(config.ignoreRules);
 
   const structural = runChecks(facts, {
     requireLock: config.requireLock,
     skillDescriptionBytes: config.thresholds.skillDescriptionBytes,
+    budgets: {
+      agentsMdLines: config.thresholds.agentsMdLines,
+      claudeMdLines: config.thresholds.claudeMdLines,
+      agents: config.thresholds.agents,
+      mcp: config.thresholds.mcp,
+    },
   }).filter(
     (f) =>
       !ignoredRules.has(f.ruleId) &&
@@ -75,9 +69,7 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
   // the only way to get a build green again.
   const ignoredFindings = new Set(config.ignoreFindings);
   const findings = sortFindings(
-    [...runRules(facts, rules, config), ...structural].filter(
-      (f) => !ignoredFindings.has(f.id),
-    ),
+    structural.filter((f) => !ignoredFindings.has(f.id)),
   );
 
   return {
@@ -85,7 +77,6 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
     ...(root === requested ? {} : { resolvedFrom: requested }),
     config,
     facts,
-    rules,
     findings,
   };
 }

@@ -1,14 +1,10 @@
-import { join } from "node:path";
 import { STRUCTURAL_CHECKS } from "../checks/index";
-import { safe } from "../report/safe";
 import { loadConfig } from "../config/load";
 import { resolveRoot } from "../discover/index";
-import { loadRules } from "../rules/load";
 
 export type RulesCommandOptions = {
   dir?: string;
   configPath?: string;
-  rulesDir?: string;
 };
 
 export type RulesCommandResult = {
@@ -17,8 +13,10 @@ export type RulesCommandResult = {
 };
 
 /**
- * Print every id that can produce a finding — structural checks first, then
- * YAML rules — as `id  description`, one per line.
+ * Print every id that can produce a finding, as `id  description`, one per line.
+ *
+ * The ids are the ones `ignoreRules` takes, and each finding's id starts with
+ * one of them, so this is also the index for `ignoreFindings`.
  */
 export async function runRulesCommand(
   options: RulesCommandOptions = {},
@@ -26,32 +24,13 @@ export async function runRulesCommand(
   const root = resolveRoot(options.dir ?? process.cwd());
   const config = loadConfig(root, options.configPath);
 
-  const builtinDir = join(import.meta.dir, "../rules/builtin");
-  const userRulesDir =
-    options.rulesDir ?? join(root, ".agentscan", "rules");
-  const rules = loadRules({
-    builtinDir,
-    userRulesDir,
-    ignoreRules: config.ignoreRules,
-  });
-
   const ignored = new Set(config.ignoreRules);
-  const lines: string[] = [];
+  const lines = STRUCTURAL_CHECKS.filter((c) => !ignored.has(c.id)).map(
+    (c) => `${c.id}  ${c.description}`,
+  );
 
-  for (const check of STRUCTURAL_CHECKS) {
-    if (ignored.has(check.id)) {
-      continue;
-    }
-    lines.push(`${check.id}  ${check.description}`);
-  }
-  for (const rule of rules) {
-    // A project-supplied rule file controls both of these strings.
-    const id = safe(rule.id);
-    const desc = safe(rule.description ?? "");
-    lines.push(desc.length > 0 ? `${id}  ${desc}` : id);
-  }
-
-  const stdout = lines.length > 0 ? `${lines.join("\n")}\n` : "";
-
-  return { exitCode: 0, stdout };
+  return {
+    exitCode: 0,
+    stdout: lines.length > 0 ? `${lines.join("\n")}\n` : "",
+  };
 }

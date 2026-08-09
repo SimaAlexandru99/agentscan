@@ -860,11 +860,43 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
       skills: [skill({ id: "a", frontmatterName: "a", description: "d" })],
     });
 
+    // Budgets need their own fixture: they fire on aggregate size, which the
+    // structural fixtures above deliberately keep small.
+    const overBudget = baseFacts({
+      packageManager: "bun",
+      agents: Array.from({ length: 9 }, (_, i) => ({
+        name: `a${i}`,
+        path: `/tmp/proj/.claude/agents/a${i}.md`,
+        hasFrontmatter: true,
+        description: "d",
+      })),
+      mcp: Array.from({ length: 6 }, (_, i) => ({
+        name: `s${i}`,
+        path: "/tmp/proj/.mcp.json",
+        hasCommand: true,
+        hasUrl: false,
+        literalEnvKeys: [],
+        raw: "{}",
+      })),
+      policyFiles: [
+        { path: "/tmp/proj/AGENTS.md", text: "run npm install\n".repeat(200) },
+        { path: "/tmp/proj/CLAUDE.md", text: "line\n".repeat(300) },
+      ],
+    });
+
     const emitted = new Set([
       ...runChecks(withLock, { skillDescriptionBytes: 16_000 }).map(
         (f) => f.ruleId,
       ),
       ...runChecks(noLock, { requireLock: true }).map((f) => f.ruleId),
+      ...runChecks(overBudget, {
+        budgets: {
+          agentsMdLines: 150,
+          claudeMdLines: 200,
+          agents: 8,
+          mcp: 5,
+        },
+      }).map((f) => f.ruleId),
     ]);
     const declared = new Set(STRUCTURAL_CHECKS.map((c) => c.id));
 

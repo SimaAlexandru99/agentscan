@@ -32,7 +32,6 @@ check options:
   --fail-under <0-100>   Fail when the score drops below this floor
   --global               Also scan global skill dirs
   --config <path>        Config file path
-  --rules-dir <path>     User rules directory
 
 init options:
   --force                Overwrite existing .agentscanrc.json
@@ -59,7 +58,6 @@ export async function main(argv: string[]): Promise<number> {
     "fail-under"?: string;
     global?: boolean;
     config?: string;
-    "rules-dir"?: string;
     force?: boolean;
     help?: boolean;
     version?: boolean;
@@ -82,7 +80,6 @@ export async function main(argv: string[]): Promise<number> {
         // overwrote the config key, making `includeGlobal` unreachable.
         global: { type: "boolean" },
         config: { type: "string" },
-        "rules-dir": { type: "string" },
         force: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
         version: { type: "boolean", short: "V", default: false },
@@ -153,7 +150,6 @@ export async function main(argv: string[]): Promise<number> {
           ...(failUnder === undefined ? {} : { failUnder }),
           global: values.global,
           configPath: values.config,
-          rulesDir: values["rules-dir"],
         });
         process.stdout.write(result.stdout);
         if (values.copy === true) {
@@ -179,7 +175,6 @@ export async function main(argv: string[]): Promise<number> {
           dir: positionals[2],
           global: values.global,
           configPath: values.config,
-          rulesDir: values["rules-dir"],
         });
         if (result.stderr.length > 0) {
           process.stderr.write(result.stderr);
@@ -193,7 +188,6 @@ export async function main(argv: string[]): Promise<number> {
         const result = await runRulesCommand({
           dir: positionals[1],
           configPath: values.config,
-          rulesDir: values["rules-dir"],
         });
         process.stdout.write(result.stdout);
         return result.exitCode;

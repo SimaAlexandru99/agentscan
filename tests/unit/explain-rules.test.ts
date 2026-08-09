@@ -45,7 +45,7 @@ describe("runExplain", () => {
 });
 
 describe("runRulesCommand", () => {
-  test("lists builtin rules with id and description", async () => {
+  test("lists budget checks with id and description", async () => {
     const dir = join(fixturesRoot, "clean-repo");
     const result = await runRulesCommand({ dir });
 
@@ -58,7 +58,7 @@ describe("runRulesCommand", () => {
     expect(result.stdout).toMatch(/budget\.mcp\s+.+/);
   });
 
-  test("lists structural checks alongside YAML rules", async () => {
+  test("lists the structural checks that actually find things", async () => {
     const dir = join(fixturesRoot, "clean-repo");
     const result = await runRulesCommand({ dir });
 

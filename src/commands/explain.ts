@@ -6,7 +6,6 @@ export type ExplainOptions = {
   dir?: string;
   global?: boolean;
   configPath?: string;
-  rulesDir?: string;
 };
 
 export type ExplainResult = {

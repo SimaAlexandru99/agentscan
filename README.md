@@ -54,7 +54,6 @@ Flags for `check`:
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
 | `--global` | Also scan `~/.claude/skills` and `~/.codex/skills` (see below) |
 | `--config <path>` | Config file path |
-| `--rules-dir <path>` | User rules directory (default: `.agentscan/rules`) |
 
 **v1 does not write the tree** — no `apply`, no skill delete/install. Findings may *suggest* shell commands; you run them yourself.
 
@@ -65,22 +64,22 @@ agentscan v0.1.0 — touchagency
 
 Stack: 46 deps · 54 skills · 1 mcp · 2 agents · packageManager=bun
 
-WARN    hook:PreToolUse:.claude/hooks/protect-env.js
+WARN    hook:PreToolUse:.claude/hooks/guard-destructive-bash.js
         rule:hook.missing-script
-        PreToolUse hook points at a script that does not exist: .claude/hooks/protect-env.js
-        evidence: hook PreToolUse @ …/.claude/settings.json · script .claude/hooks/protect-env.js
+        PreToolUse hook points at a script that does not exist: .claude/hooks/guard-destructive-bash.js
+        evidence: hook PreToolUse @ …/.claude/settings.json · script .claude/hooks/guard-destructive-bash.js
 
-WARN    skill:composition-patterns
-        rule:skill.name-mismatch
-        Frontmatter name "vercel-composition-patterns" does not match directory "composition-patterns"
-        evidence: skill …/.agents/skills/composition-patterns/SKILL.md · name vercel-composition-patterns
+WARN    hook:PreToolUse:.claude/hooks/protect-artists-json.js
+        rule:hook.missing-script
+        PreToolUse hook points at a script that does not exist: .claude/hooks/protect-artists-json.js
+        evidence: hook PreToolUse @ …/.claude/settings.json · script .claude/hooks/protect-artists-json.js
 
-Summary: 8 warn · 4 info hidden (--verbose)
+Summary: 6 warn · 4 info hidden (--verbose) · score 40/100
 ```
 
-That first finding is the one worth having: a `PreToolUse` hook named
-`protect-env.js` was registered and the script is gone, so the protection the
-config claims has silently not been in effect.
+Both of these are worth having: a `PreToolUse` hook named
+`guard-destructive-bash.js` is registered and its script is gone, so the guard
+the config claims has silently not been in effect.
 
 The `Stack:` line is orientation only — which project, how big. The summary lists
 only actions that actually occurred; a clean project prints `Summary: no findings`.
@@ -113,8 +112,7 @@ JSON shape (abridged):
 }
 ```
 
-Same tree → same sorted findings (stable, unique `id`s — one rule per id, so a
-user rule that reuses a builtin id replaces it rather than doubling it).
+Same tree → same sorted findings, with stable unique `id`s.
 
 ### `--global`
 
@@ -265,84 +263,16 @@ reading the report is the value you paste:
 { "ignoreFindings": ["hook.missing-script:hook:PreToolUse:./bin/wrapper"] }
 ```
 
-## How to add a rule
-
-Drop a YAML file under **`.agentscan/rules/`** in the project (or pass `--rules-dir`). Builtin rules live in `src/rules/builtin/`.
-
-Minimal rule:
-
-```yaml
-id: my.org.example-rule
-description: Short human summary
-when:
-  all:
-    - dep: better-auth
-    - not:
-        skillMatches:
-          - better-auth*
-then:
-  action: add          # keep | delete | add | refresh | warn | drift
-  severity: warning    # error | warning | info
-  subject: "skill:better-auth"
-  message: "Missing better-auth skill while better-auth is a dependency"
-  reason: "Mapped dep has no matching skill"
-  suggest: "Add a better-auth* skill for agent auth guidance"
-```
-
-A user rule whose `id` matches a builtin **replaces** that builtin. Use
-`ignoreRules` to switch one off entirely.
-
-Supported `when` matchers:
-
-- `dep: <name>` with optional `gte` / `lt` semver
-- `skillMatches: [patterns]` — `*` wildcard, prefix (`next-*`) or suffix (`*prisma`) only
-- `packageManager: bun|npm|…`
-- `policyMatches: "needle"` — plain substring, **not** a regex
-- `hasConfig: <key>` — flat key on the configs fact (`shadcn`, `biome`, `ultracite`, `next`); no nested paths
-- `count: { of: skills|mcp|agents|hooks, gt: N }`
-- `policyLines: { file: AGENTS.md|CLAUDE.md, gt: N }`
-- combinators: `all`, `not` — no `any`
-
-**Opting into config thresholds.** `gt` is absolute. To let `.agentscanrc.json`
-retune it, add `thresholdKey` naming a key under `thresholds`:
-
-```yaml
-when:
-  count:
-    of: skills
-    gt: 30                 # default
-    thresholdKey: skills   # users override via thresholds.skills
-```
-
-Without `thresholdKey` your `gt` is always respected. All five builtin budget
-rules opt in; nothing rewrites a rule that did not ask for it.
-
-**Unknown clauses do not fire and do not warn.** `when` is opaque JSON, so a
-typo (`depp:` for `dep:`) silently produces a rule that never matches. Check with
-`agentscan rules` that it loaded, then test against a fixture.
-
-List what loaded:
-
-```bash
-bunx agentscan rules
-```
-
-## Builtin rules (seed)
-
-| id | Action |
-|----|--------|
-| `policy.package-manager-drift` | DRIFT when policy says `npm install` but PM is bun |
-| `budget.mcp` | INFO when MCP count > 5 |
-| `budget.agents` | INFO when agent files > 8 |
-| `budget.agents-md` | INFO when AGENTS.md lines > 150 |
-| `budget.claude-md` | INFO when CLAUDE.md lines > 200 |
-
 ## What it checks
 
-Structural checks run on every `check` — they live in `src/checks/`, not in the
-YAML rules, because they validate each discovered item against its own file on
-disk rather than matching aggregate facts. `agentscan rules` lists them together
-with the YAML rules, and `agentscan explain <id>` works for either.
+Every check lives in `src/checks/` and runs on every `check`. `agentscan rules`
+lists all of them with their ids; `agentscan explain <id>` details any finding.
+
+Most validate one discovered item against its own file on disk. The five
+`budget.*` / `policy.*` entries at the bottom judge aggregate size instead —
+they are all **info**, they are sourced to `docs/spec/thresholds.md`, and they
+are retuned through `thresholds` in `.agentscanrc.json` rather than switched
+off.
 
 | id | Severity | Catches |
 |----|----------|---------|

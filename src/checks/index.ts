@@ -1,5 +1,7 @@
 import { basename } from "node:path";
 import type { Facts, Finding, SkillFact } from "../facts/types";
+import { runBudgets } from "./budgets";
+import { make } from "./make";
 
 /**
  * Structural config checks.
@@ -11,10 +13,10 @@ import type { Facts, Finding, SkillFact } from "../facts/types";
  * produced 25 of the 37 findings this tool reported across 17 projects. Before
  * adding a check, find the spec line and record it there.
  *
- * These are code, not YAML rules, on purpose: the rules engine matches aggregate
- * facts (is dep X present, is this count over N), while these validate each
- * discovered item against its own file on disk. Expressing them as YAML would
- * mean inventing a bespoke clause per check.
+ * Each check here validates one discovered item against its own file on disk.
+ * The aggregate size judgements — how long AGENTS.md is, how many MCP servers
+ * there are — live in budgets.ts, which runs from the same entry point and is
+ * declared in the same list.
  */
 
 export type CheckOptions = {
@@ -22,12 +24,20 @@ export type CheckOptions = {
   requireLock?: boolean;
   /** Byte ceiling for all skill names + descriptions loaded at startup. */
   skillDescriptionBytes?: number;
+  /** Budget ceilings. Absent means "do not run the budget checks at all". */
+  budgets?: {
+    agentsMdLines: number;
+    claudeMdLines: number;
+    agents: number;
+    mcp: number;
+  };
 };
 
 /**
- * Every id `runChecks` can emit, so `agentscan rules` can show the whole picture
- * rather than only the YAML half. Keep in sync with the functions below — the
- * `checks emit only declared ids` test fails if they drift.
+ * Every id `runChecks` can emit — the whole of what this tool can report, and
+ * what `agentscan rules` prints. Keep in sync with the functions below and in
+ * budgets.ts; the `declared ids and emitted ids are the same set` test fails in
+ * both directions if they drift.
  */
 export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
   {
@@ -102,6 +112,31 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
     id: "mcp.literal-env",
     description: "MCP env value is a long literal instead of ${VAR}",
   },
+  // Budgets — see budgets.ts. Size judgements, all info, never build-failing.
+  {
+    id: "budget.agents-md",
+    description:
+      "AGENTS.md longer than the point where added lines stop helping (>150 lines)",
+  },
+  {
+    id: "budget.claude-md",
+    description:
+      "CLAUDE.md longer than the instruction budget a model reliably follows (>200 lines)",
+  },
+  {
+    id: "budget.agents",
+    description:
+      "More agent definitions than a focused set (>8 files in .claude/agents)",
+  },
+  {
+    id: "budget.mcp",
+    description:
+      "Project MCP server count above the point where tool selection degrades",
+  },
+  {
+    id: "policy.package-manager-drift",
+    description: "Policy mentions npm install while packageManager is bun",
+  },
 ];
 
 /**
@@ -124,34 +159,6 @@ const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
   { label: "Slack token", re: /\bxox[baprs]-[A-Za-z0-9-]{10,}/ },
   { label: "AWS access key id", re: /\bAKIA[0-9A-Z]{16}\b/ },
 ];
-
-function make(
-  ruleId: string,
-  subject: string,
-  args: {
-    action: Finding["action"];
-    severity: Finding["severity"];
-    message: string;
-    reason: string;
-    evidence: Finding["evidence"];
-    suggest?: string;
-  },
-): Finding {
-  const finding: Finding = {
-    id: `${ruleId}:${subject}`,
-    ruleId,
-    action: args.action,
-    severity: args.severity,
-    subject,
-    message: args.message,
-    reason: args.reason,
-    evidence: args.evidence,
-  };
-  if (args.suggest !== undefined) {
-    finding.suggest = args.suggest;
-  }
-  return finding;
-}
 
 /**
  * Strip source text out of a parser's message.
@@ -724,5 +731,8 @@ export function runChecks(
     ...checkDescriptionBudget(facts, options),
     ...checkAgents(facts),
     ...checkMcp(facts),
+    ...(options.budgets === undefined
+      ? []
+      : runBudgets(facts, options.budgets)),
   ];
 }

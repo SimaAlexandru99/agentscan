@@ -19,7 +19,6 @@ export type CheckOptions = {
   failUnder?: number;
   global?: boolean;
   configPath?: string;
-  rulesDir?: string;
 };
 
 export type CheckResult = {
@@ -36,7 +35,6 @@ export async function runCheck(options: CheckOptions): Promise<CheckResult> {
     dir: options.dir,
     global: options.global,
     configPath: options.configPath,
-    rulesDir: options.rulesDir,
     failOn: options.failOn,
   });
 
