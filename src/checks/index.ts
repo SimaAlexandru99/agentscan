@@ -13,6 +13,8 @@ import type { Facts, Finding, SkillFact } from "../facts/types";
 export type CheckOptions = {
   /** Flag a project that has skills but no skills-lock.json. Off by default. */
   requireLock?: boolean;
+  /** Byte ceiling for all skill names + descriptions loaded at startup. */
+  skillDescriptionBytes?: number;
 };
 
 /**
@@ -52,6 +54,10 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
   {
     id: "skill.locked-not-installed",
     description: "skills-lock.json pins a skill that is not installed",
+  },
+  {
+    id: "skill.description-budget",
+    description: "Skill descriptions exceed the startup character budget",
   },
   {
     id: "skill.no-lockfile",
@@ -391,6 +397,49 @@ function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
   return out;
 }
 
+/**
+ * Every skill's name and description is loaded at startup so Claude can decide
+ * what to reach for. That sits in a character budget of roughly 1-2% of the
+ * context window, shared across all of them — past it descriptions are
+ * truncated and the keywords Claude matches on are lost.
+ *
+ * This replaced a plain skill count, which measured the wrong thing: a project
+ * with 44 short-description skills sits comfortably under budget while one with
+ * 53 verbose ones is over.
+ */
+function checkDescriptionBudget(
+  facts: Facts,
+  options: CheckOptions,
+): Finding[] {
+  const ceiling = options.skillDescriptionBytes;
+  if (ceiling === undefined) {
+    return [];
+  }
+  const project = facts.skills.filter((s) => s.source === "project");
+  const bytes = project.reduce(
+    (sum, s) => sum + s.id.length + (s.description?.length ?? 0),
+    0,
+  );
+  if (bytes <= ceiling) {
+    return [];
+  }
+  return [
+    make("skill.description-budget", "skills:description-budget", {
+      action: "warn",
+      severity: "info",
+      message: `Skill descriptions total ${bytes} bytes across ${project.length} skills (over ${ceiling})`,
+      reason:
+        "Names and descriptions for every skill are loaded at startup, within a budget of roughly 1-2% of the context window. Past it they are truncated, and a skill whose description is cut short stops being matched for the tasks it was written for.",
+      evidence: [
+        { kind: "count", value: `descriptionBytes=${bytes}` },
+        { kind: "threshold", value: String(ceiling) },
+      ],
+      suggest:
+        "Shorten the longest descriptions, or remove skills this project does not use",
+    }),
+  ];
+}
+
 function checkMcp(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const server of facts.mcp) {
@@ -475,6 +524,7 @@ export function runChecks(
     ...checkHooks(facts),
     ...checkSkillStructure(facts),
     ...checkLockIntegrity(facts, options),
+    ...checkDescriptionBudget(facts, options),
     ...checkMcp(facts),
   ];
 }

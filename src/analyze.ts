@@ -60,6 +60,7 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
 
   const structural = runChecks(facts, {
     requireLock: config.requireLock,
+    skillDescriptionBytes: config.thresholds.skillDescriptionBytes,
   }).filter(
     (f) =>
       !ignoredRules.has(f.ruleId) &&

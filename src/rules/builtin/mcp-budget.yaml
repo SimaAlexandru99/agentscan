@@ -1,5 +1,5 @@
 id: budget.mcp
-description: Project MCP server count above practical sweet spot (>5)
+description: Project MCP server count above the point where tool selection degrades
 when:
   count:
     of: mcp
@@ -8,7 +8,6 @@ when:
 then:
   action: warn
   severity: info
-  subject: "budget:mcp"
   message: "MCP surface above sweet spot ({{count}} > {{threshold}})"
-  reason: "Most 2026 guidance keeps ~3–5 MCP servers eagerly available; more increases tool-selection noise (lazy load helps cost, not always pick quality). Counts project MCP config files only."
-  suggest: "Disable unused servers in mcp.json or set thresholds.mcp in .agentscanrc.json"
+  reason: "What actually degrades an agent is the number of tool definitions in context, not the number of servers: benchmarks show large models near-perfect at ~20 tools and failing outright past ~100, and a typical server carries tens of tools. Server count is the only proxy available without connecting to them, so treat this as a hint to go count the tools, not as a measurement."
+  suggest: "Count the tools your servers actually expose; disable unused servers in mcp.json or set thresholds.mcp in .agentscanrc.json"

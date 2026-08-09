@@ -339,6 +339,46 @@ describe("skills-lock integrity", () => {
   });
 });
 
+describe("skill description budget", () => {
+  const withDesc = (id: string, len: number) =>
+    skill({ id, description: "x".repeat(len), frontmatterName: id });
+
+  test("under the ceiling produces nothing", () => {
+    const findings = runChecks(
+      baseFacts({ skills: [withDesc("a", 100)] }),
+      { skillDescriptionBytes: 1000 },
+    );
+    expect(findings).toEqual([]);
+  });
+
+  test("over the ceiling is one info finding naming the totals", () => {
+    const findings = runChecks(
+      baseFacts({ skills: [withDesc("a", 600), withDesc("b", 600)] }),
+      { skillDescriptionBytes: 1000 },
+    );
+    expect(findings.map((f) => f.ruleId)).toEqual(["skill.description-budget"]);
+    expect(findings[0]!.severity).toBe("info");
+    expect(findings[0]!.message).toContain("2 skills");
+  });
+
+  test("global skills do not count against the project budget", () => {
+    const g = {
+      ...withDesc("g", 5000),
+      source: "global" as const,
+      path: "/home/u/.claude/skills/g",
+    };
+    expect(
+      runChecks(baseFacts({ skills: [g] }), { skillDescriptionBytes: 1000 }),
+    ).toEqual([]);
+  });
+
+  test("no ceiling configured means no check", () => {
+    expect(
+      runChecks(baseFacts({ skills: [withDesc("a", 99_999)] })),
+    ).toEqual([]);
+  });
+});
+
 describe("mcp checks", () => {
   const mcp = (partial: Partial<McpFact> & Pick<McpFact, "name">): McpFact => ({
     path: "/tmp/proj/.mcp.json",
@@ -441,6 +481,12 @@ describe("mcp checks", () => {
 
 describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
   test("declared ids and emitted ids are the same set", () => {
+    const withBudget = skill({
+      id: "big",
+      frontmatterName: "big",
+      description: "x".repeat(20_000),
+    });
+
     // `skill.no-lockfile` needs no lockfile while the lock checks need one, so
     // the emitted set is the union of two runs.
     const withLock = baseFacts({
@@ -465,6 +511,7 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
       hasSkillsLock: true,
       lockedSkills: [{ id: "pinned-gone" }],
       skills: [
+        withBudget,
         skill({ id: "no-md", hasSkillMd: false, hasFrontmatter: false }),
         skill({ id: "no-fm", hasFrontmatter: false }),
         skill({ id: "no-desc", frontmatterName: "no-desc" }),
@@ -511,7 +558,9 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
     });
 
     const emitted = new Set([
-      ...runChecks(withLock).map((f) => f.ruleId),
+      ...runChecks(withLock, { skillDescriptionBytes: 16_000 }).map(
+        (f) => f.ruleId,
+      ),
       ...runChecks(noLock, { requireLock: true }).map((f) => f.ruleId),
     ]);
     const declared = new Set(STRUCTURAL_CHECKS.map((c) => c.id));

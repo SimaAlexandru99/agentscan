@@ -51,11 +51,11 @@ describe("runRulesCommand", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("policy.package-manager-drift");
-    expect(result.stdout).toContain("budget.skills");
+    expect(result.stdout).toContain("budget.mcp");
     // orphans are computed from facts, not shipped as a rule
     expect(result.stdout).not.toContain("skill.orphan");
     // descriptions should appear on the same lines
-    expect(result.stdout).toMatch(/budget\.skills\s+.+/);
+    expect(result.stdout).toMatch(/budget\.mcp\s+.+/);
   });
 
   test("lists structural checks alongside YAML rules", async () => {

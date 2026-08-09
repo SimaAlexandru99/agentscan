@@ -165,6 +165,7 @@ Optional `.agentscanrc.json` (create with `agentscan init`):
   "includeGlobal": false,
   "requireLock": false,
   "thresholds": {
+    "skillDescriptionBytes": 16000,
     "skills": 30,
     "mcp": 5,
     "agentsMdLines": 150,
@@ -243,7 +244,6 @@ bunx agentscan rules
 | id | Action |
 |----|--------|
 | `policy.package-manager-drift` | DRIFT when policy says `npm install` but PM is bun |
-| `budget.skills` | INFO when skill count > thresholds.skills (default 30) |
 | `budget.mcp` | INFO when MCP count > 5 |
 | `budget.agents` | INFO when agent files > 8 |
 | `budget.agents-md` | INFO when AGENTS.md lines > 150 |
@@ -270,6 +270,7 @@ with the YAML rules, and `agentscan explain <id>` works for either.
 | `skill.missing-description` | info | Frontmatter has no `description`, so Claude will not load the skill on its own |
 | `skill.locked-not-installed` | warning | `skills-lock.json` pins a skill that is not on disk |
 | `skill.not-in-lock` | info | A skill on disk that the lockfile does not track — local and unpinned |
+| `skill.description-budget` | info | Skill names + descriptions exceed the startup character budget |
 | `skill.no-lockfile` | info | Skills present with no lockfile at all (only with `requireLock`) |
 
 `hook.missing-script` is deliberately conservative. A command is only resolved

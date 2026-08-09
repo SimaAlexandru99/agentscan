@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 export const defaultThresholds = {
+  /** Bytes of skill name+description loaded at startup. The constraint is a
+   *  character budget (~1-2% of the context window) shared across all skills;
+   *  past it, descriptions are truncated and matching keywords are lost. */
+  skillDescriptionBytes: 16_000,
   skills: 30,
   mcp: 5,
   agentsMdLines: 150,
@@ -21,6 +25,11 @@ export const defaultConfig = {
 };
 
 const thresholdsSchema = z.object({
+  skillDescriptionBytes: z
+    .number()
+    .int()
+    .positive()
+    .default(defaultThresholds.skillDescriptionBytes),
   skills: z.number().int().positive().default(defaultThresholds.skills),
   mcp: z.number().int().positive().default(defaultThresholds.mcp),
   agentsMdLines: z
