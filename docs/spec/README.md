@@ -39,6 +39,16 @@ claim one.
 
 ## Re-verification
 
+```bash
+bun run spec:check
+```
+
+Diffs the hardcoded hook-event set against the live docs page and warns when the
+newest capture here is over 90 days old. It makes network calls, so it is a
+release-time script and is never reached from `agentscan check` — the scan path
+touches no network and that is worth more than automatic freshness. It
+over-reports by design; adjudicated false alarms go in `REVIEWED_NOT_EVENTS`.
+
 Anything in here can go stale. The list most likely to is
 [hook-events.md](hook-events.md) — it already lagged by 22 names once. Re-read
 the sources when a user reports a false positive on a value they believe is

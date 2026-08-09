@@ -172,7 +172,7 @@ function checkConfigErrors(facts: Facts): Finding[] {
  *
  * Source: docs/spec/hook-events.md (read 2026-08-09)
  */
-const KNOWN_HOOK_EVENTS = new Set([
+export const KNOWN_HOOK_EVENTS = new Set([
   "SessionStart",
   "Setup",
   "UserPromptSubmit",

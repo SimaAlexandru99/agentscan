@@ -35,7 +35,8 @@
     "agentscan": "bun run src/cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "check": "bun run src/cli.ts check"
+    "check": "bun run src/cli.ts check",
+    "spec:check": "bun run scripts/spec-drift.ts"
   },
   "engines": {
     "bun": ">=1.1.0"

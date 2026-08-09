@@ -36,6 +36,12 @@ projects. It reported `PostToolBatch` — a documented event — as a dead hook 
 `PostToolUseFailure`, `StopFailure`, `SubagentStart`, `FileChanged`,
 `ConfigChange` and sixteen others.
 
+## Reviewed and rejected
+
+- **`TaskCreate`** — appears on the page as "`TaskCreated` | When a task is being
+  created via `TaskCreate`". It is a tool name; the event is `TaskCreated`.
+  Recorded in `scripts/spec-drift.ts` so it is not re-adjudicated.
+
 ## Staleness risk: HIGH
 
 This is the single most likely thing here to go out of date, and the failure
@@ -44,3 +50,5 @@ mode is a false error on a working hook. Upstream adds events without notice.
 - Escape hatch for users: `ignoreRules: ["hook.unknown-event"]`
 - Correct response to a report of a false positive: re-read the source above and
   update the set, not tell the user to ignore the rule.
+- `bun run spec:check` diffs this set against the live page. Run it at release
+  time; it makes network calls and must never be wired into `check`.
