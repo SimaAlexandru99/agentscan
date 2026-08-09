@@ -88,7 +88,8 @@ Run it against any project. It reads that project, writes nothing, and never
 leaves your machine:
 
 ```bash
-npx @chimix/agentscan@latest check ~/path/to/your-project
+cd ~/your-project
+npx @chimix/agentscan@latest
 ```
 
 Works on Node 20.11+ or Bun — the published bin is a single bundled file with

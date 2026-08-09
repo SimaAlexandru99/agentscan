@@ -12,6 +12,7 @@ function printHelp(): void {
   const text = `agentscan v${VERSION}
 
 Usage:
+  agentscan                            scan the current directory
   agentscan check [dir] [options]
   agentscan explain <findingId> [dir]
   agentscan rules [dir]
@@ -99,16 +100,15 @@ export async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
-  if (values.help || positionals.length === 0) {
+  if (values.help) {
     printHelp();
     return 0;
   }
 
-  const command = positionals[0];
-  if (command === undefined) {
-    printHelp();
-    return 0;
-  }
+  // No subcommand means scan the current directory. Someone who ran
+  // `npx @chimix/agentscan@latest` to find out what this does should see their
+  // own project's findings, not a usage screen; `--help` still prints one.
+  const command = positionals[0] ?? "check";
 
   try {
     switch (command) {
