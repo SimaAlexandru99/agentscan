@@ -342,10 +342,18 @@ function parseMcpServers(
     servers = obj.mcpServers as Record<string, unknown>;
   } else if (
     !("mcpServers" in obj) &&
-    Object.keys(obj).every((k) => {
-      const v = obj[k];
-      return v !== null && typeof v === "object" && !Array.isArray(v);
-    })
+    Object.keys(obj).length > 0 &&
+    // Every value must look like a server entry. Without this a wrapper key —
+    // the VS Code `servers` spelling, or `inputs` — becomes a phantom server
+    // reported as having no command, while the real servers under it are never
+    // inspected.
+    Object.values(obj).every(
+      (v) =>
+        v !== null &&
+        typeof v === "object" &&
+        !Array.isArray(v) &&
+        ("command" in v || "url" in v || "type" in v),
+    )
   ) {
     servers = obj;
   } else {
@@ -374,12 +382,15 @@ function parseMcpServers(
       const env = entry.env;
       if (env !== null && typeof env === "object" && !Array.isArray(env)) {
         for (const [key, val] of Object.entries(env as Record<string, unknown>)) {
-          // ${VAR} / $VAR indirection is the correct shape; a long literal is not
+          // Gate on the key, not the value length. PATH, NODE_OPTIONS and
+          // LOG_FORMAT are all long and none is a secret — the same "narrow, no
+          // entropy guessing" principle SECRET_PATTERNS commits to.
           if (
             typeof val === "string" &&
-            val.length >= 20 &&
+            val.length > 0 &&
             !val.includes("${") &&
-            !val.startsWith("$")
+            !val.startsWith("$") &&
+            /(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|CREDENTIAL)S?$/i.test(key)
           ) {
             literalEnvKeys.push(key);
           }

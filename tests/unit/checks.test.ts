@@ -311,7 +311,7 @@ describe("skills-lock integrity", () => {
       { requireLock: true },
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.no-lockfile"]);
-    expect(findings[0]!.message).toContain("1 skills");
+    expect(findings[0]!.message).toContain("1 skill ");
   });
 
   test("no lockfile → no lock findings at all", () => {
@@ -464,7 +464,7 @@ describe("skills an agent cannot tell apart", () => {
       }),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.duplicate-description"]);
-    expect(findings[0]!.subject).toBe("skills:firebase-basics+firebase-firestore");
+    expect(findings[0]!.subject).toBe("skills:firebase-basics firebase-firestore");
     expect(findings[0]!.severity).toBe("warning");
     expect(findings[0]!.message).toContain("firebase-basics");
     expect(findings[0]!.message).toContain("firebase-firestore");
@@ -475,7 +475,7 @@ describe("skills an agent cannot tell apart", () => {
       baseFacts({ skills: [desc("a", "same"), desc("b", "same"), desc("c", "same")] }),
     );
     expect(findings).toHaveLength(1);
-    expect(findings[0]!.subject).toBe("skills:a+b+c");
+    expect(findings[0]!.subject).toBe("skills:a b c");
   });
 
   test("whitespace and case differences still collide", () => {
@@ -508,8 +508,8 @@ describe("skills an agent cannot tell apart", () => {
       }),
     );
     expect(findings.map((f) => f.subject)).toEqual([
-      "skills:a1+a2",
-      "skills:z1+z2",
+      "skills:a1 a2",
+      "skills:z1 z2",
     ]);
   });
 
@@ -560,6 +560,112 @@ describe("skill description budget", () => {
     expect(
       runChecks(baseFacts({ skills: [withDesc("a", 99_999)] })),
     ).toEqual([]);
+  });
+});
+
+describe("review regressions", () => {
+  test("the same guard under two matchers is one finding", () => {
+    const h = (matcher: string) => ({
+      name: "PreToolUse",
+      path: `/p/.claude/settings.json#${matcher}`,
+      event: "PreToolUse",
+      command: "./scripts/guard.sh",
+      scriptPath: "./scripts/guard.sh",
+      scriptExists: false,
+    });
+    expect(runChecks(baseFacts({ hooks: [h("Bash"), h("Write")] }))).toHaveLength(1);
+  });
+
+  test("one MCP name in two files gives two distinct ids", () => {
+    const s = (path: string) => ({
+      name: "db",
+      path,
+      hasCommand: false,
+      hasUrl: false,
+      literalEnvKeys: [] as string[],
+      raw: "{}",
+    });
+    const f = runChecks(baseFacts({ mcp: [s("/p/.mcp.json"), s("/p/mcp.json")] }));
+    expect(f).toHaveLength(2);
+    expect(new Set(f.map((x) => x.id)).size).toBe(2);
+  });
+
+  test("a hyphenated package slug is not a leaked credential", () => {
+    expect(
+      runChecks(
+        baseFacts({
+          mcp: [
+            {
+              name: "tk",
+              path: "/p/.mcp.json",
+              hasCommand: true,
+              hasUrl: false,
+              literalEnvKeys: [],
+              raw: '{"args":["--from","git+https://github.com/acme/sk-mcp-server-toolkit"]}',
+            },
+          ],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  test("a real OpenAI-shaped key still fires and is never echoed", () => {
+    const f = runChecks(
+      baseFacts({
+        mcp: [
+          {
+            name: "ai",
+            path: "/p/.mcp.json",
+            hasCommand: true,
+            hasUrl: false,
+            literalEnvKeys: [],
+            raw: '{"env":{"K":"sk-proj0123456789abcdefghij"}}',
+          },
+        ],
+      }),
+    );
+    expect(f.map((x) => x.ruleId)).toEqual(["mcp.hardcoded-secret"]);
+    expect(JSON.stringify(f)).not.toContain("proj0123456789");
+  });
+
+  test("skill ids containing + do not collide", () => {
+    const d = (id: string, description: string) =>
+      skill({ id, frontmatterName: id, description });
+    const f = runChecks(
+      baseFacts({
+        skills: [d("a+b", "Alpha"), d("c", "Alpha"), d("a", "Beta"), d("b+c", "Beta")],
+      }),
+    );
+    expect(f).toHaveLength(2);
+    expect(new Set(f.map((x) => x.id)).size).toBe(2);
+  });
+
+  test("a directory with no SKILL.md does not count toward the byte budget", () => {
+    const f = runChecks(
+      baseFacts({
+        skills: [
+          skill({ id: "s", frontmatterName: "s", description: "short" }),
+          skill({
+            id: "a-very-long-abandoned-directory-name-goes-here",
+            hasSkillMd: false,
+            hasFrontmatter: false,
+          }),
+        ],
+      }),
+      { skillDescriptionBytes: 40 },
+    );
+    expect(f.map((x) => x.ruleId)).toEqual(["skill.missing-skill-md"]);
+  });
+
+  test("the budget counts bytes, not UTF-16 units", () => {
+    const f = runChecks(
+      baseFacts({
+        skills: [skill({ id: "s", frontmatterName: "s", description: "é".repeat(30) })],
+      }),
+      { skillDescriptionBytes: 40 },
+    );
+    // 30 x 2 bytes + 1 = 61 > 40; `.length` would have said 31
+    expect(f.map((x) => x.ruleId)).toEqual(["skill.description-budget"]);
   });
 });
 

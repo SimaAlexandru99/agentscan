@@ -115,7 +115,10 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
  */
 const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
   { label: "Anthropic key", re: /\bsk-ant-[A-Za-z0-9_-]{16,}/ },
-  { label: "OpenAI-style key", re: /\bsk-[A-Za-z0-9_-]{16,}/ },
+  // No embedded hyphens after the prefix. `sk-mcp-server-toolkit` is a package
+  // name, and calling it a leaked credential at severity error is unfalsifiable
+  // from the report, since the matched value is correctly never echoed.
+  { label: "OpenAI-style key", re: /\bsk-[A-Za-z0-9_]{20,}\b/ },
   { label: "GitHub token", re: /\bgh[pousr]_[A-Za-z0-9]{20,}/ },
   { label: "Google API key", re: /\bAIza[A-Za-z0-9_-]{20,}/ },
   { label: "Slack token", re: /\bxox[baprs]-[A-Za-z0-9-]{10,}/ },
@@ -270,15 +273,21 @@ function checkHookEvents(facts: Facts): Finding[] {
 
 function checkHooks(facts: Facts): Finding[] {
   const out: Finding[] = [];
+  // One HookFact per command occurrence, so the same guard under two matchers —
+  // the canonical shape — produced two findings sharing one id, and `explain`
+  // could reach only the first.
+  const reported = new Set<string>();
   for (const hook of facts.hooks) {
     if (hook.scriptPath === undefined || hook.scriptExists !== false) {
       continue;
     }
+    const subject = `hook:${hook.event ?? hook.name}:${hook.scriptPath}`;
+    if (reported.has(subject)) {
+      continue;
+    }
+    reported.add(subject);
     out.push(
-      make(
-        "hook.missing-script",
-        `hook:${hook.event ?? hook.name}:${hook.scriptPath}`,
-        {
+      make("hook.missing-script", subject, {
           action: "warn",
           severity: "error",
           message: `${hook.event ?? hook.name} hook points at a script that does not exist: ${hook.scriptPath}`,
@@ -288,9 +297,8 @@ function checkHooks(facts: Facts): Finding[] {
             { kind: "hook", value: `${hook.event ?? hook.name} @ ${hook.path}` },
             { kind: "script", value: hook.scriptPath },
           ],
-          suggest: `Restore ${hook.scriptPath} or remove the hook from ${hook.path}`,
-        },
-      ),
+        suggest: `Restore ${hook.scriptPath} or remove the hook from ${hook.path}`,
+      }),
     );
   }
   return out;
@@ -396,7 +404,9 @@ function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
   // A project lockfile cannot pin a skill that lives in the user's home
   // directory, so judging global skills against it can only produce findings
   // that are never true.
-  const projectSkills = facts.skills.filter((s) => s.source === "project");
+  const projectSkills = facts.skills.filter(
+    (s) => s.source === "project" && s.hasSkillMd,
+  );
 
   if (!facts.hasSkillsLock) {
     if (options.requireLock === true && projectSkills.length > 0) {
@@ -404,7 +414,7 @@ function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
         make("skill.no-lockfile", "skills:unpinned", {
           action: "warn",
           severity: "info",
-          message: `${projectSkills.length} skills installed with no skills-lock.json`,
+          message: `${projectSkills.length} skill${projectSkills.length === 1 ? "" : "s"} installed with no skills-lock.json`,
           reason:
             "Without a lockfile there is no record of where each skill came from or which version is pinned, so nothing can tell a managed install from a local edit.",
           evidence: [{ kind: "count", value: `skills=${projectSkills.length}` }],
@@ -496,9 +506,13 @@ function checkDuplicateDescriptions(facts: Facts): Finding[] {
     if (ids.length < 2) {
       continue;
     }
-    const sorted = [...ids].sort((a, b) => a.localeCompare(b));
+    // Code-point sort, not localeCompare: ICU collation differs by locale, so
+    // an id copied from CI must still resolve locally.
+    const sorted = [...ids].sort();
     out.push(
-      make("skill.duplicate-description", `skills:${sorted.join("+")}`, {
+      // A space cannot appear in a directory name; `+` can, and `{a+b, c}` and
+      // `{a, b+c}` produced one id.
+      make("skill.duplicate-description", `skills:${sorted.join(" ")}`, {
         action: "warn",
         severity: "warning",
         message: `${sorted.length} skills share one description: ${sorted.join(", ")}`,
@@ -510,7 +524,7 @@ function checkDuplicateDescriptions(facts: Facts): Finding[] {
       }),
     );
   }
-  return out.sort((a, b) => a.subject.localeCompare(b.subject));
+  return out.sort((a, b) => (a.subject < b.subject ? -1 : 1));
 }
 
 /**
@@ -533,9 +547,17 @@ function checkDescriptionBudget(
   if (ceiling === undefined) {
     return [];
   }
-  const project = facts.skills.filter((s) => s.source === "project");
+  // Only directories that load at startup, and only their descriptions: a
+  // folder with no SKILL.md contributes nothing, and the same report calls it
+  // "not a loadable skill".
+  const project = facts.skills.filter(
+    (s) => s.source === "project" && s.hasSkillMd && s.description !== undefined,
+  );
+  // Bytes, not UTF-16 units — the threshold and docs/spec/thresholds.md are
+  // both stated in bytes, and `.length` half-counts non-ASCII.
   const bytes = project.reduce(
-    (sum, s) => sum + s.id.length + (s.description?.length ?? 0),
+    (sum, s) =>
+      sum + Buffer.byteLength(s.id) + Buffer.byteLength(s.description ?? ""),
     0,
   );
   if (bytes <= ceiling) {
@@ -616,7 +638,7 @@ function checkMcp(facts: Facts): Finding[] {
   for (const server of facts.mcp) {
     if (!(server.hasCommand || server.hasUrl)) {
       out.push(
-        make("mcp.no-launch", `mcp:${server.name}`, {
+        make("mcp.no-launch", `mcp:${server.name}@${server.path}`, {
           action: "warn",
           severity: "error",
           message: `MCP server "${server.name}" declares neither command nor url`,
@@ -632,7 +654,7 @@ function checkMcp(facts: Facts): Finding[] {
     // stdio server, fails, and is skipped — so its tools are silently absent.
     if (server.hasUrl && server.transport === undefined) {
       out.push(
-        make("mcp.url-without-type", `mcp:${server.name}`, {
+        make("mcp.url-without-type", `mcp:${server.name}@${server.path}`, {
           action: "warn",
           severity: "error",
           message: `MCP server "${server.name}" has a url but no transport type`,
@@ -647,7 +669,7 @@ function checkMcp(facts: Facts): Finding[] {
     const hit = SECRET_PATTERNS.find((p) => p.re.test(server.raw));
     if (hit !== undefined) {
       out.push(
-        make("mcp.hardcoded-secret", `mcp:${server.name}`, {
+        make("mcp.hardcoded-secret", `mcp:${server.name}@${server.path}`, {
           action: "warn",
           severity: "error",
           // The matched value is deliberately never echoed.
@@ -664,7 +686,7 @@ function checkMcp(facts: Facts): Finding[] {
 
     if (server.literalEnvKeys.length > 0) {
       out.push(
-        make("mcp.literal-env", `mcp:${server.name}`, {
+        make("mcp.literal-env", `mcp:${server.name}@${server.path}`, {
           action: "warn",
           severity: "warning",
           message: `MCP server "${server.name}" has literal env values: ${server.literalEnvKeys.join(", ")}`,
