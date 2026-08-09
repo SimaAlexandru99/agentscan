@@ -12,7 +12,7 @@ import { runCheck } from "../../src/commands/check";
 type JsonReport = {
   root: string;
   resolvedFrom?: string;
-  findings: { ruleId: string; severity: string; message: string }[];
+  findings: { id: string; ruleId: string; severity: string; message: string }[];
 };
 
 function project(files: Record<string, string>): string {
@@ -413,5 +413,46 @@ describe("root resolution is visible", () => {
 
     expect(result.stdout).toContain("no package.json in");
     expect(result.stdout).toContain(parent);
+  });
+});
+
+describe("suppressing a single finding", () => {
+  test("ignoreFindings drops exactly the listed id and nothing else", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/a/SKILL.md": "# no frontmatter\n",
+      ".agents/skills/b/SKILL.md": "# no frontmatter either\n",
+    });
+
+    const before = await report(dir);
+    const ids = before.findings.map((f) => f.id).sort();
+    expect(ids).toHaveLength(2);
+
+    writeFileSync(
+      join(dir, ".agentscanrc.json"),
+      JSON.stringify({ ignoreFindings: [ids[0]] }),
+      "utf8",
+    );
+
+    const after = await report(dir);
+    // one false positive must cost one line of config, not a whole check
+    expect(after.findings.map((f) => f.id)).toEqual([ids[1] as string]);
+  });
+
+  test("an ignored finding cannot fail the build", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/a/SKILL.md": "# no frontmatter\n",
+    });
+    const id = (await report(dir)).findings[0]?.id;
+    expect(id).toBeDefined();
+
+    writeFileSync(
+      join(dir, ".agentscanrc.json"),
+      JSON.stringify({ ignoreFindings: [id] }),
+      "utf8",
+    );
+    const result = await runCheck({ dir, failOn: "warning" });
+    expect(result.exitCode).toBe(0);
   });
 });

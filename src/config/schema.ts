@@ -18,6 +18,7 @@ export const defaultConfig = {
   policyFiles: ["AGENTS.md", "CLAUDE.md"],
   ignoreSkills: [] as string[],
   ignoreRules: [] as string[],
+  ignoreFindings: [] as string[],
   failOn: "never" as const,
   includeGlobal: false,
   requireLock: false,
@@ -51,6 +52,8 @@ export const configSchema = z.object({
   policyFiles: z.array(z.string()).default(defaultConfig.policyFiles),
   ignoreSkills: z.array(z.string()).default([]),
   ignoreRules: z.array(z.string()).default([]),
+  /** Exact finding ids, the same strings `agentscan explain` takes. */
+  ignoreFindings: z.array(z.string()).default([]),
   failOn: z.enum(["never", "warning", "error"]).default("never"),
   includeGlobal: z.boolean().default(false),
   requireLock: z.boolean().default(false),

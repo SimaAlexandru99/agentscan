@@ -6,6 +6,25 @@ import { join } from "node:path";
 import { loadConfig } from "../../src/config/load";
 import { defaultConfig } from "../../src/config/schema";
 
+describe("ignoreFindings", () => {
+  test("defaults to empty", () => {
+    const dir = mkdtempSync(join(tmpdir(), "agentscan-cfg-"));
+    expect(loadConfig(dir).ignoreFindings).toEqual([]);
+  });
+
+  test("round-trips from the config file", () => {
+    const dir = mkdtempSync(join(tmpdir(), "agentscan-cfg-"));
+    writeFileSync(
+      join(dir, ".agentscanrc.json"),
+      JSON.stringify({ ignoreFindings: ["hook.missing-script:hook:X:./a.sh"] }),
+      "utf8",
+    );
+    expect(loadConfig(dir).ignoreFindings).toEqual([
+      "hook.missing-script:hook:X:./a.sh",
+    ]);
+  });
+});
+
 describe("loadConfig", () => {
   test("returns defaults when no rc file", () => {
     const root = mkdtempSync(join(tmpdir(), "agentscan-"));

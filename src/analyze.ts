@@ -70,10 +70,15 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
       ),
   );
 
-  const findings = sortFindings([
-    ...runRules(facts, rules, config),
-    ...structural,
-  ]);
+  // Suppression by exact finding id. Without it a single false positive costs
+  // an entire check via ignoreRules — and under the README's CI recipe that is
+  // the only way to get a build green again.
+  const ignoredFindings = new Set(config.ignoreFindings);
+  const findings = sortFindings(
+    [...runRules(facts, rules, config), ...structural].filter(
+      (f) => !ignoredFindings.has(f.id),
+    ),
+  );
 
   return {
     root,
