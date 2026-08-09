@@ -1,4 +1,4 @@
-# skillscan
+# agentscan
 
 Deterministic CLI that finds **issues in a project's agent configuration** — skills, `skills-lock.json`, hooks, MCP servers, agent definitions and policy files.
 
@@ -19,8 +19,8 @@ rules added, and structural config checks added. Read them as history.
 bun run src/cli.ts check
 
 # after publish
-bun add -d skillscan
-bunx skillscan check
+bun add -d agentscan
+bunx agentscan check
 ```
 
 Requires **Bun** (v1.1+). Bin is `./src/cli.ts` via bun — not a Node-built binary in v1. No network on the `check` path.
@@ -28,17 +28,17 @@ Requires **Bun** (v1.1+). Bin is `./src/cli.ts` via bun — not a Node-built bin
 ## Usage
 
 ```bash
-bunx skillscan check                 # text report (cwd)
-bunx skillscan check ./my-app        # explicit root
-bunx skillscan check --json          # machine-readable
-bunx skillscan check --quiet         # summary only
-bunx skillscan check --verbose       # include KEEP and info-severity findings
-bunx skillscan check --fail-on warning
-bunx skillscan check --global        # also scan global skill dirs
+bunx agentscan check                 # text report (cwd)
+bunx agentscan check ./my-app        # explicit root
+bunx agentscan check --json          # machine-readable
+bunx agentscan check --quiet         # summary only
+bunx agentscan check --verbose       # include KEEP and info-severity findings
+bunx agentscan check --fail-on warning
+bunx agentscan check --global        # also scan global skill dirs
 
-bunx skillscan explain <findingId>   # detail one finding
-bunx skillscan rules                 # every check + rule id that can fire
-bunx skillscan init                  # write .skillscanrc.json
+bunx agentscan explain <findingId>   # detail one finding
+bunx agentscan rules                 # every check + rule id that can fire
+bunx agentscan init                  # write .agentscanrc.json
 ```
 
 Flags for `check`:
@@ -51,14 +51,14 @@ Flags for `check`:
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--global` | Include global skill directories |
 | `--config <path>` | Config file path |
-| `--rules-dir <path>` | User rules directory (default: `.skillscan/rules`) |
+| `--rules-dir <path>` | User rules directory (default: `.agentscan/rules`) |
 
 **v1 does not write the tree** — no `apply`, no skill delete/install. Findings may *suggest* shell commands; you run them yourself.
 
 ## Sample output
 
 ```text
-skillscan v0.1.0 — touchagency
+agentscan v0.1.0 — touchagency
 
 Stack: 46 deps · 54 skills · 1 mcp · 2 agents · packageManager=bun
 
@@ -124,8 +124,8 @@ user rule that reuses a builtin id replaces it rather than doubling it).
 
 ```yaml
 # GitHub Actions — fail the job on warning+ findings
-- name: skillscan
-  run: bunx skillscan check --fail-on warning --json
+- name: agentscan
+  run: bunx agentscan check --fail-on warning --json
 ```
 
 Or with a local checkout of this repo:
@@ -138,7 +138,7 @@ Default `failOn` is `never` so local runs stay non-blocking until you opt in.
 
 ## Config
 
-Optional `.skillscanrc.json` (create with `skillscan init`):
+Optional `.agentscanrc.json` (create with `agentscan init`):
 
 ```json
 {
@@ -164,7 +164,7 @@ Budget rules are **info** (hidden unless `--verbose`) so they do not flood defau
 
 ## How to add a rule
 
-Drop a YAML file under **`.skillscan/rules/`** in the project (or pass `--rules-dir`). Builtin rules live in `src/rules/builtin/`.
+Drop a YAML file under **`.agentscan/rules/`** in the project (or pass `--rules-dir`). Builtin rules live in `src/rules/builtin/`.
 
 Minimal rule:
 
@@ -200,7 +200,7 @@ Supported `when` matchers:
 - `policyLines: { file: AGENTS.md|CLAUDE.md, gt: N }`
 - combinators: `all`, `not` — no `any`
 
-**Opting into config thresholds.** `gt` is absolute. To let `.skillscanrc.json`
+**Opting into config thresholds.** `gt` is absolute. To let `.agentscanrc.json`
 retune it, add `thresholdKey` naming a key under `thresholds`:
 
 ```yaml
@@ -216,12 +216,12 @@ rules opt in; nothing rewrites a rule that did not ask for it.
 
 **Unknown clauses do not fire and do not warn.** `when` is opaque JSON, so a
 typo (`depp:` for `dep:`) silently produces a rule that never matches. Check with
-`skillscan rules` that it loaded, then test against a fixture.
+`agentscan rules` that it loaded, then test against a fixture.
 
 List what loaded:
 
 ```bash
-bunx skillscan rules
+bunx agentscan rules
 ```
 
 ## Builtin rules (seed)
@@ -239,8 +239,8 @@ bunx skillscan rules
 
 Structural checks run on every `check` — they live in `src/checks/`, not in the
 YAML rules, because they validate each discovered item against its own file on
-disk rather than matching aggregate facts. `skillscan rules` lists them together
-with the YAML rules, and `skillscan explain <id>` works for either.
+disk rather than matching aggregate facts. `agentscan rules` lists them together
+with the YAML rules, and `agentscan explain <id>` works for either.
 
 | id | Severity | Catches |
 |----|----------|---------|
@@ -291,7 +291,7 @@ bun run src/cli.ts check tests/fixtures/next16-redundant-skill
 
 | Script | Command |
 |--------|---------|
-| `skillscan` | `bun run src/cli.ts` |
+| `agentscan` | `bun run src/cli.ts` |
 | `typecheck` | `tsc --noEmit` |
 | `test` | `bun test` |
 | `check` | `bun run src/cli.ts check` |

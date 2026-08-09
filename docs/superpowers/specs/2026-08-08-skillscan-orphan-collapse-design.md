@@ -1,4 +1,4 @@
-# skillscan — Orphan collapse (text report)
+# agentscan — Orphan collapse (text report)
 
 > **SUPERSEDED — historical design document.**
 > Behavior drifted during implementation; `README.md` is the source of truth.
@@ -10,8 +10,8 @@
 
 **Date:** 2026-08-08  
 **Status:** Approved (brainstorming)  
-**Repo:** `~/projects/skillscan`  
-**Parent:** `2026-08-08-skillscan-design.md` (v1 report-only CLI)
+**Repo:** `~/projects/agentscan`  
+**Parent:** `2026-08-08-agentscan-design.md` (v1 report-only CLI)
 
 ## 1. Problem
 

@@ -48,4 +48,4 @@ export const configSchema = z.object({
   thresholds: thresholdsSchema.default(defaultThresholds),
 });
 
-export type SkillscanConfig = z.infer<typeof configSchema>;
+export type AgentscanConfig = z.infer<typeof configSchema>;

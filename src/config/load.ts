@@ -1,13 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { configSchema, type SkillscanConfig } from "./schema";
+import { configSchema, type AgentscanConfig } from "./schema";
 
 /**
- * Load skillscan config from `.skillscanrc.json` under `root`, or from `configPath`.
+ * Load agentscan config from `.agentscanrc.json` under `root`, or from `configPath`.
  * Missing file → defaults via schema. Invalid JSON throws Error with path (exit 2).
  */
-export function loadConfig(root: string, configPath?: string): SkillscanConfig {
-  const path = configPath ?? join(root, ".skillscanrc.json");
+export function loadConfig(root: string, configPath?: string): AgentscanConfig {
+  const path = configPath ?? join(root, ".agentscanrc.json");
 
   if (!existsSync(path)) {
     return configSchema.parse({});

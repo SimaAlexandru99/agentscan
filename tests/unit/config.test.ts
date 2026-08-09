@@ -8,7 +8,7 @@ import { defaultConfig } from "../../src/config/schema";
 
 describe("loadConfig", () => {
   test("returns defaults when no rc file", () => {
-    const root = mkdtempSync(join(tmpdir(), "skillscan-"));
+    const root = mkdtempSync(join(tmpdir(), "agentscan-"));
     const cfg = loadConfig(root);
     expect(cfg.failOn).toBe("never");
     expect(cfg.skillPaths).toEqual(defaultConfig.skillPaths);
@@ -16,10 +16,10 @@ describe("loadConfig", () => {
     expect(cfg.thresholds.mcp).toBe(5);
   });
 
-  test("merges .skillscanrc.json", () => {
-    const root = mkdtempSync(join(tmpdir(), "skillscan-"));
+  test("merges .agentscanrc.json", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentscan-"));
     writeFileSync(
-      join(root, ".skillscanrc.json"),
+      join(root, ".agentscanrc.json"),
       JSON.stringify({ ignoreSkills: ["keep-me"], failOn: "warning" }),
     );
     const cfg = loadConfig(root);

@@ -1,4 +1,4 @@
-# skillscan orphan collapse Implementation Plan
+# agentscan orphan collapse Implementation Plan
 
 > **COMPLETED / historical.** Shipped across commits `cc3fbc2`…`310b131`; the
 > `- [ ]` checkboxes below were never ticked during execution. Current behavior
@@ -10,7 +10,7 @@
 
 **Architecture:** Report-layer only. Pure helpers in `orphan-summary.ts`; `renderText` partitions orphans vs rest, emits summary line, excludes orphans from `info hidden` when collapsed. Engine/JSON untouched.
 
-**Tech Stack:** TypeScript strict, Bun test, existing `Finding` type. Spec: `docs/superpowers/specs/2026-08-08-skillscan-orphan-collapse-design.md`.
+**Tech Stack:** TypeScript strict, Bun test, existing `Finding` type. Spec: `docs/superpowers/specs/2026-08-08-agentscan-orphan-collapse-design.md`.
 
 ## Global Constraints
 
@@ -140,7 +140,7 @@ describe("buildOrphanSummary", () => {
 - [ ] **Step 2: Run tests — expect FAIL**
 
 ```bash
-cd ~/projects/skillscan && bun test tests/unit/orphan-summary.test.ts
+cd ~/projects/agentscan && bun test tests/unit/orphan-summary.test.ts
 ```
 
 - [ ] **Step 3: Implement `src/report/orphan-summary.ts`**

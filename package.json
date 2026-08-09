@@ -1,13 +1,38 @@
 {
-  "name": "skillscan",
+  "name": "agentscan",
   "version": "0.1.0",
-  "description": "Inventory agent skills/agents/hooks/MCP against package.json",
+  "description": "Find broken agent configuration in a project \u2014 hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile",
   "type": "module",
   "bin": {
-    "skillscan": "./src/cli.ts"
+    "agentscan": "./src/cli.ts"
   },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "agent-skills",
+    "claude-code",
+    "mcp",
+    "hooks",
+    "lint",
+    "config",
+    "cli",
+    "bun"
+  ],
+  "homepage": "https://github.com/SimaAlexandru99/agentscan#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SimaAlexandru99/agentscan.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SimaAlexandru99/agentscan/issues"
+  },
+  "author": "Sima Alexandru <sima.alex33@gmail.com>",
   "scripts": {
-    "skillscan": "bun run src/cli.ts",
+    "preinstall": "node -e \"try{require('child_process').execSync('bun --version',{stdio:'ignore'})}catch{console.error('\\n  agentscan runs on Bun. Install it: https://bun.sh\\n  (the CLI will not start without it)\\n')}\"",
+    "agentscan": "bun run src/cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "check": "bun run src/cli.ts check"

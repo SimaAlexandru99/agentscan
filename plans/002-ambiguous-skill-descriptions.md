@@ -1,4 +1,4 @@
-# Plan 002: skillscan reports skills an agent cannot tell apart
+# Plan 002: agentscan reports skills an agent cannot tell apart
 
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
@@ -27,7 +27,7 @@ description are indistinguishable at selection time: the agent picks by
 whichever it saw first, and the other one is dead weight that still costs
 context on every routing decision.
 
-Every other check in skillscan asks "is this config file intact". This one asks
+Every other check in agentscan asks "is this config file intact". This one asks
 "can the config actually do its job" — which is the reason the tool exists.
 
 Measured across 17 real projects: five pairs of skills share a byte-identical

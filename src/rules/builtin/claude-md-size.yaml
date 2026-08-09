@@ -11,4 +11,4 @@ then:
   subject: "budget:CLAUDE.md"
   message: "CLAUDE.md is long ({{count}} lines > {{threshold}})"
   reason: "Guidance keeps CLAUDE.md under ~200 lines. Long always-on instructions compete with task context."
-  suggest: "Trim or link out; or set thresholds.claudeMdLines in .skillscanrc.json"
+  suggest: "Trim or link out; or set thresholds.claudeMdLines in .agentscanrc.json"

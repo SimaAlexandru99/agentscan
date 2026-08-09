@@ -7,7 +7,7 @@ import { discoverAgentSurface } from "../../src/discover/index";
 
 describe("dedupeSkillsById", () => {
   test("same skill id in two paths keeps one", () => {
-    const root = mkdtempSync(join(tmpdir(), "skillscan-dedupe-"));
+    const root = mkdtempSync(join(tmpdir(), "agentscan-dedupe-"));
     for (const base of [".agents/skills", ".claude/skills"]) {
       const dir = join(root, base, "shared-skill");
       mkdirSync(dir, { recursive: true });

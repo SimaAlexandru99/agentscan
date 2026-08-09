@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import type { SkillscanConfig } from "../config/schema";
+import type { AgentscanConfig } from "../config/schema";
 import { defaultThresholds } from "../config/schema";
 import { coerceVersion, gte, lt } from "../facts/semver";
 import type { Facts, Finding, SkillFact } from "../facts/types";
@@ -222,7 +222,7 @@ function collectionSize(facts: Facts, of: CountOf): number {
 /**
  * `{ count: { of: skills|mcp|agents|hooks, gt: N } }`
  * `gt` is absolute here. A rule that wants users to retune it via
- * `.skillscanrc.json` opts in with `thresholdKey` — see applyThresholdOverrides.
+ * `.agentscanrc.json` opts in with `thresholdKey` — see applyThresholdOverrides.
  */
 function evalCountClause(
   facts: Facts,
@@ -416,7 +416,7 @@ function shouldIgnoreFinding(
 /** Named config threshold, or undefined when the rule did not opt in. */
 function lookupThreshold(
   key: unknown,
-  thresholds: SkillscanConfig["thresholds"],
+  thresholds: AgentscanConfig["thresholds"],
 ): number | undefined {
   if (typeof key !== "string") {
     return undefined;
@@ -426,13 +426,13 @@ function lookupThreshold(
 }
 
 /**
- * Let `.skillscanrc.json` retune a rule's `gt` — but only for rules that opt in
+ * Let `.agentscanrc.json` retune a rule's `gt` — but only for rules that opt in
  * with `thresholdKey`. Keying this on the clause shape instead would silently
  * rewrite every user rule that happens to count skills/mcp/agents.
  */
 function applyThresholdOverrides(
   when: unknown,
-  config: SkillscanConfig,
+  config: AgentscanConfig,
 ): unknown {
   if (!isRecord(when)) {
     return when;
@@ -467,7 +467,7 @@ function applyThresholdOverrides(
 function evaluateRule(
   facts: Facts,
   rule: RuleDefinition,
-  config: SkillscanConfig,
+  config: AgentscanConfig,
 ): Array<{ finding: Finding; ctx: MatchContext }> {
   const when = applyThresholdOverrides(rule.when, config);
 
@@ -545,7 +545,7 @@ function evaluateRule(
 export function runRules(
   facts: Facts,
   rules: RuleDefinition[],
-  config: SkillscanConfig,
+  config: AgentscanConfig,
 ): Finding[] {
   const ignoreRules = new Set(config.ignoreRules);
   const ignoreSkills = new Set(config.ignoreSkills);

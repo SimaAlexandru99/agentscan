@@ -1,4 +1,4 @@
-# skillscan v1 Implementation Plan
+# agentscan v1 Implementation Plan
 
 > **COMPLETED / historical.** Shipped across commits `cc3fbc2`…`310b131`; the
 > `- [ ]` checkboxes below were never ticked during execution. Current behavior
@@ -10,7 +10,7 @@
 
 **Architecture:** Pipeline `discover → extractFacts → loadRules → runRules → report`. Declarative YAML rules + dep→skill map. No disk writes, no network, no LLM in the check path.
 
-**Tech Stack:** TypeScript strict, Bun (package manager + test runner), Zod, yaml parser, Node `parseArgs`. Spec: `docs/superpowers/specs/2026-08-08-skillscan-design.md`.
+**Tech Stack:** TypeScript strict, Bun (package manager + test runner), Zod, yaml parser, Node `parseArgs`. Spec: `docs/superpowers/specs/2026-08-08-agentscan-design.md`.
 
 ## Global Constraints
 
@@ -22,8 +22,8 @@
 - Same tree → identical JSON (sort findings by severity, action, id)
 - Rules must not execute shell
 - Policy file read cap: 100_000 bytes
-- Bin name: `skillscan`
-- Package name: `skillscan` (fallback `agent-skillscan` only if publish blocked later)
+- Bin name: `agentscan`
+- Package name: `agentscan` (fallback `agent-agentscan` only if publish blocked later)
 
 ## File map (create)
 
@@ -35,7 +35,7 @@
 | `src/version.ts` | package version string |
 | `src/cli.ts` | argv router |
 | `src/config/schema.ts` | Zod config + defaults |
-| `src/config/load.ts` | load `.skillscanrc.json` |
+| `src/config/load.ts` | load `.agentscanrc.json` |
 | `src/facts/types.ts` | Facts, Finding, Action, Severity |
 | `src/facts/semver.ts` | parse/compare versions |
 | `src/facts/extract.ts` | package.json + configs → stack facts |
@@ -72,15 +72,15 @@
 
 ```json
 {
-  "name": "skillscan",
+  "name": "agentscan",
   "version": "0.1.0",
   "description": "Inventory agent skills/agents/hooks/MCP against package.json",
   "type": "module",
   "bin": {
-    "skillscan": "./src/cli.ts"
+    "agentscan": "./src/cli.ts"
   },
   "scripts": {
-    "skillscan": "bun run src/cli.ts",
+    "agentscan": "bun run src/cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "check": "bun run src/cli.ts check"
@@ -129,7 +129,7 @@ export const VERSION = "0.1.0";
 - [ ] **Step 4: Install and verify**
 
 ```bash
-cd ~/projects/skillscan && bun install && bun test
+cd ~/projects/agentscan && bun install && bun test
 ```
 
 Expected: install ok; tests exit 0 (no tests yet is fine — bun test exits 0 with "No tests found" or add empty smoke).
@@ -138,7 +138,7 @@ Expected: install ok; tests exit 0 (no tests yet is fine — bun test exits 0 wi
 
 ```bash
 git add package.json bun.lock tsconfig.json LICENSE src/version.ts
-git commit -m "chore: scaffold skillscan package"
+git commit -m "chore: scaffold agentscan package"
 ```
 
 ---
@@ -152,8 +152,8 @@ git commit -m "chore: scaffold skillscan package"
 **Interfaces:**
 - Produces:
   - `export type Action | Severity | Finding | Facts | SkillFact | ...` in `facts/types.ts`
-  - `export const defaultConfig`, `configSchema`, `type SkillscanConfig` in `config/schema.ts`
-  - `export function loadConfig(root: string, configPath?: string): SkillscanConfig`
+  - `export const defaultConfig`, `configSchema`, `type AgentscanConfig` in `config/schema.ts`
+  - `export function loadConfig(root: string, configPath?: string): AgentscanConfig`
 
 - [ ] **Step 1: Write failing test**
 
@@ -168,16 +168,16 @@ import { defaultConfig } from "../../src/config/schema";
 
 describe("loadConfig", () => {
   test("returns defaults when no rc file", () => {
-    const root = mkdtempSync(join(tmpdir(), "skillscan-"));
+    const root = mkdtempSync(join(tmpdir(), "agentscan-"));
     const cfg = loadConfig(root);
     expect(cfg.failOn).toBe("never");
     expect(cfg.skillPaths).toEqual(defaultConfig.skillPaths);
   });
 
-  test("merges .skillscanrc.json", () => {
-    const root = mkdtempSync(join(tmpdir(), "skillscan-"));
+  test("merges .agentscanrc.json", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentscan-"));
     writeFileSync(
-      join(root, ".skillscanrc.json"),
+      join(root, ".agentscanrc.json"),
       JSON.stringify({ ignoreSkills: ["keep-me"], failOn: "warning" }),
     );
     const cfg = loadConfig(root);
@@ -222,10 +222,10 @@ export const configSchema = z.object({
   includeGlobal: z.boolean().default(false),
 });
 
-export type SkillscanConfig = z.infer<typeof configSchema>;
+export type AgentscanConfig = z.infer<typeof configSchema>;
 ```
 
-`src/config/load.ts`: read `join(root, ".skillscanrc.json")` or `configPath`; if missing return `configSchema.parse({})`; if present `JSON.parse` then parse with schema; on invalid JSON throw Error with path (caller maps to exit 2).
+`src/config/load.ts`: read `join(root, ".agentscanrc.json")` or `configPath`; if missing return `configSchema.parse({})`; if present `JSON.parse` then parse with schema; on invalid JSON throw Error with path (caller maps to exit 2).
 
 - [ ] **Step 4: Run test — expect PASS**
 
@@ -296,8 +296,8 @@ git commit -m "feat: semver coerce and compare"
 **Interfaces:**
 - Produces:
   - `export function resolveRoot(startDir: string): string` — walk up for package.json; throw if none
-  - `export function discoverAgentSurface(root: string, config: SkillscanConfig, opts: { includeGlobal: boolean }): { skills, agents, hooks, mcp, policyFiles }`
-  - `export function extractFacts(root: string, config: SkillscanConfig, opts?: { includeGlobal?: boolean }): Facts`
+  - `export function discoverAgentSurface(root: string, config: AgentscanConfig, opts: { includeGlobal: boolean }): { skills, agents, hooks, mcp, policyFiles }`
+  - `export function extractFacts(root: string, config: AgentscanConfig, opts?: { includeGlobal?: boolean }): Facts`
 
 **Discovery rules:**
 - Skills: for each `config.skillPaths` relative to root, if dir exists, each **subdirectory** is a skill (`id` = folder name). If `SKILL.md` exists, read first 4KB for optional frontmatter `name`/`description` (simple regex or line scan; no full YAML required if fragile — folder name is source of truth for id).
@@ -389,7 +389,7 @@ git commit -m "feat: dep-skill map and rule loader"
 - Test: `tests/unit/engine.test.ts`
 
 **Interfaces:**
-- Produces: `export function runRules(facts: Facts, rules: RuleDefinition[], config: SkillscanConfig): Finding[]`
+- Produces: `export function runRules(facts: Facts, rules: RuleDefinition[], config: AgentscanConfig): Finding[]`
 - Respect `config.ignoreSkills` (skip findings whose subject skill id is ignored)
 - Respect `config.ignoreRules`
 - Template replace `{{matchedSkill}}`, `{{matchedSkillPath}}` in subject/message/suggest
@@ -488,7 +488,7 @@ Pipeline inside `runCheck`:
 1. `resolveRoot(dir ?? process.cwd())`
 2. `loadConfig(root, configPath)` — merge CLI failOn/global over config
 3. `extractFacts(root, config, { includeGlobal })`
-4. `loadRules({ builtinDir: join(import.meta.dir, "../rules/builtin"), userRulesDir: rulesDir ?? join(root, ".skillscan/rules"), ignoreRules })`
+4. `loadRules({ builtinDir: join(import.meta.dir, "../rules/builtin"), userRulesDir: rulesDir ?? join(root, ".agentscan/rules"), ignoreRules })`
 5. `runRules` → `sortFindings`
 6. print text or json to stdout
 7. return `exitCode(...)`
@@ -501,7 +501,7 @@ CLI (`src/cli.ts`):
 
 ```ts
 // rough check argv
-// skillscan check [dir] --json --quiet --verbose --fail-on never --global --config path --rules-dir path
+// agentscan check [dir] --json --quiet --verbose --fail-on never --global --config path --rules-dir path
 ```
 
 - [ ] **Step 1: Integration test**
@@ -592,7 +592,7 @@ git commit -m "test: four fixtures integration coverage"
 **Interfaces:**
 - `runExplain(findingId, options)` — re-run check pipeline on dir, find finding by id, print message+reason+evidence+suggest; exit 1 if not found
 - `runRules(options)` — load rules, print `id` + description one per line
-- `runInit(dir)` — write `.skillscanrc.json` with `defaultConfig` if not exists; refuse overwrite unless `--force` (add `--force` flag)
+- `runInit(dir)` — write `.agentscanrc.json` with `defaultConfig` if not exists; refuse overwrite unless `--force` (add `--force` flag)
 
 - [ ] **Step 1: Implement three commands + CLI cases; test init writes file; commit**
 
@@ -607,14 +607,14 @@ git commit -m "feat: explain, rules, and init commands"
 **Files:**
 - Modify: `README.md`
 
-- [ ] **Step 1: Expand README** with install (`bun add -d skillscan` / `bunx skillscan`), sample output, CI snippet:
+- [ ] **Step 1: Expand README** with install (`bun add -d agentscan` / `bunx agentscan`), sample output, CI snippet:
 
 ```yaml
 # optional CI
-- run: bunx skillscan check --fail-on warning --json
+- run: bunx agentscan check --fail-on warning --json
 ```
 
-How to add a rule (drop YAML in `.skillscan/rules/`). Link to design spec.
+How to add a rule (drop YAML in `.agentscan/rules/`). Link to design spec.
 
 - [ ] **Step 2: Smoke (read-only) on one real repo**
 
@@ -662,7 +662,7 @@ None intentional. Engine `when` clause table is the full v1 matcher set — do n
 ## Type consistency
 
 - `Facts` / `Finding` defined Task 2; used by engine (6), report (7), check (8).
-- `SkillscanConfig` from Task 2; `failOn` union matches CLI.
+- `AgentscanConfig` from Task 2; `failOn` union matches CLI.
 - `runCheck` returns `{ exitCode, stdout }` for tests; CLI is thin wrapper.
 
 ---

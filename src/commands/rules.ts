@@ -27,7 +27,7 @@ export async function runRulesCommand(
 
   const builtinDir = join(import.meta.dir, "../rules/builtin");
   const userRulesDir =
-    options.rulesDir ?? join(root, ".skillscan", "rules");
+    options.rulesDir ?? join(root, ".agentscan", "rules");
   const rules = loadRules({
     builtinDir,
     userRulesDir,

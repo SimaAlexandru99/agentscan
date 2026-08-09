@@ -1,4 +1,4 @@
-# skillscan — Design Spec
+# agentscan — Design Spec
 
 > **SUPERSEDED — historical design document.**
 > Behavior drifted during implementation; `README.md` is the source of truth.
@@ -11,8 +11,8 @@
 **Date:** 2026-08-08  
 **Status:** Approved (brainstorming)  
 **License (target):** MIT  
-**Bin name:** `skillscan`  
-**Repo (canonical):** `~/projects/skillscan`
+**Bin name:** `agentscan`  
+**Repo (canonical):** `~/projects/agentscan`
 
 ## 1. Problem
 
@@ -44,7 +44,7 @@ Ship a **local, deterministic CLI** that inventories **agent surface** against *
 2. Flags **missing** skill when a mapped dep exists (e.g. `better-auth`) and no matching skill.
 3. Flags **orphan** skills (no dep mapping, not referenced in policy files).
 4. Two runs on the same tree produce identical JSON findings (stable ids, sorted output).
-5. A new user runs `bunx skillscan check` and understands delete/add within 30 seconds of reading the report.
+5. A new user runs `bunx agentscan check` and understands delete/add within 30 seconds of reading the report.
 
 ## 5. Architecture
 
@@ -65,11 +65,11 @@ No network in v1 check path.
 ## 6. Repository layout
 
 ```text
-skillscan/
+agentscan/
   package.json
   README.md
   LICENSE
-  docs/superpowers/specs/2026-08-08-skillscan-design.md
+  docs/superpowers/specs/2026-08-08-agentscan-design.md
   src/
     cli.ts
     commands/check.ts
@@ -162,7 +162,7 @@ type Finding = {
 
 ## 8. Rules format
 
-Declarative YAML. Builtin rules ship with the package; users may add `.skillscan/rules/*.yaml`.
+Declarative YAML. Builtin rules ship with the package; users may add `.agentscan/rules/*.yaml`.
 
 Matchers (v1):
 
@@ -213,7 +213,7 @@ Community can PR map rows and rules.
 ## 9. CLI contract
 
 ```text
-skillscan check [dir]
+agentscan check [dir]
   --json
   --quiet
   --verbose              # show KEEP findings
@@ -222,10 +222,10 @@ skillscan check [dir]
   --config <path>
   --rules-dir <path>
 
-skillscan explain <findingId>
-skillscan rules
-skillscan init
-skillscan --version | --help
+agentscan explain <findingId>
+agentscan rules
+agentscan init
+agentscan --version | --help
 ```
 
 ### Exit codes
@@ -245,7 +245,7 @@ skillscan --version | --help
 - Policy: `AGENTS.md`, `CLAUDE.md`
 - Optional global (`--global`): `~/.claude/skills`, `~/.codex/skills` (if present), marked `source: "global"`
 
-## 10. Config (`.skillscanrc.json`)
+## 10. Config (`.agentscanrc.json`)
 
 Zod-validated. Missing file → defaults.
 
@@ -261,14 +261,14 @@ Zod-validated. Missing file → defaults.
 }
 ```
 
-`skillscan init` writes this file with defaults.
+`agentscan init` writes this file with defaults.
 
 ## 11. Report format
 
 ### Human (default)
 
 ```text
-skillscan v0.1.0 — <package name or folder>
+agentscan v0.1.0 — <package name or folder>
 
 Stack: next@16.3.0 · better-auth@… · packageManager=bun
 
@@ -327,7 +327,7 @@ Findings sorted by `(severity, action, id)` for determinism.
 
 - MIT license  
 - README: problem, install, sample output, CI snippet, “add a rule”  
-- Publish name: `skillscan`; if taken, `agent-skillscan`  
+- Publish name: `agentscan`; if taken, `agent-agentscan`  
 - No account required  
 
 ## 15. Post-v1 (explicitly later)
@@ -355,8 +355,8 @@ Findings sorted by `(severity, action, id)` for determinism.
 | Product wedge | Skills inventory / prune (+ agents, hooks, MCP, policy drift) |
 | v1 writes disk? | **No** — report only |
 | failOn default | **never** |
-| Bin / project name | **skillscan** |
-| Canonical path | `~/projects/skillscan` |
+| Bin / project name | **agentscan** |
+| Canonical path | `~/projects/agentscan` |
 | LLM in check path | **No** |
 
 ## 18. Implementation notes (for planning)

@@ -1,4 +1,4 @@
-# Plan 001: skillscan reports skill files that point at bundled files which do not exist
+# Plan 001: agentscan reports skill files that point at bundled files which do not exist
 
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
@@ -25,10 +25,10 @@
 A `SKILL.md` routinely tells the agent to read a bundled file —
 `references/concepts/tracing.md`, `scripts/report.ts`. When that file is not
 there, the agent follows a dead pointer and the skill silently degrades. This is
-the same failure class as `hook.missing-script`, which skillscan already reports
+the same failure class as `hook.missing-script`, which agentscan already reports
 and which found six registered-but-missing guard hooks in one real project.
 
-skillscan cannot see it today because it never opens the body of a `SKILL.md` —
+agentscan cannot see it today because it never opens the body of a `SKILL.md` —
 it reads the frontmatter block and stops. Measured across 17 real projects: 1674
 unique bundled-file references, **17 of them resolve to nothing**, in skills that
 are otherwise well-formed and therefore currently reported as clean.
@@ -120,7 +120,7 @@ Package manager is **bun only** — never npm or yarn.
   the engine matches aggregate facts and is the wrong shape for per-item
   validation.
 - `src/report/` — output format is fine as is.
-- Any `--fix` behaviour. skillscan is read-only by design ("v1 does not write
+- Any `--fix` behaviour. agentscan is read-only by design ("v1 does not write
   the tree"). Report only.
 
 ## Git workflow

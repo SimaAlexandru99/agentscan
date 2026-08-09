@@ -165,7 +165,7 @@ describe("renderText", () => {
       quiet: false,
     });
 
-    expect(text).toContain("skillscan v0.1.0 — my-app");
+    expect(text).toContain("agentscan v0.1.0 — my-app");
     expect(text).toContain("Stack:");
     expect(text).toContain("packageManager=bun");
     expect(text).toContain("DELETE  skill:next-cache-components");
@@ -274,7 +274,7 @@ describe("renderText", () => {
 
     expect(text.trimStart().startsWith("Summary:")).toBe(true);
     expect(text).not.toContain("DELETE");
-    expect(text).not.toContain("skillscan v");
+    expect(text).not.toContain("agentscan v");
     expect(text).not.toContain("Stack:");
   });
 

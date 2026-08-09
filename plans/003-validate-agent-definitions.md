@@ -1,4 +1,4 @@
-# Plan 003: skillscan validates agent definition files instead of only counting them
+# Plan 003: agentscan validates agent definition files instead of only counting them
 
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
@@ -26,7 +26,7 @@
 agent's name, description, model, and allowed tools. A typo in `model:` or a
 non-existent tool name means the agent is misconfigured, and nothing reports it.
 
-skillscan currently reads **nothing** from these files. `discoverAgents`
+agentscan currently reads **nothing** from these files. `discoverAgents`
 (`src/discover/index.ts:451`) does zero `readFileSync` calls — it stats each
 file and keeps the filename. The only thing agents feed is a count, consumed by
 the `budget.agents` YAML rule.

@@ -8,15 +8,15 @@ import type { FailOn } from "./report/exit-code";
 import { VERSION } from "./version";
 
 function printHelp(): void {
-  const text = `skillscan v${VERSION}
+  const text = `agentscan v${VERSION}
 
 Usage:
-  skillscan check [dir] [options]
-  skillscan explain <findingId> [dir]
-  skillscan rules [dir]
-  skillscan init [dir] [--force]
-  skillscan --version
-  skillscan --help
+  agentscan check [dir] [options]
+  agentscan explain <findingId> [dir]
+  agentscan rules [dir]
+  agentscan init [dir] [--force]
+  agentscan --version
+  agentscan --help
 
 
 check options:
@@ -29,7 +29,7 @@ check options:
   --rules-dir <path>     User rules directory
 
 init options:
-  --force                Overwrite existing .skillscanrc.json
+  --force                Overwrite existing .agentscanrc.json
 `;
   process.stdout.write(`${text}\n`);
 }
@@ -122,7 +122,7 @@ export async function main(argv: string[]): Promise<number> {
       case "explain": {
         const findingId = positionals[1];
         if (findingId === undefined || findingId.length === 0) {
-          process.stderr.write("Usage: skillscan explain <findingId> [dir]\n");
+          process.stderr.write("Usage: agentscan explain <findingId> [dir]\n");
           return 2;
         }
         const result = await runExplain(findingId, {

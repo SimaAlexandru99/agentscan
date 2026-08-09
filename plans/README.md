@@ -5,7 +5,7 @@ Execute in the order below unless dependencies say otherwise. Each executor:
 read the plan fully before starting, honor its STOP conditions, and update your
 row when done.
 
-These plans share one theme: **skillscan currently reads config metadata and
+These plans share one theme: **agentscan currently reads config metadata and
 never opens the body of a file.** It parses frontmatter, the `hooks` key, MCP
 entries and the lockfile — then stops. That is the ceiling on what it can find,
 and every plan here lifts part of it.
@@ -81,7 +81,7 @@ Measured across 17 projects under `~/projects` at planning time:
 - **Report `.claude/settings.local.json` files tracked by git** (4 real hits:
   dialyx, dream-detailing-project, nicmarmir, touchagency). Deferred, not
   rejected — the finding is real, but the check needs to know what git tracks,
-  and skillscan is currently pure-filesystem with no subprocess calls. That is a
+  and agentscan is currently pure-filesystem with no subprocess calls. That is a
   dependency decision for the maintainer, not something an executor should
   decide inside a plan.
 

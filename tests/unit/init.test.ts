@@ -7,14 +7,14 @@ import { runInit } from "../../src/commands/init";
 import { defaultConfig } from "../../src/config/schema";
 
 describe("runInit", () => {
-  test("writes .skillscanrc.json with defaultConfig", async () => {
-    const root = mkdtempSync(join(tmpdir(), "skillscan-init-"));
+  test("writes .agentscanrc.json with defaultConfig", async () => {
+    const root = mkdtempSync(join(tmpdir(), "agentscan-init-"));
     const result = await runInit(root);
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain(".skillscanrc.json");
+    expect(result.stdout).toContain(".agentscanrc.json");
 
-    const path = join(root, ".skillscanrc.json");
+    const path = join(root, ".agentscanrc.json");
     expect(existsSync(path)).toBe(true);
 
     const written = JSON.parse(readFileSync(path, "utf8")) as unknown;
@@ -22,8 +22,8 @@ describe("runInit", () => {
   });
 
   test("refuses overwrite without --force", async () => {
-    const root = mkdtempSync(join(tmpdir(), "skillscan-init-"));
-    const path = join(root, ".skillscanrc.json");
+    const root = mkdtempSync(join(tmpdir(), "agentscan-init-"));
+    const path = join(root, ".agentscanrc.json");
     writeFileSync(path, JSON.stringify({ failOn: "error" }), "utf8");
 
     const result = await runInit(root);
@@ -37,8 +37,8 @@ describe("runInit", () => {
   });
 
   test("overwrites with --force", async () => {
-    const root = mkdtempSync(join(tmpdir(), "skillscan-init-"));
-    const path = join(root, ".skillscanrc.json");
+    const root = mkdtempSync(join(tmpdir(), "agentscan-init-"));
+    const path = join(root, ".agentscanrc.json");
     writeFileSync(path, JSON.stringify({ failOn: "error" }), "utf8");
 
     const result = await runInit(root, { force: true });

@@ -35,14 +35,14 @@ describe("skillMatchesPattern", () => {
 describe("loadRules", () => {
   test("returns empty list if builtin dir missing", () => {
     const rules = loadRules({
-      builtinDir: join(tmpdir(), "skillscan-no-such-builtin-dir"),
+      builtinDir: join(tmpdir(), "agentscan-no-such-builtin-dir"),
       ignoreRules: [],
     });
     expect(rules).toEqual([]);
   });
 
   test("loads valid yaml rules and skips ignored ids", () => {
-    const dir = mkdtempSync(join(tmpdir(), "skillscan-rules-"));
+    const dir = mkdtempSync(join(tmpdir(), "agentscan-rules-"));
     writeFileSync(
       join(dir, "keep-me.yaml"),
       `
@@ -82,8 +82,8 @@ then:
   });
 
   test("merges user rules after builtin", () => {
-    const builtin = mkdtempSync(join(tmpdir(), "skillscan-builtin-"));
-    const user = mkdtempSync(join(tmpdir(), "skillscan-user-"));
+    const builtin = mkdtempSync(join(tmpdir(), "agentscan-builtin-"));
+    const user = mkdtempSync(join(tmpdir(), "agentscan-user-"));
     writeFileSync(
       join(builtin, "a.yaml"),
       `
@@ -117,8 +117,8 @@ then:
   });
 
   test("user rule with same id overrides builtin, keeping its position", () => {
-    const builtin = mkdtempSync(join(tmpdir(), "skillscan-builtin-"));
-    const user = mkdtempSync(join(tmpdir(), "skillscan-user-"));
+    const builtin = mkdtempSync(join(tmpdir(), "agentscan-builtin-"));
+    const user = mkdtempSync(join(tmpdir(), "agentscan-user-"));
     writeFileSync(
       join(builtin, "a.yaml"),
       `
@@ -165,7 +165,7 @@ then:
   });
 
   test("skips missing userRulesDir without throwing", () => {
-    const builtin = mkdtempSync(join(tmpdir(), "skillscan-builtin-"));
+    const builtin = mkdtempSync(join(tmpdir(), "agentscan-builtin-"));
     writeFileSync(
       join(builtin, "a.yaml"),
       `
@@ -180,7 +180,7 @@ then:
 
     const rules = loadRules({
       builtinDir: builtin,
-      userRulesDir: join(tmpdir(), "skillscan-no-user-rules"),
+      userRulesDir: join(tmpdir(), "agentscan-no-user-rules"),
       ignoreRules: [],
     });
 
@@ -188,7 +188,7 @@ then:
   });
 
   test("throws on invalid rule missing required fields", () => {
-    const dir = mkdtempSync(join(tmpdir(), "skillscan-bad-rule-"));
+    const dir = mkdtempSync(join(tmpdir(), "agentscan-bad-rule-"));
     writeFileSync(
       join(dir, "bad.yaml"),
       `
@@ -205,7 +205,7 @@ then:
   });
 
   test("empty builtin dir yields empty list", () => {
-    const dir = mkdtempSync(join(tmpdir(), "skillscan-empty-rules-"));
+    const dir = mkdtempSync(join(tmpdir(), "agentscan-empty-rules-"));
     // ensure empty (no yaml)
     mkdirSync(join(dir, "subdir"), { recursive: true });
     const rules = loadRules({ builtinDir: dir, ignoreRules: [] });

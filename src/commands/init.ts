@@ -13,7 +13,7 @@ export type InitResult = {
 };
 
 /**
- * Write `.skillscanrc.json` with defaultConfig.
+ * Write `.agentscanrc.json` with defaultConfig.
  * Refuses to overwrite an existing file unless `force` is true.
  */
 export async function runInit(
@@ -21,7 +21,7 @@ export async function runInit(
   options: InitOptions = {},
 ): Promise<InitResult> {
   const root = resolve(dir ?? process.cwd());
-  const path = join(root, ".skillscanrc.json");
+  const path = join(root, ".agentscanrc.json");
 
   if (existsSync(path) && !options.force) {
     return {
