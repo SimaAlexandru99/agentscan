@@ -30,6 +30,58 @@ async function report(dir: string): Promise<JsonReport> {
   return JSON.parse(result.stdout) as JsonReport;
 }
 
+describe("a parser error never carries source text out", () => {
+  // A parser quotes the offending fragment back. When the unparseable file is
+  // an MCP config or a SKILL.md, that fragment can be a credential — and the
+  // README tells people to pipe --json into CI logs.
+  const CANARY = "ghp_S3CR3TCANARYabcdefghij0123456789";
+
+  test("an unquoted token in malformed JSON is not echoed", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".mcp.json": `{"K": ${CANARY}}`,
+    });
+    const text = await runCheck({ dir, failOn: "never" });
+    const json = await runCheck({ dir, json: true, failOn: "never" });
+
+    expect(text.stdout).not.toContain("S3CR3TCANARY");
+    expect(json.stdout).not.toContain("S3CR3TCANARY");
+    expect(json.stdout).toContain("config.unreadable");
+  });
+
+  test("an unresolved YAML alias in frontmatter is not echoed", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/s/SKILL.md": `---\nname: s\nk: *${CANARY}\n---\n`,
+    });
+    const text = await runCheck({ dir, failOn: "never" });
+    const json = await runCheck({ dir, json: true, failOn: "never" });
+
+    expect(text.stdout).not.toContain("S3CR3TCANARY");
+    expect(json.stdout).not.toContain("S3CR3TCANARY");
+  });
+
+  test("the position a parser reports survives — it is the actionable part", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/s/SKILL.md": "---\nname: [unclosed\n---\n",
+    });
+    const json = await runCheck({ dir, json: true, failOn: "never" });
+    const payload = JSON.parse(json.stdout) as {
+      findings: {
+        ruleId: string;
+        evidence: { kind: string; value: string }[];
+      }[];
+    };
+    const detail = payload.findings
+      .find((f) => f.ruleId === "config.unreadable")
+      ?.evidence.find((e) => e.kind === "detail")?.value;
+
+    expect(detail).toBeDefined();
+    expect(detail).toMatch(/line \d+/);
+  });
+});
+
 describe("unreadable input is reported, never swallowed", () => {
   test("a corrupt package.json is an error finding", async () => {
     const dir = project({ "package.json": "{not json" });
