@@ -261,6 +261,8 @@ with the YAML rules, and `agentscan explain <id>` works for either.
 | `config.unreadable` | error | A config file that is not valid JSON, so whatever it declares is silently not in effect |
 | `hook.missing-script` | error | A registered hook whose script does not exist — it never runs |
 | `hook.unknown-event` | error | A hook registered under an event name that is never dispatched |
+| `agent.missing-frontmatter` | warning | An agent definition with no `---` block |
+| `agent.missing-description` | info | Agent frontmatter has no `description`, so it will not be dispatched on its own |
 | `mcp.no-launch` | error | An MCP server with neither `command` nor `url`; its tools are never available |
 | `mcp.url-without-type` | error | A remote MCP server with a `url` but no `type` — read as stdio, fails, and is skipped |
 | `mcp.hardcoded-secret` | error | A token-shaped literal in MCP config (the value is never echoed back) |
@@ -274,6 +276,13 @@ with the YAML rules, and `agentscan explain <id>` works for either.
 | `skill.not-in-lock` | info | A skill on disk that the lockfile does not track — local and unpinned |
 | `skill.description-budget` | info | Skill names + descriptions exceed the startup character budget |
 | `skill.no-lockfile` | info | Skills present with no lockfile at all (only with `requireLock`) |
+
+Agent definitions are checked for structure only. An agent's frontmatter `name`
+is a display name — 16 of 34 real files declare one that differs from the
+filename, and nothing keys on the filename — so it is deliberately not compared,
+and a test guards against re-adding that check. Model identifiers and tool names
+are likewise not validated: both would need a hardcoded list, which is the shape
+that already shipped a false error. See [plans/003](plans/003-validate-agent-definitions.md).
 
 `skill.broken-reference` reads the body, not just the frontmatter. It looks for
 paths under the conventional bundled directories (`scripts/`, `references/`,
@@ -313,7 +322,6 @@ When adding a check, add its spec line there first.
   not reproducible from `SKILL.md` bytes alone, so it is not implemented.
 - **Bun only.** `import.meta.dir` / `import.meta.main`; it will not run on Node.
 - Policy files are read up to 100 KB, so `policyLines` undercounts past that.
-- Agent definition files under `.claude/agents/` are counted but not validated.
 
 ## Development
 

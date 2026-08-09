@@ -624,7 +624,19 @@ function discoverAgents(root: string, errors: ConfigErrorFact[]): AgentFact[] {
     } catch {
       continue;
     }
-    facts.push({ name: name.slice(0, -".md".length), path: filePath });
+    const fm = readFrontmatter(filePath, errors);
+    const fact: AgentFact = {
+      name: name.slice(0, -".md".length),
+      path: filePath,
+      hasFrontmatter: fm.hasFrontmatter,
+    };
+    if (fm.name !== undefined) {
+      fact.frontmatterName = fm.name;
+    }
+    if (fm.description !== undefined) {
+      fact.description = fm.description;
+    }
+    facts.push(fact);
   }
   return facts;
 }

@@ -393,6 +393,66 @@ describe("broken bundled references", () => {
   });
 });
 
+describe("agent definitions", () => {
+  const agent = (
+    name: string,
+    extra: { hasFrontmatter?: boolean; description?: string } = {},
+  ) => ({
+    name,
+    path: `.claude/agents/${name}.md`,
+    hasFrontmatter: true,
+    ...extra,
+  });
+
+  test("no frontmatter block is a warning", () => {
+    const findings = runChecks(
+      baseFacts({ agents: [agent("reviewer", { hasFrontmatter: false })] }),
+    );
+    expect(findings.map((f) => f.ruleId)).toEqual(["agent.missing-frontmatter"]);
+    expect(findings[0]!.severity).toBe("warning");
+    expect(findings[0]!.subject).toBe("agent:reviewer");
+  });
+
+  test("frontmatter with no description is info", () => {
+    const findings = runChecks(baseFacts({ agents: [agent("reviewer")] }));
+    expect(findings.map((f) => f.ruleId)).toEqual(["agent.missing-description"]);
+    expect(findings[0]!.severity).toBe("info");
+  });
+
+  test("a complete agent produces nothing", () => {
+    expect(
+      runChecks(baseFacts({ agents: [agent("reviewer", { description: "Reviews code" })] })),
+    ).toEqual([]);
+  });
+
+  test("missing frontmatter is reported once, not also as missing description", () => {
+    const findings = runChecks(
+      baseFacts({ agents: [agent("x", { hasFrontmatter: false })] }),
+    );
+    expect(findings).toHaveLength(1);
+  });
+
+  test("a display name unlike the filename is NOT a finding", () => {
+    // 16 of 34 real agent files declare a display name that differs from the
+    // filename (`name: API Platform Engineer`). Nothing keys on the filename.
+    // Regression guard against re-adding the check plan 003 prohibits.
+    const findings = runChecks(
+      baseFacts({
+        agents: [
+          {
+            name: "engineering-api-platform-engineer",
+            path: ".claude/agents/engineering-api-platform-engineer.md",
+            hasFrontmatter: true,
+            frontmatterName: "API Platform Engineer",
+            description: "Designs API platforms",
+          },
+        ],
+      }),
+    );
+    expect(findings).toEqual([]);
+  });
+});
+
 describe("skills an agent cannot tell apart", () => {
   const desc = (id: string, description: string) =>
     skill({ id, frontmatterName: id, description });
@@ -616,6 +676,10 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
     const withLock = baseFacts({
       configErrors: [
         { path: "/tmp/proj/.mcp.json", kind: "invalid-json", detail: "x" },
+      ],
+      agents: [
+        { name: "bare", path: ".claude/agents/bare.md", hasFrontmatter: false },
+        { name: "nodesc", path: ".claude/agents/nodesc.md", hasFrontmatter: true },
       ],
       hooks: [
         {

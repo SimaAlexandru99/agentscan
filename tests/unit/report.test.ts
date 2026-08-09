@@ -351,7 +351,14 @@ describe("renderText", () => {
           raw: "{}",
         },
       ],
-      agents: [{ name: "reviewer", path: ".claude/agents/reviewer.md" }],
+      agents: [
+        {
+          name: "reviewer",
+          path: ".claude/agents/reviewer.md",
+          hasFrontmatter: true,
+          description: "Reviews code",
+        },
+      ],
     });
     const text = renderText({
       version: "0.1.0",

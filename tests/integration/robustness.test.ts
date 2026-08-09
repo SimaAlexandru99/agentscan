@@ -238,6 +238,27 @@ describe("only agent definition files count as agents", () => {
   });
 });
 
+describe("agent definitions, end to end", () => {
+  test("a bare agent file is reported; a complete one is not", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".claude/agents/bare.md": "# just prose, no frontmatter\n",
+      ".claude/agents/good.md":
+        "---\nname: Code Reviewer\ndescription: Reviews diffs for correctness\n---\n\n# body\n",
+    });
+    const payload = await report(dir);
+    const agentFindings = payload.findings.filter((f) =>
+      f.ruleId.startsWith("agent."),
+    );
+
+    expect(agentFindings.map((f) => f.ruleId)).toEqual([
+      "agent.missing-frontmatter",
+    ]);
+    // good.md declares a display name unlike its filename — by design
+    expect(JSON.stringify(payload.findings)).not.toContain("good");
+  });
+});
+
 describe("root resolution is visible", () => {
   test("a directory with no package.json reports which root it walked up to", async () => {
     const parent = project({ "package.json": '{"name":"parent"}' });

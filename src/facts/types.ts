@@ -44,7 +44,19 @@ export type HookFact = {
   scriptExists?: boolean;
 };
 
-export type AgentFact = { name: string; path: string };
+export type AgentFact = {
+  name: string;
+  path: string;
+  /** Frontmatter present and parseable as a `---` block. */
+  hasFrontmatter: boolean;
+  /**
+   * `name:` from frontmatter — a display name. Deliberately NOT compared to the
+   * filename: 16 of 34 real agent files differ intentionally and nothing keys
+   * on the filename. See plans/003 and docs/spec/skills.md.
+   */
+  frontmatterName?: string;
+  description?: string;
+};
 
 /** A config file agentscan could not read — itself a finding, never swallowed. */
 export type ConfigErrorFact = {
