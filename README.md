@@ -134,9 +134,12 @@ score = max(0, 100 - 10 × errors - 3 × warnings)
 ```
 
 That is the whole formula. Count two lines of the report and you can recompute
-it — which is the point: both comparable tools score 0–100 and neither documents
-how, and a number whose derivation cannot be inspected is exactly the false
-precision a score is supposed to replace.
+it. The comparable tools both score 0-100 and neither states its formula in
+prose: shadscan's category weights are readable in its MIT source but not
+documented, and react-doctor computes the score by POSTing your diagnostics to
+`react.doctor/api/score`, so it cannot be recomputed offline at all. A number
+whose derivation cannot be inspected is the false precision a score is supposed
+to replace.
 
 **Deduction, not coverage.** The obvious model — checks passed over checks run —
 was measured against 17 real projects and rejected. Every one scored between
