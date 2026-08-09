@@ -30,7 +30,8 @@ export async function runExplain(
     return {
       exitCode: 1,
       stdout: "",
-      stderr: `Finding not found: ${findingId}\n`,
+      // The argument is echoed back, so it is untrusted like anything else.
+      stderr: `Finding not found: ${safe(findingId)}\n`,
     };
   }
 

@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { STRUCTURAL_CHECKS } from "../checks/index";
+import { safe } from "../report/safe";
 import { loadConfig } from "../config/load";
 import { resolveRoot } from "../discover/index";
 import { loadRules } from "../rules/load";
@@ -44,8 +45,10 @@ export async function runRulesCommand(
     lines.push(`${check.id}  ${check.description}`);
   }
   for (const rule of rules) {
-    const desc = rule.description ?? "";
-    lines.push(desc.length > 0 ? `${rule.id}  ${desc}` : rule.id);
+    // A project-supplied rule file controls both of these strings.
+    const id = safe(rule.id);
+    const desc = safe(rule.description ?? "");
+    lines.push(desc.length > 0 ? `${id}  ${desc}` : id);
   }
 
   const stdout = lines.length > 0 ? `${lines.join("\n")}\n` : "";

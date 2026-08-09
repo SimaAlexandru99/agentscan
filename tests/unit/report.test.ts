@@ -294,7 +294,8 @@ describe("renderText", () => {
     });
 
     expect(text).toContain("…");
-    expect(text.split("\n").every((l) => l.length < 300)).toBe(true);
+    // 400 code points plus the finding's own prefix
+    expect(text.split("\n").every((l) => l.length < 500)).toBe(true);
   });
 
   test("ordinary ASCII output is unchanged by sanitising", () => {

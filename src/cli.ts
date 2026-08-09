@@ -4,6 +4,7 @@ import { runCheck } from "./commands/check";
 import { runExplain } from "./commands/explain";
 import { runInit } from "./commands/init";
 import { runRulesCommand } from "./commands/rules";
+import { safe } from "./report/safe";
 import type { FailOn } from "./report/exit-code";
 import { VERSION } from "./version";
 
@@ -78,7 +79,7 @@ export async function main(argv: string[]): Promise<number> {
     positionals = parsed.positionals;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`${message}\n`);
+    process.stderr.write(`${safe(message)}\n`);
     return 2;
   }
 
@@ -105,7 +106,7 @@ export async function main(argv: string[]): Promise<number> {
         const failOnRaw = values["fail-on"];
         if (failOnRaw !== undefined && !isFailOn(failOnRaw)) {
           process.stderr.write(
-            `Invalid --fail-on value: ${failOnRaw} (use never|warning|error)\n`,
+            `Invalid --fail-on value: ${safe(failOnRaw)} (use never|warning|error)\n`,
           );
           return 2;
         }
@@ -170,13 +171,15 @@ export async function main(argv: string[]): Promise<number> {
         process.stdout.write(`${VERSION}\n`);
         return 0;
       default:
-        process.stderr.write(`Unknown command: ${command}\n`);
+        process.stderr.write(`Unknown command: ${safe(command)}\n`);
         printHelp();
         return 2;
     }
   } catch (err) {
+    // A fatal message can quote a path from the scanned tree, and a POSIX
+    // filename may contain a newline or an escape sequence.
     const message = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`${message}\n`);
+    process.stderr.write(`${safe(message)}\n`);
     return 2;
   }
 }
