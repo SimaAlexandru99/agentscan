@@ -24,6 +24,8 @@ rule.
 | 002 | Report skills an agent cannot tell apart | P2 | S | 004 | DONE |
 | 003 | Validate agent definition files instead of only counting them | P3 | S | 008 ✓ | DONE (2 of 4 checks; two cut) |
 
+| 009 | Fix what three independent reviews found | P0 | M | — | TODO |
+
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale)
 
