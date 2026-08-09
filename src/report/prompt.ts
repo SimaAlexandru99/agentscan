@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import type { Facts, Finding, Severity } from "../facts/types";
 import { safe } from "./safe";
+import { score } from "./score";
 import { sortFindings } from "./sort";
 
 /**
@@ -31,7 +32,8 @@ export function renderPrompt(args: {
     return [
       `# agentscan v${version} — ${safe(project)}`,
       "",
-      "No findings. The agent configuration in this project is intact; there is nothing to fix.",
+      "No findings, score 100/100. The agent configuration in this project is intact;",
+      "there is nothing to fix.",
       "",
     ].join("\n");
   }
@@ -39,7 +41,8 @@ export function renderPrompt(args: {
   const lines: string[] = [
     `# Fix the agent configuration in ${safe(project)}`,
     "",
-    `\`agentscan\` v${version} found ${actionable.length} ${actionable.length === 1 ? "issue" : "issues"} in this project's agent configuration —`,
+    `\`agentscan\` v${version} scores this project ${score(args.findings)}/100 and found`,
+    `${actionable.length} ${actionable.length === 1 ? "issue" : "issues"} in its agent configuration —`,
     "hooks, MCP servers, skills, agent definitions. Each one below is a config file",
     "saying something that is not true of the filesystem.",
     "",

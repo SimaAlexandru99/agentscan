@@ -15,6 +15,8 @@ export type CheckOptions = {
   quiet?: boolean;
   verbose?: boolean;
   failOn?: FailOn;
+  /** Fail when the 0-100 score drops below this. */
+  failUnder?: number;
   global?: boolean;
   configPath?: string;
   rulesDir?: string;
@@ -58,7 +60,7 @@ export async function runCheck(options: CheckOptions): Promise<CheckResult> {
   }
 
   return {
-    exitCode: exitCode(findings, config.failOn),
+    exitCode: exitCode(findings, config.failOn, options.failUnder),
     stdout,
   };
 }

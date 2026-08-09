@@ -50,6 +50,7 @@ Flags for `check`:
 | `--quiet` | Summary line only |
 | `--verbose` | Show KEEP + info-severity findings |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
+| `--fail-under <0-100>` | Fail when the score drops below this floor |
 | `--global` | Also scan `~/.claude/skills` and `~/.codex/skills` (see below) |
 | `--config <path>` | Config file path |
 | `--rules-dir <path>` | User rules directory (default: `.agentscan/rules`) |
@@ -127,12 +128,39 @@ only ever be wrong.
 `includeGlobal: true` in `.agentscanrc.json` does the same thing without the
 flag.
 
+## Score
+
+```
+score = max(0, 100 - 10 × errors - 3 × warnings)
+```
+
+That is the whole formula. Count two lines of the report and you can recompute
+it — which is the point: both comparable tools score 0–100 and neither documents
+how, and a number whose derivation cannot be inspected is exactly the false
+precision a score is supposed to replace.
+
+**Deduction, not coverage.** The obvious model — checks passed over checks run —
+was measured against 17 real projects and rejected. Every one scored between
+97.7% and 100%, so it discriminated nothing, and it *inverted* severity: the
+denominator grows with the size of your config while the defects do not, so a
+project with 85 skills and one warning outscored a project with 10 skills and
+the same one warning. Deduction has no denominator. Measured on the same 17
+projects it spans 40 to 100, and the 85-skill project scores 97 while a
+54-skill one with six broken hooks scores 40.
+
+**Info findings cost nothing.** They are budgets and hygiene notes, and they do
+grow with project size — charging for them would reintroduce the inversion.
+
+The score is a summary, not a verdict. `--fail-on error` is still the sharper
+CI gate: it says which *kind* of problem fails the build, where `--fail-under`
+only says how many points of unspecified trouble is too much.
+
 ## Exit codes
 
 | Code | When |
 |------|------|
 | `0` | OK, or findings below `--fail-on` threshold (default `never` always `0` for findings) |
-| `1` | Findings at/above `--fail-on` (`warning` or `error`) |
+| `1` | Findings at/above `--fail-on`, or score below `--fail-under` |
 | `2` | Usage / config / load error |
 
 ## CI

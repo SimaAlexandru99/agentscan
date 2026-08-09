@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import type { Action, Facts, Finding } from "../facts/types";
 import { safe } from "./safe";
+import { score } from "./score";
 import { sortFindings } from "./sort";
 
 const ACTION_LABEL: Record<Action, string> = {
@@ -132,9 +133,10 @@ function formatSummary(findings: Finding[], verbose: boolean): string {
   if (!verbose && infoHidden > 0) {
     parts.push(`${infoHidden} info hidden (--verbose)`);
   }
+  const points = score(findings);
   if (parts.length === 0) {
-    return "Summary: no findings";
+    return `Summary: no findings · score ${points}/100`;
   }
 
-  return `Summary: ${parts.join(" · ")}`;
+  return `Summary: ${parts.join(" · ")} · score ${points}/100`;
 }

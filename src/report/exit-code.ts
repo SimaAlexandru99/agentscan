@@ -1,4 +1,5 @@
 import type { Finding } from "../facts/types";
+import { score } from "./score";
 
 export type FailOn = "never" | "warning" | "error";
 
@@ -7,7 +8,16 @@ export type FailOn = "never" | "warning" | "error";
  * - warning → 1 if any non-keep finding with severity warning|error
  * - error → 1 if any finding with severity error
  */
-export function exitCode(findings: Finding[], failOn: FailOn): 0 | 1 {
+export function exitCode(
+  findings: Finding[],
+  failOn: FailOn,
+  failUnder?: number,
+): 0 | 1 {
+  // A score floor and a severity gate answer different questions, so either
+  // can fail the run on its own.
+  if (failUnder !== undefined && score(findings) < failUnder) {
+    return 1;
+  }
   if (failOn === "never") {
     return 0;
   }

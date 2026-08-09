@@ -18,6 +18,10 @@ inputs:
       config and the filesystem disagree.
     required: false
     default: "error"
+  fail-under:
+    description: Fail when the 0-100 score drops below this floor. Empty to skip.
+    required: false
+    default: ""
   output:
     description: human (default), json, or prompt — a paste-ready handoff for a fixing agent.
     required: false
@@ -54,6 +58,9 @@ runs:
       run: |
         set +e
         args=(check "${{ inputs.path }}" --fail-on "${{ inputs.fail-on }}" --output "${{ inputs.output }}")
+        if [ -n "${{ inputs.fail-under }}" ]; then
+          args+=(--fail-under "${{ inputs.fail-under }}")
+        fi
         if [ "${{ inputs.global }}" = "true" ]; then
           args+=(--global)
         fi

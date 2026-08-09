@@ -27,6 +27,7 @@ check options:
   --quiet                Summary only
   --verbose              Show KEEP findings
   --fail-on <level>      never | warning | error (default: never)
+  --fail-under <0-100>   Fail when the score drops below this floor
   --global               Also scan global skill dirs
   --config <path>        Config file path
   --rules-dir <path>     User rules directory
@@ -52,6 +53,7 @@ export async function main(argv: string[]): Promise<number> {
     quiet?: boolean;
     verbose?: boolean;
     "fail-on"?: string;
+    "fail-under"?: string;
     global?: boolean;
     config?: string;
     "rules-dir"?: string;
@@ -70,6 +72,7 @@ export async function main(argv: string[]): Promise<number> {
         quiet: { type: "boolean", default: false },
         verbose: { type: "boolean", default: false },
         "fail-on": { type: "string" },
+        "fail-under": { type: "string" },
         // No default: absent must be `undefined` so `?? config.includeGlobal`
         // in analyze() can fall through. With `default: false` the flag always
         // overwrote the config key, making `includeGlobal` unreachable.
@@ -118,6 +121,17 @@ export async function main(argv: string[]): Promise<number> {
           );
           return 2;
         }
+        const failUnderRaw = values["fail-under"];
+        let failUnder: number | undefined;
+        if (failUnderRaw !== undefined) {
+          failUnder = Number(failUnderRaw);
+          if (!Number.isInteger(failUnder) || failUnder < 0 || failUnder > 100) {
+            process.stderr.write(
+              `Invalid --fail-under value: ${safe(failUnderRaw)} (use 0-100)\n`,
+            );
+            return 2;
+          }
+        }
         const outputRaw = values.output;
         if (outputRaw !== undefined && !isOutput(outputRaw)) {
           process.stderr.write(
@@ -132,6 +146,7 @@ export async function main(argv: string[]): Promise<number> {
           quiet: values.quiet,
           verbose: values.verbose,
           failOn: failOnRaw,
+          ...(failUnder === undefined ? {} : { failUnder }),
           global: values.global,
           configPath: values.config,
           rulesDir: values["rules-dir"],

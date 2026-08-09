@@ -1,4 +1,5 @@
 import type { Facts, Finding } from "../facts/types";
+import { score } from "./score";
 import { sortFindings } from "./sort";
 
 export function renderJson(args: {
@@ -26,6 +27,8 @@ export function renderJson(args: {
       globalSkillCount: facts.skills.filter((s) => s.source === "global")
         .length,
     },
+    // max(0, 100 - 10*errors - 3*warnings); see src/report/score.ts
+    score: score(findings),
     findings: sortFindings(findings),
   };
 
