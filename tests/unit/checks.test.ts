@@ -89,22 +89,22 @@ describe("hook checks", () => {
   test("unknown event name is an error — the hook never fires", () => {
     const findings = runChecks(
       baseFacts({
-        hooks: [hook({ name: "PostToolBatch", event: "PostToolBatch" })],
+        hooks: [hook({ name: "PreToolUce", event: "PreToolUce" })],
       }),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["hook.unknown-event"]);
     expect(findings[0]!.severity).toBe("error");
-    expect(findings[0]!.subject).toBe("hook:PostToolBatch");
-    expect(findings[0]!.message).toContain("PostToolBatch");
+    expect(findings[0]!.subject).toBe("hook:PreToolUce");
+    expect(findings[0]!.message).toContain("PreToolUce");
   });
 
   test("one finding per bad event, not per registered command", () => {
     const findings = runChecks(
       baseFacts({
         hooks: [
-          hook({ event: "PostToolBatch", command: "node a.js" }),
-          hook({ event: "PostToolBatch", command: "node b.js" }),
-          hook({ event: "PostToolBatch", command: "node c.js" }),
+          hook({ event: "PreToolUce", command: "node a.js" }),
+          hook({ event: "PreToolUce", command: "node b.js" }),
+          hook({ event: "PreToolUce", command: "node c.js" }),
         ],
       }),
     );
@@ -112,15 +112,39 @@ describe("hook checks", () => {
   });
 
   test("every real event name is accepted", () => {
+    // The full set from https://code.claude.com/docs/en/hooks — an incomplete
+    // list here means reporting a working hook as dead, at severity error.
     const events = [
-      "PreToolUse",
-      "PostToolUse",
-      "UserPromptSubmit",
-      "Notification",
-      "Stop",
-      "SubagentStop",
-      "PreCompact",
       "SessionStart",
+      "Setup",
+      "UserPromptSubmit",
+      "UserPromptExpansion",
+      "PreToolUse",
+      "PermissionRequest",
+      "PermissionDenied",
+      "PostToolUse",
+      "PostToolUseFailure",
+      "PostToolBatch",
+      "Notification",
+      "MessageDisplay",
+      "SubagentStart",
+      "SubagentStop",
+      "TaskCreated",
+      "TaskCompleted",
+      "Stop",
+      "StopFailure",
+      "TeammateIdle",
+      "InstructionsLoaded",
+      "ConfigChange",
+      "CwdChanged",
+      "DirectoryAdded",
+      "FileChanged",
+      "WorktreeCreate",
+      "WorktreeRemove",
+      "PreCompact",
+      "PostCompact",
+      "Elicitation",
+      "ElicitationResult",
       "SessionEnd",
     ];
     const findings = runChecks(
@@ -161,7 +185,9 @@ describe("skill structure checks", () => {
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.missing-frontmatter"]);
   });
 
-  test("frontmatter name mismatching the folder", () => {
+  test("a name that differs from the directory is not a finding", () => {
+    // `name` is an optional display name that defaults to the directory; the
+    // command comes from the directory, so a difference is by design.
     const findings = runChecks(
       baseFacts({
         skills: [
@@ -173,8 +199,14 @@ describe("skill structure checks", () => {
         ],
       }),
     );
-    expect(findings.map((f) => f.ruleId)).toEqual(["skill.name-mismatch"]);
-    expect(findings[0]!.message).toContain("vercel-composition-patterns");
+    expect(findings).toEqual([]);
+  });
+
+  test("frontmatter with no name at all is not a finding", () => {
+    const findings = runChecks(
+      baseFacts({ skills: [skill({ id: "s", description: "d" })] }),
+    );
+    expect(findings).toEqual([]);
   });
 
   test("matching name and description produce nothing", () => {
@@ -186,13 +218,6 @@ describe("skill structure checks", () => {
     expect(findings).toEqual([]);
   });
 
-  test("frontmatter present but name/description absent", () => {
-    const findings = runChecks(baseFacts({ skills: [skill({ id: "bare" })] }));
-    expect(findings.map((f) => f.ruleId).sort()).toEqual([
-      "skill.missing-description",
-      "skill.missing-name",
-    ]);
-  });
 });
 
 describe("skills-lock integrity", () => {
@@ -425,8 +450,7 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
       skills: [
         skill({ id: "no-md", hasSkillMd: false, hasFrontmatter: false }),
         skill({ id: "no-fm", hasFrontmatter: false }),
-        skill({ id: "no-name-no-desc" }),
-        skill({ id: "mismatch", frontmatterName: "other", description: "d" }),
+        skill({ id: "no-desc", frontmatterName: "no-desc" }),
       ],
       mcp: [
         {

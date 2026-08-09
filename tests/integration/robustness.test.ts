@@ -159,9 +159,10 @@ describe("the frontmatter parser reads what is there", () => {
     const payload = await report(dir);
     const ids = payload.findings.map((f) => f.ruleId);
 
-    expect(ids).toContain("skill.missing-name");
-    // the old regex captured "description: A real description" as the name
+    // `name` is optional, so an empty one is not itself a finding — what
+    // matters is that the description was not swallowed into it.
     expect(ids).not.toContain("skill.name-mismatch");
+    expect(ids).not.toContain("skill.missing-description");
   });
 
   test("CRLF line endings do not corrupt the frontmatter block", async () => {

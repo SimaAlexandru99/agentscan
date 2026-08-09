@@ -41,14 +41,9 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
     id: "skill.missing-frontmatter",
     description: "SKILL.md has no YAML frontmatter block",
   },
-  { id: "skill.missing-name", description: "SKILL.md frontmatter has no name" },
   {
     id: "skill.missing-description",
-    description: "SKILL.md frontmatter has no description",
-  },
-  {
-    id: "skill.name-mismatch",
-    description: "Frontmatter name disagrees with the directory name",
+    description: "SKILL.md frontmatter has no description (recommended field)",
   },
   {
     id: "skill.not-in-lock",
@@ -146,21 +141,47 @@ function checkConfigErrors(facts: Facts): Finding[] {
 }
 
 /**
- * Hook events the agent actually dispatches. A name outside this set is never
- * matched, so the hook silently never runs.
+ * Every hook event Claude Code dispatches, from the official hooks reference.
  *
- * If a new event is added upstream and this list lags, the escape hatch is
- * `ignoreRules: ["hook.unknown-event"]`.
+ * This list started at nine names guessed from what appeared in real projects,
+ * which made `hook.unknown-event` report `PostToolBatch` — a real event — as a
+ * dead hook, at severity error. Twenty-two valid names were missing. If this
+ * lags upstream again the escape hatch is
+ * `ignoreRules: ["hook.unknown-event"]`, but the right fix is to update it.
+ *
+ * Source: https://code.claude.com/docs/en/hooks
  */
 const KNOWN_HOOK_EVENTS = new Set([
-  "PreToolUse",
-  "PostToolUse",
-  "UserPromptSubmit",
-  "Notification",
-  "Stop",
-  "SubagentStop",
-  "PreCompact",
   "SessionStart",
+  "Setup",
+  "UserPromptSubmit",
+  "UserPromptExpansion",
+  "PreToolUse",
+  "PermissionRequest",
+  "PermissionDenied",
+  "PostToolUse",
+  "PostToolUseFailure",
+  "PostToolBatch",
+  "Notification",
+  "MessageDisplay",
+  "SubagentStart",
+  "SubagentStop",
+  "TaskCreated",
+  "TaskCompleted",
+  "Stop",
+  "StopFailure",
+  "TeammateIdle",
+  "InstructionsLoaded",
+  "ConfigChange",
+  "CwdChanged",
+  "DirectoryAdded",
+  "FileChanged",
+  "WorktreeCreate",
+  "WorktreeRemove",
+  "PreCompact",
+  "PostCompact",
+  "Elicitation",
+  "ElicitationResult",
   "SessionEnd",
 ]);
 
@@ -276,42 +297,16 @@ function checkSkillStructure(facts: Facts): Finding[] {
       continue;
     }
 
-    if (skill.frontmatterName === undefined) {
-      out.push(
-        make("skill.missing-name", `skill:${skill.id}`, {
-          action: "warn",
-          severity: "warning",
-          message: "SKILL.md frontmatter has no `name`",
-          reason: "Frontmatter must declare name and description.",
-          evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
-          suggest: `Add "name: ${skill.id}" to the frontmatter`,
-        }),
-      );
-    } else if (skill.frontmatterName !== skill.id) {
-      out.push(
-        make("skill.name-mismatch", `skill:${skill.id}`, {
-          action: "warn",
-          severity: "warning",
-          message: `Frontmatter name "${skill.frontmatterName}" does not match directory "${skill.id}"`,
-          reason:
-            "Two different names for one skill: tools that key on the directory and tools that key on frontmatter disagree about what this skill is called, and the lockfile keys on the directory.",
-          evidence: [
-            ...skillEvidence(skill, `${skill.path}/SKILL.md`),
-            { kind: "name", value: skill.frontmatterName },
-          ],
-          suggest: `Rename the directory to ${skill.frontmatterName}, or set name: ${skill.id}`,
-        }),
-      );
-    }
-
     if (skill.description === undefined) {
       out.push(
         make("skill.missing-description", `skill:${skill.id}`, {
           action: "warn",
-          severity: "warning",
+          // The spec marks description "Recommended", not required — a skill
+          // without one still loads when invoked by name.
+          severity: "info",
           message: "SKILL.md frontmatter has no `description`",
           reason:
-            "The description is what an agent matches against when choosing a skill; without it the skill is effectively unreachable.",
+            "The description is what Claude matches against when deciding to load a skill automatically. Without it the skill still works when invoked directly, but it will not be picked up on its own.",
           evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
           suggest: "Add a one-line description to the frontmatter",
         }),
