@@ -37,7 +37,56 @@ describe("skillReferences — extracts", () => {
   });
 });
 
+describe("skillReferences — shapes that are real references", () => {
+  test("a ./ prefix", () => {
+    expect(skillReferences("See ./references/a.md")).toEqual([
+      "references/a.md",
+    ]);
+  });
+
+  test("an uppercase extension", () => {
+    expect(skillReferences("See references/A.MD")).toEqual(["references/A.MD"]);
+  });
+
+  test("an extension longer than four characters", () => {
+    expect(skillReferences("Run scripts/a.python")).toEqual([
+      "scripts/a.python",
+    ]);
+  });
+
+  test("a compound extension is not truncated", () => {
+    // reporting `references/existing.md` missing when the file is
+    // `references/existing.md.backup` names a path that was never referenced
+    expect(skillReferences("See references/existing.md.backup")).toEqual([
+      "references/existing.md.backup",
+    ]);
+  });
+
+  test("a real reference after a stray mid-line backtick run", () => {
+    expect(skillReferences("a ``` b\nRead references/real.md")).toEqual([
+      "references/real.md",
+    ]);
+  });
+});
+
 describe("skillReferences — refuses to guess", () => {
+  test("a path inside a URL, including its query string", () => {
+    expect(
+      skillReferences("https://example.com/f?path=scripts/not-local.js"),
+    ).toEqual([]);
+  });
+
+  test("tilde and four-backtick fences are code blocks too", () => {
+    expect(skillReferences("~~~\nreferences/x.md\n~~~")).toEqual([]);
+    expect(skillReferences("````\nreferences/y.md\n````")).toEqual([]);
+  });
+
+  test("inline code is instruction to the user, not a bundled pointer", () => {
+    expect(skillReferences("Run `scripts/deploy.sh` in your project")).toEqual(
+      [],
+    );
+  });
+
   test("URLs are not local paths", () => {
     expect(
       skillReferences("https://example.com/scripts/x.md is upstream"),

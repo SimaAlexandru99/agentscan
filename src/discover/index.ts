@@ -95,8 +95,28 @@ type Frontmatter = {
  * The lookbehind rejects a path nested under something else
  * (`packages/web/references/x.md`) and any URL (`https://host/scripts/x.md`).
  */
-const REFERENCE_RE =
-  /(?<![\w/.-])((?:scripts|references|assets|templates|examples)\/[A-Za-z0-9_./-]+\.[a-z]{1,4})\b/g;
+const BUNDLED = "scripts|references|assets|templates|examples";
+const REFERENCE_RE = new RegExp(
+  // `./` is an accepted prefix; anything else before the directory name means
+  // the path belongs to something other than this skill.
+  `(?<![\\w/.-])(?:\\./)?((?:${BUNDLED})/[A-Za-z0-9_./-]+\\.[A-Za-z0-9]{1,10})(?![A-Za-z0-9_.-])`,
+  "g",
+);
+
+/**
+ * Code-block fences, anchored to line start.
+ *
+ * Three or more backticks or tildes, per CommonMark. The previous version
+ * matched an unanchored ``` anywhere, so a mid-line backtick run swallowed the
+ * rest of the document and hid real references; and it knew nothing of `~~~` or
+ * four-backtick fences, so examples inside those were reported as broken.
+ */
+const FENCE_BLOCK = /^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[ \t]*$|$)/gm;
+/** Inline code: a skill saying `scripts/deploy.sh` is telling the *user* where
+ *  their file goes, not pointing at one it ships. */
+const INLINE_CODE = /`[^`\n]*`/g;
+/** A URL swallows any path inside it, including one in a query string. */
+const URLS = /\b[a-z][a-z0-9+.-]*:\/\/\S+/gi;
 
 /**
  * Bundled files a SKILL.md body points at.
@@ -106,7 +126,10 @@ const REFERENCE_RE =
  * paths in them illustrate usage rather than pointing anywhere.
  */
 export function skillReferences(body: string): string[] {
-  const prose = body.replace(/```[\s\S]*?(?:```|$)/g, "");
+  const prose = body
+    .replace(FENCE_BLOCK, "")
+    .replace(INLINE_CODE, "")
+    .replace(URLS, "");
   const out: string[] = [];
   const seen = new Set<string>();
   for (const match of prose.matchAll(REFERENCE_RE)) {
@@ -146,8 +169,10 @@ function readFrontmatter(
   errors: ConfigErrorFact[],
 ): Frontmatter {
   let text: string;
+  let truncated = false;
   try {
     const buf = readFileSync(skillMdPath);
+    truncated = buf.length > SKILL_MD_CAP;
     text = buf.subarray(0, SKILL_MD_CAP).toString("utf8");
     // Several Windows editors write a BOM; without stripping it the `---` test
     // fails and a valid file is reported as having no frontmatter.
@@ -169,10 +194,24 @@ function readFrontmatter(
   if (!text.startsWith("---")) {
     return { hasFrontmatter: false };
   }
-  const end = text.indexOf("\n---", 3);
-  if (end === -1) {
+  // The closing fence is a line that is exactly `---` (YAML also allows `...`).
+  // Matching a bare "\n---" prefix took a key named `---metadata` for the fence
+  // and truncated the block, so a valid `description:` below it read as absent.
+  const fence = /\n(?:---|\.\.\.)[ \t]*(?:\n|$)/.exec(text.slice(3));
+  if (fence === null) {
+    if (truncated) {
+      // The block may well be well-formed past the cap; saying it has no
+      // frontmatter is a claim about bytes we chose not to read.
+      errors.push({
+        path: skillMdPath,
+        kind: "unexpected-shape",
+        detail: `frontmatter not closed within the first ${SKILL_MD_CAP} bytes`,
+      });
+      return { hasFrontmatter: true, unparseable: true };
+    }
     return { hasFrontmatter: false };
   }
+  const end = 3 + fence.index;
 
   let block: unknown;
   try {
@@ -224,9 +263,17 @@ function brokenReferences(
   skillDir: string,
   root: string,
 ): string[] {
+  // A directory named like a file satisfies existsSync but cannot be read, so
+  // the reference is still dead.
+  const isFile = (p: string): boolean => {
+    try {
+      return statSync(p).isFile();
+    } catch {
+      return false;
+    }
+  };
   return skillReferences(body).filter(
-    (rel) =>
-      !existsSync(join(skillDir, rel)) && !existsSync(join(root, rel)),
+    (rel) => !isFile(join(skillDir, rel)) && !isFile(join(root, rel)),
   );
 }
 
@@ -622,14 +669,13 @@ function collectHookCommands(groups: unknown): string[] {
   return out;
 }
 
-function discoverAgents(root: string, errors: ConfigErrorFact[]): AgentFact[] {
-  const dir = join(root, ".claude", "agents");
-  if (!existsSync(dir)) {
-    return [];
-  }
+/** Agent definitions nest, so a one-level scan misses `agents/review/x.md`. */
+function agentFiles(dir: string, errors: ConfigErrorFact[]): string[] {
   let entries: string[];
   try {
-    entries = readdirSync(dir);
+    entries = readdirSync(dir, { withFileTypes: true }).map((e) =>
+      e.isDirectory() ? `${e.name}/` : e.name,
+    );
   } catch (err) {
     errors.push({
       path: dir,
@@ -638,11 +684,36 @@ function discoverAgents(root: string, errors: ConfigErrorFact[]): AgentFact[] {
     });
     return [];
   }
+  const out: string[] = [];
+  for (const entry of entries) {
+    if (entry.startsWith(".")) {
+      continue;
+    }
+    if (entry.endsWith("/")) {
+      out.push(
+        ...agentFiles(join(dir, entry.slice(0, -1)), errors).map((p) =>
+          join(entry.slice(0, -1), p),
+        ),
+      );
+      continue;
+    }
+    out.push(entry);
+  }
+  return out;
+}
+
+function discoverAgents(root: string, errors: ConfigErrorFact[]): AgentFact[] {
+  const dir = join(root, ".claude", "agents");
+  if (!existsSync(dir)) {
+    return [];
+  }
+  const entries = agentFiles(dir, errors);
   const facts: AgentFact[] = [];
   for (const name of entries) {
-    // Agent definitions are markdown; .gitkeep, .DS_Store and README.md are not
-    // agents, and counting them inflates the budget.agents rule.
-    if (name.startsWith(".") || !name.endsWith(".md")) {
+    // Agent definitions are markdown; .gitkeep and .DS_Store are not agents,
+    // and counting them inflates the budget.agents rule. Dotfiles are already
+    // filtered by agentFiles, including in nested directories.
+    if (!name.endsWith(".md")) {
       continue;
     }
     const filePath = join(dir, name);

@@ -53,7 +53,8 @@ describe("config errors", () => {
     const f = findings[0]!;
     expect(f.ruleId).toBe("config.unreadable");
     expect(f.severity).toBe("error");
-    expect(f.subject).toBe("config:/tmp/proj/.mcp.json");
+    // the kind and detail disambiguate several failures in one file
+    expect(f.subject).toStartWith("config:/tmp/proj/.mcp.json#");
     expect(f.message).toContain("not valid JSON");
   });
 });

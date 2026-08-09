@@ -181,7 +181,10 @@ function checkConfigErrors(facts: Facts): Finding[] {
         : err.kind === "unreadable"
           ? "could not be read"
           : "has an unexpected shape";
-    return make("config.unreadable", `config:${err.path}`, {
+    // One file can fail several ways at once — three invalid package.json
+    // fields gave three findings sharing one id, and `explain` reached only the
+    // first. The kind and detail disambiguate without changing the common case.
+    return make("config.unreadable", `config:${err.path}#${err.kind}:${safeDetail(err.detail)}`, {
       action: "warn",
       severity: "error",
       message: `${basename(err.path)} ${what} — its contents are invisible to the scan`,
