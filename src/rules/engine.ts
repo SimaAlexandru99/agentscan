@@ -3,7 +3,7 @@ import type { SkillscanConfig } from "../config/schema";
 import { defaultThresholds } from "../config/schema";
 import { coerceVersion, gte, lt } from "../facts/semver";
 import type { Facts, Finding, SkillFact } from "../facts/types";
-import { DEP_SKILL_MAP, skillMatchesPattern } from "./map";
+import { skillMatchesPattern } from "./glob";
 import type { RuleDefinition } from "./schema";
 
 type Evidence = Finding["evidence"][number];
@@ -318,35 +318,6 @@ function evalAll(
   return { ok: true, matchedSkills, evidence };
 }
 
-function installedDeps(facts: Facts): Set<string> {
-  return new Set(Object.keys(allDeps(facts)));
-}
-
-/**
- * Skill is orphan when:
- * - id does not match any DEP_SKILL_MAP pattern for an installed dep
- * - and no policy text includes the skill id as substring
- */
-export function isOrphanSkill(facts: Facts, skill: SkillFact): boolean {
-  const deps = installedDeps(facts);
-  for (const entry of DEP_SKILL_MAP) {
-    if (!deps.has(entry.dep)) {
-      continue;
-    }
-    for (const pattern of entry.skillPatterns) {
-      if (skillMatchesPattern(skill.id, pattern)) {
-        return false;
-      }
-    }
-  }
-  for (const policy of facts.policyFiles) {
-    if (policy.text.includes(skill.id)) {
-      return false;
-    }
-  }
-  return true;
-}
-
 function applyTemplate(
   template: string,
   ctx: MatchContext,
@@ -499,22 +470,6 @@ function evaluateRule(
   config: SkillscanConfig,
 ): Array<{ finding: Finding; ctx: MatchContext }> {
   const when = applyThresholdOverrides(rule.when, config);
-
-  // Top-level perSkill orphan
-  if (isRecord(when) && isRecord(when.perSkill) && when.perSkill.orphan === true) {
-    const out: Array<{ finding: Finding; ctx: MatchContext }> = [];
-    for (const s of facts.skills) {
-      if (!isOrphanSkill(facts, s)) {
-        continue;
-      }
-      const ctx: MatchContext = {
-        matchedSkill: s,
-        evidence: [{ kind: "skill", value: s.path }],
-      };
-      out.push({ finding: buildFinding(rule, ctx), ctx });
-    }
-    return out;
-  }
 
   // when.all
   if (isRecord(when) && Array.isArray(when.all)) {

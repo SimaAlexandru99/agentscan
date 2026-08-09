@@ -231,14 +231,22 @@ describe("renderText", () => {
     message: "Redundant",
   });
 
-  test("Stack line shows only mapped deps plus a count of the rest", () => {
+  test("Stack line summarises size, not the dependency list", () => {
     const facts = baseFacts({
       dependencies: { next: "16.3.0", "better-auth": "1.2.0" },
-      devDependencies: {
-        typescript: "5.8.0",
-        vitest: "4.0.0",
-        "some-random-lib": "1.0.0",
-      },
+      devDependencies: { typescript: "5.8.0" },
+      skills: [skillFact("a"), skillFact("b")],
+      mcp: [
+        {
+          name: "m",
+          path: ".mcp.json",
+          hasCommand: true,
+          hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+      ],
+      agents: [{ name: "reviewer", path: ".claude/agents/reviewer.md" }],
     });
     const text = renderText({
       version: "0.1.0",
@@ -249,24 +257,10 @@ describe("renderText", () => {
     });
 
     expect(text).toContain(
-      "Stack: better-auth@1.2.0 · next@16.3.0 · +3 more · packageManager=bun",
+      "Stack: 3 deps · 2 skills · 1 mcp · 1 agents · packageManager=bun",
     );
-    expect(text).not.toContain("some-random-lib");
-  });
-
-  test("Stack line with no mapped deps still reports the count", () => {
-    const facts = baseFacts({
-      dependencies: { "some-random-lib": "1.0.0" },
-      devDependencies: {},
-    });
-    const text = renderText({
-      version: "0.1.0",
-      facts,
-      findings: [],
-      verbose: false,
-      quiet: false,
-    });
-    expect(text).toContain("Stack: +1 more · packageManager=bun");
+    // the dependency names themselves are noise in a config report
+    expect(text).not.toContain("typescript");
   });
 
   test("quiet is summary line only", () => {

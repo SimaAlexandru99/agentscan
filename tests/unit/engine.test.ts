@@ -82,23 +82,6 @@ const betterAuthMissingRule: RuleDefinition = {
   },
 };
 
-const orphanRule: RuleDefinition = {
-  id: "skill.orphan",
-  description: "Orphan skill",
-  when: {
-    perSkill: { orphan: true },
-  },
-  then: {
-    action: "delete",
-    severity: "warning",
-    subject: "skill:{{matchedSkill}}",
-    message:
-      "Orphan skill — no matching dependency and not referenced in AGENTS.md/CLAUDE.md",
-    reason: "No dep→skill map hit and name not in policy files",
-    suggest: "rm -rf {{matchedSkillPath}}",
-  },
-};
-
 const packageManagerDriftRule: RuleDefinition = {
   id: "policy.package-manager-drift",
   description: "Policy mentions npm install while project uses bun",
@@ -183,46 +166,6 @@ describe("runRules", () => {
       skills: [skill("better-auth-best-practices")],
     });
     const findings = runRules(facts, [betterAuthMissingRule], defaultConfig);
-    expect(findings).toHaveLength(0);
-  });
-
-  test("skill random-foo no dep → orphan delete", () => {
-    const facts = baseFacts({
-      dependencies: { next: "16.0.0" },
-      skills: [skill("random-foo", ".agents/skills/random-foo")],
-    });
-
-    const findings = runRules(facts, [orphanRule], defaultConfig);
-
-    expect(findings).toHaveLength(1);
-    const f = findings[0]!;
-    expect(f.ruleId).toBe("skill.orphan");
-    expect(f.action).toBe("delete");
-    expect(f.subject).toBe("skill:random-foo");
-    expect(f.id).toBe("skill.orphan:skill:random-foo");
-    expect(f.suggest).toBe("rm -rf .agents/skills/random-foo");
-  });
-
-  test("skill matching DEP_SKILL_MAP for installed dep is not orphan", () => {
-    const facts = baseFacts({
-      dependencies: { next: "16.0.0" },
-      skills: [skill("next-cache-components")],
-    });
-    const findings = runRules(facts, [orphanRule], defaultConfig);
-    expect(findings).toHaveLength(0);
-  });
-
-  test("skill mentioned in policy is not orphan", () => {
-    const facts = baseFacts({
-      skills: [skill("custom-workflow")],
-      policyFiles: [
-        {
-          path: "AGENTS.md",
-          text: "Use custom-workflow for deploys",
-        },
-      ],
-    });
-    const findings = runRules(facts, [orphanRule], defaultConfig);
     expect(findings).toHaveLength(0);
   });
 

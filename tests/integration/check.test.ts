@@ -40,32 +40,6 @@ function actionableFindings(findings: FindingPayload[]): FindingPayload[] {
 }
 
 describe("runCheck integration", () => {
-  test("next16 redundant skill → DELETE next.redundant-cache-components-skill", async () => {
-    const payload = await checkFixture("next16-redundant-skill");
-
-
-    const deleteFinding = payload.findings.find(
-      (f) =>
-        f.action === "delete" &&
-        f.subject === "skill:next-cache-components" &&
-        f.ruleId === "next.redundant-cache-components-skill",
-    );
-    expect(deleteFinding).toBeDefined();
-  });
-
-  test("better-auth missing → ADD better-auth.missing-skill", async () => {
-    const payload = await checkFixture("better-auth-missing-skill");
-
-
-    const addFinding = payload.findings.find(
-      (f) =>
-        f.action === "add" &&
-        f.subject === "skill:better-auth" &&
-        f.ruleId === "better-auth.missing-skill",
-    );
-    expect(addFinding).toBeDefined();
-  });
-
   test("lockfile drift → both directions reported end to end", async () => {
     const payload = await checkFixture("lock-drift");
     const byRule = new Map(payload.findings.map((f) => [f.ruleId, f.subject]));
@@ -78,7 +52,13 @@ describe("runCheck integration", () => {
     expect(byRule.get("skill.not-in-lock")).toBe("skill:local-only");
   });
 
-  test("--fail-on warning exits 1 on lockfile drift", async () => {
+  test("--fail-on warning: 1 on drift, 0 on a clean tree", async () => {
+    const clean = await runCheck({
+      dir: join(fixturesRoot, "clean-repo"),
+      failOn: "warning",
+    });
+    expect(clean.exitCode).toBe(0);
+
     const result = await runCheck({
       dir: join(fixturesRoot, "lock-drift"),
       failOn: "warning",
@@ -91,23 +71,9 @@ describe("runCheck integration", () => {
     expect(actionableFindings(payload.findings)).toEqual([]);
   });
 
-  test("--fail-on warning exits 1 on a warning finding, 0 on a clean tree", async () => {
-    const dirty = await runCheck({
-      dir: join(fixturesRoot, "next16-redundant-skill"),
-      failOn: "warning",
-    });
-    expect(dirty.exitCode).toBe(1);
-
-    const clean = await runCheck({
-      dir: join(fixturesRoot, "clean-repo"),
-      failOn: "warning",
-    });
-    expect(clean.exitCode).toBe(0);
-  });
-
   test("same tree twice → identical JSON", async () => {
     const opts = {
-      dir: join(fixturesRoot, "next16-redundant-skill"),
+      dir: join(fixturesRoot, "lock-drift"),
       json: true,
       failOn: "never" as const,
     };

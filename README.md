@@ -9,8 +9,8 @@ It reports broken and inconsistent config: a hook whose script is gone, an MCP s
 **This README is the source of truth for current behavior.** The docs under
 `docs/superpowers/specs/` are the original design and have been **superseded** —
 several decisions changed during implementation: Bun-only runtime, the dep→skill
-"orphan" heuristic dropped in favour of `skills-lock.json`, budget rules added,
-and structural config checks added. Read them as history.
+map and its "orphan" heuristic removed in favour of `skills-lock.json`, budget
+rules added, and structural config checks added. Read them as history.
 
 ## Install
 
@@ -60,7 +60,7 @@ Flags for `check`:
 ```text
 skillscan v0.1.0 — touchagency
 
-Stack: shadcn@^4.16.0 · zod@^4.4.3 · +44 more · packageManager=bun
+Stack: 46 deps · 54 skills · 1 mcp · 2 agents · packageManager=bun
 
 WARN    hook:PreToolUse:.claude/hooks/protect-env.js
         rule:hook.missing-script
@@ -72,15 +72,15 @@ WARN    skill:composition-patterns
         Frontmatter name "vercel-composition-patterns" does not match directory "composition-patterns"
         evidence: skill …/.agents/skills/composition-patterns/SKILL.md · name vercel-composition-patterns
 
-Summary: 0 delete · 0 add · 0 refresh · 0 drift · 8 warn · 4 info hidden (--verbose)
+Summary: 8 warn · 4 info hidden (--verbose)
 ```
 
 That first finding is the one worth having: a `PreToolUse` hook named
 `protect-env.js` was registered and the script is gone, so the protection the
 config claims has silently not been in effect.
 
-The `Stack:` line lists only the deps skillscan reasons about (the ones in
-`DEP_SKILL_MAP`) plus a count of the rest — a real app has 100+ dependencies.
+The `Stack:` line is orientation only — which project, how big. The summary lists
+only actions that actually occurred; a clean project prints `Summary: no findings`.
 
 JSON shape (abridged):
 
@@ -95,15 +95,15 @@ JSON shape (abridged):
   },
   "findings": [
     {
-      "id": "next.redundant-cache-components-skill:skill:next-cache-components",
-      "ruleId": "next.redundant-cache-components-skill",
-      "action": "delete",
-      "severity": "warning",
-      "subject": "skill:next-cache-components",
-      "message": "Redundant with Next 16+ framework docs (not a security issue)",
-      "reason": "next >= 16 documents cache components in framework docs",
-      "evidence": [{ "kind": "dep", "value": "next@16.3.0" }],
-      "suggest": "rm -rf …/next-cache-components"
+      "id": "hook.missing-script:hook:PreToolUse:.claude/hooks/protect-env.js",
+      "ruleId": "hook.missing-script",
+      "action": "warn",
+      "severity": "error",
+      "subject": "hook:PreToolUse:.claude/hooks/protect-env.js",
+      "message": "PreToolUse hook points at a script that does not exist: .claude/hooks/protect-env.js",
+      "reason": "The hook is registered but its script is missing, so it never runs.",
+      "evidence": [{ "kind": "script", "value": ".claude/hooks/protect-env.js" }],
+      "suggest": "Restore the script or remove the hook"
     }
   ]
 }
@@ -196,7 +196,6 @@ Supported `when` matchers:
 - `packageManager: bun|npm|…`
 - `policyMatches: "needle"` — plain substring, **not** a regex
 - `hasConfig: <key>` — flat key on the configs fact (`shadcn`, `biome`, `ultracite`, `next`); no nested paths
-- `perSkill: { orphan: true }` — one finding per skill that matches no `DEP_SKILL_MAP` entry for an installed dep and is not named in a policy file. Prefer `skill.not-in-lock` when the project has a `skills-lock.json`: the lockfile is a real oracle, the map is a 7-entry approximation.
 - `count: { of: skills|mcp|agents|hooks, gt: N }`
 - `policyLines: { file: AGENTS.md|CLAUDE.md, gt: N }`
 - combinators: `all`, `not` — no `any`
@@ -229,8 +228,6 @@ bunx skillscan rules
 
 | id | Action |
 |----|--------|
-| `next.redundant-cache-components-skill` | DELETE redundant Next cache skills when `next >= 16` |
-| `better-auth.missing-skill` | ADD when `better-auth` dep lacks a matching skill |
 | `policy.package-manager-drift` | DRIFT when policy says `npm install` but PM is bun |
 | `budget.skills` | INFO when skill count > thresholds.skills (default 30) |
 | `budget.mcp` | INFO when MCP count > 5 |
@@ -271,10 +268,10 @@ guessed at.
 
 ## Known limits
 
-- **`DEP_SKILL_MAP` has 7 entries and is not configurable.** It now drives only
-  `next.redundant-cache-components-skill` and `better-auth.missing-skill`, which
-  together fire on none of the 17 projects it was measured against. The structural
-  checks do not use it. Both rules, and the map, are candidates for deletion.
+- **No dependency→skill knowledge.** Nothing here says "you have `next`, you
+  should add a `next-*` skill". That needed a hand-maintained registry, and the
+  version that existed fired on none of the 17 projects measured, so it was
+  removed. Skill provenance comes from `skills-lock.json` instead.
 - **No rule produces `refresh` or `keep`.** Comparing a skill's content against
   the `computedHash` in `skills-lock.json` is the obvious `refresh` source; the
   hash algorithm used by the installing tool is not documented here, and it is

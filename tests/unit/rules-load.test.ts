@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadRules } from "../../src/rules/load";
-import { DEP_SKILL_MAP, skillMatchesPattern } from "../../src/rules/map";
+import { skillMatchesPattern } from "../../src/rules/glob";
 
 describe("skillMatchesPattern", () => {
   test("glob suffix", () => {
@@ -29,26 +29,6 @@ describe("skillMatchesPattern", () => {
   test("next-* style", () => {
     expect(skillMatchesPattern("next-cache-components", "next-*")).toBe(true);
     expect(skillMatchesPattern("next", "next-*")).toBe(false);
-  });
-});
-
-describe("DEP_SKILL_MAP", () => {
-  test("includes seed rows from spec §8.1", () => {
-    const deps = DEP_SKILL_MAP.map((e) => e.dep);
-    expect(deps).toContain("next");
-    expect(deps).toContain("better-auth");
-    expect(deps).toContain("@tanstack/react-query");
-    expect(deps).toContain("shadcn");
-    expect(deps).toContain("@prisma/client");
-    expect(deps).toContain("prisma");
-    expect(deps).toContain("zod");
-
-    const next = DEP_SKILL_MAP.find((e) => e.dep === "next");
-    expect(next?.skillPatterns).toContain("next-*");
-
-    const betterAuth = DEP_SKILL_MAP.find((e) => e.dep === "better-auth");
-    expect(betterAuth?.skillPatterns).toEqual(["better-auth*"]);
-
   });
 });
 

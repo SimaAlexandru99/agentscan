@@ -1,6 +1,5 @@
 import { basename } from "node:path";
 import type { Action, Facts, Finding } from "../facts/types";
-import { DEP_SKILL_MAP } from "../rules/map";
 import { sortFindings } from "./sort";
 
 const ACTION_LABEL: Record<Action, string> = {
@@ -61,23 +60,21 @@ function projectLabel(root: string): string {
 }
 
 /**
- * Only the deps skillscan actually reasons about (DEP_SKILL_MAP), plus a count
- * of the rest — a real app has 100+ dependencies and listing them all made this
- * line unreadable without telling the reader anything.
+ * Orientation only — which project is this and how big. Listing dependencies
+ * here told the reader nothing about their agent config, and a real app has
+ * 100+ of them.
  */
 function formatStack(facts: Facts): string {
-  const versions = { ...facts.devDependencies, ...facts.dependencies };
-  const known = [...new Set(DEP_SKILL_MAP.map((e) => e.dep))]
-    .filter((dep) => dep in versions)
-    .sort((a, b) => a.localeCompare(b));
-
-  const parts = known.map((name) => `${name}@${versions[name]}`);
-  const hidden = Object.keys(versions).length - known.length;
-  if (hidden > 0) {
-    parts.push(`+${hidden} more`);
-  }
-  parts.push(`packageManager=${facts.packageManager}`);
-  return parts.join(" · ");
+  const deps =
+    Object.keys(facts.dependencies).length +
+    Object.keys(facts.devDependencies).length;
+  return [
+    `${deps} deps`,
+    `${facts.skills.length} skills`,
+    `${facts.mcp.length} mcp`,
+    `${facts.agents.length} agents`,
+    `packageManager=${facts.packageManager}`,
+  ].join(" · ");
 }
 
 function formatFinding(f: Finding): string[] {
@@ -110,18 +107,18 @@ function formatSummary(findings: Finding[], verbose: boolean): string {
     counts[f.action] += 1;
   }
 
-  const parts: string[] = [
-    `${counts.delete} delete`,
-    `${counts.add} add`,
-    `${counts.refresh} refresh`,
-    `${counts.drift} drift`,
-    `${counts.warn} warn`,
-  ];
-  if (verbose || counts.keep > 0) {
-    parts.push(`${counts.keep} keep`);
-  }
+  // Only non-zero actions — most rule sets never emit most actions, and a row of
+  // permanent zeros buried the one number that moved.
+  const order: Action[] = ["delete", "add", "refresh", "drift", "warn", "keep"];
+  const parts = order
+    .filter((action) => counts[action] > 0)
+    .map((action) => `${counts[action]} ${action}`);
+
   if (!verbose && infoHidden > 0) {
     parts.push(`${infoHidden} info hidden (--verbose)`);
+  }
+  if (parts.length === 0) {
+    return "Summary: no findings";
   }
 
   return `Summary: ${parts.join(" · ")}`;

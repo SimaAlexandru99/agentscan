@@ -8,9 +8,8 @@ const fixturesRoot = join(import.meta.dir, "../fixtures");
 
 describe("runExplain", () => {
   test("prints details for a known finding id", async () => {
-    const dir = join(fixturesRoot, "next16-redundant-skill");
-    const findingId =
-      "next.redundant-cache-components-skill:skill:next-cache-components";
+    const dir = join(fixturesRoot, "lock-drift");
+    const findingId = "skill.not-in-lock:skill:local-only";
 
     const result = await runExplain(findingId, { dir });
 
@@ -51,15 +50,12 @@ describe("runRulesCommand", () => {
     const result = await runRulesCommand({ dir });
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("next.redundant-cache-components-skill");
-    expect(result.stdout).toContain("better-auth.missing-skill");
+    expect(result.stdout).toContain("policy.package-manager-drift");
     expect(result.stdout).toContain("budget.skills");
     // orphans are computed from facts, not shipped as a rule
     expect(result.stdout).not.toContain("skill.orphan");
     // descriptions should appear on the same lines
-    expect(result.stdout).toMatch(
-      /next\.redundant-cache-components-skill\s+.+/,
-    );
+    expect(result.stdout).toMatch(/budget\.skills\s+.+/);
   });
 
   test("lists structural checks alongside YAML rules", async () => {

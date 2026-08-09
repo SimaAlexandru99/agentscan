@@ -6,8 +6,6 @@ export type SkillFact = {
   path: string;
   description?: string;
   source: "project" | "global";
-  mtimeMs?: number;
-  tags?: string[];
   /** SKILL.md present in the skill dir. */
   hasSkillMd: boolean;
   /** Frontmatter present and parseable as a `---` block. */
@@ -60,8 +58,6 @@ export type Facts = {
   packageManager: "bun" | "npm" | "pnpm" | "yarn" | "unknown";
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
-  /** Optional; only if lockfile parse is cheap and reliable */
-  resolvedVersions?: Record<string, string>;
   scripts: Record<string, string>;
   configs: {
     next?: { cacheComponents?: boolean; appRouter?: boolean };

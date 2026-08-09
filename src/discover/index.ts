@@ -169,11 +169,6 @@ function discoverSkillsInDir(
     if (fm.name !== undefined) {
       fact.frontmatterName = fm.name;
     }
-    try {
-      fact.mtimeMs = st.mtimeMs;
-    } catch {
-      // ignore
-    }
     skills.push(fact);
   }
   return skills;
