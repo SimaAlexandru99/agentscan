@@ -1,16 +1,85 @@
-# agentscan
+<h1 align="center">agentscan</h1>
 
-Deterministic CLI that finds **issues in a project's agent configuration** — skills, `skills-lock.json`, hooks, MCP servers, agent definitions and policy files.
+<p align="center">
+  <em>Your agent config says the guard is on. The script is gone. Nothing told you.</em>
+</p>
 
-It reports broken and inconsistent config: a hook whose script is gone, an MCP server that can never start, a credential pasted into a config file, a skill whose frontmatter name disagrees with its directory, a lockfile that disagrees with what is installed.
+<p align="center">
+  <img src="https://img.shields.io/badge/checks-23-111111?style=flat-square" alt="23 checks">
+  <img src="https://img.shields.io/badge/tests-183%20passing-111111?style=flat-square" alt="183 tests">
+  <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
+  <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
+  <img src="https://img.shields.io/badge/runtime-bun-111111?style=flat-square" alt="Bun">
+  <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
+</p>
 
-> *shadscan for agent stack hygiene* — inverse of autoskills (report only in v1; no auto-install).
+<p align="center">
+  <strong>23 checks &middot; 3.4k lines &middot; 0 network calls &middot; every check sourced to a published spec line</strong><br>
+  <sub>Alpha. An earlier build reported 37 findings across 17 real projects of which <strong>25 were false</strong> — two checks had been written from what real projects looked like instead of from the spec. Both were deleted, and every check that survived is recorded in <a href="docs/spec/">docs/spec/</a> with the URL it came from and the date it was read. That story is the reason this tool exists in its current shape.</sub>
+</p>
 
-**This README is the source of truth for current behavior.** The docs under
-`docs/superpowers/specs/` are the original design and have been **superseded** —
-several decisions changed during implementation: Bun-only runtime, the dep→skill
-map and its "orphan" heuristic removed in favour of `skills-lock.json`, budget
-rules added, and structural config checks added. Read them as history.
+---
+
+Linters read the code your agent writes. This reads **the agent itself** — skills, `skills-lock.json`, hooks, MCP servers, agent definitions, policy files.
+
+## The failure it exists for
+
+You registered a `PreToolUse` hook to stop destructive shell commands:
+
+```jsonc
+// .claude/settings.json
+{ "hooks": { "PreToolUse": [{ "hooks": [
+  { "type": "command", "command": ".claude/hooks/guard-destructive-bash.js" }
+] }] } }
+```
+
+Someone deleted the script six weeks ago.
+
+```console
+$ ls .claude/hooks/guard-destructive-bash.js
+ls: cannot access '.claude/hooks/guard-destructive-bash.js': No such file or directory
+```
+
+Your agent starts normally. No warning, no error, no log line. The guard you
+think you have has silently not existed for six weeks.
+
+```console
+$ agentscan check
+
+WARN    hook:PreToolUse:.claude/hooks/guard-destructive-bash.js
+        rule:hook.missing-script
+        PreToolUse hook points at a script that does not exist
+        evidence: hook PreToolUse @ …/.claude/settings.json
+
+Summary: 6 warn · 4 info hidden (--verbose) · score 40/100
+```
+
+That is the whole category: **a config file asserting something that is not true
+of the filesystem**, where nothing else in your stack will ever tell you.
+
+## How it works
+
+No AI, no network, no heuristics. Read the config, read the disk, compare:
+
+```
+1. Discover    .claude/ .agents/ .mcp.json AGENTS.md skills-lock.json
+2. Extract     immutable facts — never re-read during checking
+3. Check       23 checks, each against one published spec line
+4. Report      text · --json · --output prompt (handoff for a fixing agent)
+```
+
+Same tree in, same findings out, every time. It never writes to the tree it
+scans and never opens a socket.
+
+## What it will not do
+
+It will not compare a skill's frontmatter `name` to its directory, and it will
+not validate model ids or MCP tool names. All three need a hardcoded list of
+valid values, with everything absent from the list reported as broken. That is
+exactly how the 25 false findings happened: a hook-event list with 9 names when
+the spec has 31, calling working hooks dead at severity `error`.
+
+A check here has to point at a spec line. If it cannot, it does not ship.
 
 ## Install
 
@@ -76,10 +145,6 @@ WARN    hook:PreToolUse:.claude/hooks/protect-artists-json.js
 
 Summary: 6 warn · 4 info hidden (--verbose) · score 40/100
 ```
-
-Both of these are worth having: a `PreToolUse` hook named
-`guard-destructive-bash.js` is registered and its script is gone, so the guard
-the config claims has silently not been in effect.
 
 The `Stack:` line is orientation only — which project, how big. The summary lists
 only actions that actually occurred; a clean project prints `Summary: no findings`.
@@ -359,6 +424,15 @@ bun run src/cli.ts check tests/fixtures/lock-drift
 | `typecheck` | `tsc --noEmit` |
 | `test` | `bun test` |
 | `check` | `bun run src/cli.ts check` |
+
+## Design docs
+
+**This README is the source of truth for current behavior.** The documents under
+`docs/superpowers/specs/` are the original design and are **superseded** —
+several decisions changed while building: Bun-only runtime, the dep-to-skill map
+and its "orphan" heuristic dropped in favour of `skills-lock.json`, budget
+checks added, structural checks added, and the YAML rule engine deleted
+(`plans/010`). Read them as history, not as behavior.
 
 ## License
 
