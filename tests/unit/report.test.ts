@@ -231,6 +231,87 @@ describe("renderText", () => {
     message: "Redundant",
   });
 
+  test("a newline in a subject cannot forge a report line", () => {
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: [
+        finding({
+          id: "r:evil",
+          action: "warn",
+          severity: "warning",
+          subject: "evil\nWARN    skill:forged\n        rule:none",
+          message: "m",
+        }),
+      ],
+      verbose: false,
+      quiet: false,
+    });
+
+    // the forged text may appear escaped, but never as lines of its own
+    expect(text).not.toMatch(/^WARN {4}skill:forged/m);
+    expect(text).not.toMatch(/^ {8}rule:none/m);
+  });
+
+  test("control characters from scanned content are escaped, not passed through", () => {
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: [
+        finding({
+          id: "r:esc",
+          action: "warn",
+          severity: "warning",
+          subject: "skill:x",
+          message: "[31mred[0m",
+          evidence: [{ kind: "skill", value: "path[2J" }],
+        }),
+      ],
+      verbose: false,
+      quiet: false,
+    });
+
+    expect(text).not.toContain("");
+    // and the reader can tell something was there
+    expect(text).toContain("\\x1b");
+  });
+
+  test("an oversized value is truncated with a visible marker", () => {
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: [
+        finding({
+          id: "r:long",
+          action: "warn",
+          severity: "warning",
+          subject: `skill:${"a".repeat(5000)}`,
+          message: "m",
+        }),
+      ],
+      verbose: false,
+      quiet: false,
+    });
+
+    expect(text).toContain("…");
+    expect(text.split("\n").every((l) => l.length < 300)).toBe(true);
+  });
+
+  test("ordinary ASCII output is unchanged by sanitising", () => {
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings,
+      verbose: false,
+      quiet: false,
+    });
+    // the exact strings the pre-sanitiser renderer produced
+    expect(text).toContain("DELETE  skill:next-cache-components");
+    expect(text).toContain(
+      "evidence: dep next@16.3.0 · path .agents/skills/next-cache-components",
+    );
+  });
+
   test("Stack line summarises size, not the dependency list", () => {
     const facts = baseFacts({
       dependencies: { next: "16.3.0", "better-auth": "1.2.0" },

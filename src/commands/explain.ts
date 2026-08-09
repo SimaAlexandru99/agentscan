@@ -1,5 +1,6 @@
 import { analyze } from "../analyze";
 import type { Finding } from "../facts/types";
+import { safe } from "../report/safe";
 
 export type ExplainOptions = {
   dir?: string;
@@ -42,19 +43,21 @@ export async function runExplain(
 
 function formatExplain(f: Finding): string {
   const lines: string[] = [];
-  lines.push(`id: ${f.id}`);
+  lines.push(`id: ${safe(f.id)}`);
   lines.push(`action: ${f.action}`);
   lines.push(`severity: ${f.severity}`);
-  lines.push(`subject: ${f.subject}`);
-  lines.push(`rule: ${f.ruleId}`);
-  lines.push(`message: ${f.message}`);
-  lines.push(`reason: ${f.reason}`);
+  lines.push(`subject: ${safe(f.subject)}`);
+  lines.push(`rule: ${safe(f.ruleId)}`);
+  lines.push(`message: ${safe(f.message)}`);
+  lines.push(`reason: ${safe(f.reason)}`);
   if (f.evidence.length > 0) {
-    const ev = f.evidence.map((e) => `${e.kind} ${e.value}`).join(" · ");
+    const ev = f.evidence
+      .map((e) => `${safe(e.kind)} ${safe(e.value)}`)
+      .join(" · ");
     lines.push(`evidence: ${ev}`);
   }
   if (f.suggest !== undefined && f.suggest.length > 0) {
-    lines.push(`suggest: ${f.suggest}`);
+    lines.push(`suggest: ${safe(f.suggest)}`);
   }
   lines.push("");
   return lines.join("\n");

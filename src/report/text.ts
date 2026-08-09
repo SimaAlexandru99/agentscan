@@ -1,5 +1,6 @@
 import { basename } from "node:path";
 import type { Action, Facts, Finding } from "../facts/types";
+import { safe } from "./safe";
 import { sortFindings } from "./sort";
 
 const ACTION_LABEL: Record<Action, string> = {
@@ -40,10 +41,12 @@ export function renderText(args: {
 
   const lines: string[] = [];
   const name = projectLabel(facts.root);
-  lines.push(`agentscan v${version} — ${name}`);
+  lines.push(`agentscan v${version} — ${safe(name)}`);
   if (args.resolvedFrom !== undefined) {
     // The scan silently targeting an ancestor is worse than it refusing to run.
-    lines.push(`       no package.json in ${args.resolvedFrom} — scanned ${facts.root}`);
+    lines.push(
+      `       no package.json in ${safe(args.resolvedFrom)} — scanned ${safe(facts.root)}`,
+    );
   }
   lines.push("");
   lines.push(`Stack: ${formatStack(facts)}`);
@@ -84,11 +87,13 @@ function formatStack(facts: Facts): string {
 
 function formatFinding(f: Finding): string[] {
   const out: string[] = [];
-  out.push(`${actionColumn(f.action)} ${f.subject}`);
-  out.push(`        rule:${f.ruleId}`);
-  out.push(`        ${f.message}`);
+  out.push(`${actionColumn(f.action)} ${safe(f.subject)}`);
+  out.push(`        rule:${safe(f.ruleId)}`);
+  out.push(`        ${safe(f.message)}`);
   if (f.evidence.length > 0) {
-    const ev = f.evidence.map((e) => `${e.kind} ${e.value}`).join(" · ");
+    const ev = f.evidence
+      .map((e) => `${safe(e.kind)} ${safe(e.value)}`)
+      .join(" · ");
     out.push(`        evidence: ${ev}`);
   }
   return out;
