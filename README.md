@@ -47,6 +47,7 @@ Flags for `check`:
 |------|---------|
 | `--json` | JSON report (alias for `--output json`) |
 | `--output <format>` | `human` (default) · `json` · `prompt` |
+| `--copy` | Also copy the report to the system clipboard |
 | `--quiet` | Summary line only |
 | `--verbose` | Show KEEP + info-severity findings |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
@@ -226,6 +227,32 @@ A paste-ready markdown handoff: each item carries the message, why it matters,
 the suggested fix, its evidence, and its finding id. Info-severity findings are
 left out — budgets and hygiene notes are for a maintainer to weigh, not work
 items for an executor.
+
+### Getting the report out of the terminal
+
+Saving and piping are the shell's job, and it already does them:
+
+```bash
+agentscan check --output prompt > handoff.md   # save
+agentscan check --output prompt | claude       # send to another tool
+agentscan check --json | jq '.findings[]'      # filter
+```
+
+The clipboard is the one thing no shell does portably, so that one is a flag:
+
+```bash
+agentscan check --output prompt --copy
+```
+
+`--copy` tries `wl-copy`, `xclip`, `xsel`, `pbcopy`, `clip.exe` in turn and uses
+the first that succeeds — being installed is not the same as working, and on a
+headless WSL shell the first two are present and both fail. The report still
+goes to stdout; the "copied" note goes to stderr, so `--copy` composes with
+redirection. A clipboard that cannot be reached prints why and does not change
+the exit code.
+
+This is the only place agentscan starts a subprocess, and it runs only under
+`--copy`. It writes to the clipboard and nowhere else.
 
 ### Suppressing one finding
 

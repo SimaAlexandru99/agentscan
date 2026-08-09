@@ -4,6 +4,7 @@ import { type OutputFormat, runCheck } from "./commands/check";
 import { runExplain } from "./commands/explain";
 import { runInit } from "./commands/init";
 import { runRulesCommand } from "./commands/rules";
+import { copyToClipboard } from "./report/clipboard";
 import { safe } from "./report/safe";
 import type { FailOn } from "./report/exit-code";
 import { VERSION } from "./version";
@@ -24,6 +25,7 @@ check options:
   --json                 JSON report (alias for --output json)
   --output <format>      human (default) | json | prompt
                          prompt: a paste-ready handoff for a fixing agent
+  --copy                 Also copy the report to the system clipboard
   --quiet                Summary only
   --verbose              Show KEEP findings
   --fail-on <level>      never | warning | error (default: never)
@@ -50,6 +52,7 @@ export async function main(argv: string[]): Promise<number> {
   let values: {
     json?: boolean;
     output?: string;
+    copy?: boolean;
     quiet?: boolean;
     verbose?: boolean;
     "fail-on"?: string;
@@ -69,6 +72,7 @@ export async function main(argv: string[]): Promise<number> {
       options: {
         json: { type: "boolean", default: false },
         output: { type: "string" },
+        copy: { type: "boolean", default: false },
         quiet: { type: "boolean", default: false },
         verbose: { type: "boolean", default: false },
         "fail-on": { type: "string" },
@@ -152,6 +156,17 @@ export async function main(argv: string[]): Promise<number> {
           rulesDir: values["rules-dir"],
         });
         process.stdout.write(result.stdout);
+        if (values.copy === true) {
+          // stderr, so `--copy` stays composable with `> file` and `| tool`.
+          // A clipboard miss does not change the exit code: the scan is what
+          // was asked for, and its result is already on stdout.
+          const copied = await copyToClipboard(result.stdout);
+          process.stderr.write(
+            copied.ok
+              ? `Copied to clipboard via ${copied.tool}.\n`
+              : `Could not copy: ${safe(copied.reason)}. Redirect instead: agentscan check > report.md\n`,
+          );
+        }
         return result.exitCode;
       }
       case "explain": {
