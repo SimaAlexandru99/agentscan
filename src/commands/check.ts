@@ -25,7 +25,7 @@ export type CheckResult = {
  * Returns exit code + stdout for testability; CLI prints and process.exit.
  */
 export async function runCheck(options: CheckOptions): Promise<CheckResult> {
-  const { root, config, facts, findings } = analyze({
+  const { root, resolvedFrom, config, facts, findings } = analyze({
     dir: options.dir,
     global: options.global,
     configPath: options.configPath,
@@ -34,11 +34,12 @@ export async function runCheck(options: CheckOptions): Promise<CheckResult> {
   });
 
   const stdout = options.json
-    ? renderJson({ version: VERSION, root, facts, findings })
+    ? renderJson({ version: VERSION, root, facts, findings, resolvedFrom })
     : renderText({
         version: VERSION,
         facts,
         findings,
+        resolvedFrom,
         verbose: options.verbose ?? false,
         quiet: options.quiet ?? false,
       });

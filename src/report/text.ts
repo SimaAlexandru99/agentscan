@@ -20,6 +20,7 @@ export function renderText(args: {
   version: string;
   facts: Facts;
   findings: Finding[];
+  resolvedFrom?: string;
   verbose: boolean;
   quiet: boolean;
 }): string {
@@ -39,7 +40,11 @@ export function renderText(args: {
 
   const lines: string[] = [];
   const name = projectLabel(facts.root);
-  lines.push(`skillscan v${version} — ${name}`);
+  lines.push(`agentscan v${version} — ${name}`);
+  if (args.resolvedFrom !== undefined) {
+    // The scan silently targeting an ancestor is worse than it refusing to run.
+    lines.push(`       no package.json in ${args.resolvedFrom} — scanned ${facts.root}`);
+  }
   lines.push("");
   lines.push(`Stack: ${formatStack(facts)}`);
   lines.push("");

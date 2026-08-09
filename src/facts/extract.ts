@@ -1,8 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { SkillscanConfig } from "../config/schema";
+import type { AgentscanConfig } from "../config/schema";
 import { discoverAgentSurface } from "../discover/index";
-import type { Facts } from "./types";
+import type { ConfigErrorFact, Facts } from "./types";
 
 type PackageJson = {
   packageManager?: string;
@@ -11,20 +11,50 @@ type PackageJson = {
   scripts?: Record<string, string>;
 };
 
-function readPackageJson(root: string): PackageJson {
+/**
+ * A package.json that will not parse is a config issue like any other — every
+ * dependency-based rule would otherwise silently evaluate against an empty
+ * project and report nothing wrong.
+ */
+function readPackageJson(
+  root: string,
+  errors: ConfigErrorFact[],
+): PackageJson {
   const path = join(root, "package.json");
   if (!existsSync(path)) {
     return {};
   }
+  let text: string;
   try {
-    const raw = JSON.parse(readFileSync(path, "utf8")) as unknown;
-    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-      return {};
-    }
-    return raw as PackageJson;
-  } catch {
+    text = readFileSync(path, "utf8");
+  } catch (err) {
+    errors.push({
+      path,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
     return {};
   }
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text) as unknown;
+  } catch (err) {
+    errors.push({
+      path,
+      kind: "invalid-json",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return {};
+  }
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    errors.push({
+      path,
+      kind: "unexpected-shape",
+      detail: "package.json is not a JSON object",
+    });
+    return {};
+  }
+  return raw as PackageJson;
 }
 
 function inferPackageManager(
@@ -157,11 +187,12 @@ function extractConfigs(
  */
 export function extractFacts(
   root: string,
-  config: SkillscanConfig,
+  config: AgentscanConfig,
   opts?: { includeGlobal?: boolean },
 ): Facts {
   const includeGlobal = opts?.includeGlobal ?? config.includeGlobal;
-  const pkg = readPackageJson(root);
+  const packageErrors: ConfigErrorFact[] = [];
+  const pkg = readPackageJson(root, packageErrors);
   const dependencies = { ...(pkg.dependencies ?? {}) };
   const devDependencies = { ...(pkg.devDependencies ?? {}) };
   const scripts = { ...(pkg.scripts ?? {}) };
@@ -182,6 +213,6 @@ export function extractFacts(
     policyFiles: surface.policyFiles,
     lockedSkills: surface.lockedSkills,
     hasSkillsLock: surface.hasSkillsLock,
-    configErrors: surface.configErrors,
+    configErrors: [...packageErrors, ...surface.configErrors],
   };
 }

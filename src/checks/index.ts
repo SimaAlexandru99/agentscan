@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import type { Facts, Finding } from "../facts/types";
 
 /**
@@ -15,7 +16,7 @@ export type CheckOptions = {
 };
 
 /**
- * Every id `runChecks` can emit, so `skillscan rules` can show the whole picture
+ * Every id `runChecks` can emit, so `agentscan rules` can show the whole picture
  * rather than only the YAML half. Keep in sync with the functions below — the
  * `checks emit only declared ids` test fails if they drift.
  */
@@ -124,7 +125,7 @@ function checkConfigErrors(facts: Facts): Finding[] {
     return make("config.unreadable", `config:${err.path}`, {
       action: "warn",
       severity: "error",
-      message: `Config file ${what} — skillscan cannot see what it declares`,
+      message: `${basename(err.path)} ${what} — its contents are invisible to the scan`,
       reason:
         "An unparseable config is silently ignored by the tools that read it, so whatever it configured is simply not in effect.",
       evidence: [
@@ -228,6 +229,12 @@ function checkSkillStructure(facts: Facts): Finding[] {
           suggest: `Add ${skill.path}/SKILL.md or remove the directory`,
         }),
       );
+      continue;
+    }
+
+    if (skill.unreadable === true) {
+      // config.unreadable already reports this; claiming "no frontmatter"
+      // would send the author to fix a file that may be perfectly valid.
       continue;
     }
 

@@ -10,6 +10,8 @@ export type SkillFact = {
   hasSkillMd: boolean;
   /** Frontmatter present and parseable as a `---` block. */
   hasFrontmatter: boolean;
+  /** SKILL.md exists but could not be read; frontmatter facts are unknown. */
+  unreadable?: boolean;
   /** `name:` from frontmatter, when present. */
   frontmatterName?: string;
 };
@@ -38,7 +40,7 @@ export type HookFact = {
 
 export type AgentFact = { name: string; path: string };
 
-/** A config file skillscan could not read — itself a finding, never swallowed. */
+/** A config file agentscan could not read — itself a finding, never swallowed. */
 export type ConfigErrorFact = {
   path: string;
   kind: "invalid-json" | "unreadable" | "unexpected-shape";

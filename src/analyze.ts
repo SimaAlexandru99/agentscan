@@ -1,7 +1,7 @@
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { runChecks } from "./checks/index";
 import { loadConfig } from "./config/load";
-import type { SkillscanConfig } from "./config/schema";
+import type { AgentscanConfig } from "./config/schema";
 import { resolveRoot } from "./discover/index";
 import { extractFacts } from "./facts/extract";
 import type { Facts, Finding } from "./facts/types";
@@ -15,12 +15,14 @@ export type AnalyzeOptions = {
   global?: boolean;
   configPath?: string;
   rulesDir?: string;
-  failOn?: SkillscanConfig["failOn"];
+  failOn?: AgentscanConfig["failOn"];
 };
 
 export type Analysis = {
   root: string;
-  config: SkillscanConfig;
+  /** Set only when the requested directory was not itself the project root. */
+  resolvedFrom?: string;
+  config: AgentscanConfig;
   facts: Facts;
   rules: RuleDefinition[];
   findings: Finding[];
@@ -34,10 +36,11 @@ export type Analysis = {
  * structural finding while it built its own pipeline.
  */
 export function analyze(options: AnalyzeOptions = {}): Analysis {
-  const root = resolveRoot(options.dir ?? process.cwd());
+  const requested = resolve(options.dir ?? process.cwd());
+  const root = resolveRoot(requested);
   const loaded = loadConfig(root, options.configPath);
 
-  const config: SkillscanConfig = {
+  const config: AgentscanConfig = {
     ...loaded,
     ...(options.failOn !== undefined ? { failOn: options.failOn } : {}),
     ...(options.global !== undefined ? { includeGlobal: options.global } : {}),
@@ -48,7 +51,7 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
 
   const rules = loadRules({
     builtinDir: join(import.meta.dir, "rules/builtin"),
-    userRulesDir: options.rulesDir ?? join(root, ".skillscan", "rules"),
+    userRulesDir: options.rulesDir ?? join(root, ".agentscan", "rules"),
     ignoreRules: config.ignoreRules,
   });
 
@@ -71,5 +74,12 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
     ...structural,
   ]);
 
-  return { root, config, facts, rules, findings };
+  return {
+    root,
+    ...(root === requested ? {} : { resolvedFrom: requested }),
+    config,
+    facts,
+    rules,
+    findings,
+  };
 }

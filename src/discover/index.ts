@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
-import type { SkillscanConfig } from "../config/schema";
+import type { AgentscanConfig } from "../config/schema";
 import type {
   AgentFact,
   ConfigErrorFact,
@@ -75,6 +75,8 @@ function readJsonConfig(
 
 type Frontmatter = {
   hasFrontmatter: boolean;
+  /** Read failed — say so rather than claiming the file has no frontmatter. */
+  unreadable?: boolean;
   name?: string;
   description?: string;
 };
@@ -90,13 +92,21 @@ function stripQuotes(value: string): string {
   return v;
 }
 
-function readFrontmatter(skillMdPath: string): Frontmatter {
+function readFrontmatter(
+  skillMdPath: string,
+  errors: ConfigErrorFact[],
+): Frontmatter {
   let text: string;
   try {
     const buf = readFileSync(skillMdPath);
     text = buf.subarray(0, SKILL_MD_CAP).toString("utf8");
-  } catch {
-    return { hasFrontmatter: false };
+  } catch (err) {
+    errors.push({
+      path: skillMdPath,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return { hasFrontmatter: false, unreadable: true };
   }
   if (!text.startsWith("---")) {
     return { hasFrontmatter: false };
@@ -128,6 +138,7 @@ function readFrontmatter(skillMdPath: string): Frontmatter {
 function discoverSkillsInDir(
   dir: string,
   source: "project" | "global",
+  errors: ConfigErrorFact[],
 ): SkillFact[] {
   if (!existsSync(dir)) {
     return [];
@@ -153,7 +164,7 @@ function discoverSkillsInDir(
     const skillMd = join(skillDir, "SKILL.md");
     const hasSkillMd = existsSync(skillMd);
     const fm = hasSkillMd
-      ? readFrontmatter(skillMd)
+      ? readFrontmatter(skillMd, errors)
       : { hasFrontmatter: false as const };
 
     const fact: SkillFact = {
@@ -163,6 +174,9 @@ function discoverSkillsInDir(
       hasSkillMd,
       hasFrontmatter: fm.hasFrontmatter,
     };
+    if (fm.unreadable === true) {
+      fact.unreadable = true;
+    }
     if (fm.description !== undefined) {
       fact.description = fm.description;
     }
@@ -558,23 +572,22 @@ function discoverSkillsLock(
  */
 export function discoverAgentSurface(
   root: string,
-  config: SkillscanConfig,
+  config: AgentscanConfig,
   opts: { includeGlobal: boolean },
 ): AgentSurface {
   const configErrors: ConfigErrorFact[] = [];
-
   const skills: SkillFact[] = [];
   for (const rel of config.skillPaths) {
-    skills.push(...discoverSkillsInDir(join(root, rel), "project"));
+    skills.push(...discoverSkillsInDir(join(root, rel), "project", configErrors));
   }
 
   if (opts.includeGlobal) {
     const home = homedir();
     skills.push(
-      ...discoverSkillsInDir(join(home, ".claude", "skills"), "global"),
+      ...discoverSkillsInDir(join(home, ".claude", "skills"), "global", configErrors),
     );
     skills.push(
-      ...discoverSkillsInDir(join(home, ".codex", "skills"), "global"),
+      ...discoverSkillsInDir(join(home, ".codex", "skills"), "global", configErrors),
     );
   }
 

@@ -6,6 +6,7 @@ export function renderJson(args: {
   root: string;
   facts: Facts;
   findings: Finding[];
+  resolvedFrom?: string;
 }): string {
   const { version, root, facts, findings } = args;
   const depCount =
@@ -15,6 +16,9 @@ export function renderJson(args: {
   const payload = {
     version,
     root,
+    ...(args.resolvedFrom === undefined
+      ? {}
+      : { resolvedFrom: args.resolvedFrom }),
     factsSummary: {
       packageManager: facts.packageManager,
       depCount,
