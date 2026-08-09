@@ -81,18 +81,54 @@ the spec has 31, calling working hooks dead at severity `error`.
 
 A check here has to point at a spec line. If it cannot, it does not ship.
 
-## Install
+## Try it in 30 seconds
+
+`agentscan` is **not on npm yet**, so `bunx agentscan` will 404. Clone and run it
+against any project — it reads that project, writes nothing, and never leaves
+your machine:
 
 ```bash
-# from this repo (not published yet)
-bun run src/cli.ts check
+git clone --depth=1 https://github.com/SimaAlexandru99/agentscan
+cd agentscan && bun install
 
-# after publish
+bun run src/cli.ts check ~/path/to/your-project
+```
+
+Point it at a project that actually has agent config — a `.claude/` directory,
+an `.mcp.json`, an `AGENTS.md`. On a project with none of those it will
+correctly find nothing and say so.
+
+```bash
+# what it could possibly report, before you run it
+bun run src/cli.ts rules
+
+# the interesting bits it hides by default
+bun run src/cli.ts check ~/your-project --verbose
+
+# why one specific finding fired
+bun run src/cli.ts explain hook.missing-script:hook:PreToolUse:./x.js ~/your-project
+```
+
+Requires **Bun** 1.1+. There is no Node build: the CLI uses `import.meta.dir`
+and `Bun.which` directly. `check` never opens a socket and never writes to the
+tree it scans.
+
+### In CI
+
+The Action runs from its own checkout, so it works before the npm release:
+
+```yaml
+- uses: SimaAlexandru99/agentscan@v0
+  with:
+    fail-on: error
+```
+
+### After the npm release
+
+```bash
 bun add -d agentscan
 bunx agentscan check
 ```
-
-Requires **Bun** (v1.1+). Bin is `./src/cli.ts` via bun — not a Node-built binary in v1. No network on the `check` path.
 
 ## Usage
 

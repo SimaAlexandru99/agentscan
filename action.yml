@@ -50,6 +50,14 @@ runs:
       with:
         bun-version: ${{ inputs.bun-version }}
 
+    # Dependencies for the action's own checkout, not the caller's project.
+    # `bunx agentscan` would fetch from npm, which pins the action to whatever
+    # is published rather than to the ref the caller asked for — and returns 404
+    # while the package is unpublished.
+    - shell: bash
+      run: bun install --frozen-lockfile --production
+      working-directory: ${{ github.action_path }}
+
     - id: scan
       shell: bash
       # The report goes to the log and to an output. `set +e` because a non-zero
@@ -64,7 +72,7 @@ runs:
         if [ "${{ inputs.global }}" = "true" ]; then
           args+=(--global)
         fi
-        report=$(bunx --bun agentscan "${args[@]}")
+        report=$(bun "${{ github.action_path }}/src/cli.ts" "${args[@]}")
         code=$?
         printf '%s\n' "$report"
         {
