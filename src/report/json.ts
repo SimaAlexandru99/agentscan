@@ -23,6 +23,8 @@ export function renderJson(args: {
       packageManager: facts.packageManager,
       depCount,
       skillCount: facts.skills.length,
+      globalSkillCount: facts.skills.filter((s) => s.source === "global")
+        .length,
     },
     findings: sortFindings(findings),
   };

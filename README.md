@@ -49,7 +49,7 @@ Flags for `check`:
 | `--quiet` | Summary line only |
 | `--verbose` | Show KEEP + info-severity findings |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
-| `--global` | Include global skill directories |
+| `--global` | Also scan `~/.claude/skills` and `~/.codex/skills` (see below) |
 | `--config <path>` | Config file path |
 | `--rules-dir <path>` | User rules directory (default: `.agentscan/rules`) |
 
@@ -91,7 +91,8 @@ JSON shape (abridged):
   "factsSummary": {
     "packageManager": "bun",
     "depCount": 1,
-    "skillCount": 1
+    "skillCount": 1,
+    "globalSkillCount": 0
   },
   "findings": [
     {
@@ -111,6 +112,19 @@ JSON shape (abridged):
 
 Same tree → same sorted findings (stable, unique `id`s — one rule per id, so a
 user rule that reuses a builtin id replaces it rather than doubling it).
+
+### `--global`
+
+Adds `~/.claude/skills` and `~/.codex/skills` to the structural checks: a
+`SKILL.md` that is malformed is malformed wherever it lives, and those findings
+carry a `source: global` evidence entry so you can tell them apart.
+
+Lockfile checks stay project-scoped — a project lockfile cannot pin a skill that
+lives in your home directory, so reporting one as "not in the lockfile" could
+only ever be wrong.
+
+`includeGlobal: true` in `.agentscanrc.json` does the same thing without the
+flag.
 
 ## Exit codes
 

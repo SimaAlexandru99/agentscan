@@ -312,6 +312,30 @@ describe("renderText", () => {
     );
   });
 
+  test("Stack line splits project and global skills when both are present", () => {
+    const global = { ...skillFact("g"), source: "global" as const };
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts({ skills: [skillFact("p"), global] }),
+      findings: [],
+      verbose: false,
+      quiet: false,
+    });
+    expect(text).toContain("2 skills (1 project + 1 global)");
+  });
+
+  test("Stack line is unchanged when there are no global skills", () => {
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts({ skills: [skillFact("p")] }),
+      findings: [],
+      verbose: false,
+      quiet: false,
+    });
+    expect(text).toContain("1 skills ·");
+    expect(text).not.toContain("project +");
+  });
+
   test("Stack line summarises size, not the dependency list", () => {
     const facts = baseFacts({
       dependencies: { next: "16.3.0", "better-auth": "1.2.0" },
@@ -403,7 +427,12 @@ describe("renderJson", () => {
     const parsed = JSON.parse(raw) as {
       version: string;
       root: string;
-      factsSummary: { packageManager: string; depCount: number; skillCount: number };
+      factsSummary: {
+        packageManager: string;
+        depCount: number;
+        skillCount: number;
+        globalSkillCount: number;
+      };
       findings: Finding[];
     };
 
@@ -413,6 +442,7 @@ describe("renderJson", () => {
       packageManager: "bun",
       depCount: 3, // next + better-auth + typescript
       skillCount: 1,
+      globalSkillCount: 0,
     });
     expect(parsed.findings.map((f) => f.id)).toEqual(["a:err", "z:info"]);
     expect(raw).not.toContain("huge policy");

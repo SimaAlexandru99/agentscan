@@ -61,7 +61,10 @@ export async function main(argv: string[]): Promise<number> {
         quiet: { type: "boolean", default: false },
         verbose: { type: "boolean", default: false },
         "fail-on": { type: "string" },
-        global: { type: "boolean", default: false },
+        // No default: absent must be `undefined` so `?? config.includeGlobal`
+        // in analyze() can fall through. With `default: false` the flag always
+        // overwrote the config key, making `includeGlobal` unreachable.
+        global: { type: "boolean" },
         config: { type: "string" },
         "rules-dir": { type: "string" },
         force: { type: "boolean", default: false },

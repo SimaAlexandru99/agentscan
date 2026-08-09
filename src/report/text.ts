@@ -76,9 +76,14 @@ function formatStack(facts: Facts): string {
   const deps =
     Object.keys(facts.dependencies).length +
     Object.keys(facts.devDependencies).length;
+  const global = facts.skills.filter((s) => s.source === "global").length;
+  const skills =
+    global === 0
+      ? `${facts.skills.length} skills`
+      : `${facts.skills.length} skills (${facts.skills.length - global} project + ${global} global)`;
   return [
     `${deps} deps`,
-    `${facts.skills.length} skills`,
+    skills,
     `${facts.mcp.length} mcp`,
     `${facts.agents.length} agents`,
     `packageManager=${facts.packageManager}`,

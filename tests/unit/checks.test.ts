@@ -225,6 +225,70 @@ describe("skills-lock integrity", () => {
     expect(findings[0]!.message).toContain("addyosmani/web-quality-skills");
   });
 
+  test("a global skill is not judged against the project lockfile", () => {
+    const findings = runChecks(
+      baseFacts({
+        hasSkillsLock: true,
+        lockedSkills: [{ id: "seo" }],
+        skills: [
+          skill({ id: "seo", frontmatterName: "seo", description: "d" }),
+          skill({
+            id: "browser-use",
+            source: "global",
+            path: "/home/u/.claude/skills/browser-use",
+            frontmatterName: "browser-use",
+            description: "d",
+          }),
+        ],
+      }),
+    );
+    // a project lockfile cannot pin a skill that lives in the user's home dir
+    expect(findings).toEqual([]);
+  });
+
+  test("structural checks still apply to global skills", () => {
+    const findings = runChecks(
+      baseFacts({
+        skills: [
+          skill({
+            id: "broken",
+            source: "global",
+            path: "/home/u/.claude/skills/broken",
+            hasFrontmatter: false,
+          }),
+        ],
+      }),
+    );
+    // malformed is malformed wherever it lives
+    expect(findings.map((f) => f.ruleId)).toEqual(["skill.missing-frontmatter"]);
+    expect(
+      findings[0]!.evidence.some(
+        (e) => e.kind === "source" && e.value === "global",
+      ),
+    ).toBe(true);
+  });
+
+  test("skill.no-lockfile counts project skills only", () => {
+    const findings = runChecks(
+      baseFacts({
+        hasSkillsLock: false,
+        skills: [
+          skill({ id: "p", frontmatterName: "p", description: "d" }),
+          skill({
+            id: "g",
+            source: "global",
+            path: "/home/u/.claude/skills/g",
+            frontmatterName: "g",
+            description: "d",
+          }),
+        ],
+      }),
+      { requireLock: true },
+    );
+    expect(findings.map((f) => f.ruleId)).toEqual(["skill.no-lockfile"]);
+    expect(findings[0]!.message).toContain("1 skills");
+  });
+
   test("no lockfile → no lock findings at all", () => {
     const findings = runChecks(
       baseFacts({

@@ -1,5 +1,5 @@
 import { basename } from "node:path";
-import type { Facts, Finding } from "../facts/types";
+import type { Facts, Finding, SkillFact } from "../facts/types";
 
 /**
  * Structural config checks.
@@ -222,6 +222,15 @@ function checkHooks(facts: Facts): Finding[] {
   return out;
 }
 
+/** Global skills live outside the repo; say so, or a reader cannot tell. */
+function skillEvidence(skill: SkillFact, value: string): Finding["evidence"] {
+  const evidence: Finding["evidence"] = [{ kind: "skill", value }];
+  if (skill.source === "global") {
+    evidence.push({ kind: "source", value: "global" });
+  }
+  return evidence;
+}
+
 function checkSkillStructure(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const skill of facts.skills) {
@@ -233,7 +242,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
           message: `Skill directory has no SKILL.md`,
           reason:
             "Without SKILL.md the directory is not a loadable skill; it is usually a leftover or a grouping folder that inflates the inventory.",
-          evidence: [{ kind: "skill", value: skill.path }],
+          evidence: skillEvidence(skill, skill.path),
           suggest: `Add ${skill.path}/SKILL.md or remove the directory`,
         }),
       );
@@ -260,7 +269,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
           message: "SKILL.md has no YAML frontmatter block",
           reason:
             "Skill discovery reads `name` and `description` from frontmatter; without it the skill cannot be matched to a task.",
-          evidence: [{ kind: "skill", value: `${skill.path}/SKILL.md` }],
+          evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
           suggest: "Add a --- delimited block with name and description",
         }),
       );
@@ -274,7 +283,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
           severity: "warning",
           message: "SKILL.md frontmatter has no `name`",
           reason: "Frontmatter must declare name and description.",
-          evidence: [{ kind: "skill", value: `${skill.path}/SKILL.md` }],
+          evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
           suggest: `Add "name: ${skill.id}" to the frontmatter`,
         }),
       );
@@ -287,7 +296,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
           reason:
             "Two different names for one skill: tools that key on the directory and tools that key on frontmatter disagree about what this skill is called, and the lockfile keys on the directory.",
           evidence: [
-            { kind: "skill", value: `${skill.path}/SKILL.md` },
+            ...skillEvidence(skill, `${skill.path}/SKILL.md`),
             { kind: "name", value: skill.frontmatterName },
           ],
           suggest: `Rename the directory to ${skill.frontmatterName}, or set name: ${skill.id}`,
@@ -303,7 +312,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
           message: "SKILL.md frontmatter has no `description`",
           reason:
             "The description is what an agent matches against when choosing a skill; without it the skill is effectively unreachable.",
-          evidence: [{ kind: "skill", value: `${skill.path}/SKILL.md` }],
+          evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
           suggest: "Add a one-line description to the frontmatter",
         }),
       );
@@ -314,17 +323,21 @@ function checkSkillStructure(facts: Facts): Finding[] {
 
 function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
   const out: Finding[] = [];
+  // A project lockfile cannot pin a skill that lives in the user's home
+  // directory, so judging global skills against it can only produce findings
+  // that are never true.
+  const projectSkills = facts.skills.filter((s) => s.source === "project");
 
   if (!facts.hasSkillsLock) {
-    if (options.requireLock === true && facts.skills.length > 0) {
+    if (options.requireLock === true && projectSkills.length > 0) {
       out.push(
         make("skill.no-lockfile", "skills:unpinned", {
           action: "warn",
           severity: "info",
-          message: `${facts.skills.length} skills installed with no skills-lock.json`,
+          message: `${projectSkills.length} skills installed with no skills-lock.json`,
           reason:
             "Without a lockfile there is no record of where each skill came from or which version is pinned, so nothing can tell a managed install from a local edit.",
-          evidence: [{ kind: "count", value: `skills=${facts.skills.length}` }],
+          evidence: [{ kind: "count", value: `skills=${projectSkills.length}` }],
           suggest: "Manage skills with a tool that writes skills-lock.json",
         }),
       );
@@ -332,10 +345,10 @@ function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
     return out;
   }
 
-  const onDisk = new Set(facts.skills.map((s) => s.id));
+  const onDisk = new Set(projectSkills.map((s) => s.id));
   const locked = new Map(facts.lockedSkills.map((l) => [l.id, l]));
 
-  for (const skill of facts.skills) {
+  for (const skill of projectSkills) {
     if (locked.has(skill.id)) {
       continue;
     }
@@ -346,7 +359,7 @@ function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
         message: "Skill is not in skills-lock.json — local and unpinned",
         reason:
           "Every other skill here is a managed install pinned to an upstream source. This one is not tracked, so it will not be updated and cannot be reproduced on another machine.",
-        evidence: [{ kind: "skill", value: skill.path }],
+        evidence: skillEvidence(skill, skill.path),
         suggest:
           "Keep it if it is intentionally project-local, otherwise install it through the skills tool so it gets pinned",
       }),
