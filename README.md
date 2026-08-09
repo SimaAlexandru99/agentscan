@@ -268,6 +268,7 @@ with the YAML rules, and `agentscan explain <id>` works for either.
 | `skill.missing-skill-md` | warning | A directory under a skill path with no `SKILL.md` |
 | `skill.missing-frontmatter` | warning | `SKILL.md` with no `---` block |
 | `skill.broken-reference` | warning | The body points at a bundled file that does not exist |
+| `skill.duplicate-description` | warning | Two or more skills carry an identical description, so routing between them is arbitrary |
 | `skill.missing-description` | info | Frontmatter has no `description`, so Claude will not load the skill on its own |
 | `skill.locked-not-installed` | warning | `skills-lock.json` pins a skill that is not on disk |
 | `skill.not-in-lock` | info | A skill on disk that the lockfile does not track — local and unpinned |

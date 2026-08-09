@@ -21,7 +21,7 @@ rule.
 | 007 | `--global` and `includeGlobal` produce output a user can act on | P2 | S | 004 | DONE `0d89fd2` |
 | 008 | Findings say true things — parser and message defects | P2 | M | 004 | DONE `3430c56` |
 | 001 | Report skill files pointing at bundled files that do not exist | P1 | M | 004 | DONE |
-| 002 | Report skills an agent cannot tell apart | P2 | S | 004 | TODO |
+| 002 | Report skills an agent cannot tell apart | P2 | S | 004 | DONE |
 | 003 | Validate agent definition files instead of only counting them | P3 | S | 008 ✓ | TODO (re-scoped: 4 checks → 2) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |

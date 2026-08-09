@@ -227,8 +227,8 @@ describe("skills-lock integrity", () => {
         hasSkillsLock: true,
         lockedSkills: [{ id: "seo" }],
         skills: [
-          skill({ id: "seo", frontmatterName: "seo", description: "d" }),
-          skill({ id: "my-local", frontmatterName: "my-local", description: "d" }),
+          skill({ id: "seo", frontmatterName: "seo", description: "seo help" }),
+          skill({ id: "my-local", frontmatterName: "my-local", description: "local help" }),
         ],
       }),
     );
@@ -298,13 +298,13 @@ describe("skills-lock integrity", () => {
       baseFacts({
         hasSkillsLock: false,
         skills: [
-          skill({ id: "p", frontmatterName: "p", description: "d" }),
+          skill({ id: "p", frontmatterName: "p", description: "project one" }),
           skill({
             id: "g",
             source: "global",
             path: "/home/u/.claude/skills/g",
             frontmatterName: "g",
-            description: "d",
+            description: "global one",
           }),
         ],
       }),
@@ -329,7 +329,7 @@ describe("skills-lock integrity", () => {
       baseFacts({
         hasSkillsLock: false,
         skills: Array.from({ length: 5 }, (_, i) =>
-          skill({ id: `s${i}`, frontmatterName: `s${i}`, description: "d" }),
+          skill({ id: `s${i}`, frontmatterName: `s${i}`, description: `d${i}` }),
         ),
       }),
       { requireLock: true },
@@ -379,17 +379,87 @@ describe("broken bundled references", () => {
     const findings = runChecks(
       baseFacts({
         skills: [
-          skill({ id: "s", frontmatterName: "s", description: "d" }),
+          skill({ id: "s", frontmatterName: "s", description: "first" }),
           skill({
             id: "t",
             frontmatterName: "t",
-            description: "d",
+            description: "second",
             brokenReferences: [],
           }),
         ],
       }),
     );
     expect(findings).toEqual([]);
+  });
+});
+
+describe("skills an agent cannot tell apart", () => {
+  const desc = (id: string, description: string) =>
+    skill({ id, frontmatterName: id, description });
+
+  test("two identical descriptions are one finding naming both", () => {
+    const findings = runChecks(
+      baseFacts({
+        skills: [desc("firebase-basics", "Firebase help"), desc("firebase-firestore", "Firebase help")],
+      }),
+    );
+    expect(findings.map((f) => f.ruleId)).toEqual(["skill.duplicate-description"]);
+    expect(findings[0]!.subject).toBe("skills:firebase-basics+firebase-firestore");
+    expect(findings[0]!.severity).toBe("warning");
+    expect(findings[0]!.message).toContain("firebase-basics");
+    expect(findings[0]!.message).toContain("firebase-firestore");
+  });
+
+  test("three sharing one description stay one finding", () => {
+    const findings = runChecks(
+      baseFacts({ skills: [desc("a", "same"), desc("b", "same"), desc("c", "same")] }),
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.subject).toBe("skills:a+b+c");
+  });
+
+  test("whitespace and case differences still collide", () => {
+    const findings = runChecks(
+      baseFacts({ skills: [desc("a", "  Deploy   the App "), desc("b", "deploy the app")] }),
+    );
+    expect(findings).toHaveLength(1);
+  });
+
+  test("different descriptions produce nothing", () => {
+    expect(
+      runChecks(baseFacts({ skills: [desc("a", "one"), desc("b", "two")] })),
+    ).toEqual([]);
+  });
+
+  test("a skill with no description is left to skill.missing-description", () => {
+    const findings = runChecks(
+      baseFacts({ skills: [skill({ id: "a", frontmatterName: "a" }), skill({ id: "b", frontmatterName: "b" })] }),
+    );
+    expect(findings.map((f) => f.ruleId).sort()).toEqual([
+      "skill.missing-description",
+      "skill.missing-description",
+    ]);
+  });
+
+  test("two separate colliding pairs are two findings, in a stable order", () => {
+    const findings = runChecks(
+      baseFacts({
+        skills: [desc("z1", "beta"), desc("a1", "alpha"), desc("a2", "alpha"), desc("z2", "beta")],
+      }),
+    );
+    expect(findings.map((f) => f.subject)).toEqual([
+      "skills:a1+a2",
+      "skills:z1+z2",
+    ]);
+  });
+
+  test("global skills are not the project's to reconcile", () => {
+    const g = (id: string) => ({
+      ...desc(id, "same"),
+      source: "global" as const,
+      path: `/home/u/.claude/skills/${id}`,
+    });
+    expect(runChecks(baseFacts({ skills: [g("a"), g("b")] }))).toEqual([]);
   });
 });
 
@@ -407,7 +477,7 @@ describe("skill description budget", () => {
 
   test("over the ceiling is one info finding naming the totals", () => {
     const findings = runChecks(
-      baseFacts({ skills: [withDesc("a", 600), withDesc("b", 600)] }),
+      baseFacts({ skills: [withDesc("a", 600), withDesc("b", 601)] }),
       { skillDescriptionBytes: 1000 },
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.description-budget"]);
@@ -569,6 +639,8 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
         skill({ id: "no-md", hasSkillMd: false, hasFrontmatter: false }),
         skill({ id: "no-fm", hasFrontmatter: false }),
         skill({ id: "no-desc", frontmatterName: "no-desc" }),
+        skill({ id: "dup1", frontmatterName: "dup1", description: "twin" }),
+        skill({ id: "dup2", frontmatterName: "dup2", description: "twin" }),
         skill({
           id: "dangling",
           frontmatterName: "dangling",

@@ -67,6 +67,10 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
     description: "SKILL.md points at a bundled file that does not exist",
   },
   {
+    id: "skill.duplicate-description",
+    description: "Two or more skills share an identical description",
+  },
+  {
     id: "skill.description-budget",
     description: "Skill descriptions exceed the startup character budget",
   },
@@ -429,6 +433,57 @@ function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
 }
 
 /**
+ * Skills an agent cannot choose between.
+ *
+ * Claude picks a skill by reading its description. Two skills carrying the same
+ * one are indistinguishable at selection time: whichever is seen first wins and
+ * the other is dead weight that still costs context on every routing decision.
+ *
+ * Exact match after normalising whitespace and case — no similarity metric.
+ * A threshold needs tuning against real data, and an untuned threshold ships
+ * false positives into a report whose whole value is that everything in it is
+ * real. If exact matching proves too narrow, that is a finding to report, not a
+ * reason to guess.
+ *
+ * Project skills only: a collision between two global skills is not this
+ * project's to reconcile, the same scoping as the description budget.
+ */
+function checkDuplicateDescriptions(facts: Facts): Finding[] {
+  const groups = new Map<string, string[]>();
+  for (const skill of facts.skills) {
+    if (skill.source !== "project" || skill.description === undefined) {
+      continue;
+    }
+    const key = skill.description.trim().replace(/\s+/g, " ").toLowerCase();
+    if (key.length === 0) {
+      continue;
+    }
+    groups.set(key, [...(groups.get(key) ?? []), skill.id]);
+  }
+
+  const out: Finding[] = [];
+  for (const ids of groups.values()) {
+    if (ids.length < 2) {
+      continue;
+    }
+    const sorted = [...ids].sort((a, b) => a.localeCompare(b));
+    out.push(
+      make("skill.duplicate-description", `skills:${sorted.join("+")}`, {
+        action: "warn",
+        severity: "warning",
+        message: `${sorted.length} skills share one description: ${sorted.join(", ")}`,
+        reason:
+          "Claude routes on the description. When two are identical the choice between those skills is arbitrary, and the one that loses is inert while still costing context every time.",
+        evidence: sorted.map((id) => ({ kind: "skill", value: id })),
+        suggest:
+          "Give each a description that says when to pick it over the other, or delete the redundant one",
+      }),
+    );
+  }
+  return out.sort((a, b) => a.subject.localeCompare(b.subject));
+}
+
+/**
  * Every skill's name and description is loaded at startup so Claude can decide
  * what to reach for. That sits in a character budget of roughly 1-2% of the
  * context window, shared across all of them — past it descriptions are
@@ -557,6 +612,7 @@ export function runChecks(
     ...checkHooks(facts),
     ...checkSkillStructure(facts),
     ...checkLockIntegrity(facts, options),
+    ...checkDuplicateDescriptions(facts),
     ...checkDescriptionBudget(facts, options),
     ...checkMcp(facts),
   ];
