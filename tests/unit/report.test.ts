@@ -431,6 +431,65 @@ describe("renderText", () => {
     expect(text).toContain("does not exist: ./only.js");
   });
 
+  test("colour does not let scanned content forge escapes", () => {
+    // The whole point of safe(): the renderer now writes escapes on purpose,
+    // so the guarantee is no longer "no escapes" but "only ours". A skill name
+    // carrying a real ESC must still come out inert.
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: [
+        finding({
+          id: "r:x",
+          action: "warn",
+          severity: "warning",
+          ruleId: "r",
+          subject: "skill:x",
+          message: "\u001b[31mred\u001b[0m",
+          evidence: [{ kind: "skill", value: "path\u001b[2J" }],
+        }),
+      ],
+      verbose: false,
+      quiet: false,
+      colour: true,
+    });
+
+    // escaped, not executed
+    expect(text).toContain("\\x1b");
+    // and every real escape present is a colour code we emitted
+    for (const seq of text.match(/\u001b\[[0-9;]*m/g) ?? []) {
+      expect(seq).toMatch(/^\u001b\[(?:0|1|2|31|32|33)m$/);
+    }
+    expect(text).not.toContain("\u001b[2J");
+  });
+
+  test("the header box appears only with colour, and matches the score", () => {
+    const clean = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: [],
+      verbose: false,
+      quiet: false,
+      colour: true,
+    });
+    expect(clean).toContain("┌─────┐");
+    expect(clean).toContain("100/100");
+    expect(clean).toContain("clean");
+    // green, because nothing was found
+    expect(clean).toContain("\u001b[32m");
+    expect(clean).not.toContain("\u001b[31m");
+
+    const plain = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: [],
+      verbose: false,
+      quiet: false,
+    });
+    expect(plain).not.toContain("┌─────┐");
+    expect(plain).not.toContain("\u001b");
+  });
+
   test("quiet is summary line only", () => {
     const text = renderText({
       version: "0.1.0",

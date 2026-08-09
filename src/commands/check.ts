@@ -19,11 +19,20 @@ export type CheckOptions = {
   failUnder?: number;
   global?: boolean;
   configPath?: string;
+  /** ANSI colour and the header box. Only ever honoured for `human`. */
+  colour?: boolean;
 };
 
 export type CheckResult = {
   exitCode: number;
   stdout: string;
+  /**
+   * The same report with no escapes, present only when `stdout` has colour.
+   *
+   * `--copy` needs it: the clipboard is not a terminal, and pasting a report
+   * full of escape codes into an issue is worse than no colour at all.
+   */
+  plain?: string;
 };
 
 /**
@@ -42,23 +51,33 @@ export async function runCheck(options: CheckOptions): Promise<CheckResult> {
     options.output ?? (options.json === true ? "json" : "human");
 
   let stdout: string;
+  let plain: string | undefined;
   if (format === "json") {
     stdout = renderJson({ version: VERSION, root, facts, findings, resolvedFrom });
   } else if (format === "prompt") {
     stdout = renderPrompt({ version: VERSION, facts, findings });
   } else {
-    stdout = renderText({
-      version: VERSION,
-      facts,
-      findings,
-      resolvedFrom,
-      verbose: options.verbose ?? false,
-      quiet: options.quiet ?? false,
-    });
+    // Colour is a `human` concern only. A machine-readable format carrying
+    // escapes would break every consumer the README tells people to pipe into.
+    const text = (colour: boolean): string =>
+      renderText({
+        version: VERSION,
+        facts,
+        findings,
+        resolvedFrom,
+        verbose: options.verbose ?? false,
+        quiet: options.quiet ?? false,
+        colour,
+      });
+    stdout = text(options.colour === true);
+    if (options.colour === true) {
+      plain = text(false);
+    }
   }
 
   return {
     exitCode: exitCode(findings, config.failOn, options.failUnder),
     stdout,
+    ...(plain === undefined ? {} : { plain }),
   };
 }

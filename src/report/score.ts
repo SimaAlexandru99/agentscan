@@ -1,4 +1,5 @@
 import type { Finding } from "../facts/types";
+import type { Tone } from "./ansi";
 
 /**
  * Points deducted per finding. Published deliberately — see the note below.
@@ -68,4 +69,43 @@ export function scoreLabel(points: number): string {
     return "poor";
   }
   return "broken";
+}
+
+/**
+ * Green, yellow or red for a score.
+ *
+ * Stricter bands than react-doctor's 75/50 because the deductions are coarser
+ * here: one error already costs 10, so 89 means something is genuinely broken
+ * rather than merely imperfect.
+ */
+export function scoreTone(points: number): Tone {
+  if (points >= 90) {
+    return "green";
+  }
+  if (points >= 50) {
+    return "yellow";
+  }
+  return "red";
+}
+
+/**
+ * Eyes and mouth for the header box, as `[eyes, mouth]`.
+ *
+ * Keyed off the same thresholds as `scoreLabel` so the face and the word can
+ * never disagree — a smiling box next to "broken" would undermine both.
+ */
+export function scoreFace(points: number): [string, string] {
+  if (points === 100) {
+    return ["\u25e0 \u25e0", " \u25bd "];
+  }
+  if (points >= 90) {
+    return ["\u2022 \u2022", " \u203f "];
+  }
+  if (points >= 70) {
+    return ["\u2022 \u2022", " \u2500 "];
+  }
+  if (points >= 50) {
+    return ["\u25e1 \u25e1", " \u2312 "];
+  }
+  return ["\u2715 \u2715", " \u2312 "];
 }

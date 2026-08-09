@@ -164,6 +164,7 @@ Flags for `check`:
 | `--json` | JSON report (alias for `--output json`) |
 | `--output <format>` | `human` (default) · `json` · `prompt` |
 | `--copy` | Also copy the report to the system clipboard |
+| `--no-color` | Never colour, even on a terminal (`NO_COLOR=1` does the same) |
 | `--quiet` | Summary line only |
 | `--verbose` | Show KEEP + info-severity findings |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
@@ -176,7 +177,12 @@ Flags for `check`:
 ## Sample output
 
 ```text
-agentscan v0.3.0 — touchagency
+  ┌─────┐   40/100  broken  ·  touchagency
+  │ ✕ ✕ │   ██████████░░░░░░░░░░░░░░░
+  │  ⌒  │   6 warn · 4 info hidden (--verbose)
+  └─────┘
+
+agentscan v0.4.0 — touchagency
 
 Scanned: 46 deps · 54 skills · 1 mcp · 2 agents · packageManager=bun
 
@@ -189,6 +195,11 @@ WARN    rule:hook.missing-script  ×6
 
 Summary: 6 warn · 4 info hidden (--verbose) · score 40/100 broken
 ```
+
+On a terminal the header is coloured green, yellow or red and the face tracks
+the score. Redirect or pipe it and you get exactly the text above, with no
+escape sequences — the header box is dropped too, so `--json`, `--output
+prompt`, CI logs and `--copy` are unchanged by any of this.
 
 The `Stack:` line is orientation only — which project, how big. The summary lists
 only actions that actually occurred; a clean project prints `Summary: no findings`.
