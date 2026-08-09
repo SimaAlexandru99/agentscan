@@ -286,7 +286,7 @@ guessed at.
 bun install
 bun run typecheck
 bun test
-bun run src/cli.ts check tests/fixtures/next16-redundant-skill
+bun run src/cli.ts check tests/fixtures/lock-drift
 ```
 
 | Script | Command |
