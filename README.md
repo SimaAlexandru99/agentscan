@@ -10,6 +10,7 @@
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runtime-bun-111111?style=flat-square" alt="Bun">
+  <img src="https://img.shields.io/npm/v/@chimix/agentscan?style=flat-square&color=111111&label=npm" alt="npm version">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
@@ -83,15 +84,18 @@ A check here has to point at a spec line. If it cannot, it does not ship.
 
 ## Try it in 30 seconds
 
-`agentscan` is **not on npm yet**, so `bunx agentscan` will 404. Clone and run it
-against any project — it reads that project, writes nothing, and never leaves
-your machine:
+Run it against any project. It reads that project, writes nothing, and never
+leaves your machine:
 
 ```bash
-git clone --depth=1 https://github.com/SimaAlexandru99/agentscan
-cd agentscan && bun install
+bunx --bun @chimix/agentscan check ~/path/to/your-project
+```
 
-bun run src/cli.ts check ~/path/to/your-project
+The package is scoped `@chimix/agentscan` because npm rejects the bare name as
+too close to an unrelated `agent-scan`. The command you type stays `agentscan`.
+
+```bash
+bun add -d @chimix/agentscan     # then: bunx agentscan check
 ```
 
 Point it at a project that actually has agent config — a `.claude/` directory,
@@ -100,13 +104,13 @@ correctly find nothing and say so.
 
 ```bash
 # what it could possibly report, before you run it
-bun run src/cli.ts rules
+bunx @chimix/agentscan rules
 
 # the interesting bits it hides by default
-bun run src/cli.ts check ~/your-project --verbose
+bunx @chimix/agentscan check ~/your-project --verbose
 
 # why one specific finding fired
-bun run src/cli.ts explain hook.missing-script:hook:PreToolUse:./x.js ~/your-project
+bunx @chimix/agentscan explain hook.missing-script:hook:PreToolUse:./x.js ~/your-project
 ```
 
 Requires **Bun** 1.1+. There is no Node build: the CLI uses `import.meta.dir`
@@ -115,7 +119,8 @@ tree it scans.
 
 ### In CI
 
-The Action runs from its own checkout, so it works before the npm release:
+The Action runs from its own checkout, so it uses the ref you pin rather than
+whatever is on npm:
 
 ```yaml
 - uses: SimaAlexandru99/agentscan@v0
@@ -123,11 +128,12 @@ The Action runs from its own checkout, so it works before the npm release:
     fail-on: error
 ```
 
-### After the npm release
+### From a checkout
 
 ```bash
-bun add -d agentscan
-bunx agentscan check
+git clone --depth=1 https://github.com/SimaAlexandru99/agentscan
+cd agentscan && bun install
+bun run src/cli.ts check ~/your-project
 ```
 
 ## Usage

@@ -1,10 +1,13 @@
 {
-  "name": "agentscan",
+  "name": "@chimix/agentscan",
   "version": "0.1.0",
   "description": "Find broken agent configuration in a project \u2014 hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile",
   "type": "module",
   "bin": {
     "agentscan": "./src/cli.ts"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "src",
