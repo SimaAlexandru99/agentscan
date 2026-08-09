@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { parseArgs } from "node:util";
 import { type OutputFormat, runCheck } from "./commands/check";
 import { runExplain } from "./commands/explain";

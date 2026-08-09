@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/tests-183%20passing-111111?style=flat-square" alt="183 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
-  <img src="https://img.shields.io/badge/runtime-bun-111111?style=flat-square" alt="Bun">
+  <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
   <img src="https://img.shields.io/npm/v/@chimix/agentscan?style=flat-square&color=111111&label=npm" alt="npm version">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
@@ -88,8 +88,12 @@ Run it against any project. It reads that project, writes nothing, and never
 leaves your machine:
 
 ```bash
-bunx --bun @chimix/agentscan check ~/path/to/your-project
+npx @chimix/agentscan@latest check ~/path/to/your-project
 ```
+
+Works on Node 20.11+ or Bun — the published bin is a single bundled file with
+no dependencies to install. `bunx --bun @chimix/agentscan` is the same thing on
+Bun.
 
 The package is scoped `@chimix/agentscan` because npm rejects the bare name as
 too close to an unrelated `agent-scan`. The command you type stays `agentscan`.
@@ -113,9 +117,9 @@ bunx @chimix/agentscan check ~/your-project --verbose
 bunx @chimix/agentscan explain hook.missing-script:hook:PreToolUse:./x.js ~/your-project
 ```
 
-Requires **Bun** 1.1+. There is no Node build: the CLI uses `import.meta.dir`
-and `Bun.which` directly. `check` never opens a socket and never writes to the
-tree it scans.
+`check` never opens a socket and never writes to the tree it scans. Contributing
+needs **Bun** 1.1+ — the repo runs TypeScript directly and `bun run build`
+bundles it for Node.
 
 ### In CI
 

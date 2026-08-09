@@ -12,6 +12,9 @@ import { copyToClipboard } from "../../src/report/clipboard";
 let dir: string;
 let originalPath: string | undefined;
 
+// PATH is replaced with `dir` alone, and node:child_process hands that PATH to
+// the child too — so a fake that runs a bare `cat` cannot find one. Absolute
+// paths keep the fakes independent of the PATH the test is manipulating.
 const fake = (name: string, body: string): void => {
   const path = join(dir, name);
   writeFileSync(path, `#!/bin/sh\n${body}\n`);
@@ -32,7 +35,7 @@ afterEach(() => {
 describe("copyToClipboard", () => {
   test("feeds the report to the tool's stdin, unmodified", async () => {
     const sink = join(dir, "captured");
-    fake("pbcopy", `cat > "${sink}"`);
+    fake("pbcopy", `/bin/cat > "${sink}"`);
 
     // Multi-byte and newlines: a report carries both, and clip.exe mangling
     // line endings is a known cost of that fallback.
@@ -48,7 +51,7 @@ describe("copyToClipboard", () => {
     const sink = join(dir, "captured");
     fake("wl-copy", "echo 'no wayland' >&2; exit 1");
     fake("xclip", "exit 1");
-    fake("clip.exe", `cat > "${sink}"`);
+    fake("clip.exe", `/bin/cat > "${sink}"`);
 
     const result = await copyToClipboard("payload");
 

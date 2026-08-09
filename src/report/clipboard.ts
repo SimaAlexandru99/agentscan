@@ -1,3 +1,7 @@
+import { spawn } from "node:child_process";
+import { accessSync, constants } from "node:fs";
+import { delimiter, join } from "node:path";
+
 /**
  * Copying the report to the system clipboard.
  *
@@ -43,13 +47,30 @@ export function clipboardCandidates(
 }
 
 /**
- * Absolute path to a tool, or null.
+ * Absolute path to an executable on PATH, or null.
  *
- * PATH is read from the environment on every call rather than let Bun.which
- * consult its own copy, so the lookup and the spawn agree on one answer.
+ * Hand-rolled rather than `Bun.which`, so the same code runs under Node — the
+ * published bundle targets Node so `npx` works without Bun installed, and this
+ * file held the only two Bun-specific calls in the tool. PATH is read from the
+ * environment on every call so the lookup and the spawn cannot disagree.
+ *
+ * POSIX semantics only: no PATHEXT probing. Every tool in the list above is
+ * either a POSIX binary or `clip.exe`, which WSL resolves by its full name.
  */
 function resolve(name: string): string | null {
-  return Bun.which(name, { PATH: process.env.PATH ?? "" });
+  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+    if (dir.length === 0) {
+      continue;
+    }
+    const candidate = join(dir, name);
+    try {
+      accessSync(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // not here, or not executable — keep looking
+    }
+  }
+  return null;
 }
 
 /** Try each installed tool until one exits 0. */
@@ -70,15 +91,8 @@ export async function copyToClipboard(text: string): Promise<CopyResult> {
       continue;
     }
     try {
-      const proc = Bun.spawn([bin, ...argv.slice(1)], {
-        stdin: new TextEncoder().encode(text),
-        stdout: "ignore",
-        stderr: "ignore",
-        // A clipboard tool that hangs must not hang the scan. wl-copy in
-        // particular stays resident to serve the selection it just took.
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
-      if ((await proc.exited) === 0) {
+      const code = await runTool(bin, argv.slice(1), text);
+      if (code === 0) {
         return { ok: true, tool };
       }
       failures.push(tool);
@@ -87,4 +101,26 @@ export async function copyToClipboard(text: string): Promise<CopyResult> {
     }
   }
   return { ok: false, reason: `clipboard tool failed: ${failures.join(", ")}` };
+}
+
+/** Feed `text` to a tool's stdin; resolve its exit code, or null if it failed. */
+function runTool(
+  bin: string,
+  args: string[],
+  text: string,
+): Promise<number | null> {
+  return new Promise((resolveExit) => {
+    // A clipboard tool that hangs must not hang the scan. wl-copy in particular
+    // stays resident to serve the selection it just took.
+    const child = spawn(bin, args, {
+      stdio: ["pipe", "ignore", "ignore"],
+      timeout: TIMEOUT_MS,
+    });
+    child.on("error", () => resolveExit(null));
+    child.on("close", (code) => resolveExit(code));
+    child.stdin?.on("error", () => {
+      // A tool that exits before reading stdin gives EPIPE; `close` decides.
+    });
+    child.stdin?.end(text);
+  });
 }

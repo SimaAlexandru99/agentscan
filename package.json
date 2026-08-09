@@ -1,16 +1,16 @@
 {
   "name": "@chimix/agentscan",
-  "version": "0.1.0",
-  "description": "Find broken agent configuration in a project \u2014 hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile",
+  "version": "0.2.0",
+  "description": "Find broken agent configuration in a project — hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile",
   "type": "module",
   "bin": {
-    "agentscan": "./src/cli.ts"
+    "agentscan": "./dist/cli.js"
   },
   "publishConfig": {
     "access": "public"
   },
   "files": [
-    "src",
+    "dist",
     "README.md",
     "LICENSE"
   ],
@@ -34,14 +34,16 @@
   },
   "author": "Sima Alexandru <sima.alex33@gmail.com>",
   "scripts": {
-    "preinstall": "node -e \"try{require('child_process').execSync('bun --version',{stdio:'ignore'})}catch{console.error('\\n  agentscan runs on Bun. Install it: https://bun.sh\\n  (the CLI will not start without it)\\n')}\"",
     "agentscan": "bun run src/cli.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "check": "bun run src/cli.ts check",
-    "spec:check": "bun run scripts/spec-drift.ts"
+    "spec:check": "bun run scripts/spec-drift.ts",
+    "build": "bun build src/cli.ts --target=node --outfile dist/cli.js --banner '#!/usr/bin/env node'",
+    "prepublishOnly": "bun run build"
   },
   "engines": {
+    "node": ">=20.11.0",
     "bun": ">=1.1.0"
   },
   "license": "MIT",
