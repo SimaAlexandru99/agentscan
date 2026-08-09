@@ -165,7 +165,7 @@ only says how many points of unspecified trouble is too much.
 ## CI
 
 ```yaml
-- uses: SimaAlexandru99/skillscan@v0
+- uses: SimaAlexandru99/agentscan@v0
   with:
     fail-on: error        # never | warning | error
     output: human         # human | json | prompt
