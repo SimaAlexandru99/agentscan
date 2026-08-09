@@ -314,6 +314,45 @@ describe("runRules", () => {
     expect(runRules(facts, [userRule], defaultConfig)).toEqual([]);
   });
 
+  test("a $ in a skill name does not corrupt the finding id", () => {
+    const rule: RuleDefinition = {
+      id: "custom.t",
+      when: { skillMatches: "*" },
+      then: {
+        action: "warn",
+        severity: "warning",
+        subject: "skill:{{matchedSkill}}",
+        message: "m",
+      },
+    };
+    const findings = runRules(
+      baseFacts({ skills: [skill("a$&b")] }),
+      [rule],
+      defaultConfig,
+    );
+    expect(findings[0]!.id).toBe("custom.t:skill:a$&b");
+    expect(findings[0]!.id).not.toContain("{{matchedSkill}}");
+  });
+
+  test("hasConfig does not match inherited Object.prototype members", () => {
+    const rule: RuleDefinition = {
+      id: "t.proto",
+      when: { hasConfig: "constructor" },
+      then: {
+        action: "warn",
+        severity: "warning",
+        subject: "proto",
+        message: "m",
+      },
+    };
+    expect(runRules(baseFacts(), [rule], defaultConfig)).toEqual([]);
+
+    const real: RuleDefinition = { ...rule, when: { hasConfig: "biome" } };
+    expect(
+      runRules(baseFacts({ configs: { biome: true } }), [real], defaultConfig),
+    ).toHaveLength(1);
+  });
+
   const agentsMdRule: RuleDefinition = {
     id: "budget.agents-md",
     when: {
@@ -327,6 +366,32 @@ describe("runRules", () => {
       reason: "policy size",
     },
   };
+
+  test("line count matches wc -l, not split length", () => {
+    // 200 lines plus the trailing newline every text file ends with
+    const text = `${Array.from({ length: 200 }, (_, i) => `line ${i}`).join("\n")}\n`;
+    const rule: RuleDefinition = {
+      id: "t.lines",
+      when: { policyLines: { file: "AGENTS.md", gt: 200 } },
+      then: {
+        action: "warn",
+        severity: "info",
+        subject: "b:AGENTS.md",
+        message: "{{count}}",
+      },
+    };
+    const facts = baseFacts({
+      policyFiles: [{ path: "/tmp/proj/AGENTS.md", text }],
+    });
+    // exactly 200 must not exceed gt: 200
+    expect(runRules(facts, [rule], defaultConfig)).toEqual([]);
+
+    const under: RuleDefinition = {
+      ...rule,
+      when: { policyLines: { file: "AGENTS.md", gt: 150 } },
+    };
+    expect(runRules(facts, [under], defaultConfig)[0]!.message).toBe("200");
+  });
 
   test("policyLines over threshold → finding", () => {
     const lines = Array.from({ length: 151 }, (_, i) => `line ${i}`).join("\n");

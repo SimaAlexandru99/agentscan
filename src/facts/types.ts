@@ -12,6 +12,8 @@ export type SkillFact = {
   hasFrontmatter: boolean;
   /** SKILL.md exists but could not be read; frontmatter facts are unknown. */
   unreadable?: boolean;
+  /** A `---` block exists but does not parse; its fields are unknown. */
+  unparseableFrontmatter?: boolean;
   /** `name:` from frontmatter, when present. */
   frontmatterName?: string;
 };

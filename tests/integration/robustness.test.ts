@@ -150,6 +150,93 @@ describe("a malformed shape is a finding, not a crash", () => {
   });
 });
 
+describe("the frontmatter parser reads what is there", () => {
+  test("an empty name: does not capture the next line", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/s/SKILL.md": "---\nname:\ndescription: A real description\n---\n",
+    });
+    const payload = await report(dir);
+    const ids = payload.findings.map((f) => f.ruleId);
+
+    expect(ids).toContain("skill.missing-name");
+    // the old regex captured "description: A real description" as the name
+    expect(ids).not.toContain("skill.name-mismatch");
+  });
+
+  test("CRLF line endings do not corrupt the frontmatter block", async () => {
+    // The closing fence is "\r\n---"; searching for "\n---" cuts inside it and
+    // leaves a stray \r that a strict YAML parser rejects.
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/s/SKILL.md":
+        "---\r\nname: s\r\ndescription: d\r\nmeta:\r\n  v: \"1\"\r\n---\r\n\r\n# body\r\n",
+    });
+    const payload = await report(dir);
+    expect(payload.findings.map((f) => f.ruleId)).toEqual([]);
+  });
+
+  test("a folded scalar description is read, not reported missing", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/s/SKILL.md":
+        "---\nname: s\ndescription: >\n  A folded description\n  spanning lines.\n---\n",
+    });
+    const payload = await report(dir);
+    expect(payload.findings.map((f) => f.ruleId)).toEqual([]);
+  });
+
+  test("frontmatter that does not parse is reported as such, not as missing fields", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/s/SKILL.md": "---\nname: [unclosed\n---\n",
+    });
+    const payload = await report(dir);
+    const ids = payload.findings.map((f) => f.ruleId);
+
+    expect(ids).toContain("config.unreadable");
+    // we could not read the fields; claiming they are absent would be a guess
+    expect(ids).not.toContain("skill.missing-name");
+    expect(ids).not.toContain("skill.missing-description");
+  });
+
+  test("a UTF-8 BOM does not hide valid frontmatter", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/s/SKILL.md": "\uFEFF---\nname: s\ndescription: d\n---\n",
+    });
+    const payload = await report(dir);
+    expect(payload.findings.map((f) => f.ruleId)).not.toContain(
+      "skill.missing-frontmatter",
+    );
+  });
+});
+
+describe("only agent definition files count as agents", () => {
+  test("dotfiles and non-markdown files are not agents", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".claude/agents/.gitkeep": "",
+      ".claude/agents/.DS_Store": "",
+      ".claude/agents/notes.txt": "scratch",
+      ".claude/agents/reviewer.md": "---\nname: Reviewer\ndescription: d\n---\n",
+    });
+    const result = await runCheck({ dir, failOn: "never" });
+    expect(result.stdout).toContain("1 agents");
+  });
+
+  test("a README in the agents directory is still counted — plan 003 closes this", async () => {
+    // Documenting the residue rather than piling on filename heuristics: the
+    // principled discriminator is agent frontmatter, which plan 003 reads.
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".claude/agents/README.md": "# how these agents work\n",
+    });
+    const result = await runCheck({ dir, failOn: "never" });
+    expect(result.stdout).toContain("1 agents");
+  });
+});
+
 describe("root resolution is visible", () => {
   test("a directory with no package.json reports which root it walked up to", async () => {
     const parent = project({ "package.json": '{"name":"parent"}' });

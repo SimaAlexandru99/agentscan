@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
+import { parse as parseYaml } from "yaml";
 import type { AgentscanConfig } from "../config/schema";
 import type {
   AgentFact,
@@ -75,23 +76,35 @@ function readJsonConfig(
 
 type Frontmatter = {
   hasFrontmatter: boolean;
+  /** The block exists but the parser rejected it — fields are unknown, absent. */
+  unparseable?: boolean;
   /** Read failed — say so rather than claiming the file has no frontmatter. */
   unreadable?: boolean;
   name?: string;
   description?: string;
 };
 
-function stripQuotes(value: string): string {
-  const v = value.trim();
-  if (
-    (v.startsWith('"') && v.endsWith('"')) ||
-    (v.startsWith("'") && v.endsWith("'"))
-  ) {
-    return v.slice(1, -1);
+function scalar(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
   }
-  return v;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return undefined;
 }
 
+/**
+ * Parse the `---` block with a real YAML parser.
+ *
+ * This was regex-based, and every fix uncovered another shape it read wrong: an
+ * empty `name:` captured the following line, and folded scalars (`description: >`
+ * with the text indented beneath) recorded ">" as the value. Tightening the
+ * regex only converted a wrong value into a wrong "field is missing" — the file
+ * is valid YAML and the description is right there. `yaml` is already a
+ * dependency for the rule loader, so this costs nothing new.
+ */
 function readFrontmatter(
   skillMdPath: string,
   errors: ConfigErrorFact[],
@@ -100,6 +113,15 @@ function readFrontmatter(
   try {
     const buf = readFileSync(skillMdPath);
     text = buf.subarray(0, SKILL_MD_CAP).toString("utf8");
+    // Several Windows editors write a BOM; without stripping it the `---` test
+    // fails and a valid file is reported as having no frontmatter.
+    if (text.charCodeAt(0) === 0xfeff) {
+      text = text.slice(1);
+    }
+    // CRLF is valid in a SKILL.md, but the closing fence is then "\r\n---" and
+    // searching for "\n---" cuts inside it, leaving a stray \r that a strict
+    // YAML parser rejects. Normalise before locating the fence.
+    text = text.replace(/\r\n/g, "\n");
   } catch (err) {
     errors.push({
       path: skillMdPath,
@@ -115,22 +137,42 @@ function readFrontmatter(
   if (end === -1) {
     return { hasFrontmatter: false };
   }
-  const block = text.slice(3, end);
-  const out: Frontmatter = { hasFrontmatter: true };
 
-  const nameMatch = block.match(/^name:\s*(.+)$/m);
-  if (nameMatch?.[1]) {
-    const name = stripQuotes(nameMatch[1]);
-    if (name.length > 0) {
-      out.name = name;
-    }
+  let block: unknown;
+  try {
+    block = parseYaml(text.slice(3, end)) as unknown;
+  } catch (err) {
+    // The block exists but the parser rejected it. Claiming "no name" here
+    // would be a statement about a file we failed to read — the same false
+    // message this parser was rewritten to stop producing. Say what is true:
+    // the frontmatter is unparseable.
+    errors.push({
+      path: skillMdPath,
+      kind: "unexpected-shape",
+      detail: `frontmatter is not valid YAML: ${
+        err instanceof Error ? err.message.split("\n")[0] : String(err)
+      }`,
+    });
+    return { hasFrontmatter: true, unparseable: true };
   }
-  const descMatch = block.match(/^description:\s*(.+)$/m);
-  if (descMatch?.[1]) {
-    const desc = stripQuotes(descMatch[1]);
-    if (desc.length > 0) {
-      out.description = desc;
-    }
+  if (block === null || typeof block !== "object" || Array.isArray(block)) {
+    errors.push({
+      path: skillMdPath,
+      kind: "unexpected-shape",
+      detail: "frontmatter is not a YAML mapping",
+    });
+    return { hasFrontmatter: true, unparseable: true };
+  }
+
+  const record = block as Record<string, unknown>;
+  const out: Frontmatter = { hasFrontmatter: true };
+  const name = scalar(record.name);
+  if (name !== undefined) {
+    out.name = name;
+  }
+  const description = scalar(record.description);
+  if (description !== undefined) {
+    out.description = description;
   }
   return out;
 }
@@ -182,6 +224,9 @@ function discoverSkillsInDir(
     };
     if (fm.unreadable === true) {
       fact.unreadable = true;
+    }
+    if (fm.unparseable === true) {
+      fact.unparseableFrontmatter = true;
     }
     if (fm.description !== undefined) {
       fact.description = fm.description;
@@ -500,6 +545,11 @@ function discoverAgents(root: string, errors: ConfigErrorFact[]): AgentFact[] {
   }
   const facts: AgentFact[] = [];
   for (const name of entries) {
+    // Agent definitions are markdown; .gitkeep, .DS_Store and README.md are not
+    // agents, and counting them inflates the budget.agents rule.
+    if (name.startsWith(".") || !name.endsWith(".md")) {
+      continue;
+    }
     const filePath = join(dir, name);
     try {
       const st = statSync(filePath);
@@ -509,8 +559,7 @@ function discoverAgents(root: string, errors: ConfigErrorFact[]): AgentFact[] {
     } catch {
       continue;
     }
-    const base = name.replace(/\.[^.]+$/, "");
-    facts.push({ name: base || name, path: filePath });
+    facts.push({ name: name.slice(0, -".md".length), path: filePath });
   }
   return facts;
 }

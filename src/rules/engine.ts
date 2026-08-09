@@ -118,6 +118,10 @@ function evalHasConfigClause(
   key: string,
 ): ClauseResult {
   const configs = facts.configs as Record<string, unknown>;
+  // Without hasOwn, `hasConfig: "constructor"` matches every project forever.
+  if (!Object.hasOwn(configs, key)) {
+    return { ok: false };
+  }
   const value = configs[key];
   if (value === undefined || value === false || value === null) {
     return { ok: false };
@@ -273,7 +277,12 @@ function evalPolicyLinesClause(
     if (basename(policy.path) !== file) {
       continue;
     }
-    const lines = policy.text.length === 0 ? 0 : policy.text.split(/\r?\n/).length;
+    // Match `wc -l`: a trailing newline terminates the last line, it does not
+    // start another one.
+    const lines =
+      policy.text.length === 0
+        ? 0
+        : policy.text.replace(/\r?\n$/, "").split(/\r?\n/).length;
     if (lines > threshold) {
       return {
         ok: true,
@@ -322,12 +331,16 @@ function applyTemplate(
   template: string,
   ctx: MatchContext,
 ): string {
+  // Callback form: with a string replacement, `$&` and friends in the *value*
+  // are interpreted as substitution patterns, so a skill named `a$&b` puts the
+  // placeholder back into the finding id and `explain` can never resolve it.
   return template
-    .replaceAll("{{matchedSkill}}", ctx.matchedSkill?.id ?? "")
-    .replaceAll("{{matchedSkillPath}}", ctx.matchedSkill?.path ?? "")
-    .replaceAll("{{count}}", ctx.count !== undefined ? String(ctx.count) : "")
-    .replaceAll(
-      "{{threshold}}",
+    .replaceAll("{{matchedSkill}}", () => ctx.matchedSkill?.id ?? "")
+    .replaceAll("{{matchedSkillPath}}", () => ctx.matchedSkill?.path ?? "")
+    .replaceAll("{{count}}", () =>
+      ctx.count !== undefined ? String(ctx.count) : "",
+    )
+    .replaceAll("{{threshold}}", () =>
       ctx.threshold !== undefined ? String(ctx.threshold) : "",
     );
 }

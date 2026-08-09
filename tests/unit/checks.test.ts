@@ -295,6 +295,24 @@ describe("mcp checks", () => {
     expect(JSON.stringify(findings[0]!)).not.toContain("abcdefghij0123456789");
   });
 
+  test("an Anthropic key is labelled Anthropic, not OpenAI", () => {
+    const findings = runChecks(
+      baseFacts({
+        mcp: [
+          mcp({
+            name: "svc",
+            raw: '{"env":{"K":"sk-ant-api03-ABCDEFGHIJKLMNOP"}}',
+          }),
+        ],
+      }),
+    );
+    expect(findings[0]!.ruleId).toBe("mcp.hardcoded-secret");
+    // rotating at the wrong provider is the worst failure for this finding
+    expect(findings[0]!.message).toContain("Anthropic");
+    expect(findings[0]!.message).not.toContain("OpenAI");
+    expect(JSON.stringify(findings[0])).not.toContain("ABCDEFGHIJKLMNOP");
+  });
+
   test("literal env value flagged as possible secret", () => {
     const findings = runChecks(
       baseFacts({

@@ -76,14 +76,22 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
   },
 ];
 
-/** Token shapes worth failing a build over. Deliberately narrow — no entropy guessing. */
+/**
+ * Token shapes worth failing a build over. Deliberately narrow — no entropy
+ * guessing.
+ *
+ * ORDER IS SIGNIFICANT: the caller uses `.find()`, so a more specific prefix
+ * must come before any pattern that also matches it. `sk-ant-` is a subset of
+ * `sk-`, and reporting the wrong provider on a "rotate this key" finding sends
+ * the user to the wrong dashboard.
+ */
 const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
+  { label: "Anthropic key", re: /\bsk-ant-[A-Za-z0-9_-]{16,}/ },
   { label: "OpenAI-style key", re: /\bsk-[A-Za-z0-9_-]{16,}/ },
   { label: "GitHub token", re: /\bgh[pousr]_[A-Za-z0-9]{20,}/ },
   { label: "Google API key", re: /\bAIza[A-Za-z0-9_-]{20,}/ },
   { label: "Slack token", re: /\bxox[baprs]-[A-Za-z0-9-]{10,}/ },
   { label: "AWS access key id", re: /\bAKIA[0-9A-Z]{16}\b/ },
-  { label: "Anthropic key", re: /\bsk-ant-[A-Za-z0-9_-]{16,}/ },
 ];
 
 function make(
@@ -229,6 +237,12 @@ function checkSkillStructure(facts: Facts): Finding[] {
           suggest: `Add ${skill.path}/SKILL.md or remove the directory`,
         }),
       );
+      continue;
+    }
+
+    if (skill.unparseableFrontmatter === true) {
+      // config.unreadable already names the parse failure; "no name" would be
+      // a guess about fields we could not read.
       continue;
     }
 
