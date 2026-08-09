@@ -166,13 +166,13 @@ describe("renderText", () => {
     });
 
     expect(text).toContain("agentscan v0.1.0 — my-app");
-    expect(text).toContain("Stack:");
+    expect(text).toContain("Scanned:");
     expect(text).toContain("packageManager=bun");
-    expect(text).toContain("DELETE  skill:next-cache-components");
-    expect(text).toContain("rule:next.redundant-cache-components-skill");
+    expect(text).toContain("DELETE  rule:next.redundant-cache-components-skill");
     expect(text).toContain("Redundant Next cache skill — prefer node_modules/next docs");
-    expect(text).toContain("evidence: dep next@16.3.0 · path .agents/skills/next-cache-components");
-    expect(text).toContain("ADD     skill:better-auth");
+    // evidence collapses to where it is, one line per occurrence
+    expect(text).toContain("next@16.3.0 · .agents/skills/next-cache-components");
+    expect(text).toContain("ADD     rule:better-auth.missing-skill");
     expect(text).not.toContain("KEEP");
     expect(text).toMatch(/Summary:.*delete.*add/);
   });
@@ -307,9 +307,9 @@ describe("renderText", () => {
       quiet: false,
     });
     // the exact strings the pre-sanitiser renderer produced
-    expect(text).toContain("DELETE  skill:next-cache-components");
+    expect(text).toContain("DELETE  rule:next.redundant-cache-components-skill");
     expect(text).toContain(
-      "evidence: dep next@16.3.0 · path .agents/skills/next-cache-components",
+      "next@16.3.0 · .agents/skills/next-cache-components",
     );
   });
 
@@ -370,10 +370,65 @@ describe("renderText", () => {
     });
 
     expect(text).toContain(
-      "Stack: 3 deps · 2 skills · 1 mcp · 1 agents · packageManager=bun",
+      "Scanned: 3 deps · 2 skills · 1 mcp · 1 agents · packageManager=bun",
     );
     // the dependency names themselves are noise in a config report
     expect(text).not.toContain("typescript");
+  });
+
+  test("repeated findings collapse into one block with a count", () => {
+    // Six dead hooks used to print the same sentence six times, 24 lines of it.
+    const many = Array.from({ length: 3 }, (_, i) => ({
+      id: `hook.missing-script:h${i}`,
+      ruleId: "hook.missing-script",
+      action: "warn" as const,
+      severity: "error" as const,
+      subject: `hook:PreToolUse:./h${i}.js`,
+      message: `PreToolUse hook points at a script that does not exist: ./h${i}.js`,
+      reason: "r",
+      evidence: [{ kind: "script", value: `/tmp/proj/.claude/h${i}.js` }],
+    }));
+
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts({ root: "/tmp/proj" }),
+      findings: many,
+      verbose: false,
+      quiet: false,
+    });
+
+    expect(text).toContain("WARN    rule:hook.missing-script  ×3");
+    // the shared sentence once, without any one finding's filename
+    expect(text).toContain("PreToolUse hook points at a script that does not exist\n");
+    // and each occurrence as a path relative to the scanned project
+    expect(text).toContain(".claude/h0.js");
+    expect(text).toContain(".claude/h2.js");
+    expect(text).not.toContain("/tmp/proj/.claude");
+    expect(text.split("hook points at a script").length - 1).toBe(1);
+  });
+
+  test("a single occurrence keeps the message that names its subject", () => {
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts({ root: "/tmp/proj" }),
+      findings: [
+        {
+          id: "hook.missing-script:one",
+          ruleId: "hook.missing-script",
+          action: "warn",
+          severity: "error",
+          subject: "hook:PreToolUse:./only.js",
+          message: "PreToolUse hook points at a script that does not exist: ./only.js",
+          reason: "r",
+          evidence: [{ kind: "script", value: "/tmp/proj/.claude/only.js" }],
+        },
+      ],
+      verbose: false,
+      quiet: false,
+    });
+
+    expect(text).not.toContain("×1");
+    expect(text).toContain("does not exist: ./only.js");
   });
 
   test("quiet is summary line only", () => {

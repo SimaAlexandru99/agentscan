@@ -176,21 +176,18 @@ Flags for `check`:
 ## Sample output
 
 ```text
-agentscan v0.1.0 — touchagency
+agentscan v0.3.0 — touchagency
 
-Stack: 46 deps · 54 skills · 1 mcp · 2 agents · packageManager=bun
+Scanned: 46 deps · 54 skills · 1 mcp · 2 agents · packageManager=bun
 
-WARN    hook:PreToolUse:.claude/hooks/guard-destructive-bash.js
-        rule:hook.missing-script
-        PreToolUse hook points at a script that does not exist: .claude/hooks/guard-destructive-bash.js
-        evidence: hook PreToolUse @ …/.claude/settings.json · script .claude/hooks/guard-destructive-bash.js
+WARN    rule:hook.missing-script  ×6
+        PreToolUse hook points at a script that does not exist
+          PostToolUse @ .claude/settings.json · .claude/hooks/notify-related-tests.js
+          PreToolUse @ .claude/settings.json · .claude/hooks/guard-destructive-bash.js
+          PreToolUse @ .claude/settings.json · .claude/hooks/protect-artists-json.js
+          PreToolUse @ .claude/settings.json · .claude/hooks/protect-env.js
 
-WARN    hook:PreToolUse:.claude/hooks/protect-artists-json.js
-        rule:hook.missing-script
-        PreToolUse hook points at a script that does not exist: .claude/hooks/protect-artists-json.js
-        evidence: hook PreToolUse @ …/.claude/settings.json · script .claude/hooks/protect-artists-json.js
-
-Summary: 6 warn · 4 info hidden (--verbose) · score 40/100
+Summary: 6 warn · 4 info hidden (--verbose) · score 40/100 broken
 ```
 
 The `Stack:` line is orientation only — which project, how big. The summary lists

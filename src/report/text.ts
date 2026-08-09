@@ -1,7 +1,7 @@
 import { basename } from "node:path";
 import type { Action, Facts, Finding } from "../facts/types";
 import { safe } from "./safe";
-import { score } from "./score";
+import { score, scoreLabel } from "./score";
 import { sortFindings } from "./sort";
 
 const ACTION_LABEL: Record<Action, string> = {
@@ -50,11 +50,11 @@ export function renderText(args: {
     );
   }
   lines.push("");
-  lines.push(`Stack: ${formatStack(facts)}`);
+  lines.push(`Scanned: ${formatStack(facts)}`);
   lines.push("");
 
-  for (const f of visible) {
-    lines.push(...formatFinding(f));
+  for (const group of groupByRule(visible)) {
+    lines.push(...formatGroup(group, facts.root));
     lines.push("");
   }
 
@@ -91,18 +91,68 @@ function formatStack(facts: Facts): string {
   ].join(" · ");
 }
 
-function formatFinding(f: Finding): string[] {
+/**
+ * Findings sharing a rule id, in first-seen order.
+ *
+ * One project had six dead hooks, and the report spent twenty-four lines saying
+ * the same sentence six times with a different filename in it. The rule fires
+ * once per broken thing by design — the ids have to stay unique for `explain`
+ * and `ignoreFindings` — so the collapsing belongs here, at render time.
+ */
+function groupByRule(findings: Finding[]): Finding[][] {
+  const byRule = new Map<string, Finding[]>();
+  for (const f of findings) {
+    const bucket = byRule.get(f.ruleId);
+    if (bucket === undefined) {
+      byRule.set(f.ruleId, [f]);
+    } else {
+      bucket.push(f);
+    }
+  }
+  return [...byRule.values()];
+}
+
+/**
+ * Paths inside the scanned project, shown relative to it.
+ *
+ * A global replace rather than a prefix strip: evidence values are composed
+ * strings like `PreToolUse @ /abs/path/.claude/settings.json`, so the path sits
+ * in the middle. Everything outside the project keeps its absolute path, which
+ * is the point — a global skill lives elsewhere and should look like it does.
+ */
+function shortPath(value: string, root: string): string {
+  return value.split(`${root}/`).join("");
+}
+
+function formatGroup(group: Finding[], root: string): string[] {
+  const first = group[0] as Finding;
+  const count = group.length;
   const out: string[] = [];
-  out.push(`${actionColumn(f.action)} ${safe(f.subject)}`);
-  out.push(`        rule:${safe(f.ruleId)}`);
-  out.push(`        ${safe(f.message)}`);
-  if (f.evidence.length > 0) {
-    const ev = f.evidence
-      .map((e) => `${safe(e.kind)} ${safe(e.value)}`)
-      .join(" · ");
-    out.push(`        evidence: ${ev}`);
+
+  out.push(
+    `${actionColumn(first.action)} rule:${safe(first.ruleId)}${count > 1 ? `  ×${count}` : ""}`,
+  );
+  // With one occurrence the message names its own subject; repeated, the
+  // per-subject lines below carry that and the shared sentence goes up top.
+  out.push(`        ${safe(count === 1 ? first.message : ruleHeadline(first))}`);
+
+  for (const f of group) {
+    const where = f.evidence
+      .filter((e) => e.kind !== "count" && e.kind !== "threshold")
+      .map((e) => shortPath(e.value, root));
+    const location = where.length > 0 ? where.join(" · ") : f.subject;
+    out.push(`          ${safe(shortPath(location, root))}`);
   }
   return out;
+}
+
+/**
+ * The message with its trailing subject stripped, so the group header reads as
+ * a statement about the rule rather than about whichever finding came first.
+ */
+function ruleHeadline(f: Finding): string {
+  const cut = f.message.indexOf(": ");
+  return cut === -1 ? f.message : f.message.slice(0, cut);
 }
 
 function formatSummary(findings: Finding[], verbose: boolean): string {
@@ -134,9 +184,10 @@ function formatSummary(findings: Finding[], verbose: boolean): string {
     parts.push(`${infoHidden} info hidden (--verbose)`);
   }
   const points = score(findings);
+  const scored = `score ${points}/100 ${scoreLabel(points)}`;
   if (parts.length === 0) {
-    return `Summary: no findings · score ${points}/100`;
+    return `Summary: no findings · ${scored}`;
   }
 
-  return `Summary: ${parts.join(" · ")} · score ${points}/100`;
+  return `Summary: ${parts.join(" · ")} · ${scored}`;
 }

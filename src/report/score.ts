@@ -45,3 +45,27 @@ export function score(findings: Finding[]): number {
   }
   return Math.max(0, 100 - deduction);
 }
+
+/**
+ * A word for the number.
+ *
+ * The score alone does not say whether 71 is fine. The bands are deliberately
+ * coarse and tied to what the deductions mean: 100 is nothing found, anything
+ * below 90 contains at least one error or three warnings, and below 50 means
+ * five or more things are actively broken.
+ */
+export function scoreLabel(points: number): string {
+  if (points === 100) {
+    return "clean";
+  }
+  if (points >= 90) {
+    return "good";
+  }
+  if (points >= 70) {
+    return "needs work";
+  }
+  if (points >= 50) {
+    return "poor";
+  }
+  return "broken";
+}
