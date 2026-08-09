@@ -146,7 +146,13 @@ function discoverSkillsInDir(
   let entries: string[];
   try {
     entries = readdirSync(dir);
-  } catch {
+  } catch (err) {
+    // An unreadable skills dir looks exactly like a project with no skills.
+    errors.push({
+      path: dir,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
     return [];
   }
   const skills: SkillFact[] = [];
@@ -188,8 +194,17 @@ function discoverSkillsInDir(
   return skills;
 }
 
-function parseMcpServers(raw: unknown, filePath: string): McpFact[] {
+function parseMcpServers(
+  raw: unknown,
+  filePath: string,
+  errors: ConfigErrorFact[],
+): McpFact[] {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "MCP config root is not a JSON object",
+    });
     return [];
   }
   const obj = raw as Record<string, unknown>;
@@ -210,6 +225,11 @@ function parseMcpServers(raw: unknown, filePath: string): McpFact[] {
   ) {
     servers = obj;
   } else {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "no usable `mcpServers` object and the root is not a server map",
+    });
     return [];
   }
 
@@ -266,7 +286,7 @@ function discoverMcp(
     if (raw === undefined) {
       continue;
     }
-    for (const fact of parseMcpServers(raw, filePath)) {
+    for (const fact of parseMcpServers(raw, filePath, errors)) {
       const key = `${fact.name}@${fact.path}`;
       if (seen.has(key)) {
         continue;
@@ -462,7 +482,7 @@ function collectHookCommands(groups: unknown): string[] {
   return out;
 }
 
-function discoverAgents(root: string): AgentFact[] {
+function discoverAgents(root: string, errors: ConfigErrorFact[]): AgentFact[] {
   const dir = join(root, ".claude", "agents");
   if (!existsSync(dir)) {
     return [];
@@ -470,7 +490,12 @@ function discoverAgents(root: string): AgentFact[] {
   let entries: string[];
   try {
     entries = readdirSync(dir);
-  } catch {
+  } catch (err) {
+    errors.push({
+      path: dir,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
     return [];
   }
   const facts: AgentFact[] = [];
@@ -493,6 +518,7 @@ function discoverAgents(root: string): AgentFact[] {
 function discoverPolicyFiles(
   root: string,
   policyFiles: string[],
+  errors: ConfigErrorFact[],
 ): { path: string; text: string }[] {
   const out: { path: string; text: string }[] = [];
   for (const rel of policyFiles) {
@@ -504,8 +530,12 @@ function discoverPolicyFiles(
       const buf = readFileSync(filePath);
       const text = buf.subarray(0, POLICY_CAP).toString("utf8");
       out.push({ path: filePath, text });
-    } catch {
-      // skip unreadable
+    } catch (err) {
+      errors.push({
+        path: filePath,
+        kind: "unreadable",
+        detail: err instanceof Error ? err.message : String(err),
+      });
     }
   }
   return out;
@@ -595,10 +625,10 @@ export function discoverAgentSurface(
 
   return {
     skills: dedupeSkillsById(skills),
-    agents: discoverAgents(root),
+    agents: discoverAgents(root, configErrors),
     hooks: discoverHooks(root, configErrors),
     mcp: discoverMcp(root, config.mcpPaths, configErrors),
-    policyFiles: discoverPolicyFiles(root, config.policyFiles),
+    policyFiles: discoverPolicyFiles(root, config.policyFiles, configErrors),
     lockedSkills: lock.locked,
     hasSkillsLock: lock.present,
     configErrors,

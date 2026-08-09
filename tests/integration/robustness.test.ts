@@ -76,6 +76,80 @@ describe("unreadable input is reported, never swallowed", () => {
   });
 });
 
+describe("a malformed shape is a finding, not a crash", () => {
+  test("a non-string script value does not abort the scan", async () => {
+    const dir = project({
+      "package.json": '{"name":"x","scripts":{"build":null}}',
+    });
+    const payload = await report(dir);
+
+    const finding = payload.findings.find(
+      (f) => f.ruleId === "config.unreadable",
+    );
+    expect(finding).toBeDefined();
+    expect(finding?.severity).toBe("error");
+    expect(finding?.message).toContain("package.json");
+  });
+
+  test("a non-string dependency range does not abort the scan", async () => {
+    const dir = project({
+      "package.json": '{"name":"x","dependencies":{"next":15}}',
+    });
+    const payload = await report(dir);
+    expect(
+      payload.findings.some((f) => f.ruleId === "config.unreadable"),
+    ).toBe(true);
+  });
+
+  test("dropped entries are reported by name and count, never by value", async () => {
+    const dir = project({
+      "package.json":
+        '{"name":"x","scripts":{"deploy":{"token":"ghp_abcdefghij0123456789abcd"}}}',
+    });
+    const result = await runCheck({ dir, json: true, failOn: "never" });
+    // whatever a discarded value held must not reach the report
+    expect(result.stdout).not.toContain("ghp_abcdefghij0123456789abcd");
+    expect(result.stdout).toContain("scripts");
+  });
+
+  test("well-formed package.json produces no config error", async () => {
+    const dir = project({
+      "package.json": '{"name":"x","scripts":{"build":"tsc"},"dependencies":{"next":"16.0.0"}}',
+    });
+    const payload = await report(dir);
+    expect(
+      payload.findings.filter((f) => f.ruleId === "config.unreadable"),
+    ).toEqual([]);
+  });
+
+  test("an MCP file with an unusable shape is reported", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".mcp.json": '{"mcpServers": []}',
+    });
+    const payload = await report(dir);
+    expect(
+      payload.findings.some((f) => f.ruleId === "config.unreadable"),
+    ).toBe(true);
+  });
+
+  test("an unreadable skills directory is reported", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/keep/SKILL.md": "---\nname: keep\ndescription: d\n---\n",
+    });
+    chmodSync(join(dir, ".agents/skills"), 0o000);
+    try {
+      const payload = await report(dir);
+      expect(
+        payload.findings.some((f) => f.ruleId === "config.unreadable"),
+      ).toBe(true);
+    } finally {
+      chmodSync(join(dir, ".agents/skills"), 0o755);
+    }
+  });
+});
+
 describe("root resolution is visible", () => {
   test("a directory with no package.json reports which root it walked up to", async () => {
     const parent = project({ "package.json": '{"name":"parent"}' });

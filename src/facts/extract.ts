@@ -54,7 +54,52 @@ function readPackageJson(
     });
     return {};
   }
-  return raw as PackageJson;
+
+  const obj = raw as Record<string, unknown>;
+  const pkg: PackageJson = {};
+  if (typeof obj.packageManager === "string") {
+    pkg.packageManager = obj.packageManager;
+  }
+  for (const field of ["dependencies", "devDependencies", "scripts"] as const) {
+    const kept = stringEntries(obj[field]);
+    if (kept === undefined) {
+      continue;
+    }
+    if (kept.dropped > 0) {
+      // Name the field and the count — never the discarded value, which can be
+      // a token pasted into a script.
+      errors.push({
+        path,
+        kind: "unexpected-shape",
+        detail: `${field}: ${kept.dropped} entr${kept.dropped === 1 ? "y" : "ies"} ignored (value is not a string)`,
+      });
+    }
+    pkg[field] = kept.values;
+  }
+  return pkg;
+}
+
+/**
+ * Keep only string-valued entries. The `as PackageJson` assertion this replaces
+ * promised `Record<string, string>` and delivered whatever the file held, so a
+ * single `null` reached `.includes()` and killed the whole scan.
+ */
+function stringEntries(
+  value: unknown,
+): { values: Record<string, string>; dropped: number } | undefined {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  const values: Record<string, string> = {};
+  let dropped = 0;
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof entry === "string") {
+      values[key] = entry;
+    } else {
+      dropped += 1;
+    }
+  }
+  return { values, dropped };
 }
 
 function inferPackageManager(
