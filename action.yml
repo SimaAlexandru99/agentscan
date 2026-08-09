@@ -1,0 +1,69 @@
+name: agentscan
+description: Find broken agent configuration — hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile
+author: Sima Alexandru
+
+branding:
+  icon: search
+  color: purple
+
+inputs:
+  path:
+    description: Directory to scan. Defaults to the repository root.
+    required: false
+    default: "."
+  fail-on:
+    description: >
+      Severity that fails the job: never (default), warning, or error.
+      `error` means something configured here does not work; `warning` means the
+      config and the filesystem disagree.
+    required: false
+    default: "error"
+  output:
+    description: human (default), json, or prompt — a paste-ready handoff for a fixing agent.
+    required: false
+    default: "human"
+  global:
+    description: Also scan ~/.claude/skills and ~/.codex/skills. Rarely wanted in CI.
+    required: false
+    default: "false"
+  bun-version:
+    description: Bun version to install. agentscan does not run on Node.
+    required: false
+    default: "latest"
+
+outputs:
+  exit-code:
+    description: 0 when nothing at or above `fail-on` was found, 1 when something was.
+    value: ${{ steps.scan.outputs.exit-code }}
+  report:
+    description: The report as printed, in whichever format `output` selected.
+    value: ${{ steps.scan.outputs.report }}
+
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: ${{ inputs.bun-version }}
+
+    - id: scan
+      shell: bash
+      # The report goes to the log and to an output. `set +e` because a non-zero
+      # exit is the documented signal, not a failure to run — the step decides
+      # what to do with it after capturing the report.
+      run: |
+        set +e
+        args=(check "${{ inputs.path }}" --fail-on "${{ inputs.fail-on }}" --output "${{ inputs.output }}")
+        if [ "${{ inputs.global }}" = "true" ]; then
+          args+=(--global)
+        fi
+        report=$(bunx --bun agentscan "${args[@]}")
+        code=$?
+        printf '%s\n' "$report"
+        {
+          echo "exit-code=$code"
+          echo "report<<AGENTSCAN_EOF"
+          printf '%s\n' "$report"
+          echo "AGENTSCAN_EOF"
+        } >> "$GITHUB_OUTPUT"
+        exit $code

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { parseArgs } from "node:util";
-import { runCheck } from "./commands/check";
+import { type OutputFormat, runCheck } from "./commands/check";
 import { runExplain } from "./commands/explain";
 import { runInit } from "./commands/init";
 import { runRulesCommand } from "./commands/rules";
@@ -21,7 +21,9 @@ Usage:
 
 
 check options:
-  --json                 JSON report
+  --json                 JSON report (alias for --output json)
+  --output <format>      human (default) | json | prompt
+                         prompt: a paste-ready handoff for a fixing agent
   --quiet                Summary only
   --verbose              Show KEEP findings
   --fail-on <level>      never | warning | error (default: never)
@@ -35,6 +37,10 @@ init options:
   process.stdout.write(`${text}\n`);
 }
 
+function isOutput(value: string): value is OutputFormat {
+  return value === "human" || value === "json" || value === "prompt";
+}
+
 function isFailOn(value: string): value is FailOn {
   return value === "never" || value === "warning" || value === "error";
 }
@@ -42,6 +48,7 @@ function isFailOn(value: string): value is FailOn {
 export async function main(argv: string[]): Promise<number> {
   let values: {
     json?: boolean;
+    output?: string;
     quiet?: boolean;
     verbose?: boolean;
     "fail-on"?: string;
@@ -59,6 +66,7 @@ export async function main(argv: string[]): Promise<number> {
       args: argv,
       options: {
         json: { type: "boolean", default: false },
+        output: { type: "string" },
         quiet: { type: "boolean", default: false },
         verbose: { type: "boolean", default: false },
         "fail-on": { type: "string" },
@@ -110,9 +118,17 @@ export async function main(argv: string[]): Promise<number> {
           );
           return 2;
         }
+        const outputRaw = values.output;
+        if (outputRaw !== undefined && !isOutput(outputRaw)) {
+          process.stderr.write(
+            `Invalid --output value: ${safe(outputRaw)} (use human|json|prompt)\n`,
+          );
+          return 2;
+        }
         const result = await runCheck({
           dir,
           json: values.json,
+          ...(outputRaw === undefined ? {} : { output: outputRaw }),
           quiet: values.quiet,
           verbose: values.verbose,
           failOn: failOnRaw,

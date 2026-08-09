@@ -45,7 +45,8 @@ Flags for `check`:
 
 | Flag | Meaning |
 |------|---------|
-| `--json` | JSON report |
+| `--json` | JSON report (alias for `--output json`) |
+| `--output <format>` | `human` (default) · `json` · `prompt` |
 | `--quiet` | Summary line only |
 | `--verbose` | Show KEEP + info-severity findings |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
@@ -137,9 +138,18 @@ flag.
 ## CI
 
 ```yaml
-# GitHub Actions — fail the job on warning+ findings
+- uses: SimaAlexandru99/agentscan@v0
+  with:
+    fail-on: error        # never | warning | error
+    output: human         # human | json | prompt
+```
+
+The action installs Bun, runs the scan, and exposes the report as the `report`
+output so a later step can post it. Or run it directly:
+
+```yaml
 - name: agentscan
-  run: bunx agentscan check --fail-on warning --json
+  run: bunx agentscan check --fail-on error
 ```
 
 Or with a local checkout of this repo:
@@ -161,6 +171,7 @@ Optional `.agentscanrc.json` (create with `agentscan init`):
   "policyFiles": ["AGENTS.md", "CLAUDE.md"],
   "ignoreSkills": [],
   "ignoreRules": [],
+  "ignoreFindings": [],
   "failOn": "never",
   "includeGlobal": false,
   "requireLock": false,
@@ -176,6 +187,28 @@ Optional `.agentscanrc.json` (create with `agentscan init`):
 ```
 
 Budget rules are **info** (hidden unless `--verbose`) so they do not flood default text or CI with `--fail-on warning`.
+
+### Handing findings to an agent
+
+```bash
+agentscan check --output prompt
+```
+
+A paste-ready markdown handoff: each item carries the message, why it matters,
+the suggested fix, its evidence, and its finding id. Info-severity findings are
+left out — budgets and hygiene notes are for a maintainer to weigh, not work
+items for an executor.
+
+### Suppressing one finding
+
+`ignoreRules` disables a check project-wide, which is too blunt when a single
+hook uses an exotic launcher. `ignoreFindings` takes exact finding ids — the
+same strings `agentscan explain` accepts, so the value you already have from
+reading the report is the value you paste:
+
+```json
+{ "ignoreFindings": ["hook.missing-script:hook:PreToolUse:./bin/wrapper"] }
+```
 
 ## How to add a rule
 
