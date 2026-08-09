@@ -1,5 +1,5 @@
 id: budget.agents-md
-description: AGENTS.md longer than recommended policy size (>150 lines)
+description: AGENTS.md longer than the point where added lines stop helping (>150 lines)
 when:
   policyLines:
     file: AGENTS.md
@@ -8,7 +8,6 @@ when:
 then:
   action: warn
   severity: info
-  subject: "budget:AGENTS.md"
   message: "AGENTS.md is long ({{count}} lines > {{threshold}})"
-  reason: "Community guidance keeps AGENTS.md under ~150 lines (index/TOC, not encyclopedia). Long files crowd always-on agent context. Not a build failure."
-  suggest: "Split into linked docs or set thresholds.agentsMdLines in .agentscanrc.json"
+  reason: "Measured across 2,500+ repositories: past ~150 lines additional content delivers diminishing returns and raises inference cost 20-23% without improving agent performance. Unnecessary requirements actively hurt, by broadening exploration. A lean file is 40-60 lines of commands and boundaries."
+  suggest: "Delete rather than reorganise — keep only what an agent cannot infer from the code. Or set thresholds.agentsMdLines in .agentscanrc.json"

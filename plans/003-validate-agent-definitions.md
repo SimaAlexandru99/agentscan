@@ -13,12 +13,12 @@
 
 ## Status
 
-- **Priority**: P2
-- **Effort**: M
-- **Risk**: MED (one sub-check was measured to be a false-positive factory — see Scope)
-- **Depends on**: none
+- **Priority**: P3 (was P2 — see the scope cut below)
+- **Effort**: S (was M — two of the four checks were cut)
+- **Risk**: MED — this plan's original form was the exact defect class that shipped 25 false findings; read Scope before anything else
+- **Depends on**: plans/008 (delivered — it replaced the frontmatter regexes this plan planned to generalise)
 - **Category**: bug
-- **Planned at**: commit `e1c9976`, 2026-08-09
+- **Planned at**: commit `e1c9976`, re-scoped against `71888b3`, 2026-08-09
 
 ## Why this matters
 
@@ -85,7 +85,30 @@ is guarded by a sync test in `tests/unit/checks.test.ts`.
 - `tests/integration/check.test.ts`
 - `README.md`
 
+### Scope cut — read this first
+
+This plan originally proposed four checks. Two are cut, because between writing
+it and now the same mistake shipped and had to be reverted:
+
+`hook.unknown-event` was written from a nine-name list of hook events observed
+in real projects. The spec has **31**. It reported `PostToolBatch` — a real
+event — as a dead hook at severity `error`. Separately `skill.name-mismatch`
+enforced "frontmatter name must equal the directory", which the spec explicitly
+contradicts: `name` is optional and *defaults to* the directory. That check
+produced 24 of 37 findings across 17 projects, every one false.
+
+**`agent.unknown-model` and `agent.unknown-tool` are cut on those grounds.** Both
+would hardcode a list of valid values, both would emit a finding when a value is
+absent from that list, and neither list is knowable from reading projects. Model
+identifiers and tool names change without notice, and MCP tools are per-machine.
+
+They may be reinstated **only** with: the doc URL cited in a comment beside the
+list, the complete enumeration from that page (not a sample), and a test naming
+every value. Absent that, do not add them — a wrong "your agent is
+misconfigured" is worse than no check, and this repo has now paid for that twice.
+
 **Out of scope — do NOT implement, this is measured, not a guess**:
+- `agent.unknown-model` and `agent.unknown-tool` — see the scope cut above.
 
 - **Do not port `skill.name-mismatch` to agents.** For skills, frontmatter
   `name` must equal the directory name because the lockfile keys on it. For
@@ -150,24 +173,17 @@ register it in `runChecks` (line 419). Emit:
 | id | severity | when |
 |---|---|---|
 | `agent.missing-frontmatter` | warning | file has no `---` block |
-| `agent.missing-description` | warning | frontmatter present, no `description` |
-| `agent.unknown-model` | warning | `model` present and not in the known set |
-| `agent.unknown-tool` | warning | a name in `tools` is not a known tool |
+| `agent.missing-description` | info | frontmatter present, no `description` |
 
-Known model values: `sonnet`, `opus`, `haiku`, `fable`, `inherit`. Accept any
-value containing a `-` and a digit as a pinned full model id (e.g.
-`claude-haiku-4-5-20251001`) rather than guessing at the full catalogue.
+Two checks, not four. Both are about structure this repo can verify by reading
+the file, with no external list to go stale.
 
-Known tool names: the built-in set — `Bash`, `Edit`, `Glob`, `Grep`, `Read`,
-`Task`, `Write`, `WebFetch`, `WebSearch`, `NotebookEdit`, `TodoWrite`. Accept
-`*` (all tools) and any name containing `__` (MCP tools are
-`mcp__server__tool`, and the server set is per-machine — unknowable here).
+`agent.missing-description` is `info`, matching what `skill.missing-description`
+became: for skills the spec marks description "Recommended", not required, and
+nothing suggests agents are stricter. If a source says otherwise, cite it and
+raise the severity.
 
-All four are `warning`, not `error`: an unrecognised value may mean the local
-list is stale rather than that the config is wrong. Note in each `suggest` that
-`ignoreRules` is the escape hatch, exactly as `hook.unknown-event` does.
-
-Add all four ids to `STRUCTURAL_CHECKS` (line 22).
+Add both ids to `STRUCTURAL_CHECKS` (line 22).
 
 **Verify**: `bun test tests/unit/checks.test.ts` → all pass, including the
 `STRUCTURAL_CHECKS stays in sync` test (extend its fixture with agents that
@@ -210,7 +226,7 @@ Add the four ids to the "What it checks" table in `README.md`, plus one
 sentence recording *why* agent `name` is deliberately not checked against the
 filename — so nobody adds it later.
 
-**Verify**: `bun run src/cli.ts rules | grep -c '^agent\.'` → 4
+**Verify**: `bun run src/cli.ts rules | grep -c '^agent\.'` → 2
 
 ## Test plan
 
@@ -238,7 +254,7 @@ ALL must hold:
 
 - [ ] `bun run typecheck` exits 0
 - [ ] `bun test` exits 0, 0 failures
-- [ ] `bun run src/cli.ts rules | grep -c '^agent\.'` → 4
+- [ ] `bun run src/cli.ts rules | grep -c '^agent\.'` → 2
 - [ ] Step 4 produces only findings you have confirmed by reading the file
 - [ ] A test asserts an agent with a display-style `name` is NOT reported
 - [ ] `git status` shows no files modified outside the in-scope list

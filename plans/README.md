@@ -22,7 +22,7 @@ rule.
 | 008 | Findings say true things — parser and message defects | P2 | M | 004 | TODO |
 | 001 | Report skill files pointing at bundled files that do not exist | P1 | M | 004 | TODO |
 | 002 | Report skills an agent cannot tell apart | P2 | S | 004 | TODO |
-| 003 | Validate agent definition files instead of only counting them | P2 | M | 004, 008 | TODO |
+| 003 | Validate agent definition files instead of only counting them | P3 | S | 008 ✓ | TODO (re-scoped: 4 checks → 2) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale)
@@ -74,6 +74,29 @@ Reproduced defects, all confirmed by hand:
 | `.gitkeep` and `README.md` count as agents | 008 |
 | `bun.lock` still says `skillscan` after the rename | 008 |
 | No CI; nothing runs the suite | 004 |
+
+## What the spec research changed
+
+After these plans were written, the published docs were read for every
+assumption the checks encode. Four of five were wrong, and they produced 25 of
+the 37 findings the tool reported across 17 projects:
+
+- The hook-event list had 9 names; the spec has 31. `PostToolBatch` was reported
+  as a dead hook at severity error. **Fixed.**
+- `skill.name-mismatch` enforced a rule the spec contradicts — `name` is
+  optional and defaults to the directory. 24 false findings. **Deleted.**
+- `skill.missing-name` enforced an optional field. **Deleted.**
+- `budget.skills` counted skills; the real constraint is the byte budget shared
+  by all descriptions at startup. **Replaced** by `skill.description-budget`.
+- `AGENTS.md > 150` and `CLAUDE.md > 200` both held up, and their reasons now
+  cite the mechanism rather than asserting a number.
+
+Plan 003 was re-scoped as a direct consequence: its `agent.unknown-model` and
+`agent.unknown-tool` checks are the same shape as the hook list that failed, so
+they are cut until someone can cite a complete enumeration.
+
+The rule this leaves behind: **a check is written against a published spec line,
+never against what happens to appear in real projects.**
 
 ## Findings considered and rejected
 

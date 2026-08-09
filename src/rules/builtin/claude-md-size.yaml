@@ -1,5 +1,5 @@
 id: budget.claude-md
-description: CLAUDE.md longer than recommended policy size (>200 lines)
+description: CLAUDE.md longer than the instruction budget a model reliably follows (>200 lines)
 when:
   policyLines:
     file: CLAUDE.md
@@ -8,7 +8,6 @@ when:
 then:
   action: warn
   severity: info
-  subject: "budget:CLAUDE.md"
   message: "CLAUDE.md is long ({{count}} lines > {{threshold}})"
-  reason: "Guidance keeps CLAUDE.md under ~200 lines. Long always-on instructions compete with task context."
-  suggest: "Trim or link out; or set thresholds.claudeMdLines in .agentscanrc.json"
+  reason: "Frontier models reliably follow roughly 150-200 instructions, and Claude Code's own system prompt already spends about 50 of them. Past that the file is skim-read rather than obeyed. Imports do not help: imported files load at launch too, so splitting organises the text without reducing what competes for attention."
+  suggest: "Keep only what is true every session; move the rest into a skill, which loads on demand. Or set thresholds.claudeMdLines in .agentscanrc.json"
