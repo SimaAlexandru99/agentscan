@@ -49,6 +49,10 @@ export type AgentFact = {
   path: string;
   /** Frontmatter present and parseable as a `---` block. */
   hasFrontmatter: boolean;
+  /** File exists but could not be read; its fields are unknown, not absent. */
+  unreadable?: boolean;
+  /** A `---` block exists but does not parse; its fields are unknown. */
+  unparseableFrontmatter?: boolean;
   /**
    * `name:` from frontmatter — a display name. Deliberately NOT compared to the
    * filename: 16 of 34 real agent files differ intentionally and nothing keys

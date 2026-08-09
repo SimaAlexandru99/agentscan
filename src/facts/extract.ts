@@ -61,8 +61,18 @@ function readPackageJson(
     pkg.packageManager = obj.packageManager;
   }
   for (const field of ["dependencies", "devDependencies", "scripts"] as const) {
-    const kept = stringEntries(obj[field]);
+    const raw = obj[field];
+    const kept = stringEntries(raw);
     if (kept === undefined) {
+      // Present but not an object — `"dependencies": "notanobject"` would
+      // otherwise be reported as a project with zero dependencies.
+      if (raw !== undefined) {
+        errors.push({
+          path,
+          kind: "unexpected-shape",
+          detail: `${field} is not an object`,
+        });
+      }
       continue;
     }
     if (kept.dropped > 0) {

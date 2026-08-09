@@ -308,6 +308,14 @@ function skillEvidence(skill: SkillFact, value: string): Finding["evidence"] {
 function checkSkillStructure(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const skill of facts.skills) {
+    if (skill.unreadable === true) {
+      // Covers an unreadable SKILL.md and an unreadable skill directory alike.
+      // config.unreadable names it; every check below would otherwise make a
+      // claim about a file we never opened — "has no SKILL.md" for a directory
+      // whose SKILL.md is right there, or "no frontmatter" for a valid one.
+      continue;
+    }
+
     if (!skill.hasSkillMd) {
       out.push(
         make("skill.missing-skill-md", `skill:${skill.id}`, {
@@ -326,12 +334,6 @@ function checkSkillStructure(facts: Facts): Finding[] {
     if (skill.unparseableFrontmatter === true) {
       // config.unreadable already names the parse failure; "no name" would be
       // a guess about fields we could not read.
-      continue;
-    }
-
-    if (skill.unreadable === true) {
-      // config.unreadable already reports this; claiming "no frontmatter"
-      // would send the author to fix a file that may be perfectly valid.
       continue;
     }
 
@@ -572,6 +574,12 @@ function checkDescriptionBudget(
 function checkAgents(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const agent of facts.agents) {
+    if (agent.unreadable === true || agent.unparseableFrontmatter === true) {
+      // config.unreadable names it. Anything else here would be a statement
+      // about a file the adjacent finding admits we could not read.
+      continue;
+    }
+
     if (!agent.hasFrontmatter) {
       out.push(
         make("agent.missing-frontmatter", `agent:${agent.name}`, {

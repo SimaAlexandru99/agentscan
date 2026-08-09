@@ -82,7 +82,80 @@ describe("a parser error never carries source text out", () => {
   });
 });
 
+describe("never claim anything about a file that failed to open", () => {
+  test("an agent whose frontmatter will not parse is not also called description-less", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      // an unquoted colon — the commonest YAML slip in these files
+      ".claude/agents/reviewer.md":
+        "---\nname: reviewer\ndescription: Use when reviewing code: correctness\n---\n",
+    });
+    const ids = (await report(dir)).findings.map((f) => f.ruleId);
+
+    expect(ids).toContain("config.unreadable");
+    expect(ids).not.toContain("agent.missing-description");
+  });
+
+  test("an unreadable agent file is not called frontmatter-less", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".claude/agents/a.md": "---\nname: a\ndescription: d\n---\n",
+    });
+    chmodSync(join(dir, ".claude/agents/a.md"), 0o000);
+    try {
+      const ids = (await report(dir)).findings.map((f) => f.ruleId);
+      expect(ids).toContain("config.unreadable");
+      expect(ids).not.toContain("agent.missing-frontmatter");
+    } finally {
+      chmodSync(join(dir, ".claude/agents/a.md"), 0o644);
+    }
+  });
+
+  test("an unreadable skill directory is not called SKILL.md-less", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/locked/SKILL.md": "---\nname: locked\ndescription: d\n---\n",
+    });
+    chmodSync(join(dir, ".agents/skills/locked"), 0o000);
+    try {
+      const ids = (await report(dir)).findings.map((f) => f.ruleId);
+      // existsSync cannot tell ENOENT from EACCES; the file is right there
+      expect(ids).toContain("config.unreadable");
+      expect(ids).not.toContain("skill.missing-skill-md");
+    } finally {
+      chmodSync(join(dir, ".agents/skills/locked"), 0o755);
+    }
+  });
+});
+
+describe("directories that are not skills", () => {
+  test("dotfile containers and node_modules are skipped", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".agents/skills/.system/inner/SKILL.md": "---\nname: inner\ndescription: d\n---\n",
+      ".agents/skills/node_modules/pkg/SKILL.md": "---\nname: p\ndescription: d\n---\n",
+      ".agents/skills/real/SKILL.md": "---\nname: real\ndescription: d\n---\n",
+    });
+    const payload = await report(dir);
+
+    // `.system` under ~/.codex/skills holds six working skills; the old
+    // suggestion was to delete it
+    expect(payload.findings).toEqual([]);
+    expect(JSON.stringify(payload)).not.toContain(".system");
+  });
+});
+
 describe("unreadable input is reported, never swallowed", () => {
+  test("a whole dependencies field of the wrong shape is reported", async () => {
+    const dir = project({
+      "package.json": '{"name":"x","dependencies":"notanobject"}',
+    });
+    const payload = await report(dir);
+    expect(
+      payload.findings.some((f) => f.ruleId === "config.unreadable"),
+    ).toBe(true);
+  });
+
   test("a corrupt package.json is an error finding", async () => {
     const dir = project({ "package.json": "{not json" });
     const payload = await report(dir);

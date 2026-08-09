@@ -253,6 +253,12 @@ function discoverSkillsInDir(
   }
   const skills: SkillFact[] = [];
   for (const name of entries) {
+    // `.system` under ~/.codex/skills is a container holding six real skills,
+    // not a skill — reporting it suggested deleting them. Mirrors the dotfile
+    // filter discoverAgents already has.
+    if (name.startsWith(".") || name === "node_modules") {
+      continue;
+    }
     const skillDir = join(dir, name);
     let st: ReturnType<typeof statSync>;
     try {
@@ -264,7 +270,20 @@ function discoverSkillsInDir(
       continue;
     }
     const skillMd = join(skillDir, "SKILL.md");
-    const hasSkillMd = existsSync(skillMd);
+    // existsSync cannot tell ENOENT from EACCES, so on an unreadable directory
+    // "no SKILL.md" is a claim about a file we never got to look at.
+    let dirReadable = true;
+    try {
+      readdirSync(skillDir);
+    } catch (err) {
+      dirReadable = false;
+      errors.push({
+        path: skillDir,
+        kind: "unreadable",
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
+    const hasSkillMd = dirReadable && existsSync(skillMd);
     const fm = hasSkillMd
       ? readFrontmatter(skillMd, errors)
       : { hasFrontmatter: false as const };
@@ -276,7 +295,7 @@ function discoverSkillsInDir(
       hasSkillMd,
       hasFrontmatter: fm.hasFrontmatter,
     };
-    if (fm.unreadable === true) {
+    if (fm.unreadable === true || !dirReadable) {
       fact.unreadable = true;
     }
     if (fm.unparseable === true) {
@@ -630,6 +649,12 @@ function discoverAgents(root: string, errors: ConfigErrorFact[]): AgentFact[] {
       path: filePath,
       hasFrontmatter: fm.hasFrontmatter,
     };
+    if (fm.unreadable === true) {
+      fact.unreadable = true;
+    }
+    if (fm.unparseable === true) {
+      fact.unparseableFrontmatter = true;
+    }
     if (fm.name !== undefined) {
       fact.frontmatterName = fm.name;
     }
