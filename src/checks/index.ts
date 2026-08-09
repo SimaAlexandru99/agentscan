@@ -62,6 +62,10 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
     description: "MCP server declares neither command nor url",
   },
   {
+    id: "mcp.url-without-type",
+    description: "Remote MCP server has a url but no transport type",
+  },
+  {
     id: "mcp.hardcoded-secret",
     description: "MCP config contains a token-shaped literal",
   },
@@ -400,6 +404,22 @@ function checkMcp(facts: Facts): Finding[] {
             "There is no way to start or reach this server, so its tools are never available — the entry is dead weight that still costs a config read.",
           evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
           suggest: `Add a command (or url) for "${server.name}", or remove it`,
+        }),
+      );
+    }
+
+    // Documented behaviour: an entry with a url and no `type` is read as a
+    // stdio server, fails, and is skipped — so its tools are silently absent.
+    if (server.hasUrl && server.transport === undefined) {
+      out.push(
+        make("mcp.url-without-type", `mcp:${server.name}`, {
+          action: "warn",
+          severity: "error",
+          message: `MCP server "${server.name}" has a url but no transport type`,
+          reason:
+            "An entry with no `type` is read as a stdio server, so a remote server declared this way fails to start and is skipped — its tools never appear, with no error in the report you are reading.",
+          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
+          suggest: `Add "type": "http" (or "sse" / "ws") to "${server.name}"`,
         }),
       );
     }

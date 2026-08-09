@@ -23,6 +23,8 @@ export type McpFact = {
   path: string;
   hasCommand: boolean;
   hasUrl: boolean;
+  /** Declared transport, if any: http | sse | ws | stdio. */
+  transport?: string;
   /** env values that look like literal secrets rather than ${VAR} refs. */
   literalEnvKeys: string[];
   /** Raw entry text, for secret pattern matching. */

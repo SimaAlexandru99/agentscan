@@ -357,13 +357,30 @@ describe("mcp checks", () => {
     expect(findings[0]!.severity).toBe("error");
   });
 
-  test("url-only server is fine", () => {
+  test("a url with a transport type is fine", () => {
+    const findings = runChecks(
+      baseFacts({
+        mcp: [
+          mcp({
+            name: "remote",
+            hasCommand: false,
+            hasUrl: true,
+            transport: "http",
+          }),
+        ],
+      }),
+    );
+    expect(findings).toEqual([]);
+  });
+
+  test("a url with no transport type is an error — Claude Code skips it", () => {
     const findings = runChecks(
       baseFacts({
         mcp: [mcp({ name: "remote", hasCommand: false, hasUrl: true })],
       }),
     );
-    expect(findings).toEqual([]);
+    expect(findings.map((f) => f.ruleId)).toEqual(["mcp.url-without-type"]);
+    expect(findings[0]!.severity).toBe("error");
   });
 
   test("token-shaped literal in config is an error", () => {
@@ -458,6 +475,14 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           path: "/tmp/proj/.mcp.json",
           hasCommand: false,
           hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "typeless",
+          path: "/tmp/proj/.mcp.json",
+          hasCommand: false,
+          hasUrl: true,
           literalEnvKeys: [],
           raw: "{}",
         },

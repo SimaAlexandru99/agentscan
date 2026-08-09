@@ -262,12 +262,12 @@ with the YAML rules, and `agentscan explain <id>` works for either.
 | `hook.missing-script` | error | A registered hook whose script does not exist — it never runs |
 | `hook.unknown-event` | error | A hook registered under an event name that is never dispatched |
 | `mcp.no-launch` | error | An MCP server with neither `command` nor `url`; its tools are never available |
+| `mcp.url-without-type` | error | A remote MCP server with a `url` but no `type` — read as stdio, fails, and is skipped |
 | `mcp.hardcoded-secret` | error | A token-shaped literal in MCP config (the value is never echoed back) |
 | `mcp.literal-env` | warning | Long literal `env` values that should be `${VAR}` |
 | `skill.missing-skill-md` | warning | A directory under a skill path with no `SKILL.md` |
 | `skill.missing-frontmatter` | warning | `SKILL.md` with no `---` block |
-| `skill.missing-name` / `skill.missing-description` | warning | Frontmatter missing a required field |
-| `skill.name-mismatch` | warning | Frontmatter `name` differs from the directory name |
+| `skill.missing-description` | info | Frontmatter has no `description`, so Claude will not load the skill on its own |
 | `skill.locked-not-installed` | warning | `skills-lock.json` pins a skill that is not on disk |
 | `skill.not-in-lock` | info | A skill on disk that the lockfile does not track — local and unpinned |
 | `skill.no-lockfile` | info | Skills present with no lockfile at all (only with `requireLock`) |
@@ -279,6 +279,13 @@ when it is a single invocation with a path-like argument; shell programs
 a false positive. `node -e "<code>"` is never treated as a path. Only
 `$CLAUDE_PROJECT_DIR` is expanded — other variables are left alone rather than
 guessed at.
+
+Checks are written against the published specs, not against what happens to
+appear in real projects. Two that were written the other way round shipped as
+false positives — a nine-name hook-event list where the spec has 31, and a
+`name` must equal the directory rule that the spec explicitly contradicts
+(`name` is optional and defaults to the directory). Both are gone. When adding a
+check, cite the spec line it enforces.
 
 ## Known limits
 

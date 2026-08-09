@@ -282,12 +282,16 @@ function parseMcpServers(
   for (const [name, value] of Object.entries(servers)) {
     let hasCommand = false;
     let hasUrl = false;
+    let transport: string | undefined;
     const literalEnvKeys: string[] = [];
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       const entry = value as Record<string, unknown>;
       hasCommand =
         typeof entry.command === "string" && entry.command.length > 0;
       hasUrl = typeof entry.url === "string" && entry.url.length > 0;
+      if (typeof entry.type === "string" && entry.type.length > 0) {
+        transport = entry.type;
+      }
       const env = entry.env;
       if (env !== null && typeof env === "object" && !Array.isArray(env)) {
         for (const [key, val] of Object.entries(env as Record<string, unknown>)) {
@@ -308,6 +312,7 @@ function parseMcpServers(
       path: filePath,
       hasCommand,
       hasUrl,
+      ...(transport === undefined ? {} : { transport }),
       literalEnvKeys,
       raw: JSON.stringify(value),
     });
