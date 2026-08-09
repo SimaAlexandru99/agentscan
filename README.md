@@ -294,8 +294,11 @@ Checks are written against the published specs, not against what happens to
 appear in real projects. Two that were written the other way round shipped as
 false positives — a nine-name hook-event list where the spec has 31, and a
 `name` must equal the directory rule that the spec explicitly contradicts
-(`name` is optional and defaults to the directory). Both are gone. When adding a
-check, cite the spec line it enforces.
+(`name` is optional and defaults to the directory). Both are gone.
+
+Every assumption a check encodes is recorded in **[docs/spec/](docs/spec/)**
+with its source URL, the date it was read, and an honest confidence rating.
+When adding a check, add its spec line there first.
 
 ## Known limits
 

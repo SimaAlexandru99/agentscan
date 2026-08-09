@@ -4,6 +4,13 @@ import type { Facts, Finding, SkillFact } from "../facts/types";
 /**
  * Structural config checks.
  *
+ * Every assumption these encode about how agent configuration works is recorded
+ * in docs/spec/, with the URL it came from and the date. Two checks written from
+ * observation instead — a nine-name hook-event list where the spec has 31, and a
+ * "frontmatter name must equal the directory" rule the spec contradicts —
+ * produced 25 of the 37 findings this tool reported across 17 projects. Before
+ * adding a check, find the spec line and record it there.
+ *
  * These are code, not YAML rules, on purpose: the rules engine matches aggregate
  * facts (is dep X present, is this count over N), while these validate each
  * discovered item against its own file on disk. Expressing them as YAML would
@@ -163,7 +170,7 @@ function checkConfigErrors(facts: Facts): Finding[] {
  * lags upstream again the escape hatch is
  * `ignoreRules: ["hook.unknown-event"]`, but the right fix is to update it.
  *
- * Source: https://code.claude.com/docs/en/hooks
+ * Source: docs/spec/hook-events.md (read 2026-08-09)
  */
 const KNOWN_HOOK_EVENTS = new Set([
   "SessionStart",
@@ -340,7 +347,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
           severity: "info",
           message: "SKILL.md frontmatter has no `description`",
           reason:
-            "The description is what Claude matches against when deciding to load a skill automatically. Without it the skill still works when invoked directly, but it will not be picked up on its own.",
+            "The description is what Claude matches against when deciding to load a skill automatically. Without it the skill still works when invoked directly, but it will not be picked up on its own. The spec marks it Recommended, not required — see docs/spec/skills.md.",
           evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
           suggest: "Add a one-line description to the frontmatter",
         }),
@@ -430,6 +437,8 @@ function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
  * This replaced a plain skill count, which measured the wrong thing: a project
  * with 44 short-description skills sits comfortably under budget while one with
  * 53 verbose ones is over.
+ *
+ * Evidence and confidence: docs/spec/thresholds.md
  */
 function checkDescriptionBudget(
   facts: Facts,
@@ -490,7 +499,7 @@ function checkMcp(facts: Facts): Finding[] {
           severity: "error",
           message: `MCP server "${server.name}" has a url but no transport type`,
           reason:
-            "An entry with no `type` is read as a stdio server, so a remote server declared this way fails to start and is skipped — its tools never appear, with no error in the report you are reading.",
+            "An entry with no `type` is read as a stdio server, so a remote server declared this way fails to start and is skipped — its tools never appear, with no error in the report you are reading. See docs/spec/mcp.md.",
           evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
           suggest: `Add "type": "http" (or "sse" / "ws") to "${server.name}"`,
         }),

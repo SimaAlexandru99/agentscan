@@ -1,5 +1,5 @@
 id: budget.agents
-description: Project agent roster larger than focused set (>8)
+description: More agent definitions than a focused set (>8 files in .claude/agents)
 when:
   count:
     of: agents
@@ -8,7 +8,6 @@ when:
 then:
   action: warn
   severity: info
-  subject: "budget:agents"
   message: "Agent roster large ({{count}} > {{threshold}} definitions)"
-  reason: "Focused agent sets are usually 2–4; above 8 often means unused templates. Counts .claude/agents files only."
-  suggest: "Archive unused agents or set thresholds.agents in .agentscanrc.json"
+  reason: "Guidance converges on three or four specialised agents being the productive ceiling — past that, output drops rather than rises. That is about agents you run, not files on disk, so this counts definitions as a proxy: each one's description is loaded so the main session can choose between them, and a long roster dilutes that choice the same way a long skill list does. See docs/spec/thresholds.md."
+  suggest: "Archive definitions you do not dispatch, or set thresholds.agents in .agentscanrc.json"
