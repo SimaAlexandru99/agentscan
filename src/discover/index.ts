@@ -312,6 +312,12 @@ function discoverSkillsInDir(
     return [];
   }
   const skills: SkillFact[] = [];
+  const normalizedDir = dir.replaceAll("\\", "/");
+  const runtime: SkillFact["runtime"] = normalizedDir.includes("/.claude/skills") || normalizedDir.endsWith("/.claude/skills")
+    ? "claude"
+    : normalizedDir.includes("/.agents/skills") || normalizedDir.endsWith("/.agents/skills")
+      ? "agents"
+      : "unknown";
   for (const name of entries) {
     // `.system` under ~/.codex/skills is a container holding six real skills,
     // not a skill — reporting it suggested deleting them. Mirrors the dotfile
@@ -350,6 +356,7 @@ function discoverSkillsInDir(
 
     const fact: SkillFact = {
       id: name,
+      runtime,
       path: skillDir,
       source,
       hasSkillMd,

@@ -360,7 +360,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
       continue;
     }
 
-    if (!skill.hasFrontmatter) {
+    if (skill.runtime !== "agents" && !skill.hasFrontmatter) {
       out.push(
         make("skill.missing-frontmatter", skillSubject(skill), {
           action: "warn",
@@ -376,7 +376,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
     }
 
     const broken = skill.brokenReferences;
-    if (broken !== undefined && broken.length > 0) {
+    if (skill.runtime !== "agents" && broken !== undefined && broken.length > 0) {
       const shown = broken.slice(0, 3).join(", ");
       const rest = broken.length - Math.min(3, broken.length);
       out.push(
@@ -395,7 +395,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
       );
     }
 
-    if (skill.description === undefined) {
+    if (skill.runtime !== "agents" && skill.description === undefined) {
       out.push(
         make("skill.missing-description", skillSubject(skill), {
           action: "warn",
@@ -511,6 +511,9 @@ function checkDuplicateDescriptions(facts: Facts): Finding[] {
   const groups = new Map<string, string[]>();
   for (const skill of facts.skills) {
     if (skill.source !== "project" || skill.description === undefined) {
+      continue;
+    }
+    if (skill.runtime === "agents") {
       continue;
     }
     const path = skill.path.replaceAll("\\", "/");

@@ -3,6 +3,8 @@ export type Severity = "error" | "warning" | "info";
 
 export type SkillFact = {
   id: string;
+  /** Runtime convention that owns this skill directory. */
+  runtime?: "claude" | "agents" | "unknown";
   /** Stable path-qualified identity only when duplicate ids are present. */
   instanceId?: string;
   path: string;

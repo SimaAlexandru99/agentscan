@@ -510,6 +510,13 @@ describe("skills an agent cannot tell apart", () => {
     expect(findings).toEqual([]);
   });
 
+  test("agents-runtime skills skip Claude-only structure checks", () => {
+    const findings = runChecks(baseFacts({
+      skills: [skill({ id: "pointer", runtime: "agents", hasFrontmatter: false, brokenReferences: ["references/missing.md"] })],
+    }));
+    expect(findings).toEqual([]);
+  });
+
   test("a skill with no description is left to skill.missing-description", () => {
     const findings = runChecks(
       baseFacts({ skills: [skill({ id: "a", frontmatterName: "a" }), skill({ id: "b", frontmatterName: "b" })] }),

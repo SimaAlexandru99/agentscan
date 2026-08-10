@@ -420,8 +420,8 @@ describe("suppressing a single finding", () => {
   test("ignoreFindings drops exactly the listed id and nothing else", async () => {
     const dir = project({
       "package.json": '{"name":"x"}',
-      ".agents/skills/a/SKILL.md": "# no frontmatter\n",
-      ".agents/skills/b/SKILL.md": "# no frontmatter either\n",
+      ".claude/skills/a/SKILL.md": "# no frontmatter\n",
+      ".claude/skills/b/SKILL.md": "# no frontmatter either\n",
     });
 
     const before = await report(dir);
@@ -442,7 +442,7 @@ describe("suppressing a single finding", () => {
   test("an ignored finding cannot fail the build", async () => {
     const dir = project({
       "package.json": '{"name":"x"}',
-      ".agents/skills/a/SKILL.md": "# no frontmatter\n",
+      ".claude/skills/a/SKILL.md": "# no frontmatter\n",
     });
     const id = (await report(dir)).findings[0]?.id;
     expect(id).toBeDefined();
