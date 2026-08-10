@@ -18,7 +18,31 @@ jobs:
 
       - run: bun run typecheck
 
+      # Build before the suite because Plan 013's Node subprocess contract
+      # exercises the published artifact.
+      - run: bun run build
+
       - run: bun test
+
+      - name: Smoke test bundled CLI
+        run: |
+          node <<'NODE'
+          const { spawnSync } = require("node:child_process");
+
+          const result = spawnSync(
+            process.execPath,
+            ["dist/cli.js", "check", "tests/fixtures/clean-repo", "--json"],
+            { encoding: "utf8" },
+          );
+          if (result.status !== 0) {
+            process.stderr.write(result.stderr);
+            process.exit(result.status ?? 1);
+          }
+          const report = JSON.parse(result.stdout);
+          if (report.findings.length !== 0) {
+            throw new Error(`clean fixture had ${report.findings.length} findings`);
+          }
+          NODE
 
       # Dogfood: this repo has a skill and a lockfile, so a clean report here is
       # a real signal rather than a vacuous one.

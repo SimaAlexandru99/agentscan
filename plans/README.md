@@ -157,3 +157,27 @@ plan was written:
 - **No `AGENTS.md` in the repo whose product audits `AGENTS.md`.** Three
   agent-executable plans are queued here and the context they need is scattered
   across README, a code comment, and this file.
+
+## 2026-08-10 deep audit follow-up
+
+These plans were written against commit `feff905` after the deep read-only audit.
+The verification baseline at that commit is `bun test` (201 pass), `bun run
+typecheck`, `bun run build`, and `bun run spec:check`.
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 011 | Harden GitHub Action shell boundaries | P1 | S | — | TODO |
+| 012 | Treat hook directories as missing scripts | P1 | S | — | TODO |
+| 013 | Add CLI, bundle, and Action contract tests | P1 | M | 011 | TODO |
+| 014 | Verify the published artifact in CI | P1 | S | 013 | TODO |
+| 015 | Bound nested skill discovery | P2 | M | 013 | TODO |
+| 016 | Reconcile runtime/version documentation | P2 | S | 014 | TODO |
+| 017 | Add repository-local agent instructions | P2 | S | — | TODO |
+| 018 | Split discovery and checks by boundary | P3 | L | 013, 015 | TODO |
+
+### Dependency notes
+
+- 013 depends on 011 so Action contract tests exercise the hardened input path.
+- 014 depends on 013 so CI promotes a tested artifact, not only source tests.
+- 016 depends on 014 so documentation describes the verified release path.
+- 018 follows characterization coverage from 013 and traversal behavior from 015.

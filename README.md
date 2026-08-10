@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/checks-25-111111?style=flat-square" alt="25 checks">
-  <img src="https://img.shields.io/badge/tests-197%20passing-111111?style=flat-square" alt="197 tests">
+  <img src="https://img.shields.io/badge/tests-211%20passing-111111?style=flat-square" alt="211 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -208,7 +208,7 @@ JSON shape (abridged):
 
 ```json
 {
-  "version": "0.1.0",
+  "version": "0.4.0",
   "root": "/path/to/project",
   "factsSummary": {
     "packageManager": "bun",
@@ -463,7 +463,9 @@ When adding a check, add its spec line there first.
   the `computedHash` in `skills-lock.json` is the obvious `refresh` source; the
   hash algorithm used by the installing tool is not documented here, and it is
   not reproducible from `SKILL.md` bytes alone, so it is not implemented.
-- **Bun only.** `import.meta.dir` / `import.meta.main`; it will not run on Node.
+- **Runtime split.** Source development and the composite Action use Bun; the
+  published `dist/cli.js` runs on Node 20.11+ or Bun. The source entrypoint uses
+  Bun's `import.meta.dir` / `import.meta.main` and is not the Node entrypoint.
 - Policy files are read up to 100 KB, so `policyLines` undercounts past that.
 
 ## Development
@@ -482,14 +484,24 @@ bun run src/cli.ts check tests/fixtures/lock-drift
 | `test` | `bun test` |
 | `check` | `bun run src/cli.ts check` |
 
+### Release checklist
+
+Before publishing a release:
+
+1. Confirm `package.json` and `src/version.ts` contain the same version.
+2. Run `bun run build`, then verify `node dist/cli.js --version` prints it.
+3. Run `bun run typecheck`, `bun test`, and `bun run spec:check`.
+4. Refresh the test-count badge and version examples above from that release run.
+
 ## Design docs
 
 **This README is the source of truth for current behavior.** The documents under
 `docs/superpowers/specs/` are the original design and are **superseded** —
-several decisions changed while building: Bun-only runtime, the dep-to-skill map
-and its "orphan" heuristic dropped in favour of `skills-lock.json`, budget
-checks added, structural checks added, and the YAML rule engine deleted
-(`plans/010`). Read them as history, not as behavior.
+several decisions changed while building: the original Bun-only runtime claim was
+superseded by a Node-compatible published bundle, the dep-to-skill map and its
+"orphan" heuristic dropped in favour of `skills-lock.json`, budget checks added,
+structural checks added, and the YAML rule engine deleted (`plans/010`). Read
+them as history, not as behavior.
 
 ## License
 

@@ -1,0 +1,26 @@
+name: Spec drift
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  spec-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # Networked by design: keep this out of the deterministic PR gate.
+      - run: bun run spec:check

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { hookScriptPath } from "../../src/discover/index";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { runChecks } from "../../src/checks/index";
+import { defaultConfig } from "../../src/config/schema";
+import { discoverAgentSurface, hookScriptPath } from "../../src/discover/index";
+import { extractFacts } from "../../src/facts/extract";
 
 /**
  * Every case here is a real hook command taken from this machine's projects.
@@ -97,5 +103,49 @@ describe("hookScriptPath — refuses to guess", () => {
   test("empty and whitespace", () => {
     expect(hookScriptPath("")).toBeUndefined();
     expect(hookScriptPath("   ")).toBeUndefined();
+  });
+});
+
+describe("hook script discovery", () => {
+  test("directories are missing scripts, while files and absent paths stay distinct", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentscan-hook-"));
+    const hooksDir = join(root, ".claude", "hooks");
+    mkdirSync(join(hooksDir, "directory.js"), { recursive: true });
+    writeFileSync(join(hooksDir, "regular.js"), "", "utf8");
+    writeFileSync(
+      join(root, ".claude", "settings.json"),
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [
+            {
+              hooks: [
+                { type: "command", command: "node .claude/hooks/directory.js" },
+                { type: "command", command: "node .claude/hooks/regular.js" },
+                { type: "command", command: "node .claude/hooks/missing.js" },
+              ],
+            },
+          ],
+        },
+      }),
+      "utf8",
+    );
+
+    const surface = discoverAgentSurface(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const hooks = new Map(
+      surface.hooks.map((hook) => [hook.scriptPath, hook.scriptExists]),
+    );
+
+    expect(hooks.get(".claude/hooks/directory.js")).toBe(false);
+    expect(hooks.get(".claude/hooks/regular.js")).toBe(true);
+    expect(hooks.get(".claude/hooks/missing.js")).toBe(false);
+    expect(
+      runChecks(facts)
+        .filter((finding) => finding.ruleId === "hook.missing-script")
+        .map((finding) => finding.subject),
+    ).toEqual([
+      "hook:PreToolUse:.claude/hooks/directory.js",
+      "hook:PreToolUse:.claude/hooks/missing.js",
+    ]);
   });
 });
