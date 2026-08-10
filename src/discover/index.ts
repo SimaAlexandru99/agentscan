@@ -394,7 +394,12 @@ function discoverNestedClaudeSkills(
       return;
     }
     for (const entry of entries) {
-      if (!entry.isDirectory() || skip.has(entry.name) || (entry.name.startsWith(".") && entry.name !== ".claude")) continue;
+      if (
+        !entry.isDirectory() ||
+        skip.has(entry.name) ||
+        (basename(dir) === ".claude" && entry.name === "worktrees") ||
+        (entry.name.startsWith(".") && entry.name !== ".claude")
+      ) continue;
       const child = join(dir, entry.name);
       if (entry.name === "skills" && basename(dir) === ".claude") {
         if (configuredRoots.has(child)) continue;

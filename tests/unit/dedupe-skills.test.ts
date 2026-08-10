@@ -35,4 +35,14 @@ describe("colliding skill paths", () => {
     const surface = discoverAgentSurface(root, defaultConfig, { includeGlobal: false });
     expect(surface.skills.map((skill) => skill.id)).toContain("nested");
   });
+
+  test("does not scan Claude worktree snapshots", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentscan-worktree-"));
+    const dir = join(root, ".claude", "worktrees", "branch", ".claude", "skills", "snapshot");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "SKILL.md"), "---\ndescription: snapshot\n---\n");
+    writeFileSync(join(root, "package.json"), JSON.stringify({ name: "worktree-test" }));
+    const surface = discoverAgentSurface(root, defaultConfig, { includeGlobal: false });
+    expect(surface.skills.map((skill) => skill.id)).not.toContain("snapshot");
+  });
 });
