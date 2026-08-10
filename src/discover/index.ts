@@ -1,6 +1,6 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute, join, resolve } from "node:path";
+import { basename, isAbsolute, join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type { AgentscanConfig } from "../config/schema";
 import type {
@@ -17,6 +17,15 @@ const POLICY_CAP = 100_000;
 // skills mid-document. Still capped: this reads every skill in the tree.
 const SKILL_MD_CAP = 65_536;
 
+function readCapped(path: string, cap: number): { buf: Buffer; truncated: boolean } {
+  const fd = openSync(path, "r");
+  try {
+    const buf = Buffer.allocUnsafe(cap + 1);
+    const bytes = readSync(fd, buf, 0, cap + 1, 0);
+    return { buf: buf.subarray(0, bytes), truncated: bytes > cap };
+  } finally { closeSync(fd); }
+}
+
 export type AgentSurface = {
   skills: SkillFact[];
   agents: AgentFact[];
@@ -25,6 +34,7 @@ export type AgentSurface = {
   policyFiles: { path: string; text: string }[];
   lockedSkills: LockedSkillFact[];
   hasSkillsLock: boolean;
+  skillsLockInvalid?: boolean;
   configErrors: ConfigErrorFact[];
 };
 
@@ -112,8 +122,7 @@ const REFERENCE_RE = new RegExp(
  * four-backtick fences, so examples inside those were reported as broken.
  */
 const FENCE_BLOCK = /^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[ \t]*$|$)/gm;
-/** Inline code: a skill saying `scripts/deploy.sh` is telling the *user* where
- *  their file goes, not pointing at one it ships. */
+/** Inline code may point at a bundled file; ordinary prose remains ignored. */
 const INLINE_CODE = /`[^`\n]*`/g;
 /** A URL swallows any path inside it, including one in a query string. */
 const URLS = /\b[a-z][a-z0-9+.-]*:\/\/\S+/gi;
@@ -128,7 +137,7 @@ const URLS = /\b[a-z][a-z0-9+.-]*:\/\/\S+/gi;
 export function skillReferences(body: string): string[] {
   const prose = body
     .replace(FENCE_BLOCK, "")
-    .replace(INLINE_CODE, "")
+    .replace(INLINE_CODE, (code) => /(?:scripts|references|assets|templates|examples)\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]{1,10}/.test(code) ? code : "")
     .replace(URLS, "");
   const out: string[] = [];
   const seen = new Set<string>();
@@ -171,9 +180,9 @@ function readFrontmatter(
   let text: string;
   let truncated = false;
   try {
-    const buf = readFileSync(skillMdPath);
-    truncated = buf.length > SKILL_MD_CAP;
-    text = buf.subarray(0, SKILL_MD_CAP).toString("utf8");
+    const result = readCapped(skillMdPath, SKILL_MD_CAP);
+    truncated = result.truncated;
+    text = result.buf.subarray(0, SKILL_MD_CAP).toString("utf8");
     // Several Windows editors write a BOM; without stripping it the `---` test
     // fails and a valid file is reported as having no frontmatter.
     if (text.charCodeAt(0) === 0xfeff) {
@@ -183,6 +192,10 @@ function readFrontmatter(
     // searching for "\n---" cuts inside it, leaving a stray \r that a strict
     // YAML parser rejects. Normalise before locating the fence.
     text = text.replace(/\r\n/g, "\n");
+    if (truncated) {
+      errors.push({ path: skillMdPath, kind: "unexpected-shape", detail: `file exceeds ${SKILL_MD_CAP} byte scan cap` });
+      return { hasFrontmatter: true, unparseable: true };
+    }
   } catch (err) {
     errors.push({
       path: skillMdPath,
@@ -365,6 +378,36 @@ function discoverSkillsInDir(
   return skills;
 }
 
+function discoverNestedClaudeSkills(
+  root: string,
+  configuredRoots: Set<string>,
+  errors: ConfigErrorFact[],
+): SkillFact[] {
+  const out: SkillFact[] = [];
+  const skip = new Set([".git", "node_modules", ".next", "dist", "build", "coverage"]);
+  const walk = (dir: string): void => {
+    let entries: import("node:fs").Dirent[];
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      errors.push({ path: dir, kind: "unreadable", detail: "could not read nested skill directories" });
+      return;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || skip.has(entry.name) || (entry.name.startsWith(".") && entry.name !== ".claude")) continue;
+      const child = join(dir, entry.name);
+      if (entry.name === "skills" && basename(dir) === ".claude") {
+        if (configuredRoots.has(child)) continue;
+        out.push(...discoverSkillsInDir(child, "project", errors, root));
+        continue;
+      }
+      walk(child);
+    }
+  };
+  walk(root);
+  return out;
+}
+
 function parseMcpServers(
   raw: unknown,
   filePath: string,
@@ -435,8 +478,7 @@ function parseMcpServers(
           if (
             typeof val === "string" &&
             val.length > 0 &&
-            !val.includes("${") &&
-            !val.startsWith("$") &&
+            !/\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}/.test(val) &&
             /(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|CREDENTIAL)S?$/i.test(key)
           ) {
             literalEnvKeys.push(key);
@@ -519,7 +561,9 @@ export function hookScriptPath(command: string): string | undefined {
 
   let i = 0;
   const first = unquote(tokens[0] as string);
+  let interpreted = false;
   if (INTERPRETERS.test(first)) {
+    interpreted = true;
     i = 1;
     while (i < tokens.length) {
       const flag = unquote(tokens[i] as string);
@@ -535,7 +579,7 @@ export function hookScriptPath(command: string): string | undefined {
   }
 
   const candidate = tokens[i] === undefined ? undefined : unquote(tokens[i] as string);
-  if (candidate === undefined || !candidate.includes("/")) {
+  if (candidate === undefined || (!candidate.includes("/") && !(interpreted && /\.(?:js|mjs|cjs|ts|py|sh|bash|zsh)$/i.test(candidate)))) {
     return undefined;
   }
   // A drive-letter path cannot be resolved here; do not guess.
@@ -623,6 +667,28 @@ function discoverHooks(
     for (const [event, groups] of Object.entries(
       hooks as Record<string, unknown>,
     )) {
+      const malformed = !Array.isArray(groups) || groups.some((group) => {
+        if (group === null || typeof group !== "object" || Array.isArray(group)) {
+          return true;
+        }
+        const inner = (group as Record<string, unknown>).hooks;
+        if (!Array.isArray(inner)) return true;
+        return inner.some((entry) => {
+          if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+            return true;
+          }
+          const item = entry as Record<string, unknown>;
+          return (
+            (item.command !== undefined &&
+              (typeof item.command !== "string" || item.command.length === 0)) ||
+            (item.type === "command" && typeof item.command !== "string")
+          );
+        });
+      });
+      if (malformed) {
+        errors.push({ path: filePath, kind: "unexpected-shape", detail: `invalid hook groups for ${event}` });
+        continue;
+      }
       const commands = collectHookCommands(groups);
       if (commands.length === 0) {
         facts.push({ name: event, path: filePath, event });
@@ -760,9 +826,10 @@ function discoverPolicyFiles(
       continue;
     }
     try {
-      const buf = readFileSync(filePath);
-      const text = buf.subarray(0, POLICY_CAP).toString("utf8");
+      const result = readCapped(filePath, POLICY_CAP);
+      const text = result.buf.subarray(0, POLICY_CAP).toString("utf8");
       out.push({ path: filePath, text });
+      if (result.truncated) errors.push({ path: filePath, kind: "unexpected-shape", detail: `file exceeds ${POLICY_CAP} byte scan cap` });
     } catch (err) {
       errors.push({
         path: filePath,
@@ -781,14 +848,14 @@ function discoverPolicyFiles(
 function discoverSkillsLock(
   root: string,
   errors: ConfigErrorFact[],
-): { locked: LockedSkillFact[]; present: boolean } {
+): { locked: LockedSkillFact[]; present: boolean; invalid?: boolean } {
   const filePath = join(root, "skills-lock.json");
   if (!existsSync(filePath)) {
     return { locked: [], present: false };
   }
   const raw = readJsonConfig(filePath, errors);
   if (raw === undefined) {
-    return { locked: [], present: true };
+    return { locked: [], present: true, invalid: true };
   }
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     errors.push({
@@ -796,7 +863,7 @@ function discoverSkillsLock(
       kind: "unexpected-shape",
       detail: "skills-lock.json is not a JSON object",
     });
-    return { locked: [], present: true };
+    return { locked: [], present: true, invalid: true };
   }
   const skills = (raw as Record<string, unknown>).skills;
   if (skills === null || typeof skills !== "object" || Array.isArray(skills)) {
@@ -805,7 +872,7 @@ function discoverSkillsLock(
       kind: "unexpected-shape",
       detail: "skills-lock.json has no `skills` object",
     });
-    return { locked: [], present: true };
+    return { locked: [], present: true, invalid: true };
   }
 
   const locked: LockedSkillFact[] = [];
@@ -843,6 +910,8 @@ export function discoverAgentSurface(
   for (const rel of config.skillPaths) {
     skills.push(...discoverSkillsInDir(join(root, rel), "project", configErrors, root));
   }
+  const configuredRoots = new Set(config.skillPaths.map((rel) => resolve(root, rel)));
+  skills.push(...discoverNestedClaudeSkills(root, configuredRoots, configErrors));
 
   if (opts.includeGlobal) {
     const home = homedir();
@@ -857,32 +926,29 @@ export function discoverAgentSurface(
   const lock = discoverSkillsLock(root, configErrors);
 
   return {
-    skills: dedupeSkillsById(skills),
+    skills: disambiguateSkills(skills, root),
     agents: discoverAgents(root, configErrors),
     hooks: discoverHooks(root, configErrors),
     mcp: discoverMcp(root, config.mcpPaths, configErrors),
     policyFiles: discoverPolicyFiles(root, config.policyFiles, configErrors),
     lockedSkills: lock.locked,
     hasSkillsLock: lock.present,
+    skillsLockInvalid: lock.invalid,
     configErrors,
   };
 }
 
 /**
- * One SkillFact per id. First path wins (skillPaths order, then global).
- * Prefer project over global when the same id appears later as project (re-scan).
+ * Keep every path. Qualify only colliding ids so findings and lock checks stay distinct.
  */
-function dedupeSkillsById(skills: SkillFact[]): SkillFact[] {
-  const byId = new Map<string, SkillFact>();
-  for (const skill of skills) {
-    const existing = byId.get(skill.id);
-    if (!existing) {
-      byId.set(skill.id, skill);
-      continue;
-    }
-    if (existing.source === "global" && skill.source === "project") {
-      byId.set(skill.id, skill);
-    }
-  }
-  return [...byId.values()];
+function disambiguateSkills(skills: SkillFact[], root: string): SkillFact[] {
+  const counts = new Map<string, number>();
+  for (const skill of skills) counts.set(skill.id, (counts.get(skill.id) ?? 0) + 1);
+  return skills.map((skill) => {
+    if ((counts.get(skill.id) ?? 0) < 2) return skill;
+    const location = skill.source === "project"
+      ? skill.path.slice(root.length + 1)
+      : `global:${skill.path}`;
+    return { ...skill, instanceId: `${skill.id}@${location}` };
+  });
 }

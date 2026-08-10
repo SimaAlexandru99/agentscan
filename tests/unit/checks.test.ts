@@ -18,8 +18,6 @@ function baseFacts(overrides: Partial<Facts> = {}): Facts {
     packageManager: "bun",
     dependencies: {},
     devDependencies: {},
-    scripts: {},
-    configs: {},
     skills: [],
     agents: [],
     hooks: [],
@@ -56,6 +54,15 @@ describe("config errors", () => {
     // the kind and detail disambiguate several failures in one file
     expect(f.subject).toStartWith("config:/tmp/proj/.mcp.json#");
     expect(f.message).toContain("not valid JSON");
+  });
+
+  test("invalid lockfile does not produce derived lock drift", () => {
+    const findings = runChecks(baseFacts({
+      skills: [skill({ id: "local" })],
+      hasSkillsLock: true,
+      skillsLockInvalid: true,
+    }));
+    expect(findings.map((finding) => finding.ruleId)).not.toContain("skill.not-in-lock");
   });
 });
 
@@ -402,22 +409,23 @@ describe("agent definitions", () => {
     name,
     path: `.claude/agents/${name}.md`,
     hasFrontmatter: true,
+    frontmatterName: name,
     ...extra,
   });
 
-  test("no frontmatter block is a warning", () => {
+  test("no frontmatter block is an error", () => {
     const findings = runChecks(
       baseFacts({ agents: [agent("reviewer", { hasFrontmatter: false })] }),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["agent.missing-frontmatter"]);
-    expect(findings[0]!.severity).toBe("warning");
+    expect(findings[0]!.severity).toBe("error");
     expect(findings[0]!.subject).toBe("agent:reviewer");
   });
 
-  test("frontmatter with no description is info", () => {
+  test("frontmatter with no description is an error", () => {
     const findings = runChecks(baseFacts({ agents: [agent("reviewer")] }));
     expect(findings.map((f) => f.ruleId)).toEqual(["agent.missing-description"]);
-    expect(findings[0]!.severity).toBe("info");
+    expect(findings[0]!.severity).toBe("error");
   });
 
   test("a complete agent produces nothing", () => {
@@ -444,7 +452,7 @@ describe("agent definitions", () => {
             name: "engineering-api-platform-engineer",
             path: ".claude/agents/engineering-api-platform-engineer.md",
             hasFrontmatter: true,
-            frontmatterName: "API Platform Engineer",
+            frontmatterName: "api-platform-engineer",
             description: "Designs API platforms",
           },
         ],
@@ -787,6 +795,9 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
       agents: [
         { name: "bare", path: ".claude/agents/bare.md", hasFrontmatter: false },
         { name: "nodesc", path: ".claude/agents/nodesc.md", hasFrontmatter: true },
+        { name: "dup-a", path: ".claude/agents/dup-a.md", hasFrontmatter: true, frontmatterName: "duplicate", description: "d" },
+        { name: "dup-b", path: ".claude/agents/dup-b.md", hasFrontmatter: true, frontmatterName: "duplicate", description: "d" },
+        { name: "bad", path: ".claude/agents/bad.md", hasFrontmatter: true, frontmatterName: "Bad Name", description: "d" },
       ],
       hooks: [
         {

@@ -5,7 +5,6 @@ export const defaultThresholds = {
    *  character budget (~1-2% of the context window) shared across all skills;
    *  past it, descriptions are truncated and matching keywords are lost. */
   skillDescriptionBytes: 16_000,
-  skills: 30,
   mcp: 5,
   agentsMdLines: 150,
   claudeMdLines: 200,
@@ -31,7 +30,8 @@ const thresholdsSchema = z.object({
     .int()
     .positive()
     .default(defaultThresholds.skillDescriptionBytes),
-  skills: z.number().int().positive().default(defaultThresholds.skills),
+  /** @deprecated accepted for one release; no check consumes it. */
+  skills: z.number().int().positive().optional(),
   mcp: z.number().int().positive().default(defaultThresholds.mcp),
   agentsMdLines: z
     .number()
@@ -44,7 +44,7 @@ const thresholdsSchema = z.object({
     .positive()
     .default(defaultThresholds.claudeMdLines),
   agents: z.number().int().positive().default(defaultThresholds.agents),
-});
+}).strict();
 
 export const configSchema = z.object({
   skillPaths: z.array(z.string()).default(defaultConfig.skillPaths),
@@ -58,6 +58,6 @@ export const configSchema = z.object({
   includeGlobal: z.boolean().default(false),
   requireLock: z.boolean().default(false),
   thresholds: thresholdsSchema.default(defaultThresholds),
-});
+}).strict();
 
 export type AgentscanConfig = z.infer<typeof configSchema>;

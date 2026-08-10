@@ -21,8 +21,6 @@ function facts(): Facts {
     packageManager: "bun",
     dependencies: {},
     devDependencies: {},
-    scripts: {},
-    configs: {},
     skills: [],
     agents: [],
     hooks: [],

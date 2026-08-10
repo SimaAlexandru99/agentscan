@@ -81,9 +81,9 @@ describe("skillReferences — refuses to guess", () => {
     expect(skillReferences("````\nreferences/y.md\n````")).toEqual([]);
   });
 
-  test("inline code is instruction to the user, not a bundled pointer", () => {
+  test("inline code is a bundled pointer", () => {
     expect(skillReferences("Run `scripts/deploy.sh` in your project")).toEqual(
-      [],
+      ["scripts/deploy.sh"],
     );
   });
 

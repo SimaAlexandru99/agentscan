@@ -35,8 +35,6 @@ function baseFacts(overrides: Partial<Facts> = {}): Facts {
     packageManager: "bun",
     dependencies: { next: "16.3.0", "better-auth": "1.2.0" },
     devDependencies: { typescript: "5.8.0" },
-    scripts: {},
-    configs: {},
     skills: [skillFact("next-cache-components")],
     agents: [],
     hooks: [],

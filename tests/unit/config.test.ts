@@ -31,7 +31,7 @@ describe("loadConfig", () => {
     const cfg = loadConfig(root);
     expect(cfg.failOn).toBe("never");
     expect(cfg.skillPaths).toEqual(defaultConfig.skillPaths);
-    expect(cfg.thresholds.skills).toBe(30);
+    expect(cfg.thresholds.skills).toBeUndefined();
     expect(cfg.thresholds.mcp).toBe(5);
   });
 
@@ -44,5 +44,18 @@ describe("loadConfig", () => {
     const cfg = loadConfig(root);
     expect(cfg.ignoreSkills).toEqual(["keep-me"]);
     expect(cfg.failOn).toBe("warning");
+  });
+
+  test("rejects unknown root keys but accepts legacy skills threshold", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentscan-"));
+    writeFileSync(join(root, ".agentscanrc.json"), JSON.stringify({
+      failon: "warning",
+      thresholds: { skills: 30 },
+    }));
+    expect(() => loadConfig(root)).toThrow();
+    writeFileSync(join(root, ".agentscanrc.json"), JSON.stringify({
+      thresholds: { skills: 30 },
+    }));
+    expect(loadConfig(root).thresholds.skills).toBe(30);
   });
 });

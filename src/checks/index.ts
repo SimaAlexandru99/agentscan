@@ -96,6 +96,9 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
     id: "agent.missing-description",
     description: "Agent frontmatter has no description",
   },
+  { id: "agent.missing-name", description: "Agent frontmatter has no name" },
+  { id: "agent.duplicate-name", description: "Agent names are duplicated" },
+  { id: "agent.invalid-name", description: "Agent frontmatter name is not a valid identifier" },
   {
     id: "mcp.no-launch",
     description: "MCP server declares neither command nor url",
@@ -133,10 +136,6 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
     description:
       "Project MCP server count above the point where tool selection degrades",
   },
-  {
-    id: "policy.package-manager-drift",
-    description: "Policy mentions npm install while packageManager is bun",
-  },
 ];
 
 /**
@@ -150,6 +149,8 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
  */
 const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
   { label: "Anthropic key", re: /\bsk-ant-[A-Za-z0-9_-]{16,}/ },
+  { label: "OpenAI project key", re: /\bsk-proj-[A-Za-z0-9_-]{16,}/ },
+  { label: "OpenAI service-account key", re: /\bsk-svcacct-[A-Za-z0-9_-]{16,}/ },
   // No embedded hyphens after the prefix. `sk-mcp-server-toolkit` is a package
   // name, and calling it a leaked credential at severity error is unfalsifiable
   // from the report, since the matched value is correctly never echoed.
@@ -323,6 +324,10 @@ function skillEvidence(skill: SkillFact, value: string): Finding["evidence"] {
   return evidence;
 }
 
+function skillSubject(skill: SkillFact): string {
+  return `skill:${skill.instanceId ?? skill.id}`;
+}
+
 function checkSkillStructure(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const skill of facts.skills) {
@@ -336,7 +341,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
 
     if (!skill.hasSkillMd) {
       out.push(
-        make("skill.missing-skill-md", `skill:${skill.id}`, {
+        make("skill.missing-skill-md", skillSubject(skill), {
           action: "warn",
           severity: "warning",
           message: `Skill directory has no SKILL.md`,
@@ -357,7 +362,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
 
     if (!skill.hasFrontmatter) {
       out.push(
-        make("skill.missing-frontmatter", `skill:${skill.id}`, {
+        make("skill.missing-frontmatter", skillSubject(skill), {
           action: "warn",
           severity: "warning",
           message: "SKILL.md has no YAML frontmatter block",
@@ -375,7 +380,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
       const shown = broken.slice(0, 3).join(", ");
       const rest = broken.length - Math.min(3, broken.length);
       out.push(
-        make("skill.broken-reference", `skill:${skill.id}`, {
+        make("skill.broken-reference", skillSubject(skill), {
           action: "warn",
           severity: "warning",
           message: `SKILL.md points at ${broken.length} file${broken.length === 1 ? "" : "s"} that do not exist: ${shown}${rest > 0 ? ` (+${rest} more)` : ""}`,
@@ -392,7 +397,7 @@ function checkSkillStructure(facts: Facts): Finding[] {
 
     if (skill.description === undefined) {
       out.push(
-        make("skill.missing-description", `skill:${skill.id}`, {
+        make("skill.missing-description", skillSubject(skill), {
           action: "warn",
           // The spec marks description "Recommended", not required — a skill
           // without one still loads when invoked by name.
@@ -435,6 +440,10 @@ function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
     return out;
   }
 
+  if (facts.skillsLockInvalid === true) {
+    return out;
+  }
+
   const onDisk = new Set(projectSkills.map((s) => s.id));
   const locked = new Map(facts.lockedSkills.map((l) => [l.id, l]));
 
@@ -443,7 +452,7 @@ function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
       continue;
     }
     out.push(
-      make("skill.not-in-lock", `skill:${skill.id}`, {
+      make("skill.not-in-lock", skillSubject(skill), {
         action: "warn",
         severity: "info",
         message: "Skill is not in skills-lock.json — local and unpinned",
@@ -508,7 +517,9 @@ function checkDuplicateDescriptions(facts: Facts): Finding[] {
     if (key.length === 0) {
       continue;
     }
-    groups.set(key, [...(groups.get(key) ?? []), skill.id]);
+    const ids = groups.get(key);
+    if (ids === undefined) groups.set(key, [skill.instanceId ?? skill.id]);
+    else ids.push(skill.instanceId ?? skill.id);
   }
 
   const out: Finding[] = [];
@@ -605,6 +616,7 @@ function checkDescriptionBudget(
  */
 function checkAgents(facts: Facts): Finding[] {
   const out: Finding[] = [];
+  const names = new Map<string, string[]>();
   for (const agent of facts.agents) {
     if (agent.unreadable === true || agent.unparseableFrontmatter === true) {
       // config.unreadable names it. Anything else here would be a statement
@@ -616,7 +628,7 @@ function checkAgents(facts: Facts): Finding[] {
       out.push(
         make("agent.missing-frontmatter", `agent:${agent.name}`, {
           action: "warn",
-          severity: "warning",
+          severity: "error",
           message: "Agent definition has no YAML frontmatter block",
           reason:
             "An agent is selected by its declared description; without a frontmatter block there is nothing to select on, and the file is unlikely to load as an agent at all.",
@@ -630,7 +642,7 @@ function checkAgents(facts: Facts): Finding[] {
       out.push(
         make("agent.missing-description", `agent:${agent.name}`, {
           action: "warn",
-          severity: "info",
+          severity: "error",
           message: "Agent frontmatter has no `description`",
           reason:
             "The description is how the main session decides which agent to dispatch. Without one the agent can still be named explicitly, but it will not be chosen on its own.",
@@ -639,6 +651,41 @@ function checkAgents(facts: Facts): Finding[] {
         }),
       );
     }
+    if (agent.frontmatterName === undefined) {
+      out.push(
+        make("agent.missing-name", `agent:${agent.name}`, {
+          action: "warn",
+          severity: "error",
+          message: "Agent frontmatter has no `name`",
+          reason: "Agent identity is declared by the required frontmatter name.",
+          evidence: [{ kind: "agent", value: agent.path }],
+          suggest: "Add a `name` field to the frontmatter",
+        }),
+      );
+    } else {
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(agent.frontmatterName)) {
+        out.push(
+          make("agent.invalid-name", `agent:${agent.name}`, {
+            action: "warn",
+            severity: "error",
+            message: `Agent name "${agent.frontmatterName}" is not a valid identifier`,
+            reason:
+              "Agent names use lowercase letters, numbers, and hyphens so dispatch can address them reliably.",
+            evidence: [{ kind: "agent", value: agent.path }],
+            suggest: "Use lowercase letters, numbers, and hyphens in the `name` field",
+          }),
+        );
+      }
+      const list = names.get(agent.frontmatterName) ?? [];
+      list.push(agent.path); names.set(agent.frontmatterName, list);
+    }
+  }
+  for (const [name, paths] of names) if (paths.length > 1) {
+    out.push(make("agent.duplicate-name", `agent:${name}`, {
+      action: "warn", severity: "error", message: `Agent name "${name}" is declared by multiple files`,
+      reason: "Duplicate names make dispatch ambiguous.", evidence: paths.map((path) => ({ kind: "agent", value: path })),
+      suggest: "Give each agent a unique frontmatter name",
+    }));
   }
   return out;
 }

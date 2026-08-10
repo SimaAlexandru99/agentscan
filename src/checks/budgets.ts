@@ -117,29 +117,6 @@ function countFinding(args: {
  * string `npm install` in a project whose `packageManager` is bun, because a
  * looser match would flag every doc that mentions npm in passing.
  */
-function packageManagerDrift(facts: Facts): Finding[] {
-  if (facts.packageManager !== "bun") {
-    return [];
-  }
-  const hits = facts.policyFiles.filter((p) => p.text.includes("npm install"));
-  if (hits.length === 0) {
-    return [];
-  }
-  return [
-    make("policy.package-manager-drift", "policy:package-manager", {
-      action: "drift",
-      severity: "info",
-      message: "Policy mentions npm install but packageManager is bun",
-      reason: "Docs drift vs packageManager field / lockfile convention",
-      evidence: [
-        { kind: "packageManager", value: facts.packageManager },
-        ...hits.map((p) => ({ kind: "policy" as const, value: p.path })),
-      ],
-      suggest: "Prefer bun install in AGENTS.md / CLAUDE.md",
-    }),
-  ];
-}
-
 export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
   return [
     ...policyLengthFinding({
@@ -184,6 +161,5 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
       suggest:
         "Count the tools your servers actually expose; disable unused servers in mcp.json or set thresholds.mcp in .agentscanrc.json",
     }),
-    ...packageManagerDrift(facts),
   ];
 }

@@ -3,6 +3,8 @@ export type Severity = "error" | "warning" | "info";
 
 export type SkillFact = {
   id: string;
+  /** Stable path-qualified identity only when duplicate ids are present. */
+  instanceId?: string;
   path: string;
   description?: string;
   source: "project" | "global";
@@ -82,13 +84,6 @@ export type Facts = {
   packageManager: "bun" | "npm" | "pnpm" | "yarn" | "unknown";
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
-  scripts: Record<string, string>;
-  configs: {
-    next?: { cacheComponents?: boolean; appRouter?: boolean };
-    shadcn?: boolean;
-    ultracite?: boolean;
-    biome?: boolean;
-  };
   skills: SkillFact[];
   agents: AgentFact[];
   hooks: HookFact[];
@@ -97,6 +92,7 @@ export type Facts = {
   /** skills-lock.json entries; empty when the project has no lockfile. */
   lockedSkills: LockedSkillFact[];
   hasSkillsLock: boolean;
+  skillsLockInvalid?: boolean;
   configErrors: ConfigErrorFact[];
 };
 

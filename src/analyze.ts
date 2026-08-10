@@ -60,7 +60,7 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
       !ignoredRules.has(f.ruleId) &&
       !(
         f.subject.startsWith("skill:") &&
-        ignoredSkills.has(f.subject.slice("skill:".length))
+        ignoredSkills.has(f.subject.slice("skill:".length).split("@", 1)[0] ?? "")
       ),
   );
 

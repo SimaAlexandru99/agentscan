@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-23-111111?style=flat-square" alt="23 checks">
-  <img src="https://img.shields.io/badge/tests-183%20passing-111111?style=flat-square" alt="183 tests">
+  <img src="https://img.shields.io/badge/checks-25-111111?style=flat-square" alt="25 checks">
+  <img src="https://img.shields.io/badge/tests-197%20passing-111111?style=flat-square" alt="197 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <strong>23 checks &middot; 3.4k lines &middot; 0 network calls &middot; every check sourced to a published spec line</strong><br>
+  <strong>25 checks &middot; 3.4k lines &middot; 0 network calls &middot; every check sourced to a published spec line</strong><br>
   <sub>Alpha. An earlier build reported 37 findings across 17 real projects of which <strong>25 were false</strong> — two checks had been written from what real projects looked like instead of from the spec. Both were deleted, and every check that survived is recorded in <a href="docs/spec/">docs/spec/</a> with the URL it came from and the date it was read. That story is the reason this tool exists in its current shape.</sub>
 </p>
 
@@ -65,7 +65,7 @@ No AI, no network, no heuristics. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .agents/ .mcp.json AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       23 checks, each against one published spec line
+3. Check       25 checks, each against one published spec line
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
 
@@ -392,7 +392,7 @@ Every check lives in `src/checks/` and runs on every `check`. `agentscan rules`
 lists all of them with their ids; `agentscan explain <id>` details any finding.
 
 Most validate one discovered item against its own file on disk. The five
-`budget.*` / `policy.*` entries at the bottom judge aggregate size instead —
+`budget.*` entries at the bottom judge aggregate size instead —
 they are all **info**, they are sourced to `docs/spec/thresholds.md`, and they
 are retuned through `thresholds` in `.agentscanrc.json` rather than switched
 off.
@@ -402,8 +402,11 @@ off.
 | `config.unreadable` | error | A config file that is not valid JSON, so whatever it declares is silently not in effect |
 | `hook.missing-script` | error | A registered hook whose script does not exist — it never runs |
 | `hook.unknown-event` | error | A hook registered under an event name that is never dispatched |
-| `agent.missing-frontmatter` | warning | An agent definition with no `---` block |
-| `agent.missing-description` | info | Agent frontmatter has no `description`, so it will not be dispatched on its own |
+| `agent.missing-frontmatter` | error | An agent definition with no `---` block |
+| `agent.missing-description` | error | Agent frontmatter has no `description` |
+| `agent.missing-name` | error | Agent frontmatter has no `name` |
+| `agent.invalid-name` | error | Agent name is not lowercase letters, numbers, and hyphens |
+| `agent.duplicate-name` | error | Multiple agent files declare the same name |
 | `mcp.no-launch` | error | An MCP server with neither `command` nor `url`; its tools are never available |
 | `mcp.url-without-type` | error | A remote MCP server with a `url` but no `type` — read as stdio, fails, and is skipped |
 | `mcp.hardcoded-secret` | error | A token-shaped literal in MCP config (the value is never echoed back) |
@@ -419,9 +422,8 @@ off.
 | `skill.no-lockfile` | info | Skills present with no lockfile at all (only with `requireLock`) |
 
 Agent definitions are checked for structure only. An agent's frontmatter `name`
-is a display name — 16 of 34 real files declare one that differs from the
-filename, and nothing keys on the filename — so it is deliberately not compared,
-and a test guards against re-adding that check. Model identifiers and tool names
+is not compared to the filename; it must simply be a valid lowercase identifier
+and unique. Model identifiers and tool names
 are likewise not validated: both would need a hardcoded list, which is the shape
 that already shipped a false error. See [plans/003](plans/003-validate-agent-definitions.md).
 

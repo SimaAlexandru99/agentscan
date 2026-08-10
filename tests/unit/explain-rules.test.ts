@@ -50,7 +50,7 @@ describe("runRulesCommand", () => {
     const result = await runRulesCommand({ dir });
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("policy.package-manager-drift");
+    expect(result.stdout).toContain("agent.invalid-name");
     expect(result.stdout).toContain("budget.mcp");
     // orphans are computed from facts, not shipped as a rule
     expect(result.stdout).not.toContain("skill.orphan");

@@ -369,7 +369,7 @@ describe("agent definitions, end to end", () => {
       "package.json": '{"name":"x"}',
       ".claude/agents/bare.md": "# just prose, no frontmatter\n",
       ".claude/agents/good.md":
-        "---\nname: Code Reviewer\ndescription: Reviews diffs for correctness\n---\n\n# body\n",
+        "---\nname: code-reviewer\ndescription: Reviews diffs for correctness\n---\n\n# body\n",
     });
     const payload = await report(dir);
     const agentFindings = payload.findings.filter((f) =>

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentscanConfig } from "../config/schema";
 import { discoverAgentSurface } from "../discover/index";
@@ -8,7 +8,6 @@ type PackageJson = {
   packageManager?: string;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
-  scripts?: Record<string, string>;
 };
 
 /**
@@ -60,7 +59,7 @@ function readPackageJson(
   if (typeof obj.packageManager === "string") {
     pkg.packageManager = obj.packageManager;
   }
-  for (const field of ["dependencies", "devDependencies", "scripts"] as const) {
+  for (const field of ["dependencies", "devDependencies"] as const) {
     const raw = obj[field];
     const kept = stringEntries(raw);
     if (kept === undefined) {
@@ -85,6 +84,19 @@ function readPackageJson(
       });
     }
     pkg[field] = kept.values;
+  }
+  const scripts = obj.scripts;
+  if (scripts !== undefined) {
+    const kept = stringEntries(scripts);
+    if (kept === undefined) {
+      errors.push({ path, kind: "unexpected-shape", detail: "scripts is not an object" });
+    } else if (kept.dropped > 0) {
+      errors.push({
+        path,
+        kind: "unexpected-shape",
+        detail: `scripts: ${kept.dropped} entr${kept.dropped === 1 ? "y" : "ies"} ignored (value is not a string)`,
+      });
+    }
   }
   return pkg;
 }
@@ -144,98 +156,6 @@ function inferPackageManager(
   return "unknown";
 }
 
-function hasNextConfig(root: string): boolean {
-  try {
-    const entries = readdirSync(root);
-    return entries.some(
-      (name) =>
-        name === "next.config.js" ||
-        name === "next.config.mjs" ||
-        name === "next.config.cjs" ||
-        name === "next.config.ts" ||
-        name === "next.config.mts",
-    );
-  } catch {
-    return false;
-  }
-}
-
-function readNextConfigText(root: string): string | undefined {
-  const candidates = [
-    "next.config.ts",
-    "next.config.mjs",
-    "next.config.js",
-    "next.config.mts",
-    "next.config.cjs",
-  ];
-  for (const name of candidates) {
-    const path = join(root, name);
-    if (!existsSync(path)) {
-      continue;
-    }
-    try {
-      return readFileSync(path, "utf8");
-    } catch {
-      return undefined;
-    }
-  }
-  return undefined;
-}
-
-function extractConfigs(
-  root: string,
-  deps: Record<string, string>,
-  devDeps: Record<string, string>,
-  scripts: Record<string, string>,
-): Facts["configs"] {
-  const configs: Facts["configs"] = {};
-
-  if (existsSync(join(root, "components.json"))) {
-    configs.shadcn = true;
-  }
-
-  if (
-    existsSync(join(root, "biome.json")) ||
-    existsSync(join(root, "biome.jsonc"))
-  ) {
-    configs.biome = true;
-  }
-
-  const allDeps = { ...deps, ...devDeps };
-  const hasUltraciteDep = "ultracite" in allDeps;
-  const hasUltraciteScript = Object.values(scripts).some((s) =>
-    s.includes("ultracite"),
-  );
-  if (hasUltraciteDep || hasUltraciteScript) {
-    configs.ultracite = true;
-  }
-
-  if ("next" in allDeps) {
-    const next: NonNullable<Facts["configs"]["next"]> = {};
-    if (hasNextConfig(root)) {
-      next.appRouter = true;
-      const text = readNextConfigText(root);
-      if (text !== undefined) {
-        // best-effort: cacheComponents: true (or experimental.cacheComponents)
-        if (
-          /\bcacheComponents\s*:\s*true\b/.test(text) ||
-          /\bcacheComponents\s*:\s*!0\b/.test(text)
-        ) {
-          next.cacheComponents = true;
-        } else if (
-          /\bcacheComponents\s*:\s*false\b/.test(text) ||
-          /\bcacheComponents\s*:\s*!1\b/.test(text)
-        ) {
-          next.cacheComponents = false;
-        }
-      }
-    }
-    configs.next = next;
-  }
-
-  return configs;
-}
-
 /**
  * Build immutable Facts snapshot from package.json + discovered agent surface.
  * No network. No disk writes.
@@ -250,7 +170,6 @@ export function extractFacts(
   const pkg = readPackageJson(root, packageErrors);
   const dependencies = { ...(pkg.dependencies ?? {}) };
   const devDependencies = { ...(pkg.devDependencies ?? {}) };
-  const scripts = { ...(pkg.scripts ?? {}) };
 
   const surface = discoverAgentSurface(root, config, { includeGlobal });
 
@@ -259,8 +178,6 @@ export function extractFacts(
     packageManager: inferPackageManager(root, pkg),
     dependencies,
     devDependencies,
-    scripts,
-    configs: extractConfigs(root, dependencies, devDependencies, scripts),
     skills: surface.skills,
     agents: surface.agents,
     hooks: surface.hooks,
@@ -268,6 +185,7 @@ export function extractFacts(
     policyFiles: surface.policyFiles,
     lockedSkills: surface.lockedSkills,
     hasSkillsLock: surface.hasSkillsLock,
+    skillsLockInvalid: surface.skillsLockInvalid,
     configErrors: [...packageErrors, ...surface.configErrors],
   };
 }
