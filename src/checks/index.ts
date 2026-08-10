@@ -513,7 +513,13 @@ function checkDuplicateDescriptions(facts: Facts): Finding[] {
     if (skill.source !== "project" || skill.description === undefined) {
       continue;
     }
-    const key = skill.description.trim().replace(/\s+/g, " ").toLowerCase();
+    const path = skill.path.replaceAll("\\", "/");
+    const namespace = path.includes(".claude/skills/")
+      ? "claude"
+      : path.includes(".agents/skills/")
+        ? "agents"
+        : skill.source;
+    const key = `${namespace}\0${skill.description.trim().replace(/\s+/g, " ").toLowerCase()}`;
     if (key.length === 0) {
       continue;
     }

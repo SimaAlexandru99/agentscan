@@ -500,6 +500,16 @@ describe("skills an agent cannot tell apart", () => {
     ).toEqual([]);
   });
 
+  test("same description across .agents and .claude is not a collision", () => {
+    const findings = runChecks(baseFacts({
+      skills: [
+        { ...desc("agents-skill", "same"), path: ".agents/skills/agents-skill" },
+        { ...desc("claude-skill", "same"), path: ".claude/skills/claude-skill" },
+      ],
+    }));
+    expect(findings).toEqual([]);
+  });
+
   test("a skill with no description is left to skill.missing-description", () => {
     const findings = runChecks(
       baseFacts({ skills: [skill({ id: "a", frontmatterName: "a" }), skill({ id: "b", frontmatterName: "b" })] }),
