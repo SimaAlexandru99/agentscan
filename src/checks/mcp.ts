@@ -34,15 +34,39 @@ export function checkMcp(facts: Facts): Finding[] {
           severity: "error",
           message: `MCP server "${server.name}" declares neither command nor url`,
           reason:
-            "There is no way to start or reach this server, so its tools are never available — the entry is dead weight that still costs a config read.",
+            "Without a command or url the entry is not a launchable MCP server by schema — its tools will not be available, and the entry is dead weight that still costs a config read.",
           evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
           suggest: `Add a command (or url) for "${server.name}", or remove it`,
         }),
       );
     }
 
+    // Path-like command that is missing on disk — same shape as hook.missing-script.
+    // Bare PATH binaries are never resolved here; a false "broken" on `npx` would
+    // be worse than silence. See docs/spec/mcp.md.
+    if (
+      server.command !== undefined &&
+      server.commandExists === false
+    ) {
+      out.push(
+        make("mcp.command-missing", `mcp:${server.name}@${server.path}`, {
+          action: "warn",
+          severity: "error",
+          message: `MCP server "${server.name}" points at a command path that does not exist: ${server.command}`,
+          reason:
+            "The server declares a filesystem command, but that path is not a file on disk, so the entry is not launchable as configured. Bare PATH binaries are not checked — only path-like values this tool can resolve honestly.",
+          evidence: [
+            { kind: "mcp", value: `${server.name} @ ${server.path}` },
+            { kind: "command", value: server.command },
+          ],
+          suggest: `Restore ${server.command} or fix the command path for "${server.name}"`,
+        }),
+      );
+    }
+
     // Documented behaviour: an entry with a url and no `type` is read as a
-    // stdio server, fails, and is skipped — so its tools are silently absent.
+    // stdio server, fails schema validation, and is skipped — so its tools are
+    // silently absent.
     if (server.hasUrl && server.transport === undefined) {
       out.push(
         make("mcp.url-without-type", `mcp:${server.name}@${server.path}`, {
@@ -50,7 +74,7 @@ export function checkMcp(facts: Facts): Finding[] {
           severity: "error",
           message: `MCP server "${server.name}" has a url but no transport type`,
           reason:
-            "An entry with no `type` is read as a stdio server, so a remote server declared this way fails to start and is skipped — its tools never appear, with no error in the report you are reading. See docs/spec/mcp.md.",
+            "An entry with no `type` is read as a stdio server, so a remote server declared this way is misconfigured by schema and is skipped — its tools never appear, with no error in the report you are reading. See docs/spec/mcp.md.",
           evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
           suggest: `Add "type": "http" (or "sse" / "ws") to "${server.name}"`,
         }),

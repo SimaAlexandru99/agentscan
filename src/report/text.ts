@@ -1,22 +1,19 @@
 import { basename } from "node:path";
-import type { Action, Facts, Finding } from "../facts/types";
+import type { Facts, Finding, Severity } from "../facts/types";
 import { type Paint, type Tone, paint } from "./ansi";
 import { safe } from "./safe";
 import { score, scoreFace, scoreLabel, scoreTone } from "./score";
 import { sortFindings } from "./sort";
 
-const ACTION_LABEL: Record<Action, string> = {
-  keep: "KEEP",
-  delete: "DELETE",
-  add: "ADD",
-  refresh: "REFRESH",
-  warn: "WARN",
-  drift: "DRIFT",
+const SEVERITY_LABEL: Record<Severity, string> = {
+  error: "ERROR",
+  warning: "WARN",
+  info: "INFO",
 };
 
-/** Left-pad action label to 7 chars for column alignment (DELETE = 6). */
-function actionColumn(action: Action): string {
-  return ACTION_LABEL[action].padEnd(7, " ");
+/** Left-pad severity label to 7 chars for column alignment (DELETE was 6). */
+function severityColumn(severity: Severity): string {
+  return SEVERITY_LABEL[severity].padEnd(7, " ");
 }
 
 export function renderText(args: {
@@ -170,12 +167,10 @@ function shortPath(value: string, root: string): string {
   return value.split(`${root}/`).join("");
 }
 
-const ACTION_TONE: Partial<Record<Action, Tone>> = {
-  delete: "red",
-  warn: "yellow",
-  drift: "yellow",
-  add: "green",
-  refresh: "green",
+const SEVERITY_TONE: Record<Severity, Tone | undefined> = {
+  error: "red",
+  warning: "yellow",
+  info: undefined,
 };
 
 function formatGroup(group: Finding[], root: string, ink: Paint): string[] {
@@ -183,14 +178,14 @@ function formatGroup(group: Finding[], root: string, ink: Paint): string[] {
   const count = group.length;
   const out: string[] = [];
 
-  const tone = ACTION_TONE[first.action];
-  const label = actionColumn(first.action);
+  const tone = SEVERITY_TONE[first.severity];
+  const label = severityColumn(first.severity);
   out.push(
     `${tone === undefined ? ink.dim(label) : ink.tone(tone, label)} ${ink.dim(`rule:${safe(first.ruleId)}`)}${count > 1 ? ink.bold(`  ×${count}`) : ""}`,
   );
   // With one occurrence the message names its own subject; repeated, the
   // per-subject lines below carry that and the shared sentence goes up top.
-  out.push(`        ${safe(count === 1 ? first.message : ruleHeadline(first))}`);
+  out.push(`        ${safe(count === 1 ? first.message : groupHeadline(group))}`);
 
   for (const f of group) {
     const where = f.evidence
@@ -203,48 +198,67 @@ function formatGroup(group: Finding[], root: string, ink: Paint): string[] {
 }
 
 /**
- * The message with its trailing subject stripped, so the group header reads as
- * a statement about the rule rather than about whichever finding came first.
+ * Shared sentence for a collapsed group. Must not name one event when the group
+ * spans several (e.g. PreToolUse + SessionStart) — that was a lie in the report.
  */
-function ruleHeadline(f: Finding): string {
-  const cut = f.message.indexOf(": ");
-  return cut === -1 ? f.message : f.message.slice(0, cut);
+function groupHeadline(group: Finding[]): string {
+  const stripped = group.map((f) => {
+    const cut = f.message.indexOf(": ");
+    return cut === -1 ? f.message : f.message.slice(0, cut);
+  });
+  if (new Set(stripped).size === 1) {
+    return stripped[0] as string;
+  }
+  // "PreToolUse hook …" / "SessionStart hook …" → "Hook …"
+  const deEvented = stripped.map((s) =>
+    s.replace(/^[A-Za-z][A-Za-z0-9]* hook /, "Hook "),
+  );
+  if (new Set(deEvented).size === 1) {
+    return deEvented[0] as string;
+  }
+  return `${group.length} findings`;
 }
 
-/** `6 warn · 4 info hidden`, without the score — the header shows that above. */
+/** `6 error · 4 info hidden`, without the score — the header shows that above. */
 function countsLine(findings: Finding[], verbose: boolean): string {
-  const parts = actionParts(findings, verbose);
+  const parts = severityParts(findings, verbose);
   return parts.length === 0 ? "no findings" : parts.join(" · ");
 }
 
 /**
- * `6 warn · 4 info hidden` as parts, shared by the header box and the summary
- * so the two can never report different counts for the same scan.
+ * Severity counts for the header box and summary. Presentation only — score and
+ * `--fail-on` still read `Finding.severity` directly.
+ *
+ * KEEP findings stay out of the default summary the same way they stay out of
+ * the body; info severity is counted as "info hidden" unless `--verbose`.
  */
-function actionParts(findings: Finding[], verbose: boolean): string[] {
-  const counts: Record<Action, number> = {
-    keep: 0,
-    delete: 0,
-    add: 0,
-    refresh: 0,
-    warn: 0,
-    drift: 0,
+function severityParts(findings: Finding[], verbose: boolean): string[] {
+  const counts: Record<Severity, number> = {
+    error: 0,
+    warning: 0,
+    info: 0,
   };
   let infoHidden = 0;
   for (const f of findings) {
+    if (!verbose && f.action === "keep") {
+      continue;
+    }
     if (!verbose && f.severity === "info") {
       infoHidden += 1;
       continue;
     }
-    counts[f.action] += 1;
+    counts[f.severity] += 1;
   }
 
-  // Only non-zero actions — most rule sets never emit most actions, and a row of
-  // permanent zeros buried the one number that moved.
-  const order: Action[] = ["delete", "add", "refresh", "drift", "warn", "keep"];
+  const order: Severity[] = ["error", "warning", "info"];
+  const labels: Record<Severity, string> = {
+    error: "error",
+    warning: "warning",
+    info: "info",
+  };
   const parts = order
-    .filter((action) => counts[action] > 0)
-    .map((action) => `${counts[action]} ${action}`);
+    .filter((severity) => counts[severity] > 0)
+    .map((severity) => `${counts[severity]} ${labels[severity]}`);
 
   if (!verbose && infoHidden > 0) {
     parts.push(`${infoHidden} info hidden (--verbose)`);
@@ -257,7 +271,7 @@ function formatSummary(
   verbose: boolean,
   ink: Paint,
 ): string {
-  const parts = actionParts(findings, verbose);
+  const parts = severityParts(findings, verbose);
   const points = score(findings);
   const scored = `score ${ink.tone(scoreTone(points), `${points}/100 ${scoreLabel(points)}`)}`;
   if (parts.length === 0) {

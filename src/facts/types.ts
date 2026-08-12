@@ -29,6 +29,14 @@ export type McpFact = {
   path: string;
   hasCommand: boolean;
   hasUrl: boolean;
+  /** Declared `command` string when present (stdio servers). */
+  command?: string;
+  /**
+   * false only when `command` was a resolvable path-like value and that path
+   * does not exist on disk. Absent when the command is a bare PATH binary or
+   * otherwise not honestly resolvable — same discipline as hook.scriptExists.
+   */
+  commandExists?: boolean;
   /** Declared transport, if any: http | sse | ws | stdio. */
   transport?: string;
   /** env values that look like literal secrets rather than ${VAR} refs. */

@@ -1,11 +1,77 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { isAbsolute, join } from "node:path";
 import type { ConfigErrorFact, McpFact } from "../facts/types";
 import { readJsonConfig } from "./shared";
+
+/** Anything that makes the command a shell program rather than one path. */
+const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&|\s/;
+
+/**
+ * Decide whether an MCP `command` value is a filesystem path we can check.
+ * Returns undefined whenever the answer is not certain — bare PATH binaries
+ * (`npx`, `uvx`, `node`) and unresolved env vars are skipped, matching
+ * `hookScriptPath`'s anti-false-positive discipline.
+ */
+export function mcpCommandPath(command: string): string | undefined {
+  const trimmed = command.trim();
+  if (trimmed.length === 0 || SHELL_METACHARS.test(trimmed)) {
+    return undefined;
+  }
+  if (/^[A-Za-z]:[/\\]/.test(trimmed)) {
+    return undefined;
+  }
+  if (trimmed.startsWith("$")) {
+    return /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\})/.test(trimmed)
+      ? trimmed
+      : undefined;
+  }
+  if (
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("./") ||
+    trimmed.startsWith("../") ||
+    trimmed.startsWith("~/") ||
+    trimmed.startsWith(".")
+  ) {
+    return trimmed;
+  }
+  // Relative path with a slash (`bin/server`) is checkable; bare names are not.
+  if (trimmed.includes("/")) {
+    return trimmed;
+  }
+  return undefined;
+}
+
+function resolveMcpCommand(
+  root: string,
+  raw: string,
+): { command: string; exists: boolean } | undefined {
+  const extracted = mcpCommandPath(raw);
+  if (extracted === undefined) {
+    return undefined;
+  }
+  let expanded = extracted;
+  if (expanded.startsWith("~/")) {
+    expanded = join(homedir(), expanded.slice(2));
+  } else if (expanded.startsWith("$")) {
+    expanded = expanded.replace(
+      /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\})\/?/,
+      "",
+    );
+  }
+  const abs = isAbsolute(expanded) ? expanded : join(root, expanded);
+  try {
+    // Executables are files; a directory at the command path cannot be launched.
+    return { command: extracted, exists: statSync(abs).isFile() };
+  } catch {
+    return { command: extracted, exists: false };
+  }
+}
 
 function parseMcpServers(
   raw: unknown,
   filePath: string,
+  root: string,
   errors: ConfigErrorFact[],
 ): McpFact[] {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
@@ -54,12 +120,21 @@ function parseMcpServers(
   for (const [name, value] of Object.entries(servers)) {
     let hasCommand = false;
     let hasUrl = false;
+    let command: string | undefined;
+    let commandExists: boolean | undefined;
     let transport: string | undefined;
     const literalEnvKeys: string[] = [];
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       const entry = value as Record<string, unknown>;
       hasCommand =
         typeof entry.command === "string" && entry.command.length > 0;
+      if (typeof entry.command === "string" && entry.command.length > 0) {
+        command = entry.command;
+        const resolved = resolveMcpCommand(root, entry.command);
+        if (resolved !== undefined) {
+          commandExists = resolved.exists;
+        }
+      }
       hasUrl = typeof entry.url === "string" && entry.url.length > 0;
       if (typeof entry.type === "string" && entry.type.length > 0) {
         transport = entry.type;
@@ -86,6 +161,8 @@ function parseMcpServers(
       path: filePath,
       hasCommand,
       hasUrl,
+      ...(command === undefined ? {} : { command }),
+      ...(commandExists === undefined ? {} : { commandExists }),
       ...(transport === undefined ? {} : { transport }),
       literalEnvKeys,
       raw: JSON.stringify(value),
@@ -109,7 +186,7 @@ export function discoverMcp(
     if (raw === undefined) {
       continue;
     }
-    for (const fact of parseMcpServers(raw, filePath, errors)) {
+    for (const fact of parseMcpServers(raw, filePath, root, errors)) {
       const key = `${fact.name}@${fact.path}`;
       if (seen.has(key)) {
         continue;

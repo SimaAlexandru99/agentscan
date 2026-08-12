@@ -1,5 +1,5 @@
 name: agentscan
-description: Find broken agent configuration — hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile
+description: Find broken agent configuration — hooks whose scripts are gone, MCP servers misconfigured by schema, skills that disagree with their lockfile
 author: Sima Alexandru
 
 branding:

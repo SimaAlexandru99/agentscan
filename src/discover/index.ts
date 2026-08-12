@@ -17,8 +17,9 @@ import {
 import type { AgentSurface } from "./shared";
 
 export type { AgentSurface } from "./shared";
-export { resolveRoot } from "./shared";
+export { hasAgentConfigSignal, resolveRoot } from "./shared";
 export { hookScriptPath } from "./hooks";
+export { discoverMcp, mcpCommandPath } from "./mcp";
 export { skillReferences } from "./skills";
 
 /**

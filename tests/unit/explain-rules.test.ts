@@ -67,6 +67,7 @@ describe("runRulesCommand", () => {
       "hook.missing-script",
       "hook.unknown-event",
       "mcp.hardcoded-secret",
+      "mcp.command-missing",
       "skill.missing-description",
       "skill.not-in-lock",
       "config.unreadable",

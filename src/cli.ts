@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 import { type OutputFormat, runCheck } from "./commands/check";
+import { runDemo } from "./commands/demo";
 import { runExplain } from "./commands/explain";
 import { runInit } from "./commands/init";
 import { runRulesCommand } from "./commands/rules";
@@ -15,6 +16,7 @@ function printHelp(): void {
 Usage:
   agentscan                            scan the current directory
   agentscan check [dir] [options]
+  agentscan demo                       one-shot fixture (no project required)
   agentscan explain <findingId> [dir]
   agentscan rules [dir]
   agentscan init [dir] [--force]
@@ -206,6 +208,16 @@ export async function main(argv: string[]): Promise<number> {
         const result = await runInit(positionals[1], {
           force: values.force,
         });
+        if (result.stderr.length > 0) {
+          process.stderr.write(result.stderr);
+        }
+        if (result.stdout.length > 0) {
+          process.stdout.write(result.stdout);
+        }
+        return result.exitCode;
+      }
+      case "demo": {
+        const result = await runDemo();
         if (result.stderr.length > 0) {
           process.stderr.write(result.stderr);
         }

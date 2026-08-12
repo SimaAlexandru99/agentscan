@@ -705,12 +705,45 @@ describe("mcp checks", () => {
     ...partial,
   });
 
-  test("server with neither command nor url can never start", () => {
+  test("server with neither command nor url is unlaunchable by schema", () => {
     const findings = runChecks(
       baseFacts({ mcp: [mcp({ name: "broken", hasCommand: false })] }),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["mcp.no-launch"]);
     expect(findings[0]!.severity).toBe("error");
+    expect(findings[0]!.reason).toContain("schema");
+  });
+
+  test("path-like command that is missing on disk is an error", () => {
+    const findings = runChecks(
+      baseFacts({
+        mcp: [
+          mcp({
+            name: "local",
+            command: "./bin/missing-server",
+            commandExists: false,
+          }),
+        ],
+      }),
+    );
+    expect(findings.map((f) => f.ruleId)).toEqual(["mcp.command-missing"]);
+    expect(findings[0]!.severity).toBe("error");
+    expect(findings[0]!.message).toContain("./bin/missing-server");
+  });
+
+  test("bare PATH binaries are not claimed missing", () => {
+    const findings = runChecks(
+      baseFacts({
+        mcp: [
+          mcp({
+            name: "npx-server",
+            command: "npx",
+            // discovery leaves commandExists unset for bare names
+          }),
+        ],
+      }),
+    );
+    expect(findings.map((f) => f.ruleId)).not.toContain("mcp.command-missing");
   });
 
   test("a url with a transport type is fine", () => {
@@ -853,6 +886,16 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           path: "/tmp/proj/.mcp.json",
           hasCommand: false,
           hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "gone-cmd",
+          path: "/tmp/proj/.mcp.json",
+          hasCommand: true,
+          hasUrl: false,
+          command: "./bin/missing",
+          commandExists: false,
           literalEnvKeys: [],
           raw: "{}",
         },
