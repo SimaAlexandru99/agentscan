@@ -69,6 +69,11 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
     description: "MCP server declares neither command nor url",
   },
   {
+    id: "mcp.command-missing",
+    description:
+      "MCP server command is a path that does not exist on disk",
+  },
+  {
     id: "mcp.url-without-type",
     description: "Remote MCP server has a url but no transport type",
   },

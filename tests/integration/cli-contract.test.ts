@@ -28,7 +28,7 @@ describe("built CLI contract", () => {
   test("Node executes version and help", () => {
     const version = runCli("--version");
     expect(version.status).toBe(0);
-    expect(version.stdout.trim()).toBe("0.4.0");
+    expect(version.stdout.trim()).toBe("0.5.0");
 
     const help = runCli("--help");
     expect(help.status).toBe(0);
@@ -40,7 +40,7 @@ describe("built CLI contract", () => {
     const clean = runCli("check", join(fixturesRoot, "clean-repo"), "--json");
     expect(clean.status).toBe(0);
     const cleanReport = JSON.parse(clean.stdout) as JsonReport;
-    expect(cleanReport.version).toBe("0.4.0");
+    expect(cleanReport.version).toBe("0.5.0");
     expect(cleanReport.findings).toEqual([]);
 
     const drift = runCli(

@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-25-111111?style=flat-square" alt="25 checks">
-  <img src="https://img.shields.io/badge/tests-211%20passing-111111?style=flat-square" alt="211 tests">
+  <img src="https://img.shields.io/badge/checks-26-111111?style=flat-square" alt="26 checks">
+  <img src="https://img.shields.io/badge/tests-226%20passing-111111?style=flat-square" alt="226 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <strong>25 checks &middot; 3.4k lines &middot; 0 network calls &middot; every check sourced to a published spec line</strong><br>
+  <strong>26 checks &middot; 4.1k lines &middot; 0 network calls &middot; every check sourced to a published spec line</strong><br>
   <sub>Alpha. An earlier build reported 37 findings across 17 real projects of which <strong>25 were false</strong> — two checks had been written from what real projects looked like instead of from the spec. Both were deleted, and every check that survived is recorded in <a href="docs/spec/">docs/spec/</a> with the URL it came from and the date it was read. That story is the reason this tool exists in its current shape.</sub>
 </p>
 
@@ -47,12 +47,11 @@ think you have has silently not existed for six weeks.
 ```console
 $ agentscan check
 
-WARN    hook:PreToolUse:.claude/hooks/guard-destructive-bash.js
-        rule:hook.missing-script
-        PreToolUse hook points at a script that does not exist
-        evidence: hook PreToolUse @ …/.claude/settings.json
+ERROR   rule:hook.missing-script
+        PreToolUse hook points at a script that does not exist: .claude/hooks/guard-destructive-bash.js
+          PreToolUse @ .claude/settings.json · .claude/hooks/guard-destructive-bash.js
 
-Summary: 6 warn · 4 info hidden (--verbose) · score 40/100
+Summary: 1 error · score 90/100
 ```
 
 That is the whole category: **a config file asserting something that is not true
@@ -65,7 +64,7 @@ No AI, no network, no heuristics. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .agents/ .mcp.json AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       25 checks, each against one published spec line
+3. Check       26 checks, each against one published spec line
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
 
@@ -84,8 +83,16 @@ A check here has to point at a spec line. If it cannot, it does not ship.
 
 ## Try it in 30 seconds
 
-Run it against any project. It reads that project, writes nothing, and never
-leaves your machine:
+No project handy? Run the built-in demo — it builds a throwaway fixture with the
+killer case (a `PreToolUse` hook pointing at a missing script), prints the human
+report, and deletes the fixture:
+
+```bash
+npx @chimix/agentscan@latest demo
+```
+
+Against a real project, it reads that tree, writes nothing, and never leaves
+your machine:
 
 ```bash
 cd ~/your-project
@@ -104,8 +111,9 @@ bun add -d @chimix/agentscan     # then: bunx agentscan check
 ```
 
 Point it at a project that actually has agent config — a `.claude/` directory,
-an `.mcp.json`, an `AGENTS.md`. On a project with none of those it will
-correctly find nothing and say so.
+an `.mcp.json`, an `AGENTS.md`. A directory with agent config and no
+`package.json` is still scannable. On a directory with neither it exits with a
+clear error.
 
 ```bash
 # what it could possibly report, before you run it
@@ -152,6 +160,7 @@ bunx agentscan check --verbose       # include KEEP and info-severity findings
 bunx agentscan check --fail-on warning
 bunx agentscan check --global        # also scan global skill dirs
 
+bunx agentscan demo                  # one-shot fixture (no project required)
 bunx agentscan explain <findingId>   # detail one finding
 bunx agentscan rules                 # every check + rule id that can fire
 bunx agentscan init                  # write .agentscanrc.json
@@ -179,21 +188,21 @@ Flags for `check`:
 ```text
   ┌─────┐   40/100  broken  ·  touchagency
   │ ✕ ✕ │   ██████████░░░░░░░░░░░░░░░
-  │  ⌒  │   6 warn · 4 info hidden (--verbose)
+  │  ⌒  │   6 error · 4 info hidden (--verbose)
   └─────┘
 
-agentscan v0.4.0 — touchagency
+agentscan v0.5.0 — touchagency
 
 Scanned: 46 deps · 54 skills · 1 mcp · 2 agents · packageManager=bun
 
-WARN    rule:hook.missing-script  ×6
-        PreToolUse hook points at a script that does not exist
+ERROR   rule:hook.missing-script  ×6
+        Hook points at a script that does not exist
           PostToolUse @ .claude/settings.json · .claude/hooks/notify-related-tests.js
           PreToolUse @ .claude/settings.json · .claude/hooks/guard-destructive-bash.js
           PreToolUse @ .claude/settings.json · .claude/hooks/protect-artists-json.js
           PreToolUse @ .claude/settings.json · .claude/hooks/protect-env.js
 
-Summary: 6 warn · 4 info hidden (--verbose) · score 40/100 broken
+Summary: 6 error · 4 info hidden (--verbose) · score 40/100 broken
 ```
 
 On a terminal the header is coloured green, yellow or red and the face tracks
@@ -201,14 +210,15 @@ the score. Redirect or pipe it and you get exactly the text above, with no
 escape sequences — the header box is dropped too, so `--json`, `--output
 prompt`, CI logs and `--copy` are unchanged by any of this.
 
-The `Stack:` line is orientation only — which project, how big. The summary lists
-only actions that actually occurred; a clean project prints `Summary: no findings`.
+The `Scanned:` line is orientation only — which project, how big. The summary
+lists severities (error / warning / info); a clean project prints
+`Summary: no findings`. Score and `--fail-on` still use severity under the hood.
 
 JSON shape (abridged):
 
 ```json
 {
-  "version": "0.4.0",
+  "version": "0.5.0",
   "root": "/path/to/project",
   "factsSummary": {
     "packageManager": "bun",
@@ -407,8 +417,9 @@ off.
 | `agent.missing-name` | error | Agent frontmatter has no `name` |
 | `agent.invalid-name` | error | Agent name is not lowercase letters, numbers, and hyphens |
 | `agent.duplicate-name` | error | Multiple agent files declare the same name |
-| `mcp.no-launch` | error | An MCP server with neither `command` nor `url`; its tools are never available |
-| `mcp.url-without-type` | error | A remote MCP server with a `url` but no `type` — read as stdio, fails, and is skipped |
+| `mcp.no-launch` | error | An MCP server with neither `command` nor `url` — unlaunchable by schema |
+| `mcp.command-missing` | error | An MCP `command` that is a path-like value whose file does not exist on disk |
+| `mcp.url-without-type` | error | A remote MCP server with a `url` but no `type` — read as stdio, misconfigured by schema, and skipped |
 | `mcp.hardcoded-secret` | error | A token-shaped literal in MCP config (the value is never echoed back) |
 | `mcp.literal-env` | warning | Long literal `env` values that should be `${VAR}` |
 | `skill.missing-skill-md` | warning | A directory under a skill path with no `SKILL.md` |
@@ -435,13 +446,14 @@ references measured across 17 projects, 1645 resolved skill-relative and 12 only
 at the root. Fenced code blocks are stripped first: a path in an example is
 illustration, not a pointer.
 
-`hook.missing-script` is deliberately conservative. A command is only resolved
-when it is a single invocation with a path-like argument; shell programs
-(`a && b`, `$(...)`, pipes) are skipped, because a hook written as
-`[ ! -f x ] || node x` already handles the missing file and flagging it would be
-a false positive. `node -e "<code>"` is never treated as a path. Only
-`$CLAUDE_PROJECT_DIR` is expanded — other variables are left alone rather than
-guessed at.
+`hook.missing-script` and `mcp.command-missing` are deliberately conservative.
+A value is only resolved when it is path-like and the answer is certain; shell
+programs (`a && b`, `$(...)`, pipes), bare PATH binaries (`npx`, `uvx`), and
+unresolved env vars are skipped. A false "broken" on a working `npx` server
+would be worse than silence. `node -e "<code>"` is never treated as a path.
+Only `$CLAUDE_PROJECT_DIR` is expanded — other variables are left alone rather
+than guessed at. Schema checks judge misconfiguration, not whether a correctly
+shaped entry will start at runtime.
 
 Checks are written against the published specs, not against what happens to
 appear in real projects. Two that were written the other way round shipped as

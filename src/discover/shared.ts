@@ -36,17 +36,39 @@ export type AgentSurface = {
   configErrors: ConfigErrorFact[];
 };
 
-/** Walk up from startDir for nearest package.json; throw if none. */
+/**
+ * Paths that mean "this directory has agent config worth scanning", matching
+ * what discovery already looks for. A tree with only `.claude/` and no
+ * `package.json` is a real project for this tool.
+ */
+const AGENT_CONFIG_SIGNALS = [
+  ".claude",
+  ".agents",
+  ".mcp.json",
+  "mcp.json",
+  "AGENTS.md",
+  "CLAUDE.md",
+  "skills-lock.json",
+] as const;
+
+export function hasAgentConfigSignal(dir: string): boolean {
+  return AGENT_CONFIG_SIGNALS.some((name) => existsSync(join(dir, name)));
+}
+
+/**
+ * Walk up from startDir for the nearest project root: a directory with
+ * `package.json` and/or agent-config signals. Throw only when neither exists.
+ */
 export function resolveRoot(startDir: string): string {
   let dir = resolve(startDir);
   for (;;) {
-    if (existsSync(join(dir, "package.json"))) {
+    if (existsSync(join(dir, "package.json")) || hasAgentConfigSignal(dir)) {
       return dir;
     }
     const parent = resolve(dir, "..");
     if (parent === dir) {
       throw new Error(
-        `No package.json found walking up from ${resolve(startDir)}`,
+        `No package.json or agent configuration found walking up from ${resolve(startDir)}`,
       );
     }
     dir = parent;

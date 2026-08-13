@@ -414,6 +414,39 @@ describe("root resolution is visible", () => {
     expect(result.stdout).toContain("no package.json in");
     expect(result.stdout).toContain(parent);
   });
+
+  test("a .claude-only tree without package.json is still scannable", async () => {
+    const dir = project({
+      ".claude/settings.json": JSON.stringify({
+        hooks: {
+          PreToolUse: [
+            {
+              hooks: [
+                {
+                  type: "command",
+                  command: ".claude/hooks/guard-destructive-bash.js",
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    });
+
+    const payload = await report(dir);
+    expect(payload.root).toBe(dir);
+    expect(payload.resolvedFrom).toBeUndefined();
+    expect(
+      payload.findings.some((f) => f.ruleId === "hook.missing-script"),
+    ).toBe(true);
+  });
+
+  test("a directory with neither package.json nor agent config fails clearly", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "agentscan-empty-"));
+    await expect(runCheck({ dir, failOn: "never" })).rejects.toThrow(
+      /No package\.json or agent configuration found/,
+    );
+  });
 });
 
 describe("suppressing a single finding", () => {

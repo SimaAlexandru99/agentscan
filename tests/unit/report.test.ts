@@ -154,7 +154,7 @@ describe("renderText", () => {
     }),
   ];
 
-  test("shows DELETE/ADD lines, hides keep unless verbose", () => {
+  test("shows severity labels, hides keep unless verbose", () => {
     const text = renderText({
       version: "0.1.0",
       facts: baseFacts(),
@@ -166,16 +166,16 @@ describe("renderText", () => {
     expect(text).toContain("agentscan v0.1.0 — my-app");
     expect(text).toContain("Scanned:");
     expect(text).toContain("packageManager=bun");
-    expect(text).toContain("DELETE  rule:next.redundant-cache-components-skill");
+    expect(text).toContain("WARN    rule:next.redundant-cache-components-skill");
     expect(text).toContain("Redundant Next cache skill — prefer node_modules/next docs");
     // evidence collapses to where it is, one line per occurrence
     expect(text).toContain("next@16.3.0 · .agents/skills/next-cache-components");
-    expect(text).toContain("ADD     rule:better-auth.missing-skill");
+    expect(text).toContain("WARN    rule:better-auth.missing-skill");
     expect(text).not.toContain("KEEP");
-    expect(text).toMatch(/Summary:.*delete.*add/);
+    expect(text).toMatch(/Summary:.*2 warning/);
   });
 
-  test("verbose includes KEEP findings", () => {
+  test("verbose includes KEEP findings with severity labels", () => {
     const text = renderText({
       version: "0.1.0",
       facts: baseFacts(),
@@ -184,7 +184,7 @@ describe("renderText", () => {
       quiet: false,
     });
 
-    expect(text).toContain("KEEP");
+    expect(text).toContain("INFO");
     expect(text).toContain("skill:zod");
   });
 
@@ -305,7 +305,7 @@ describe("renderText", () => {
       quiet: false,
     });
     // the exact strings the pre-sanitiser renderer produced
-    expect(text).toContain("DELETE  rule:next.redundant-cache-components-skill");
+    expect(text).toContain("WARN    rule:next.redundant-cache-components-skill");
     expect(text).toContain(
       "next@16.3.0 · .agents/skills/next-cache-components",
     );
@@ -395,7 +395,7 @@ describe("renderText", () => {
       quiet: false,
     });
 
-    expect(text).toContain("WARN    rule:hook.missing-script  ×3");
+    expect(text).toContain("ERROR   rule:hook.missing-script  ×3");
     // the shared sentence once, without any one finding's filename
     expect(text).toContain("PreToolUse hook points at a script that does not exist\n");
     // and each occurrence as a path relative to the scanned project
@@ -403,6 +403,66 @@ describe("renderText", () => {
     expect(text).toContain(".claude/h2.js");
     expect(text).not.toContain("/tmp/proj/.claude");
     expect(text.split("hook points at a script").length - 1).toBe(1);
+  });
+
+  test("grouped headline stays neutral when events differ", () => {
+    const mixed = [
+      {
+        id: "hook.missing-script:a",
+        ruleId: "hook.missing-script",
+        action: "warn" as const,
+        severity: "error" as const,
+        subject: "hook:PreToolUse:./a.js",
+        message: "PreToolUse hook points at a script that does not exist: ./a.js",
+        reason: "r",
+        evidence: [{ kind: "hook", value: "PreToolUse @ /tmp/proj/.claude/settings.json" }],
+      },
+      {
+        id: "hook.missing-script:b",
+        ruleId: "hook.missing-script",
+        action: "warn" as const,
+        severity: "error" as const,
+        subject: "hook:SessionStart:./b.js",
+        message: "SessionStart hook points at a script that does not exist: ./b.js",
+        reason: "r",
+        evidence: [{ kind: "hook", value: "SessionStart @ /tmp/proj/.claude/settings.json" }],
+      },
+    ];
+
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts({ root: "/tmp/proj" }),
+      findings: mixed,
+      verbose: false,
+      quiet: false,
+    });
+
+    expect(text).toContain("Hook points at a script that does not exist\n");
+    expect(text).not.toContain("PreToolUse hook points at a script that does not exist\n");
+    expect(text).not.toContain("SessionStart hook points at a script that does not exist\n");
+  });
+
+  test("info-severity findings label as INFO, not WARN", () => {
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings: [
+        finding({
+          id: "budget.agents-md:rule:budget.agents-md",
+          ruleId: "budget.agents-md",
+          action: "warn",
+          severity: "info",
+          subject: "rule:budget.agents-md",
+          message: "AGENTS.md is long (200 lines > 150)",
+        }),
+      ],
+      verbose: true,
+      quiet: false,
+    });
+
+    expect(text).toContain("INFO    rule:budget.agents-md");
+    expect(text).not.toMatch(/^WARN\s+rule:budget\.agents-md/m);
+    expect(text).toMatch(/Summary:.*1 info/);
   });
 
   test("a single occurrence keeps the message that names its subject", () => {
@@ -427,6 +487,7 @@ describe("renderText", () => {
 
     expect(text).not.toContain("×1");
     expect(text).toContain("does not exist: ./only.js");
+    expect(text).toContain("ERROR   rule:hook.missing-script");
   });
 
   test("colour does not let scanned content forge escapes", () => {
@@ -498,12 +559,12 @@ describe("renderText", () => {
     });
 
     expect(text.trimStart().startsWith("Summary:")).toBe(true);
-    expect(text).not.toContain("DELETE");
+    expect(text).not.toContain("WARN");
     expect(text).not.toContain("agentscan v");
     expect(text).not.toContain("Stack:");
   });
 
-  test("summary counts actions", () => {
+  test("summary counts severities", () => {
     const text = renderText({
       version: "0.1.0",
       facts: baseFacts(),
@@ -512,9 +573,7 @@ describe("renderText", () => {
       quiet: true,
     });
 
-    // keep hidden from body but counts may still reflect visible or total — we count all findings
-    expect(text).toContain("1 delete");
-    expect(text).toContain("1 add");
+    expect(text).toContain("2 warning");
   });
 });
 

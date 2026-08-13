@@ -25,17 +25,17 @@ to appear in real projects.** When adding a check:
 |------|--------|--------------------------|
 | [hook-events.md](hook-events.md) | The 31 dispatched hook event names | `hook.unknown-event` |
 | [skills.md](skills.md) | SKILL.md frontmatter fields and what is required | `skill.missing-frontmatter`, `skill.missing-description`, and two deleted checks |
-| [mcp.md](mcp.md) | `.mcp.json` shape and transports | `mcp.no-launch`, `mcp.url-without-type` |
+| [mcp.md](mcp.md) | `.mcp.json` shape and transports | `mcp.no-launch`, `mcp.url-without-type`, `mcp.command-missing` |
 | [thresholds.md](thresholds.md) | Every numeric threshold and its evidence | all `budget.*`, `skill.description-budget` |
 
 ## What is not spec-backed
 
 Some checks assert internal consistency rather than conformance to a spec, and
-need no source: `hook.missing-script`, `skill.broken-reference`,
-`skill.not-in-lock`, `skill.locked-not-installed`, `config.unreadable`. Each
-compares two things this repo can both observe — a config entry and the
-filesystem. They cannot be wrong about an external standard because they do not
-claim one.
+need no source: `hook.missing-script`, `mcp.command-missing`,
+`skill.broken-reference`, `skill.not-in-lock`, `skill.locked-not-installed`,
+`config.unreadable`. Each compares two things this repo can both observe — a
+config entry and the filesystem. They cannot be wrong about an external standard
+because they do not claim one.
 
 ## Re-verification
 
