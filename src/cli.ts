@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 import { type OutputFormat, runCheck } from "./commands/check";
+import { runDemo } from "./commands/demo";
 import { runExplain } from "./commands/explain";
 import { runInit } from "./commands/init";
 import { runRulesCommand } from "./commands/rules";
@@ -15,6 +16,7 @@ function printHelp(): void {
 Usage:
   agentscan                            scan the current directory
   agentscan check [dir] [options]
+  agentscan demo                       scan a throwaway broken project, then delete it
   agentscan explain <findingId> [dir]
   agentscan rules [dir]
   agentscan init [dir] [--force]
@@ -172,6 +174,31 @@ export async function main(argv: string[]): Promise<number> {
               ? `Copied to clipboard via ${copied.tool}.\n`
               : `Could not copy: ${safe(copied.reason)}. Redirect instead: agentscan check > report.md\n`,
           );
+        }
+        return result.exitCode;
+      }
+      case "demo": {
+        const outputRaw = values.output;
+        if (outputRaw !== undefined && !isOutput(outputRaw)) {
+          process.stderr.write(
+            `Invalid --output value: ${safe(outputRaw)} (use human|json|prompt)\n`,
+          );
+          return 2;
+        }
+        const result = await runDemo({
+          json: values.json,
+          ...(outputRaw === undefined ? {} : { output: outputRaw }),
+          quiet: values.quiet,
+          verbose: values.verbose,
+          colour: shouldColour({
+            isTTY: process.stdout.isTTY === true,
+            env: process.env,
+            noColorFlag: values["no-color"],
+          }),
+        });
+        process.stdout.write(result.stdout);
+        if (result.stderr.length > 0) {
+          process.stderr.write(result.stderr);
         }
         return result.exitCode;
       }
