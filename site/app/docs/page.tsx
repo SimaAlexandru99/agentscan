@@ -150,6 +150,64 @@ bun run src/cli.ts check ~/your-project`}
 
         <section className="mt-14">
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+            Skill
+          </h2>
+          <p className="mt-3 text-muted-foreground">
+            Agents forget the audit. Copy{" "}
+            <code className="font-mono text-foreground">skills/agentscan</code>{" "}
+            into the project so they run it before editing hooks or claiming a
+            guard is on.
+          </p>
+          <pre className="mt-4 overflow-x-auto rounded-xl border border-border bg-muted/30 p-4 font-mono text-sm leading-relaxed">
+            {`cp -R skills/agentscan .cursor/skills/agentscan
+# or: .agents/skills/agentscan
+# or: .claude/skills/agentscan`}
+          </pre>
+
+          <h3 className="mt-8 font-medium text-foreground">When</h3>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground">
+            <li>Hook, skill, MCP, or AGENTS.md work</li>
+            <li>Someone says a guard is on and you have not verified the script</li>
+            <li>
+              A PR touches{" "}
+              <code className="font-mono text-foreground">.claude/</code>,{" "}
+              <code className="font-mono text-foreground">.agents/</code>,{" "}
+              <code className="font-mono text-foreground">.mcp.json</code>, or{" "}
+              <code className="font-mono text-foreground">skills-lock.json</code>
+            </li>
+          </ul>
+
+          <h3 className="mt-8 font-medium text-foreground">Do</h3>
+          <p className="mt-3 text-muted-foreground">
+            From the repo root. Findings are facts. Do not skip{" "}
+            <code className="font-mono text-foreground">hook.missing-script</code>.
+          </p>
+          <pre className="mt-3 overflow-x-auto rounded-xl border border-border bg-muted/30 p-4 font-mono text-sm leading-relaxed">
+            {`npx @chimix/agentscan@latest --output prompt`}
+          </pre>
+          <p className="mt-4 text-muted-foreground">
+            No project handy —{" "}
+            <code className="font-mono text-foreground">demo</code> builds a
+            throwaway fixture, prints the report, and deletes it:
+          </p>
+          <pre className="mt-3 overflow-x-auto rounded-xl border border-border bg-muted/30 p-4 font-mono text-sm leading-relaxed">
+            {`npx @chimix/agentscan@latest demo`}
+          </pre>
+
+          <h3 className="mt-8 font-medium text-foreground">Don&apos;t</h3>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-muted-foreground">
+            <li>Write the scanned tree</li>
+            <li>Guess with the model whether a hook is valid</li>
+            <li>
+              Compare a skill&apos;s frontmatter{" "}
+              <code className="font-mono text-foreground">name</code> to its
+              directory, or validate model ids
+            </li>
+          </ul>
+        </section>
+
+        <section className="mt-14">
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
             CI
           </h2>
           <p className="mt-3 text-muted-foreground">

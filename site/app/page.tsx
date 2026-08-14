@@ -131,6 +131,47 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="border-t border-border/60">
+        <div className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+            For agents
+          </h2>
+          <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
+            Agents forget the audit. The skill tells them to run it before they
+            edit a hook or claim a guard is on.
+          </p>
+          <div
+            className="mt-8 overflow-hidden rounded-xl border border-border bg-black/40 shadow-[inset_0_1px_0_oklch(1_0_0_/6%)]"
+            aria-label="agentscan skill — when to run the audit"
+          >
+            <div className="flex items-center gap-2 border-b border-border/70 px-4 py-2.5">
+              <span className="size-2.5 rounded-full bg-foreground/15" />
+              <span className="size-2.5 rounded-full bg-foreground/15" />
+              <span className="size-2.5 rounded-full bg-foreground/15" />
+              <span className="ml-2 font-mono text-xs text-muted-foreground">
+                skills/agentscan/SKILL.md
+              </span>
+            </div>
+            <pre className="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed sm:text-sm">
+              {[
+                ["muted", "When   hooks · skills · MCP · AGENTS.md · skills-lock.json"],
+                ["default", "Do     npx @chimix/agentscan@latest --output prompt"],
+                ["muted", "Don't  write the tree · guess if a hook is valid"],
+              ].map(([tone, line]) => (
+                <div
+                  key={line}
+                  className={
+                    tone === "muted" ? "text-muted-foreground" : "text-foreground"
+                  }
+                >
+                  {line}
+                </div>
+              ))}
+            </pre>
+          </div>
+        </div>
+      </section>
+
       <SiteFooter />
     </>
   );

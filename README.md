@@ -503,6 +503,16 @@ superseded by a Node-compatible published bundle, the dep-to-skill map and its
 structural checks added, and the YAML rule engine deleted (`plans/010`). Read
 them as history, not as behavior.
 
+## Skill
+
+A Cursor / Agent Skills file lives at [`skills/agentscan/SKILL.md`](skills/agentscan/SKILL.md). Copy the folder so the agent runs the audit before it edits hooks or claims a guard is in place:
+
+```bash
+cp -R skills/agentscan .cursor/skills/agentscan
+# or: .agents/skills/agentscan
+# or: .claude/skills/agentscan
+```
+
 ## License
 
 MIT
