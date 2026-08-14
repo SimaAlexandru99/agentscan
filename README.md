@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/checks-25-111111?style=flat-square" alt="25 checks">
-  <img src="https://img.shields.io/badge/tests-211%20passing-111111?style=flat-square" alt="211 tests">
+  <img src="https://img.shields.io/badge/tests-214%20passing-111111?style=flat-square" alt="214 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -152,10 +152,17 @@ bunx agentscan check --verbose       # include KEEP and info-severity findings
 bunx agentscan check --fail-on warning
 bunx agentscan check --global        # also scan global skill dirs
 
+bunx agentscan demo                  # scan a throwaway broken project, then delete it
 bunx agentscan explain <findingId>   # detail one finding
 bunx agentscan rules                 # every check + rule id that can fire
 bunx agentscan init                  # write .agentscanrc.json
 ```
+
+`demo` is for when you have no project with agent config to point at: it writes
+a throwaway project (a hook whose script is gone, an MCP server that cannot
+start, a skill the lockfile pins but never installed) to a temp directory,
+prints the report, and deletes it. It writes nothing under your working
+directory and opens no socket.
 
 Flags for `check`:
 
