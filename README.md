@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/checks-27-111111?style=flat-square" alt="27 checks">
-  <img src="https://img.shields.io/badge/tests-235%20passing-111111?style=flat-square" alt="235 tests">
+  <img src="https://img.shields.io/badge/tests-250%20passing-111111?style=flat-square" alt="250 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -127,7 +127,9 @@ bunx @chimix/agentscan explain hook.missing-script:hook:PreToolUse:./x.js ~/your
 ```
 
 `check` never opens a socket and never writes to the tree it scans. Contributing
-needs **Bun** 1.1+ — the repo runs TypeScript directly and `bun run build`
+needs **Bun** 1.4+ — the version CI pins and every gate is verified on; the
+text `bun.lock` this repo ships cannot be read by 1.1 at all. The repo runs
+TypeScript directly and `bun run build`
 bundles it for Node.
 
 ### In CI
@@ -191,7 +193,7 @@ Flags for `check`:
   │  ⌒  │   6 error · 2 warning · 11 info hidden (--verbose)
   └─────┘
 
-agentscan v0.6.0 — touchagency
+agentscan v0.7.0 — touchagency
 
 Scanned: 46 deps · 108 skills · 1 mcp · 2 agents · packageManager=bun
 
@@ -223,7 +225,7 @@ JSON shape (abridged):
 
 ```json
 {
-  "version": "0.6.0",
+  "version": "0.7.0",
   "root": "/path/to/project",
   "factsSummary": {
     "packageManager": "bun",
