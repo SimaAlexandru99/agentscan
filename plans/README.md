@@ -124,6 +124,25 @@ From the deep audit:
   discriminate — 2/9/6 across the fleet — but that is a product decision, not a
   defect, and it is not planned here.
 
+- **Dropping `yaml` for `Bun.YAML.parse`.** Listed as an open decision until
+  2026-08-24, on the grounds that the only cost was moving `engines.bun` from
+  `>=1.1.0` to `>=1.2.21`. That was the wrong cost. The published `dist/cli.js`
+  targets Node, `readFrontmatter` is on the Node path — every `SKILL.md` and
+  agent file goes through it — and `Bun` does not exist there:
+
+  ```console
+  $ node -e 'console.log(typeof Bun)'
+  undefined
+  $ grep -o "Bun\.[A-Za-z]*" dist/cli.js | sort -u   # nothing
+  $ grep -c "yaml" dist/cli.js                        # 159
+  ```
+
+  The bundle is Bun-free by construction and the README, the badge and
+  `engines.node` all promise Node 20.11+. `Bun.YAML` does exist (confirmed on
+  1.4.0), so the premise held and the conclusion did not. Keeping `yaml` as a
+  Node fallback would cost the 2.2 MB the swap was meant to save. **Rejected**
+  unless the Node target is dropped first.
+
 Carried forward from the first run, still rejected:
 
 - **Content drift via `computedHash`.** The `skills` CLI ships `skills update`,
@@ -140,10 +159,6 @@ Carried forward from the first run, still rejected:
 These came out of the audit with real evidence but need a product call, so no
 plan was written:
 
-- **Drop `yaml` for `Bun.YAML.parse`.** Verified: the native API exists and
-  produces byte-identical output on all six shipped rules; the import costs 20ms
-  of a 50ms run. The catch is `engines.bun` must move from `>=1.1.0` to
-  `>=1.2.21`, and user-authored rules are the reason a full YAML parser is there.
 - **`zod ^3.24.0` resolves to the v3/v4 bridge**, shipping 2.2 MB of unreachable
   v4 alongside the v3 API in use. Migrating is a two-file change.
 - **~90 lines of Next.js config parsing** (`src/facts/extract.ts:92-179`) feed

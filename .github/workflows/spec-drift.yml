@@ -18,7 +18,11 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          # Pinned, not `latest`: Bun 1.4 rewrote the runtime from Zig to Rust
+          # and CI would have taken it silently. 1.4.0 is the version every gate
+          # in this repo was last verified on. Bump deliberately, after running
+          # typecheck, the suite, the build and spec:check against the new one.
+          bun-version: 1.4.0
 
       - run: bun install --frozen-lockfile
 
