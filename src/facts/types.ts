@@ -22,6 +22,12 @@ export type SkillFact = {
   brokenReferences?: string[];
   /** `name:` from frontmatter, when present. */
   frontmatterName?: string;
+  /**
+   * Hooks declared in this file's own frontmatter, one of the seven documented
+   * registration sites. Kept on the item because that is where the base for a
+   * relative script path lives. See docs/spec/hook-sources.md.
+   */
+  frontmatterHooks?: HookFact[];
 };
 
 export type McpFact = {
@@ -50,6 +56,14 @@ export type HookFact = {
   path: string;
   event?: string;
   command?: string;
+  /**
+   * Which of the documented hook locations declared it. A finding has to name
+   * the file, and "PreToolUse" alone does not tell a reader whether to open a
+   * settings file, a plugin manifest or a SKILL.md.
+   *
+   * See docs/spec/hook-sources.md.
+   */
+  source?: "settings" | "plugin" | "skill" | "agent";
   /** Script path parsed out of `command`, resolved against the project root. */
   scriptPath?: string;
   /** false only when scriptPath was extracted and does not exist on disk. */
@@ -72,6 +86,8 @@ export type AgentFact = {
    */
   frontmatterName?: string;
   description?: string;
+  /** Hooks declared in this agent's frontmatter. See docs/spec/hook-sources.md. */
+  frontmatterHooks?: HookFact[];
 };
 
 /** A config file agentscan could not read — itself a finding, never swallowed. */

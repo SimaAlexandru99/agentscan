@@ -8,6 +8,7 @@ import type {
 import { discoverAgents } from "./agents";
 import { discoverHooks } from "./hooks";
 import { discoverMcp } from "./mcp";
+import { discoverPluginHooks } from "./plugins";
 import { discoverPolicyFiles, discoverSkillsLock } from "./policy";
 import {
   disambiguateSkills,
@@ -56,10 +57,21 @@ export function discoverAgentSurface(
 
   const lock = discoverSkillsLock(root, configErrors);
 
+  const agents = discoverAgents(root, configErrors);
+
   return {
     skills: disambiguateSkills(skills, root),
-    agents: discoverAgents(root, configErrors),
-    hooks: discoverHooks(root, configErrors),
+    agents,
+    // Four of the seven documented registration sites: two settings files,
+    // in-tree plugins, and skill / subagent frontmatter. The frontmatter ones
+    // are built where the file is read, because that is where the base for a
+    // relative script path lives. See docs/spec/hook-sources.md.
+    hooks: [
+      ...discoverHooks(root, configErrors),
+      ...discoverPluginHooks(root, configErrors),
+      ...skills.flatMap((s) => s.frontmatterHooks ?? []),
+      ...agents.flatMap((a) => a.frontmatterHooks ?? []),
+    ],
     mcp: discoverMcp(root, config.mcpPaths, configErrors),
     policyFiles: discoverPolicyFiles(root, config.policyFiles, configErrors),
     lockedSkills: lock.locked,

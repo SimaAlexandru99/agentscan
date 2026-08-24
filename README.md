@@ -62,7 +62,7 @@ of the filesystem**, where nothing else in your stack will ever tell you.
 No AI, no network, no heuristics. Read the config, read the disk, compare:
 
 ```
-1. Discover    .claude/ .agents/ .mcp.json AGENTS.md skills-lock.json
+1. Discover    .claude/ .agents/ .mcp.json AGENTS.md skills-lock.json plugin hooks/
 2. Extract     immutable facts — never re-read during checking
 3. Check       27 checks, each against one published spec line
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
@@ -417,7 +417,7 @@ Most validate one discovered item against its own file on disk. The four
 |----|----------|---------|
 | `config.unreadable` | error | A config file that is not valid JSON, so whatever it declares is silently not in effect |
 | `scan.truncated` | info | A file past the scan cap, so the checks that read its body saw only a prefix — about this tool's reach, not about your project |
-| `hook.missing-script` | error | A registered hook whose script does not exist — it never runs |
+| `hook.missing-script` | error | A registered hook whose script does not exist — it never runs. Reads all four in-tree registration sites (see below) |
 | `hook.unknown-event` | error | A hook registered under an event name that is never dispatched |
 | `agent.missing-frontmatter` | error | An agent definition with no `---` block |
 | `agent.missing-description` | error | Agent frontmatter has no `description` |
@@ -457,6 +457,24 @@ references measured across 17 projects, 1645 resolved skill-relative and 12 only
 at the root. Fenced code blocks are stripped first: a path in an example is
 illustration, not a pointer.
 
+### Where it looks for hooks
+
+The hooks reference lists seven places a hook can be registered. agentscan reads
+the four that live inside the scanned project:
+
+| Registered in | Script paths resolve against |
+|---|---|
+| `.claude/settings.json` · `.claude/settings.local.json` | project root, `${CLAUDE_PROJECT_DIR}` |
+| A plugin's `hooks/hooks.json` (a directory with `.claude-plugin/plugin.json`, or the scan root itself) | the plugin root, `${CLAUDE_PLUGIN_ROOT}` |
+| `SKILL.md` frontmatter | the skill's own directory, then the project root |
+| `.claude/agents/*.md` frontmatter | the agent file's directory, then the project root |
+
+`${CLAUDE_PLUGIN_ROOT}` is expanded **only** for a hook that came from a plugin.
+In a settings file it names nothing, so the path is skipped rather than guessed
+at — measured across 17 installed plugins, 31 of 33 plugin hook commands use it
+and none of them are settings hooks. `hook.unknown-event` covers all four sites
+at no extra cost. Sources and measurements: [docs/spec/hook-sources.md](docs/spec/hook-sources.md).
+
 `hook.missing-script` and `mcp.command-missing` are deliberately conservative.
 A value is only resolved when it is path-like and the answer is certain; shell
 programs (`a && b`, `$(...)`, pipes), bare PATH binaries (`npx`, `uvx`), and
@@ -489,6 +507,11 @@ When adding a check, add its spec line there first.
 - **Runtime split.** Source development and the composite Action use Bun; the
   published `dist/cli.js` runs on Node 20.11+ or Bun. The source entrypoint uses
   Bun's `import.meta.dir` / `import.meta.main` and is not the Node entrypoint.
+- **Three hook locations are unread.** `~/.claude/settings.json`, managed policy
+  settings, and installed marketplace plugins under `~/.claude/plugins` all sit
+  outside the scanned project, and the docs say a plugin's install directory
+  changes on every update. A hook registered in one of those, pointing at a
+  missing script, is not reported.
 - **Bounded reads.** A `SKILL.md` is read to 64 KB and a policy file to 100 KB,
   so `skill.broken-reference` and `policyLines` see only that much of a larger
   file. This is reported — `scan.truncated`, at `info` — rather than left

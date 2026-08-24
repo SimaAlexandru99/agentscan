@@ -263,6 +263,31 @@ and `tests/unit/scan-cap.test.ts`. No network, no mutation of real projects.
   path is opened and confirmed by hand.
 - `docs/spec/hook-sources.md` exists and every new assumption cites it.
 
+## Outcome
+
+Executed 2026-08-24. Four of the seven registration sites are now read: the two
+settings files, in-tree plugin `hooks/hooks.json`, and skill / subagent
+frontmatter.
+
+Verified against a real published plugin rather than fixtures alone —
+`claude-plugins-official/security-guidance` copied into a scratch project:
+intact it reports nothing; delete the `sg-python.sh` its hooks launch and the
+scan returns 4 errors naming `security-guidance/hooks/hooks.json`, the
+`${CLAUDE_PLUGIN_ROOT}` path, and `plugin` as the source.
+
+The 019 baseline is unchanged, as required: touchagency 34, kronstadt-ehs-2026
+94, optimad 85. No project gained a finding.
+
+One limit worth naming, unchanged from before this plan and shared by every
+source: extraction names the program the command launches, so in
+`bash sg-python.sh reminder.py` a missing `reminder.py` is not reported. Widening
+that means deciding which arguments are scripts, which is the kind of guess this
+parser refuses.
+
+Structural note: `NESTED_DISCOVERY_MAX_DEPTH` and `NESTED_DISCOVERY_SKIP` moved
+to `src/discover/shared.ts` so the skill walk and the new plugin walk cannot
+drift into disagreeing about what a project contains.
+
 ## STOP conditions
 
 - Stop before reading anything under `~/.claude` or `~/.codex`. Global hook

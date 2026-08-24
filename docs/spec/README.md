@@ -24,6 +24,7 @@ to appear in real projects.** When adding a check:
 | File | Covers | Checks that depend on it |
 |------|--------|--------------------------|
 | [hook-events.md](hook-events.md) | The 31 dispatched hook event names | `hook.unknown-event` |
+| [hook-sources.md](hook-sources.md) | The seven files a hook can be registered in, and how each one's script paths resolve | `hook.missing-script`, `hook.unknown-event` |
 | [skills.md](skills.md) | SKILL.md frontmatter fields and what is required | `skill.missing-frontmatter`, `skill.missing-description`, and two deleted checks |
 | [agents.md](agents.md) | Subagent frontmatter: required fields, the name format, and the one documented load failure | every `agent.*` check |
 | [mcp.md](mcp.md) | `.mcp.json` shape and transports | `mcp.no-launch`, `mcp.url-without-type`, `mcp.command-missing` |

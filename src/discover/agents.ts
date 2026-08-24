@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { AgentFact, ConfigErrorFact } from "../facts/types";
+import { hooksFromObject } from "./hooks";
 import { readFrontmatter } from "./shared";
 
 /** Agent definitions nest, so a one-level scan misses `agents/review/x.md`. */
@@ -75,6 +76,15 @@ export function discoverAgents(root: string, errors: ConfigErrorFact[]): AgentFa
     }
     if (fm.description !== undefined) {
       fact.description = fm.description;
+    }
+    if (fm.hooks !== undefined) {
+      const hooks = hooksFromObject(fm.hooks, filePath, "agent", {
+        project: root,
+        own: dirname(filePath),
+      }, errors);
+      if (hooks.length > 0) {
+        fact.frontmatterHooks = hooks;
+      }
     }
     facts.push(fact);
   }

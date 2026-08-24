@@ -1,7 +1,8 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { ConfigErrorFact, SkillFact } from "../facts/types";
-import { readFrontmatter } from "./shared";
+import { hooksFromObject } from "./hooks";
+import { NESTED_DISCOVERY_MAX_DEPTH, NESTED_DISCOVERY_SKIP, readFrontmatter } from "./shared";
 
 const BUNDLED = "scripts|references|assets|templates|examples";
 const REFERENCE_RE = new RegExp(
@@ -165,22 +166,21 @@ export function discoverSkillsInDir(
     if (fm.name !== undefined) {
       fact.frontmatterName = fm.name;
     }
+    if (fm.hooks !== undefined) {
+      // A relative script path resolves against the skill's own directory
+      // first, then the project root — see resolveHookScript.
+      const hooks = hooksFromObject(fm.hooks, skillMd, "skill", {
+        project: root,
+        own: skillDir,
+      }, errors);
+      if (hooks.length > 0) {
+        fact.frontmatterHooks = hooks;
+      }
+    }
     skills.push(fact);
   }
   return skills;
 }
-
-// ponytail: depth-8 cap bounds arbitrary trees; raise if deeper package roots become supported.
-const NESTED_DISCOVERY_MAX_DEPTH = 8;
-const NESTED_DISCOVERY_SKIP = new Set([
-  ".git",
-  "node_modules",
-  ".next",
-  "dist",
-  "build",
-  "coverage",
-  "vendor",
-]);
 
 type NestedDiscoveryOptions = {
   /** @internal test seam; deliberately not a CLI option. */

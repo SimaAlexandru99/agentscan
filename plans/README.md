@@ -202,7 +202,7 @@ the tool being wrong about real projects.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 019 | Findings say true things — scan cap, monorepo roots, agent name severity | P0 | M | — | DONE |
-| 020 | Hooks registered outside `.claude/settings*.json` | P2 | M | — | TODO — [plan](020-hooks-outside-settings.md) |
+| 020 | Hooks registered outside `.claude/settings*.json` | P2 | M | — | DONE — [plan](020-hooks-outside-settings.md) |
 
 Measured before and after 019, on the three projects that reproduced the defects:
 

@@ -11,6 +11,28 @@ const INLINE_CODE_FLAGS = /^-(?:e|p|c)$/;
 const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&/;
 
 /**
+ * Where a hook's script paths resolve from.
+ *
+ * Each documented hook source defines a different set, so this is passed in
+ * rather than assumed: `${CLAUDE_PLUGIN_ROOT}` means something in a plugin's
+ * `hooks/hooks.json` and nothing at all in a settings file, where expanding it
+ * against the project root would be an invented answer.
+ *
+ * See docs/spec/hook-sources.md.
+ */
+export type HookBases = {
+  /** `${CLAUDE_PROJECT_DIR}`, and the fallback base for a bare relative path. */
+  project: string;
+  /** `${CLAUDE_PLUGIN_ROOT}` — absent unless the hook came from a plugin. */
+  plugin?: string;
+  /** The declaring file's own directory, tried first for a relative path. */
+  own?: string;
+};
+
+const PROJECT_DIR = /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\})/;
+const PLUGIN_ROOT = /^\$(?:CLAUDE_PLUGIN_ROOT\b|\{CLAUDE_PLUGIN_ROOT\})/;
+
+/**
  * Pull the script path out of a hook command, so a hook whose script is gone can
  * be reported. Returns undefined whenever the answer is not certain.
  *
@@ -19,7 +41,10 @@ const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&/;
  * skipped outright, because a command like `[ ! -f x ] || node x` handles the
  * missing file itself and flagging it would be a false positive.
  */
-export function hookScriptPath(command: string): string | undefined {
+export function hookScriptPath(
+  command: string,
+  bases: { plugin?: string } = {},
+): string | undefined {
   const trimmed = command.trim();
   if (trimmed.length === 0 || SHELL_METACHARS.test(trimmed)) {
     return undefined;
@@ -63,9 +88,13 @@ export function hookScriptPath(command: string): string | undefined {
   if (/^[A-Za-z]:[/\\]/.test(candidate)) {
     return undefined;
   }
-  // Only CLAUDE_PROJECT_DIR has a defined meaning; other vars are unknowable.
+  // Only the placeholders this source actually defines are expandable; every
+  // other variable is unknowable, and so is CLAUDE_PLUGIN_ROOT outside a plugin.
   if (candidate.startsWith("$")) {
-    return /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\})/.test(candidate)
+    if (PROJECT_DIR.test(candidate)) {
+      return candidate;
+    }
+    return bases.plugin !== undefined && PLUGIN_ROOT.test(candidate)
       ? candidate
       : undefined;
   }
@@ -81,30 +110,123 @@ export function hookScriptPath(command: string): string | undefined {
   return undefined;
 }
 
+function isFile(path: string): boolean {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function resolveHookScript(
-  root: string,
+  bases: HookBases,
   raw: string,
 ): { scriptPath: string; exists: boolean } | undefined {
-  const extracted = hookScriptPath(raw);
+  const extracted = hookScriptPath(raw, bases);
   if (extracted === undefined) {
     return undefined;
   }
-  let expanded = extracted;
-  if (expanded.startsWith("~/")) {
-    expanded = join(homedir(), expanded.slice(2));
-  } else if (expanded.startsWith("$")) {
-    // CLAUDE_PROJECT_DIR is the project root by definition
-    expanded = expanded.replace(
+  if (extracted.startsWith("~/")) {
+    return {
+      scriptPath: extracted,
+      exists: isFile(join(homedir(), extracted.slice(2))),
+    };
+  }
+  if (PROJECT_DIR.test(extracted)) {
+    const rel = extracted.replace(
       /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\})\/?/,
       "",
     );
+    return { scriptPath: extracted, exists: isFile(join(bases.project, rel)) };
   }
-  const abs = isAbsolute(expanded) ? expanded : join(root, expanded);
-  try {
-    return { scriptPath: extracted, exists: statSync(abs).isFile() };
-  } catch {
-    return { scriptPath: extracted, exists: false };
+  if (bases.plugin !== undefined && PLUGIN_ROOT.test(extracted)) {
+    const rel = extracted.replace(
+      /^\$(?:CLAUDE_PLUGIN_ROOT|\{CLAUDE_PLUGIN_ROOT\})\/?/,
+      "",
+    );
+    return { scriptPath: extracted, exists: isFile(join(bases.plugin, rel)) };
   }
+  if (isAbsolute(extracted)) {
+    return { scriptPath: extracted, exists: isFile(extracted) };
+  }
+  // A bare relative path has no documented base — the placeholders above exist
+  // precisely because the working directory is not guaranteed. Try the
+  // declaring file's own directory and the project root, and call it missing
+  // only when it is at neither. Same two-base rule as skill.broken-reference;
+  // see docs/spec/hook-sources.md for why this one is a judgement, not a quote.
+  const candidates = [
+    ...(bases.own === undefined ? [] : [join(bases.own, extracted)]),
+    join(bases.project, extracted),
+  ];
+  return { scriptPath: extracted, exists: candidates.some(isFile) };
+}
+
+/**
+ * Turn one `hooks` object into facts, whatever file it came from.
+ *
+ * Settings files, a plugin's `hooks/hooks.json` and skill / subagent
+ * frontmatter all carry the identical structure — "the same configuration
+ * format as settings-based hooks" — so they share one reader and differ only in
+ * their `source` label and their path bases. See docs/spec/hook-sources.md.
+ */
+export function hooksFromObject(
+  hooks: unknown,
+  filePath: string,
+  source: NonNullable<HookFact["source"]>,
+  bases: HookBases,
+  errors: ConfigErrorFact[],
+): HookFact[] {
+  if (hooks === null || typeof hooks !== "object" || Array.isArray(hooks)) {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "`hooks` is not an object",
+    });
+    return [];
+  }
+
+  const facts: HookFact[] = [];
+  for (const [event, groups] of Object.entries(
+    hooks as Record<string, unknown>,
+  )) {
+    const malformed = !Array.isArray(groups) || groups.some((group) => {
+      if (group === null || typeof group !== "object" || Array.isArray(group)) {
+        return true;
+      }
+      const inner = (group as Record<string, unknown>).hooks;
+      if (!Array.isArray(inner)) return true;
+      return inner.some((entry) => {
+        if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+          return true;
+        }
+        const item = entry as Record<string, unknown>;
+        return (
+          (item.command !== undefined &&
+            (typeof item.command !== "string" || item.command.length === 0)) ||
+          (item.type === "command" && typeof item.command !== "string")
+        );
+      });
+    });
+    if (malformed) {
+      errors.push({ path: filePath, kind: "unexpected-shape", detail: `invalid hook groups for ${event}` });
+      continue;
+    }
+    const commands = collectHookCommands(groups);
+    if (commands.length === 0) {
+      facts.push({ name: event, path: filePath, event, source });
+      continue;
+    }
+    for (const command of commands) {
+      const fact: HookFact = { name: event, path: filePath, event, source, command };
+      const resolved = resolveHookScript(bases, command);
+      if (resolved !== undefined) {
+        fact.scriptPath = resolved.scriptPath;
+        fact.scriptExists = resolved.exists;
+      }
+      facts.push(fact);
+    }
+  }
+  return facts;
 }
 
 export function discoverHooks(
@@ -136,55 +258,10 @@ export function discoverHooks(
     if (hooks === undefined) {
       continue;
     }
-    if (hooks === null || typeof hooks !== "object" || Array.isArray(hooks)) {
-      errors.push({
-        path: filePath,
-        kind: "unexpected-shape",
-        detail: "`hooks` is not an object",
-      });
-      continue;
-    }
-
-    for (const [event, groups] of Object.entries(
-      hooks as Record<string, unknown>,
-    )) {
-      const malformed = !Array.isArray(groups) || groups.some((group) => {
-        if (group === null || typeof group !== "object" || Array.isArray(group)) {
-          return true;
-        }
-        const inner = (group as Record<string, unknown>).hooks;
-        if (!Array.isArray(inner)) return true;
-        return inner.some((entry) => {
-          if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
-            return true;
-          }
-          const item = entry as Record<string, unknown>;
-          return (
-            (item.command !== undefined &&
-              (typeof item.command !== "string" || item.command.length === 0)) ||
-            (item.type === "command" && typeof item.command !== "string")
-          );
-        });
-      });
-      if (malformed) {
-        errors.push({ path: filePath, kind: "unexpected-shape", detail: `invalid hook groups for ${event}` });
-        continue;
-      }
-      const commands = collectHookCommands(groups);
-      if (commands.length === 0) {
-        facts.push({ name: event, path: filePath, event });
-        continue;
-      }
-      for (const command of commands) {
-        const fact: HookFact = { name: event, path: filePath, event, command };
-        const resolved = resolveHookScript(root, command);
-        if (resolved !== undefined) {
-          fact.scriptPath = resolved.scriptPath;
-          fact.scriptExists = resolved.exists;
-        }
-        facts.push(fact);
-      }
-    }
+    // No plugin base: `${CLAUDE_PLUGIN_ROOT}` in a settings file names nothing.
+    facts.push(
+      ...hooksFromObject(hooks, filePath, "settings", { project: root }, errors),
+    );
   }
   return facts;
 }

@@ -55,6 +55,26 @@ describe("hookScriptPath — extracts", () => {
       ".claude/hooks/h.py",
     );
   });
+
+  test("${CLAUDE_PLUGIN_ROOT} only where a plugin defines it", () => {
+    // 31 of 33 hook commands across 17 installed plugins use this placeholder,
+    // so refusing it would read 2 of them. In a settings file there is no
+    // plugin and so no base — expanding it there would be an invented answer.
+    // See docs/spec/hook-sources.md.
+    const command = 'bash "${CLAUDE_PLUGIN_ROOT}/hooks/sg-python.sh"';
+    expect(hookScriptPath(command, { plugin: "/plugins/sg" })).toBe(
+      "${CLAUDE_PLUGIN_ROOT}/hooks/sg-python.sh",
+    );
+    expect(hookScriptPath(command)).toBeUndefined();
+  });
+
+  test("an unquoted plugin-root path is extracted too", () => {
+    expect(
+      hookScriptPath("${CLAUDE_PLUGIN_ROOT}/scripts/format.sh", {
+        plugin: "/plugins/fmt",
+      }),
+    ).toBe("${CLAUDE_PLUGIN_ROOT}/scripts/format.sh");
+  });
 });
 
 describe("hookScriptPath — refuses to guess", () => {

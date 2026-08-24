@@ -96,10 +96,15 @@ export function checkHooks(facts: Facts): Finding[] {
           severity: "error",
           message: `${hook.event ?? hook.name} hook points at a script that does not exist: ${hook.scriptPath}`,
           reason:
-            "The hook is registered but its script is missing, so it never runs. A guard hook that silently does nothing is worse than no hook — the config claims a protection that is not in effect.",
+            "The hook is registered but its script is missing, so it never runs. A guard hook that silently does nothing is worse than no hook — the config claims a protection that is not in effect. A relative path is looked for beside the file that declared it and at the project root; it is at neither.",
           evidence: [
             { kind: "hook", value: `${hook.event ?? hook.name} @ ${hook.path}` },
             { kind: "script", value: hook.scriptPath },
+            // Only when it is not a settings file, so the common finding renders
+            // exactly as before. Same idiom as `source: global` on skills.
+            ...(hook.source === undefined || hook.source === "settings"
+              ? []
+              : [{ kind: "source", value: hook.source }]),
           ],
         suggest: `Restore ${hook.scriptPath} or remove the hook from ${hook.path}`,
       }),

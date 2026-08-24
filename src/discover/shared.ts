@@ -24,6 +24,25 @@ export function readCapped(path: string, cap: number): { buf: Buffer; truncated:
   } finally { closeSync(fd); }
 }
 
+/**
+ * Traversal bounds for every in-tree walk.
+ *
+ * Shared so the two walks that exist — nested skill directories and in-tree
+ * plugin roots — cannot drift into disagreeing about what a project contains.
+ *
+ * ponytail: depth-8 cap bounds arbitrary trees; raise if deeper package roots become supported.
+ */
+export const NESTED_DISCOVERY_MAX_DEPTH = 8;
+export const NESTED_DISCOVERY_SKIP = new Set([
+  ".git",
+  "node_modules",
+  ".next",
+  "dist",
+  "build",
+  "coverage",
+  "vendor",
+]);
+
 export type AgentSurface = {
   skills: SkillFact[];
   agents: AgentFact[];
@@ -116,6 +135,14 @@ export type Frontmatter = {
   unreadable?: boolean;
   name?: string;
   description?: string;
+  /**
+   * The `hooks` mapping, unvalidated — a skill or subagent may declare hooks
+   * "in the same configuration format as settings-based hooks". Handed to
+   * `hooksFromObject`, which owns the shape checks.
+   *
+   * See docs/spec/hook-sources.md.
+   */
+  hooks?: unknown;
 };
 
 function scalar(value: unknown): string | undefined {
@@ -231,6 +258,9 @@ export function readFrontmatter(
   const description = scalar(record.description);
   if (description !== undefined) {
     out.description = description;
+  }
+  if (record.hooks !== undefined) {
+    out.hooks = record.hooks;
   }
   return out;
 }
