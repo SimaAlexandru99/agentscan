@@ -202,7 +202,7 @@ the tool being wrong about real projects.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 019 | Findings say true things — scan cap, monorepo roots, agent name severity | P0 | M | — | DONE |
-| 020 | Hooks registered outside `.claude/settings*.json` | P2 | M | — | TODO |
+| 020 | Hooks registered outside `.claude/settings*.json` | P2 | M | — | TODO — [plan](020-hooks-outside-settings.md) |
 
 Measured before and after 019, on the three projects that reproduced the defects:
 
@@ -217,3 +217,10 @@ plugin's `hooks/hooks.json`, in skill frontmatter, and in subagent frontmatter,
 and discovery reads none of them. A guard hook whose script is missing is
 invisible in all three — the tool's own headline failure, in a place it does not
 look.
+
+Measured while writing it, so a future reader does not mistake zero findings for
+zero value: across 17 installed plugins, 31 of 33 hook commands use
+`${CLAUDE_PLUGIN_ROOT}` and 40 resolvable paths are all present on disk; across
+798 `SKILL.md` and agent files, 0 declare frontmatter `hooks:`. Both surfaces are
+documented and currently unused here — the same position `mcp.url-without-type`
+shipped in.
