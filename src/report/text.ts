@@ -60,7 +60,7 @@ export function renderText(args: {
   lines.push("");
 
   for (const group of groupByRule(visible)) {
-    lines.push(...formatGroup(group, facts.root, ink));
+    lines.push(...formatGroup(group, facts.root, ink, verbose));
     lines.push("");
   }
 
@@ -173,7 +173,12 @@ const SEVERITY_TONE: Record<Severity, Tone | undefined> = {
   info: undefined,
 };
 
-function formatGroup(group: Finding[], root: string, ink: Paint): string[] {
+function formatGroup(
+  group: Finding[],
+  root: string,
+  ink: Paint,
+  verbose: boolean,
+): string[] {
   const first = group[0] as Finding;
   const count = group.length;
   const out: string[] = [];
@@ -193,6 +198,12 @@ function formatGroup(group: Finding[], root: string, ink: Paint): string[] {
       .map((e) => shortPath(e.value, root));
     const location = where.length > 0 ? where.join(" · ") : f.subject;
     out.push(ink.dim(`          ${safe(shortPath(location, root))}`));
+    // The id is what `explain` resolves and what `ignoreFindings` matches, and
+    // it used to exist only in --json — so the README told people to paste a
+    // value the report never showed them.
+    if (verbose) {
+      out.push(ink.dim(`            id: ${safe(f.id)}`));
+    }
   }
   return out;
 }

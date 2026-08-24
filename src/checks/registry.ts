@@ -10,6 +10,11 @@ export const STRUCTURAL_CHECKS: { id: string; description: string }[] = [
     description: "Config file is not valid JSON or cannot be read",
   },
   {
+    id: "scan.truncated",
+    description:
+      "File is larger than the scan cap, so body checks read only a prefix of it",
+  },
+  {
     id: "hook.unknown-event",
     description: "Hook registered under an event name that is never dispatched",
   },

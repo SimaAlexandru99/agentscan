@@ -77,7 +77,12 @@ export type AgentFact = {
 /** A config file agentscan could not read — itself a finding, never swallowed. */
 export type ConfigErrorFact = {
   path: string;
-  kind: "invalid-json" | "unreadable" | "unexpected-shape";
+  /**
+   * `truncated` is not a defect in the file — it says agentscan read only a
+   * bounded prefix of it, so body-reading checks may undercount. It reports at
+   * info through `scan.truncated`; the other three are `config.unreadable`.
+   */
+  kind: "invalid-json" | "unreadable" | "unexpected-shape" | "truncated";
   detail: string;
 };
 

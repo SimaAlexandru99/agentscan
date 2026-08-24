@@ -113,10 +113,15 @@ runs:
         report=$(bun "$AGENTSCAN_ACTION_PATH/src/cli.ts" "${args[@]}")
         code=$?
         printf '%s\n' "$report"
+        # Random heredoc delimiter: the report is derived from files in the
+        # scanned repo, and a fixed marker is a line an input could forge to
+        # append arbitrary step outputs. Nothing reaches it today — the report
+        # escapes control characters — but the guarantee should not rest on that.
+        delim="AGENTSCAN_EOF_$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
         {
           echo "exit-code=$code"
-          echo "report<<AGENTSCAN_EOF"
+          echo "report<<$delim"
           printf '%s\n' "$report"
-          echo "AGENTSCAN_EOF"
+          echo "$delim"
         } >> "$GITHUB_OUTPUT"
         exit $code

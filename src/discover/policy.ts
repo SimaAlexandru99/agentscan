@@ -18,7 +18,10 @@ export function discoverPolicyFiles(
       const result = readCapped(filePath, POLICY_CAP);
       const text = result.buf.subarray(0, POLICY_CAP).toString("utf8");
       out.push({ path: filePath, text });
-      if (result.truncated) errors.push({ path: filePath, kind: "unexpected-shape", detail: `file exceeds ${POLICY_CAP} byte scan cap` });
+      // A policy file past the cap is still a valid policy file; only the line
+      // count below it undercounts. Says so at info rather than calling the
+      // file unreadable at error.
+      if (result.truncated) errors.push({ path: filePath, kind: "truncated", detail: `file exceeds ${POLICY_CAP} byte scan cap` });
     } catch (err) {
       errors.push({
         path: filePath,

@@ -4,7 +4,8 @@ import type { Finding } from "../facts/types";
  * Build a finding.
  *
  * `id` is `${ruleId}:${subject}` — a public contract: it is what the report
- * prints, what `agentscan explain` resolves, and what `ignoreFindings` matches.
+ * prints under `--verbose` and in `--json`, what `agentscan explain` resolves,
+ * and what `ignoreFindings` matches.
  * Both structural checks and budget checks go through here so there is one
  * place that decides the shape.
  */

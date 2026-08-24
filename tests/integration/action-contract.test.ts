@@ -94,12 +94,17 @@ describe("composite Action scan contract", () => {
       "--global",
     ]);
     expect(result.stdout).toBe("first report line\nsecond report line\n");
-    expect(readFileSync(githubOutput, "utf8")).toBe(
+    // The delimiter is randomised per run, so match its shape and require the
+    // opening and closing markers to be the same string.
+    const written = readFileSync(githubOutput, "utf8");
+    const delim = /^report<<(AGENTSCAN_EOF_[0-9a-f]{32})$/m.exec(written)?.[1];
+    expect(delim).toBeDefined();
+    expect(written).toBe(
       "exit-code=1\n" +
-        "report<<AGENTSCAN_EOF\n" +
+        `report<<${delim}\n` +
         "first report line\n" +
         "second report line\n" +
-        "AGENTSCAN_EOF\n",
+        `${delim}\n`,
     );
   });
 

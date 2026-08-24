@@ -1,3 +1,4 @@
+import { dirname } from "node:path";
 import type { Facts, Finding, SkillFact } from "../facts/types";
 import type { CheckOptions } from "./options";
 import { make } from "./make";
@@ -12,6 +13,18 @@ function skillEvidence(skill: SkillFact, value: string): Finding["evidence"] {
 }
 function skillSubject(skill: SkillFact): string {
   return `skill:${skill.instanceId ?? skill.id}`;
+}
+
+/**
+ * The skills directory that owns a skill — `<x>/.claude/skills` for
+ * `<x>/.claude/skills/deploy`.
+ *
+ * Two checks reason about what one agent session loads at once, and a session
+ * loads one such directory, not every one in the tree. Derived rather than
+ * stored: discovery already puts the owning directory in `path`.
+ */
+function skillRoot(skill: SkillFact): string {
+  return dirname(skill.path.replaceAll("\\", "/"));
 }
 
 export function checkSkillStructure(facts: Facts): Finding[] {
@@ -202,13 +215,12 @@ export function checkDuplicateDescriptions(facts: Facts): Finding[] {
     if (skill.runtime === "agents") {
       continue;
     }
-    const path = skill.path.replaceAll("\\", "/");
-    const namespace = path.includes(".claude/skills/")
-      ? "claude"
-      : path.includes(".agents/skills/")
-        ? "agents"
-        : skill.source;
-    const key = `${namespace}\0${skill.description.trim().replace(/\s+/g, " ").toLowerCase()}`;
+    // Group by the directory that owns the skill, not by runtime convention.
+    // Nested discovery flattens every `.claude/skills` under the scan root into
+    // one list, so in a monorepo `app-a/.claude/skills/deploy` and
+    // `app-b/.claude/skills/deploy` looked like a collision — 29 warnings on one
+    // real repo, for skills no single session ever loads together.
+    const key = `${skillRoot(skill)}\0${skill.description.trim().replace(/\s+/g, " ").toLowerCase()}`;
     if (key.length === 0) {
       continue;
     }
@@ -269,29 +281,53 @@ export function checkDescriptionBudget(
   const project = facts.skills.filter(
     (s) => s.source === "project" && s.hasSkillMd && s.description !== undefined,
   );
-  // Bytes, not UTF-16 units — the threshold and docs/spec/thresholds.md are
-  // both stated in bytes, and `.length` half-counts non-ASCII.
-  const bytes = project.reduce(
-    (sum, s) =>
-      sum + Buffer.byteLength(s.id) + Buffer.byteLength(s.description ?? ""),
-    0,
-  );
-  if (bytes <= ceiling) {
-    return [];
+  // One budget per skills directory. The startup budget is spent by one session,
+  // and a session loads one such directory — summing a monorepo's three apps
+  // into a single total describes a runtime that never exists.
+  const byRoot = new Map<string, SkillFact[]>();
+  for (const s of project) {
+    const root = skillRoot(s);
+    const bucket = byRoot.get(root);
+    if (bucket === undefined) byRoot.set(root, [s]);
+    else bucket.push(s);
   }
-  return [
-    make("skill.description-budget", "skills:description-budget", {
-      action: "warn",
-      severity: "info",
-      message: `Skill descriptions total ${bytes} bytes across ${project.length} skills (over ${ceiling})`,
-      reason:
-        "Names and descriptions for every skill are loaded at startup, within a budget of roughly 1-2% of the context window. Past it they are truncated, and a skill whose description is cut short stops being matched for the tasks it was written for.",
-      evidence: [
-        { kind: "count", value: `descriptionBytes=${bytes}` },
-        { kind: "threshold", value: String(ceiling) },
-      ],
-      suggest:
-        "Shorten the longest descriptions, or remove skills this project does not use",
-    }),
-  ];
+
+  const out: Finding[] = [];
+  for (const [root, skills] of byRoot) {
+    // Bytes, not UTF-16 units — the threshold and docs/spec/thresholds.md are
+    // both stated in bytes, and `.length` half-counts non-ASCII.
+    const bytes = skills.reduce(
+      (sum, s) =>
+        sum + Buffer.byteLength(s.id) + Buffer.byteLength(s.description ?? ""),
+      0,
+    );
+    if (bytes <= ceiling) {
+      continue;
+    }
+    // A single-directory project keeps the id it has always had, so an existing
+    // `ignoreFindings` entry does not silently stop matching.
+    const where = root.startsWith(`${facts.root}/`)
+      ? root.slice(facts.root.length + 1)
+      : root;
+    const subject =
+      byRoot.size === 1
+        ? "skills:description-budget"
+        : `skills:description-budget:${where}`;
+    out.push(
+      make("skill.description-budget", subject, {
+        action: "warn",
+        severity: "info",
+        message: `Skill descriptions total ${bytes} bytes across ${skills.length} skills in ${where} (over ${ceiling})`,
+        reason:
+          "Names and descriptions for every skill are loaded at startup, within a budget of roughly 1-2% of the context window. Past it they are truncated, and a skill whose description is cut short stops being matched for the tasks it was written for.",
+        evidence: [
+          { kind: "count", value: `descriptionBytes=${bytes}` },
+          { kind: "threshold", value: String(ceiling) },
+        ],
+        suggest:
+          "Shorten the longest descriptions, or remove skills this project does not use",
+      }),
+    );
+  }
+  return out;
 }

@@ -428,6 +428,28 @@ describe("agent definitions", () => {
     expect(findings[0]!.severity).toBe("error");
   });
 
+  test("an off-format name is a warning, not an error", () => {
+    // The reference specifies "lowercase letters and hyphens" but documents a
+    // load failure only for `:`. `error` here would claim more than the docs
+    // do about `name: SEO Specialist`, which 16 of 34 real files look like.
+    // See docs/spec/agents.md.
+    const findings = runChecks(
+      baseFacts({
+        agents: [
+          {
+            name: "marketing-seo-specialist",
+            path: ".claude/agents/marketing-seo-specialist.md",
+            hasFrontmatter: true,
+            frontmatterName: "SEO Specialist",
+            description: "Optimises pages for search",
+          },
+        ],
+      }),
+    );
+    expect(findings.map((f) => f.ruleId)).toEqual(["agent.invalid-name"]);
+    expect(findings[0]!.severity).toBe("warning");
+  });
+
   test("a complete agent produces nothing", () => {
     expect(
       runChecks(baseFacts({ agents: [agent("reviewer", { description: "Reviews code" })] })),
@@ -485,6 +507,41 @@ describe("skills an agent cannot tell apart", () => {
     );
     expect(findings).toHaveLength(1);
     expect(findings[0]!.subject).toBe("skills:a b c");
+  });
+
+  test("sibling projects in a monorepo are not one namespace", () => {
+    // Nested discovery flattens every `.claude/skills` under the scan root.
+    // These two never load in the same session, so the choice between them is
+    // never made — 29 such warnings fired on one real monorepo.
+    const findings = runChecks(
+      baseFacts({
+        skills: [
+          skill({
+            id: "accessibility",
+            path: "app-a/.claude/skills/accessibility",
+            description: "Audit accessibility",
+          }),
+          skill({
+            id: "accessibility",
+            path: "app-b/.claude/skills/accessibility",
+            description: "Audit accessibility",
+          }),
+        ],
+      }),
+    );
+    expect(findings.filter((f) => f.ruleId === "skill.duplicate-description")).toEqual([]);
+  });
+
+  test("two under one skills directory still collide", () => {
+    const findings = runChecks(
+      baseFacts({
+        skills: [
+          skill({ id: "a11y-one", path: "app-a/.claude/skills/a11y-one", description: "Audit accessibility" }),
+          skill({ id: "a11y-two", path: "app-a/.claude/skills/a11y-two", description: "Audit accessibility" }),
+        ],
+      }),
+    );
+    expect(findings.map((f) => f.ruleId)).toEqual(["skill.duplicate-description"]);
   });
 
   test("whitespace and case differences still collide", () => {
@@ -569,6 +626,39 @@ describe("skill description budget", () => {
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.description-budget"]);
     expect(findings[0]!.severity).toBe("info");
     expect(findings[0]!.message).toContain("2 skills");
+  });
+
+  test("each skills directory gets its own budget", () => {
+    // 600 + 601 bytes summed would clear a 1000 ceiling, but no session loads
+    // both directories, so neither one is over.
+    const split = runChecks(
+      baseFacts({
+        skills: [
+          skill({ id: "a", path: "app-a/.claude/skills/a", description: "x".repeat(600) }),
+          skill({ id: "b", path: "app-b/.claude/skills/b", description: "x".repeat(601) }),
+        ],
+      }),
+      { skillDescriptionBytes: 1000 },
+    );
+    expect(split).toEqual([]);
+  });
+
+  test("one over-budget directory names itself", () => {
+    const findings = runChecks(
+      baseFacts({
+        skills: [
+          skill({ id: "a", path: "app-a/.claude/skills/a", description: "x".repeat(600) }),
+          skill({ id: "b", path: "app-a/.claude/skills/b", description: "x".repeat(601) }),
+          skill({ id: "c", path: "app-b/.claude/skills/c", description: "x".repeat(10) }),
+        ],
+      }),
+      { skillDescriptionBytes: 1000 },
+    );
+    expect(findings.map((f) => f.ruleId)).toEqual(["skill.description-budget"]);
+    expect(findings[0]!.subject).toBe(
+      "skills:description-budget:app-a/.claude/skills",
+    );
+    expect(findings[0]!.message).toContain("app-a/.claude/skills");
   });
 
   test("global skills do not count against the project budget", () => {
@@ -841,6 +931,11 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
     const withLock = baseFacts({
       configErrors: [
         { path: "/tmp/proj/.mcp.json", kind: "invalid-json", detail: "x" },
+        {
+          path: "/tmp/proj/.claude/skills/big/SKILL.md",
+          kind: "truncated",
+          detail: "file exceeds 65536 byte scan cap",
+        },
       ],
       agents: [
         { name: "bare", path: ".claude/agents/bare.md", hasFrontmatter: false },

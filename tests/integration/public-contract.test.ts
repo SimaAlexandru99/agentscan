@@ -30,8 +30,11 @@ describe("public discovery and check contracts", () => {
   });
 
   test("keeps declared checks and emitted finding order stable", () => {
-    expect(STRUCTURAL_CHECKS.slice(0, 3).map((check) => check.id)).toEqual([
+    // `scan.truncated` sits beside `config.unreadable` because they share a
+    // producer: both are made from `Facts.configErrors`.
+    expect(STRUCTURAL_CHECKS.slice(0, 4).map((check) => check.id)).toEqual([
       "config.unreadable",
+      "scan.truncated",
       "hook.unknown-event",
       "hook.missing-script",
     ]);

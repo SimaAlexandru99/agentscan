@@ -166,14 +166,23 @@ typecheck`, `bun run build`, and `bun run spec:check`.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 011 | Harden GitHub Action shell boundaries | P1 | S | — | TODO |
-| 012 | Treat hook directories as missing scripts | P1 | S | — | TODO |
-| 013 | Add CLI, bundle, and Action contract tests | P1 | M | 011 | TODO |
-| 014 | Verify the published artifact in CI | P1 | S | 013 | TODO |
-| 015 | Bound nested skill discovery | P2 | M | 013 | TODO |
-| 016 | Reconcile runtime/version documentation | P2 | S | 014 | TODO |
-| 017 | Add repository-local agent instructions | P2 | S | — | TODO |
-| 018 | Split discovery and checks by boundary | P3 | L | 013, 015 | TODO |
+| 011 | Harden GitHub Action shell boundaries | P1 | S | — | DONE `8bca8f7` |
+| 012 | Treat hook directories as missing scripts | P1 | S | — | DONE `8bca8f7` |
+| 013 | Add CLI, bundle, and Action contract tests | P1 | M | 011 | DONE `8bca8f7` |
+| 014 | Verify the published artifact in CI | P1 | S | 013 | DONE `c2bae70` |
+| 015 | Bound nested skill discovery | P2 | M | 013 | DONE `c2bae70` |
+| 016 | Reconcile runtime/version documentation | P2 | S | 014 | DONE `c2bae70` |
+| 017 | Add repository-local agent instructions | P2 | S | — | DONE `c2bae70` |
+| 018 | Split discovery and checks by boundary | P3 | L | 013, 015 | DONE `c2bae70` |
+
+These eight rows sat at TODO after the work had landed. The 2026-08-24 audit
+below reconciled them against the tree: `statSync(abs).isFile()` plus the
+directory regression in `tests/unit/hook-script.test.ts` (012), `action.yml`
+routing every input through a validated env var (011), the three
+`tests/integration/*-contract.test.ts` files (013), the `dist/cli.js` smoke step
+in `.github/workflows/ci.yml` (014), `NESTED_DISCOVERY_MAX_DEPTH` (015), the
+README runtime split and release checklist (016), `AGENTS.md` (017), and the
+`src/{discover,checks,report}` split (018).
 
 ### Dependency notes
 
@@ -181,3 +190,30 @@ typecheck`, `bun run build`, and `bun run spec:check`.
 - 014 depends on 013 so CI promotes a tested artifact, not only source tests.
 - 016 depends on 014 so documentation describes the verified release path.
 - 018 follows characterization coverage from 013 and traversal behavior from 015.
+
+## 2026-08-24 audit follow-up
+
+Every spec claim in `docs/spec/` was re-verified against the live Claude Code
+documentation and all of them held: the 31 hook events match exactly, the
+`url`-without-`type` quote in `mcp.md` is verbatim from the page, and the two
+deleted skill checks were correctly deleted. What the audit found instead was
+the tool being wrong about real projects.
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 019 | Findings say true things — scan cap, monorepo roots, agent name severity | P0 | M | — | DONE |
+| 020 | Hooks registered outside `.claude/settings*.json` | P2 | M | — | TODO |
+
+Measured before and after 019, on the three projects that reproduced the defects:
+
+| Project | Before | After | What was false |
+|---|---|---|---|
+| touchagency | 0/100 | 34/100 | 4 valid SKILL.md files called unreadable config |
+| kronstadt-ehs-2026 | 40/100 | 94/100 | the same 4, which were every error it had |
+| optimad | 0/100 | 85/100 | 3 of those plus 27 of 29 duplicate-description warnings |
+
+Plan 020 is the one gap the audit left open: hooks can also be registered in a
+plugin's `hooks/hooks.json`, in skill frontmatter, and in subagent frontmatter,
+and discovery reads none of them. A guard hook whose script is missing is
+invisible in all three — the tool's own headline failure, in a place it does not
+look.

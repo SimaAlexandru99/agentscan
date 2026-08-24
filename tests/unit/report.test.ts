@@ -175,6 +175,25 @@ describe("renderText", () => {
     expect(text).toMatch(/Summary:.*2 warning/);
   });
 
+  test("verbose prints the finding id, default does not", () => {
+    // `explain <id>` and `ignoreFindings` both take this string, and it used to
+    // exist only in --json — so the README told people to paste a value the
+    // report never showed them.
+    const args = {
+      version: "0.1.0",
+      facts: baseFacts(),
+      findings,
+      quiet: false,
+    };
+    const plain = renderText({ ...args, verbose: false });
+    const loud = renderText({ ...args, verbose: true });
+
+    expect(loud).toContain(
+      "id: next.redundant-cache-components-skill:skill:next-cache-components",
+    );
+    expect(plain).not.toContain("id: ");
+  });
+
   test("verbose includes KEEP findings with severity labels", () => {
     const text = renderText({
       version: "0.1.0",

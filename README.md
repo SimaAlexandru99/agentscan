@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-26-111111?style=flat-square" alt="26 checks">
-  <img src="https://img.shields.io/badge/tests-226%20passing-111111?style=flat-square" alt="226 tests">
+  <img src="https://img.shields.io/badge/checks-27-111111?style=flat-square" alt="27 checks">
+  <img src="https://img.shields.io/badge/tests-235%20passing-111111?style=flat-square" alt="235 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <strong>26 checks &middot; 4.1k lines &middot; 0 network calls &middot; every check sourced to a published spec line</strong><br>
+  <strong>27 checks &middot; 4.2k lines &middot; 0 network calls &middot; every check sourced to a published spec line</strong><br>
   <sub>Alpha. An earlier build reported 37 findings across 17 real projects of which <strong>25 were false</strong> — two checks had been written from what real projects looked like instead of from the spec. Both were deleted, and every check that survived is recorded in <a href="docs/spec/">docs/spec/</a> with the URL it came from and the date it was read. That story is the reason this tool exists in its current shape.</sub>
 </p>
 
@@ -64,7 +64,7 @@ No AI, no network, no heuristics. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .agents/ .mcp.json AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       26 checks, each against one published spec line
+3. Check       27 checks, each against one published spec line
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
 
@@ -156,7 +156,7 @@ bunx agentscan check                 # text report (cwd)
 bunx agentscan check ./my-app        # explicit root
 bunx agentscan check --json          # machine-readable
 bunx agentscan check --quiet         # summary only
-bunx agentscan check --verbose       # include KEEP and info-severity findings
+bunx agentscan check --verbose       # include KEEP, info findings, and each finding's id
 bunx agentscan check --fail-on warning
 bunx agentscan check --global        # also scan global skill dirs
 
@@ -175,7 +175,7 @@ Flags for `check`:
 | `--copy` | Also copy the report to the system clipboard |
 | `--no-color` | Never colour, even on a terminal (`NO_COLOR=1` does the same) |
 | `--quiet` | Summary line only |
-| `--verbose` | Show KEEP + info-severity findings |
+| `--verbose` | Show KEEP + info-severity findings, and print each finding's id |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
 | `--global` | Also scan `~/.claude/skills` and `~/.codex/skills` (see below) |
@@ -186,14 +186,14 @@ Flags for `check`:
 ## Sample output
 
 ```text
-  ┌─────┐   40/100  broken  ·  touchagency
-  │ ✕ ✕ │   ██████████░░░░░░░░░░░░░░░
-  │  ⌒  │   6 error · 4 info hidden (--verbose)
+  ┌─────┐   34/100  broken  ·  touchagency
+  │ ✕ ✕ │   █████████░░░░░░░░░░░░░░░░
+  │  ⌒  │   6 error · 2 warning · 11 info hidden (--verbose)
   └─────┘
 
-agentscan v0.5.0 — touchagency
+agentscan v0.6.0 — touchagency
 
-Scanned: 46 deps · 54 skills · 1 mcp · 2 agents · packageManager=bun
+Scanned: 46 deps · 108 skills · 1 mcp · 2 agents · packageManager=bun
 
 ERROR   rule:hook.missing-script  ×6
         Hook points at a script that does not exist
@@ -202,7 +202,12 @@ ERROR   rule:hook.missing-script  ×6
           PreToolUse @ .claude/settings.json · .claude/hooks/protect-artists-json.js
           PreToolUse @ .claude/settings.json · .claude/hooks/protect-env.js
 
-Summary: 6 error · 4 info hidden (--verbose) · score 40/100 broken
+WARN    rule:agent.invalid-name  ×2
+        2 findings
+          .claude/agents/marketing-seo-specialist.md
+          .claude/agents/testing-accessibility-auditor.md
+
+Summary: 6 error · 2 warning · 11 info hidden (--verbose) · score 34/100 broken
 ```
 
 On a terminal the header is coloured green, yellow or red and the face tracks
@@ -218,7 +223,7 @@ JSON shape (abridged):
 
 ```json
 {
-  "version": "0.5.0",
+  "version": "0.6.0",
   "root": "/path/to/project",
   "factsSummary": {
     "packageManager": "bun",
@@ -389,8 +394,9 @@ This is the only place agentscan starts a subprocess, and it runs only under
 
 `ignoreRules` disables a check project-wide, which is too blunt when a single
 hook uses an exotic launcher. `ignoreFindings` takes exact finding ids — the
-same strings `agentscan explain` accepts, so the value you already have from
-reading the report is the value you paste:
+same strings `agentscan explain` accepts. `check --verbose` prints the id under
+each finding, and `--json` carries it as `.findings[].id`, so the value you copy
+out of the report is the value you paste:
 
 ```json
 { "ignoreFindings": ["hook.missing-script:hook:PreToolUse:./bin/wrapper"] }
@@ -401,21 +407,22 @@ reading the report is the value you paste:
 Every check lives in `src/checks/` and runs on every `check`. `agentscan rules`
 lists all of them with their ids; `agentscan explain <id>` details any finding.
 
-Most validate one discovered item against its own file on disk. The five
-`budget.*` entries at the bottom judge aggregate size instead —
-they are all **info**, they are sourced to `docs/spec/thresholds.md`, and they
-are retuned through `thresholds` in `.agentscanrc.json` rather than switched
-off.
+Most validate one discovered item against its own file on disk. The four
+`budget.*` entries at the bottom judge aggregate size instead, as does
+`skill.description-budget` — all five are **info**, all five are sourced to
+`docs/spec/thresholds.md`, and all five are retuned through `thresholds` in
+`.agentscanrc.json` rather than switched off.
 
 | id | Severity | Catches |
 |----|----------|---------|
 | `config.unreadable` | error | A config file that is not valid JSON, so whatever it declares is silently not in effect |
+| `scan.truncated` | info | A file past the scan cap, so the checks that read its body saw only a prefix — about this tool's reach, not about your project |
 | `hook.missing-script` | error | A registered hook whose script does not exist — it never runs |
 | `hook.unknown-event` | error | A hook registered under an event name that is never dispatched |
 | `agent.missing-frontmatter` | error | An agent definition with no `---` block |
 | `agent.missing-description` | error | Agent frontmatter has no `description` |
 | `agent.missing-name` | error | Agent frontmatter has no `name` |
-| `agent.invalid-name` | error | Agent name is not lowercase letters, numbers, and hyphens |
+| `agent.invalid-name` | warning | Agent name is not lowercase letters, numbers, and hyphens |
 | `agent.duplicate-name` | error | Multiple agent files declare the same name |
 | `mcp.no-launch` | error | An MCP server with neither `command` nor `url` — unlaunchable by schema |
 | `mcp.command-missing` | error | An MCP `command` that is a path-like value whose file does not exist on disk |
@@ -431,6 +438,10 @@ off.
 | `skill.not-in-lock` | info | A skill on disk that the lockfile does not track — local and unpinned |
 | `skill.description-budget` | info | Skill names + descriptions exceed the startup character budget |
 | `skill.no-lockfile` | info | Skills present with no lockfile at all (only with `requireLock`) |
+| `budget.agents-md` | info | `AGENTS.md` past the point where added lines stop helping (>150) |
+| `budget.claude-md` | info | `CLAUDE.md` past the instruction count a model reliably follows (>200) |
+| `budget.agents` | info | More agent definitions than a focused set (>8 in `.claude/agents`) |
+| `budget.mcp` | info | More MCP servers than the point where tool selection degrades (>5) |
 
 Agent definitions are checked for structure only. An agent's frontmatter `name`
 is not compared to the filename; it must simply be a valid lowercase identifier
@@ -478,7 +489,12 @@ When adding a check, add its spec line there first.
 - **Runtime split.** Source development and the composite Action use Bun; the
   published `dist/cli.js` runs on Node 20.11+ or Bun. The source entrypoint uses
   Bun's `import.meta.dir` / `import.meta.main` and is not the Node entrypoint.
-- Policy files are read up to 100 KB, so `policyLines` undercounts past that.
+- **Bounded reads.** A `SKILL.md` is read to 64 KB and a policy file to 100 KB,
+  so `skill.broken-reference` and `policyLines` see only that much of a larger
+  file. This is reported — `scan.truncated`, at `info` — rather than left
+  silent, and it says nothing about the file being valid: it is, and the tools
+  that read it see all of it. Reporting the cap as `config.unreadable` at
+  severity error is a defect this tool shipped and [plan 019](plans/019-findings-say-true-things.md) fixed.
 
 ## Development
 

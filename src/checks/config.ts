@@ -23,6 +23,23 @@ function safeDetail(detail: string): string {
 }
 export function checkConfigErrors(facts: Facts): Finding[] {
   return facts.configErrors.map((err) => {
+    // Truncation is a limit of this scan, not a defect in the scanned file:
+    // the file is valid and the tools that read it see all of it. Reporting it
+    // as `config.unreadable` at error said the opposite, and cost a real
+    // project 40 points for four files that work.
+    if (err.kind === "truncated") {
+      return make("scan.truncated", `scan:${err.path}`, {
+        action: "warn",
+        severity: "info",
+        message: `${basename(err.path)} is larger than the scan cap — only its first bytes were read`,
+        reason:
+          "The file itself is fine; agentscan reads a bounded prefix of it. Checks that read the body — skill.broken-reference, and the AGENTS.md / CLAUDE.md line counts — see only that prefix, so they can undercount on this file.",
+        evidence: [
+          { kind: "config", value: err.path },
+          { kind: "detail", value: err.detail },
+        ],
+      });
+    }
     const what =
       err.kind === "invalid-json"
         ? "is not valid JSON"

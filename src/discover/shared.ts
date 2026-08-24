@@ -158,9 +158,13 @@ export function readFrontmatter(
     // searching for "\n---" cuts inside it, leaving a stray \r that a strict
     // YAML parser rejects. Normalise before locating the fence.
     text = text.replace(/\r\n/g, "\n");
+    // Record the partial read and keep going. Returning here reported a valid
+    // 67 KB SKILL.md as broken config at severity error, on the strength of
+    // bytes we chose not to read — the frontmatter sits in the first 300 of
+    // them and parses fine. Truncation is a limit of this scan, not a defect
+    // in the file, so it reports at info and the parse continues.
     if (truncated) {
-      errors.push({ path: skillMdPath, kind: "unexpected-shape", detail: `file exceeds ${SKILL_MD_CAP} byte scan cap` });
-      return { hasFrontmatter: true, unparseable: true };
+      errors.push({ path: skillMdPath, kind: "truncated", detail: `file exceeds ${SKILL_MD_CAP} byte scan cap` });
     }
   } catch (err) {
     errors.push({

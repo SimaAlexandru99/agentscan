@@ -67,10 +67,15 @@ export function checkAgents(facts: Facts): Finding[] {
         out.push(
           make("agent.invalid-name", `agent:${agent.name}`, {
             action: "warn",
-            severity: "error",
+            // Warning, not error. The reference states the format — "Unique
+            // identifier using lowercase letters and hyphens" — but names a
+            // load failure only for `:`. Error means "this does not work", and
+            // the docs do not say that about `name: SEO Specialist`.
+            // See docs/spec/agents.md.
+            severity: "warning",
             message: `Agent name "${agent.frontmatterName}" is not a valid identifier`,
             reason:
-              "Agent names use lowercase letters, numbers, and hyphens so dispatch can address them reliably.",
+              "The subagent reference specifies a unique identifier in lowercase letters and hyphens. A name outside that shape is not documented to load reliably, and a `:` in it is documented not to load at all. See docs/spec/agents.md.",
             evidence: [{ kind: "agent", value: agent.path }],
             suggest: "Use lowercase letters, numbers, and hyphens in the `name` field",
           }),
