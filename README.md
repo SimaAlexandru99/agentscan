@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-45-111111?style=flat-square" alt="45 checks">
-  <img src="https://img.shields.io/badge/tests-294%20passing-111111?style=flat-square" alt="294 tests">
+  <img src="https://img.shields.io/badge/checks-55-111111?style=flat-square" alt="55 checks">
+  <img src="https://img.shields.io/badge/tests-315%20passing-111111?style=flat-square" alt="315 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <strong>45 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <strong>55 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
   <sub>An offline linter for Claude Code, portable Agent Skills, nested AGENTS.md, and the MCP / hooks / rules surfaces that 1.0.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — <code>full</code> only where discovery, spec-required fields, and a conformance fixture (or equivalent tests) all exist.</sub>
 </p>
 
@@ -64,7 +64,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       45 checks, each labeled spec-required, vendor-recommendation,
+3. Check       55 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
