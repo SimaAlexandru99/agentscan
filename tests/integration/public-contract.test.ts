@@ -24,6 +24,7 @@ describe("public discovery and check contracts", () => {
     expect(surface.hooks).toHaveLength(0);
     expect(surface.mcp).toHaveLength(0);
     expect(surface.policyFiles).toHaveLength(0);
+    expect(surface.rules).toHaveLength(0);
     expect(surface.lockedSkills).toHaveLength(0);
     expect(surface.configErrors).toHaveLength(0);
     expect(surface.hasSkillsLock).toBe(false);

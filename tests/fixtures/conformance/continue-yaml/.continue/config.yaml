@@ -1,0 +1,7 @@
+mcpServers:
+  - name: example
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem"]
+  - name: remote
+    type: sse
+    url: https://example.com/mcp

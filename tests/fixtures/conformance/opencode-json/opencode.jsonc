@@ -1,0 +1,15 @@
+{
+  // OpenCode V2 groups servers under mcp.servers
+  "mcp": {
+    "servers": {
+      "docs": {
+        "type": "local",
+        "command": ["npx", "-y", "mcp-server"]
+      },
+      "remote": {
+        "type": "remote",
+        "url": "https://example.com/mcp"
+      }
+    }
+  }
+}

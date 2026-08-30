@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "docs": {
+      "command": "npx",
+      "args": ["-y", "mcp-server"],
+      "env": {
+        "API_KEY": "${env:API_KEY}"
+      }
+    },
+    "remote": {
+      "url": "https://example.com/mcp"
+    }
+  }
+}
