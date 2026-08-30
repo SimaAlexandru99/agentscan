@@ -1,3 +1,5 @@
+// ESM entry: the UMD build does `require("./impl/format")`, which bun's Node
+// bundle leaves unresolved against dist/cli.js.
 import { parse, printParseErrorCode, type ParseError } from "jsonc-parser/lib/esm/main.js";
 
 /**
