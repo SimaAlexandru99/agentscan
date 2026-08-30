@@ -104,7 +104,8 @@ export function hookScriptPath(
     candidate.startsWith("./") ||
     candidate.startsWith("../") ||
     candidate.startsWith("~/") ||
-    candidate.startsWith(".")
+    candidate.startsWith(".") ||
+    (interpreted && /\.(?:js|mjs|cjs|ts|py|sh|bash|zsh)$/i.test(candidate))
   ) {
     return candidate;
   }

@@ -74,7 +74,8 @@ function noLaunchId(profile: McpSchemaProfile): string {
 }
 
 function noLaunchMessage(server: McpFact): string {
-  switch (profileOf(server)) {
+  const profile = profileOf(server);
+  switch (profile) {
     case "antigravity-json":
       return `MCP server "${server.name}" declares neither command nor serverUrl`;
     case "gemini-json":
@@ -87,13 +88,14 @@ function noLaunchMessage(server: McpFact): string {
     case "continue-yaml":
       return `MCP server "${server.name}" declares neither command nor url`;
     default: {
-      return assertNever(profileOf(server), `unhandled MCP schema profile: ${profileOf(server)}`);
+      return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }
   }
 }
 
 function noLaunchSuggest(server: McpFact): string {
-  switch (profileOf(server)) {
+  const profile = profileOf(server);
+  switch (profile) {
     case "antigravity-json":
       return `Add a command (or serverUrl) for "${server.name}", or remove it`;
     case "gemini-json":
@@ -106,7 +108,7 @@ function noLaunchSuggest(server: McpFact): string {
     case "continue-yaml":
       return `Add a command (or url) for "${server.name}", or remove it`;
     default: {
-      return assertNever(profileOf(server), `unhandled MCP schema profile: ${profileOf(server)}`);
+      return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }
   }
 }
