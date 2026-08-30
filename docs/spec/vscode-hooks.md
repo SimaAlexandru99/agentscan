@@ -29,6 +29,12 @@ Each handler must specify `type: "command"` and a command. This is a flat
 array of handlers, not Claude's matcher-group wrapper (though Claude-format
 settings files are also loaded from `.claude/settings.json`).
 
+Optional `cwd` and OS overrides (`windows` / `linux` / `osx`) are honoured
+when path-checking a script. Unresolved interpolations and Windows drive or
+UNC cwd values (`C:\…`, `\\server\share`) are not joined as relative POSIX
+paths when the scanner is running on Linux or macOS — those existence checks
+are skipped rather than inventing a folder named `C:\…` under the project.
+
 ## Events (eight)
 
 `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`,

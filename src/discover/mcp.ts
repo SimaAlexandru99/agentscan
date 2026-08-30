@@ -12,6 +12,7 @@ import {
 import type { ConfigErrorFact, McpFact } from "../facts/types";
 import { parseJsonc } from "./jsonc";
 import {
+  cwdSkipsExistenceCheck,
   formatLaunch,
   launchesFromEntry,
   resolveLaunchCwd,
@@ -102,7 +103,7 @@ function commandFactsFromEntry(
     const candidate = scriptCandidateFromLaunch(launch);
     const display = candidate ?? formatLaunch(launch);
     const cwd = resolveLaunchCwd(launch.cwd, root);
-    if (candidate === undefined || cwd.status === "unresolved") {
+    if (candidate === undefined || cwdSkipsExistenceCheck(cwd)) {
       return {
         hasCommand: true,
         command: formatLaunch(launch),

@@ -31,7 +31,9 @@ Top-level key is `servers`, not `mcpServers`. Official example:
 Launch is `command` (stdio) or `url` (remote). Optional `cwd` and OS overrides
 (`windows` / `linux` / `osx`) are honoured when path-checking a script.
 Unresolved interpolations in `cwd` (`${workspaceFolder}`, `${env:…}`) skip the
-existence check rather than invent a path.
+existence check rather than invent a path. Windows drive and UNC cwd values
+(`C:\…`, `\\server\share`) are not joined as relative POSIX paths when the
+scanner is running on Linux or macOS — those existence checks are skipped.
 
 The docs tell authors to avoid
 hardcoding secrets and to use input variables (`${input:...}`) or environment

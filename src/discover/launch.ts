@@ -14,6 +14,7 @@ export type LaunchCommand = {
 export type CwdResolution =
   | { status: "absent" }
   | { status: "unresolved" }
+  | { status: "foreign" }
   | { status: "ok"; abs: string };
 
 /**
@@ -192,15 +193,53 @@ export function cwdIsUnresolved(cwd: string): boolean {
 }
 
 /**
- * Resolve a declared cwd against the project root. Unresolved interpolations
- * are not guessed — callers must skip existence checks.
+ * Windows drive (`C:\`, `D:/`) and UNC (`\\server\share`, `//server/share`)
+ * paths. On POSIX these are not `path.isAbsolute`, so joining them onto the
+ * project root invents a relative folder named `C:\…`.
  */
-export function resolveLaunchCwd(cwd: string | undefined, projectRoot: string): CwdResolution {
+export function isWindowsAbsOrUnc(value: string): boolean {
+  if (/^[A-Za-z]:/.test(value)) {
+    return true;
+  }
+  if (value.startsWith("\\\\")) {
+    return true;
+  }
+  return /^\/\/[^/]+\/[^/]/.test(value);
+}
+
+export function cwdSkipsExistenceCheck(resolution: CwdResolution): boolean {
+  switch (resolution.status) {
+    case "absent":
+    case "ok":
+      return false;
+    case "unresolved":
+    case "foreign":
+      return true;
+    default: {
+      const _exhaustive: never = resolution;
+      return _exhaustive;
+    }
+  }
+}
+
+/**
+ * Resolve a declared cwd against the project root. Unresolved interpolations
+ * and paths that belong to another OS are not guessed — callers must skip
+ * existence checks.
+ */
+export function resolveLaunchCwd(
+  cwd: string | undefined,
+  projectRoot: string,
+  hostPlatform: NodeJS.Platform = process.platform,
+): CwdResolution {
   if (cwd === undefined) {
     return { status: "absent" };
   }
   if (cwdIsUnresolved(cwd)) {
     return { status: "unresolved" };
+  }
+  if (isWindowsAbsOrUnc(cwd)) {
+    return hostPlatform === "win32" ? { status: "ok", abs: cwd } : { status: "foreign" };
   }
   let expanded = cwd;
   if (expanded.startsWith("~/")) {

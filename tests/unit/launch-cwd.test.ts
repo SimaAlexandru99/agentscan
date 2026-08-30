@@ -3,6 +3,11 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { analyze } from "../../src/analyze";
+import {
+  cwdSkipsExistenceCheck,
+  isWindowsAbsOrUnc,
+  resolveLaunchCwd,
+} from "../../src/discover/launch";
 
 function tmpProject(prefix: string): string {
   const root = mkdtempSync(join(tmpdir(), prefix));
@@ -137,5 +142,94 @@ describe("launch cwd resolution", () => {
     const ids = ruleIds(root);
     expect(ids).not.toContain("vscode.hook.missing-script");
     expect(ids).not.toContain("mcp.command-missing");
+  });
+
+  test("Windows drive cwd is not joined as a POSIX relative path", () => {
+    expect(isWindowsAbsOrUnc("C:\\Users\\me\\app")).toBe(true);
+    expect(isWindowsAbsOrUnc("D:/tools")).toBe(true);
+    expect(isWindowsAbsOrUnc("\\\\server\\share\\hooks")).toBe(true);
+    expect(isWindowsAbsOrUnc("//server/share/hooks")).toBe(true);
+    expect(isWindowsAbsOrUnc("./runtime")).toBe(false);
+    expect(isWindowsAbsOrUnc("/home/me/app")).toBe(false);
+
+    expect(resolveLaunchCwd("C:\\Users\\me\\app", "/tmp/proj", "linux")).toEqual({
+      status: "foreign",
+    });
+    expect(resolveLaunchCwd("D:/tools", "/tmp/proj", "linux")).toEqual({
+      status: "foreign",
+    });
+    expect(resolveLaunchCwd("\\\\server\\share\\hooks", "/tmp/proj", "darwin")).toEqual({
+      status: "foreign",
+    });
+    expect(resolveLaunchCwd("//server/share/hooks", "/tmp/proj", "linux")).toEqual({
+      status: "foreign",
+    });
+    expect(resolveLaunchCwd("C:\\Users\\me\\app", "C:\\repo", "win32")).toEqual({
+      status: "ok",
+      abs: "C:\\Users\\me\\app",
+    });
+    expect(resolveLaunchCwd("./runtime", "/tmp/proj", "linux").status).toBe("ok");
+    expect(cwdSkipsExistenceCheck({ status: "foreign" })).toBe(true);
+    expect(cwdSkipsExistenceCheck({ status: "unresolved" })).toBe(true);
+    expect(cwdSkipsExistenceCheck({ status: "ok", abs: "/tmp/proj/runtime" })).toBe(false);
+  });
+
+  test.skipIf(process.platform === "win32")(
+    "VS Code hook Windows cwd does not emit a false missing-script on POSIX",
+    () => {
+    const root = tmpProject("agentscan-cwd-win-hook-");
+    write(
+      root,
+      ".github/hooks/guard.json",
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [
+            {
+              type: "command",
+              command: "node",
+              args: ["./missing.js"],
+              cwd: "C:\\Users\\me\\hooks",
+              windows: {
+                command: "node",
+                args: ["./missing.js"],
+                cwd: "\\\\server\\share\\hooks",
+              },
+            },
+          ],
+        },
+      }),
+    );
+    const analysis = analyze({ dir: root });
+    expect(analysis.facts.hooks.map((hook) => hook.cwd).sort()).toEqual([
+      "C:\\Users\\me\\hooks",
+      "\\\\server\\share\\hooks",
+    ]);
+    expect(analysis.facts.hooks.every((hook) => hook.scriptExists === undefined)).toBe(true);
+    expect(ruleIds(root)).not.toContain("vscode.hook.missing-script");
+  });
+
+  test.skipIf(process.platform === "win32")(
+    "MCP Windows cwd does not emit a false command-missing on POSIX",
+    () => {
+    const root = tmpProject("agentscan-cwd-win-mcp-");
+    write(
+      root,
+      ".vscode/mcp.json",
+      JSON.stringify({
+        servers: {
+          docs: {
+            command: ["node", "./missing.js"],
+            cwd: "D:/tools/mcp",
+            windows: {
+              command: ["node", "./missing.js"],
+              cwd: "\\\\filesrv\\mcp\\bin",
+            },
+          },
+        },
+      }),
+    );
+    const analysis = analyze({ dir: root });
+    expect(analysis.facts.mcp.every((server) => server.commandExists === undefined)).toBe(true);
+    expect(ruleIds(root)).not.toContain("mcp.command-missing");
   });
 });

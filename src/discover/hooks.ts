@@ -6,6 +6,7 @@ import type { Provider } from "../facts/provider";
 import {
   formatLaunch,
   launchesFromEntry,
+  cwdSkipsExistenceCheck,
   resolveLaunchCwd,
   scriptCandidateFromLaunch,
 } from "./launch";
@@ -330,7 +331,7 @@ export function hooksFromObject(
         };
         const cwd = resolveLaunchCwd(launch.cwd, bases.project);
         const candidate = scriptCandidateFromLaunch(launch, bases);
-        if (candidate !== undefined && cwd.status !== "unresolved") {
+        if (candidate !== undefined && !cwdSkipsExistenceCheck(cwd)) {
           const resolved = resolveHookScript(
             bases,
             candidate,
