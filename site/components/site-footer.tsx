@@ -15,6 +15,21 @@ export function SiteFooter() {
           <Link href="/docs" className="transition-colors hover:text-foreground">
             Docs
           </Link>
+          <Link href="/about" className="transition-colors hover:text-foreground">
+            About
+          </Link>
+          <Link
+            href="/contact"
+            className="transition-colors hover:text-foreground"
+          >
+            Contact
+          </Link>
+          <Link
+            href="/privacy"
+            className="transition-colors hover:text-foreground"
+          >
+            Privacy
+          </Link>
           <a
             href="https://github.com/SimaAlexandru99/agentscan"
             target="_blank"

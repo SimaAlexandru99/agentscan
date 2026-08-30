@@ -23,6 +23,12 @@ export const metadata: Metadata = {
   },
   description:
     "Find broken agent configuration — hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile. 1.0.0, 59 checks. No AI, no network on check, writes nothing.",
+  alternates: {
+    canonical: "./",
+    types: {
+      "text/markdown": "./",
+    },
+  },
   openGraph: {
     title: "agentscan — audit agent config before it fails silently",
     description:
@@ -33,7 +39,7 @@ export const metadata: Metadata = {
     locale: "en_US",
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "agentscan — audit agent config before it fails silently",
     description:
       "Find broken agent configuration. 1.0.0, 59 checks. No AI, no network on check, writes nothing.",

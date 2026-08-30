@@ -1,14 +1,28 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CopyCommand } from "@/components/copy-command";
+import { SoftwareApplicationJsonLd } from "@/components/json-ld";
 import { SiteFooter } from "@/components/site-footer";
 import { TerminalDemo } from "@/components/terminal-demo";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+    types: { "text/markdown": "/index.md" },
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+  },
+};
+
 export default function HomePage() {
   return (
     <>
+      <SoftwareApplicationJsonLd />
       <div className="relative overflow-hidden">
         <div
           aria-hidden

@@ -1,0 +1,3 @@
+[test]
+# CLI suite lives under tests/. The marketing site has its own runner in site/.
+exclude = ["**/node_modules/**", "site/**"]
