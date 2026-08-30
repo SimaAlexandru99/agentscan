@@ -15,6 +15,8 @@ import {
 export type { CheckOptions } from "./options";
 export { KNOWN_HOOK_EVENTS } from "./hooks";
 export { STRUCTURAL_CHECKS } from "./registry";
+export type { RuleProvenance, StructuralCheck } from "./provenance";
+export { canonicalRuleId, ignoreRuleSet, RULE_ALIASES } from "./aliases";
 
 /**
  * Run every structural check. Order is deterministic; `check.ts` sorts anyway.

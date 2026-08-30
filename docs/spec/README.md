@@ -23,12 +23,21 @@ to appear in real projects.** When adding a check:
 
 | File | Covers | Checks that depend on it |
 |------|--------|--------------------------|
-| [hook-events.md](hook-events.md) | The 31 dispatched hook event names | `hook.unknown-event` |
-| [hook-sources.md](hook-sources.md) | The seven files a hook can be registered in, and how each one's script paths resolve | `hook.missing-script`, `hook.unknown-event` |
-| [skills.md](skills.md) | SKILL.md frontmatter fields and what is required | `skill.missing-frontmatter`, `skill.missing-description`, and two deleted checks |
-| [agents.md](agents.md) | Subagent frontmatter: required fields, the name format, and the one documented load failure | every `agent.*` check |
-| [mcp.md](mcp.md) | `.mcp.json` shape and transports | `mcp.no-launch`, `mcp.url-without-type`, `mcp.command-missing` |
+| [hook-events.md](hook-events.md) | The 31 dispatched hook event names | `claude.hook.unknown-event` |
+| [hook-sources.md](hook-sources.md) | The seven files a hook can be registered in, and how each one's script paths resolve | `claude.hook.missing-script`, `claude.hook.unknown-event` |
+| [skills.md](skills.md) | Claude Code SKILL.md frontmatter fields | `claude.skill.missing-frontmatter`, `claude.skill.missing-description`, and two deleted checks |
+| [agent-skills.md](agent-skills.md) | Portable Agent Skills required `name` / `description` | `agent-skills.skill.*` |
+| [agents.md](agents.md) | Claude subagent frontmatter | every `claude.agent.*` check |
+| [mcp.md](mcp.md) | Claude `.mcp.json` shape and transports | `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `mcp.command-missing` |
+| [vscode-mcp.md](vscode-mcp.md) | VS Code `.vscode/mcp.json` `servers` wrapper | `vscode.mcp.no-launch` |
+| [cursor-mcp.md](cursor-mcp.md) | Cursor `.cursor/mcp.json` | `cursor.mcp.no-launch` |
+| [antigravity-mcp.md](antigravity-mcp.md) | Antigravity `serverUrl` | `antigravity.mcp.no-launch` |
+| [codex-mcp.md](codex-mcp.md) | Codex `[mcp_servers.*]` TOML | `codex.mcp.no-launch` |
 | [thresholds.md](thresholds.md) | Every numeric threshold and its evidence | all `budget.*`, `skill.description-budget` |
+
+Each `STRUCTURAL_CHECKS` entry also carries `provenance` (`spec-required`,
+`vendor-recommendation`, `security`, `internal-consistency`, or `heuristic`)
+so the registry can tell a published requirement from a size opinion.
 
 ## What is not spec-backed
 

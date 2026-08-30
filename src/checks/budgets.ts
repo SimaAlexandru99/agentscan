@@ -127,7 +127,7 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
       suggest:
         "Delete rather than reorganise — keep only what an agent cannot infer from the code. Or set thresholds.agentsMdLines in .agentscanrc.json",
       reason:
-        "Measured across 2,500+ repositories: past ~150 lines additional content delivers diminishing returns and raises inference cost 20-23% without improving agent performance. Unnecessary requirements actively hurt, by broadening exploration. A lean file is 40-60 lines of commands and boundaries.",
+        "Heuristic, not a published AGENTS.md requirement. Secondary measurements suggest diminishing returns past ~150 lines. Keep this at info; a long file is not a defect. See docs/spec/thresholds.md.",
     }),
     ...policyLengthFinding({
       ruleId: "budget.claude-md",
@@ -137,7 +137,7 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
       suggest:
         "Keep only what is true every session; move the rest into a skill, which loads on demand. Or set thresholds.claudeMdLines in .agentscanrc.json",
       reason:
-        "Frontier models reliably follow roughly 150-200 instructions, and Claude Code's own system prompt already spends about 50 of them. Past that the file is skim-read rather than obeyed. Imports do not help: imported files load at launch too, so splitting organises the text without reducing what competes for attention.",
+        "Claude Code's memory reference asks authors to target under 200 lines per CLAUDE.md — longer files consume more context and reduce adherence. See docs/spec/thresholds.md.",
     }),
     ...countFinding({
       ruleId: "budget.agents",

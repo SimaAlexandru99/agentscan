@@ -26,7 +26,7 @@ export function checkAgents(facts: Facts): Finding[] {
 
     if (!agent.hasFrontmatter) {
       out.push(
-        make("agent.missing-frontmatter", `agent:${agent.name}`, {
+        make("claude.agent.missing-frontmatter", `agent:${agent.name}`, {
           action: "warn",
           severity: "error",
           message: "Agent definition has no YAML frontmatter block",
@@ -40,7 +40,7 @@ export function checkAgents(facts: Facts): Finding[] {
     }
     if (agent.description === undefined) {
       out.push(
-        make("agent.missing-description", `agent:${agent.name}`, {
+        make("claude.agent.missing-description", `agent:${agent.name}`, {
           action: "warn",
           severity: "error",
           message: "Agent frontmatter has no `description`",
@@ -53,7 +53,7 @@ export function checkAgents(facts: Facts): Finding[] {
     }
     if (agent.frontmatterName === undefined) {
       out.push(
-        make("agent.missing-name", `agent:${agent.name}`, {
+        make("claude.agent.missing-name", `agent:${agent.name}`, {
           action: "warn",
           severity: "error",
           message: "Agent frontmatter has no `name`",
@@ -65,7 +65,7 @@ export function checkAgents(facts: Facts): Finding[] {
     } else {
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(agent.frontmatterName)) {
         out.push(
-          make("agent.invalid-name", `agent:${agent.name}`, {
+          make("claude.agent.invalid-name", `agent:${agent.name}`, {
             action: "warn",
             // Warning, not error. The reference states the format — "Unique
             // identifier using lowercase letters and hyphens" — but names a
@@ -86,7 +86,7 @@ export function checkAgents(facts: Facts): Finding[] {
     }
   }
   for (const [name, paths] of names) if (paths.length > 1) {
-    out.push(make("agent.duplicate-name", `agent:${name}`, {
+    out.push(make("claude.agent.duplicate-name", `agent:${name}`, {
       action: "warn", severity: "error", message: `Agent name "${name}" is declared by multiple files`,
       reason: "Duplicate names make dispatch ambiguous.", evidence: paths.map((path) => ({ kind: "agent", value: path })),
       suggest: "Give each agent a unique frontmatter name",

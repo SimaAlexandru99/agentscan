@@ -4,8 +4,9 @@ import { runChecks, STRUCTURAL_CHECKS } from "../../src/checks/index";
 
 function skill(partial: Partial<SkillFact> & Pick<SkillFact, "id">): SkillFact {
   return {
-    path: `.agents/skills/${partial.id}`,
+    path: `.claude/skills/${partial.id}`,
     source: "project",
+    sourceProvider: "claude",
     hasSkillMd: true,
     hasFrontmatter: true,
     ...partial,
@@ -88,7 +89,7 @@ describe("hook checks", () => {
     );
     expect(findings).toHaveLength(1);
     const f = findings[0]!;
-    expect(f.ruleId).toBe("hook.missing-script");
+    expect(f.ruleId).toBe("claude.hook.missing-script");
     expect(f.severity).toBe("error");
     expect(f.action).toBe("warn");
     expect(f.subject).toBe("hook:PreToolUse:.claude/hooks/protect-env.js");
@@ -100,7 +101,7 @@ describe("hook checks", () => {
         hooks: [hook({ name: "PreToolUce", event: "PreToolUce" })],
       }),
     );
-    expect(findings.map((f) => f.ruleId)).toEqual(["hook.unknown-event"]);
+    expect(findings.map((f) => f.ruleId)).toEqual(["claude.hook.unknown-event"]);
     expect(findings[0]!.severity).toBe("error");
     expect(findings[0]!.subject).toBe("hook:PreToolUce");
     expect(findings[0]!.message).toContain("PreToolUce");
@@ -190,7 +191,7 @@ describe("skill structure checks", () => {
     const findings = runChecks(
       baseFacts({ skills: [skill({ id: "context7-mcp", hasFrontmatter: false })] }),
     );
-    expect(findings.map((f) => f.ruleId)).toEqual(["skill.missing-frontmatter"]);
+    expect(findings.map((f) => f.ruleId)).toEqual(["claude.skill.missing-frontmatter"]);
   });
 
   test("a name that differs from the directory is not a finding", () => {
@@ -293,7 +294,7 @@ describe("skills-lock integrity", () => {
       }),
     );
     // malformed is malformed wherever it lives
-    expect(findings.map((f) => f.ruleId)).toEqual(["skill.missing-frontmatter"]);
+    expect(findings.map((f) => f.ruleId)).toEqual(["claude.skill.missing-frontmatter"]);
     expect(
       findings[0]!.evidence.some(
         (e) => e.kind === "source" && e.value === "global",
@@ -417,14 +418,14 @@ describe("agent definitions", () => {
     const findings = runChecks(
       baseFacts({ agents: [agent("reviewer", { hasFrontmatter: false })] }),
     );
-    expect(findings.map((f) => f.ruleId)).toEqual(["agent.missing-frontmatter"]);
+    expect(findings.map((f) => f.ruleId)).toEqual(["claude.agent.missing-frontmatter"]);
     expect(findings[0]!.severity).toBe("error");
     expect(findings[0]!.subject).toBe("agent:reviewer");
   });
 
   test("frontmatter with no description is an error", () => {
     const findings = runChecks(baseFacts({ agents: [agent("reviewer")] }));
-    expect(findings.map((f) => f.ruleId)).toEqual(["agent.missing-description"]);
+    expect(findings.map((f) => f.ruleId)).toEqual(["claude.agent.missing-description"]);
     expect(findings[0]!.severity).toBe("error");
   });
 
@@ -446,7 +447,7 @@ describe("agent definitions", () => {
         ],
       }),
     );
-    expect(findings.map((f) => f.ruleId)).toEqual(["agent.invalid-name"]);
+    expect(findings.map((f) => f.ruleId)).toEqual(["claude.agent.invalid-name"]);
     expect(findings[0]!.severity).toBe("warning");
   });
 
@@ -496,7 +497,7 @@ describe("skills an agent cannot tell apart", () => {
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.duplicate-description"]);
     expect(findings[0]!.subject).toBe("skills:firebase-basics firebase-firestore");
-    expect(findings[0]!.severity).toBe("warning");
+    expect(findings[0]!.severity).toBe("info");
     expect(findings[0]!.message).toContain("firebase-basics");
     expect(findings[0]!.message).toContain("firebase-firestore");
   });
@@ -567,20 +568,69 @@ describe("skills an agent cannot tell apart", () => {
     expect(findings).toEqual([]);
   });
 
-  test("agents-runtime skills skip Claude-only structure checks", () => {
+  test("agent-skills skills emit portable structure checks", () => {
     const findings = runChecks(baseFacts({
-      skills: [skill({ id: "pointer", runtime: "agents", hasFrontmatter: false, brokenReferences: ["references/missing.md"] })],
+      skills: [skill({
+        id: "pointer",
+        path: ".agents/skills/pointer",
+        sourceProvider: "agent-skills",
+        hasFrontmatter: false,
+        brokenReferences: ["references/missing.md"],
+      })],
     }));
-    expect(findings).toEqual([]);
+    expect(findings.map((f) => f.ruleId)).toEqual([
+      "agent-skills.skill.missing-frontmatter",
+    ]);
   });
 
-  test("a skill with no description is left to skill.missing-description", () => {
+  test("agent-skills broken references fire when SKILL.md parses", () => {
+    const findings = runChecks(baseFacts({
+      skills: [skill({
+        id: "pointer",
+        path: ".agents/skills/pointer",
+        sourceProvider: "agent-skills",
+        frontmatterName: "pointer",
+        description: "Points at a missing file.",
+        brokenReferences: ["references/missing.md"],
+      })],
+    }));
+    expect(findings.map((f) => f.ruleId)).toEqual(["skill.broken-reference"]);
+  });
+
+  test("agent-skills requires name matching the directory", () => {
+    const findings = runChecks(baseFacts({
+      skills: [skill({
+        id: "pdf",
+        path: ".agents/skills/pdf",
+        sourceProvider: "agent-skills",
+        frontmatterName: "PDF-Processing",
+        description: "Extract text from PDFs.",
+      })],
+    }));
+    expect(findings.map((f) => f.ruleId).sort()).toEqual([
+      "agent-skills.skill.invalid-name",
+      "agent-skills.skill.name-does-not-match-directory",
+    ]);
+  });
+
+  test("claude skills do not require name to match the directory", () => {
+    const findings = runChecks(baseFacts({
+      skills: [skill({
+        id: "deploy",
+        frontmatterName: "Deploy Helper",
+        description: "Deploy the app",
+      })],
+    }));
+    expect(findings.map((f) => f.ruleId)).toEqual([]);
+  });
+
+  test("a skill with no description is left to claude.skill.missing-description", () => {
     const findings = runChecks(
       baseFacts({ skills: [skill({ id: "a", frontmatterName: "a" }), skill({ id: "b", frontmatterName: "b" })] }),
     );
     expect(findings.map((f) => f.ruleId).sort()).toEqual([
-      "skill.missing-description",
-      "skill.missing-description",
+      "claude.skill.missing-description",
+      "claude.skill.missing-description",
     ]);
   });
 
@@ -740,7 +790,7 @@ describe("review regressions", () => {
         ],
       }),
     );
-    expect(f.map((x) => x.ruleId)).toEqual(["mcp.hardcoded-secret"]);
+    expect(f.map((x) => x.ruleId)).toEqual(["security.hardcoded-secret"]);
     expect(JSON.stringify(f)).not.toContain("proj0123456789");
   });
 
@@ -799,7 +849,7 @@ describe("mcp checks", () => {
     const findings = runChecks(
       baseFacts({ mcp: [mcp({ name: "broken", hasCommand: false })] }),
     );
-    expect(findings.map((f) => f.ruleId)).toEqual(["mcp.no-launch"]);
+    expect(findings.map((f) => f.ruleId)).toEqual(["claude.mcp.no-launch"]);
     expect(findings[0]!.severity).toBe("error");
     expect(findings[0]!.reason).toContain("schema");
   });
@@ -858,7 +908,7 @@ describe("mcp checks", () => {
         mcp: [mcp({ name: "remote", hasCommand: false, hasUrl: true })],
       }),
     );
-    expect(findings.map((f) => f.ruleId)).toEqual(["mcp.url-without-type"]);
+    expect(findings.map((f) => f.ruleId)).toEqual(["claude.mcp.url-without-type"]);
     expect(findings[0]!.severity).toBe("error");
   });
 
@@ -873,7 +923,7 @@ describe("mcp checks", () => {
         ],
       }),
     );
-    expect(findings.map((f) => f.ruleId)).toEqual(["mcp.hardcoded-secret"]);
+    expect(findings.map((f) => f.ruleId)).toEqual(["security.hardcoded-secret"]);
     expect(findings[0]!.severity).toBe("error");
     // the secret itself must never be echoed back
     expect(findings[0]!.message).not.toContain("ghp_abcdefghij0123456789abcd");
@@ -891,7 +941,7 @@ describe("mcp checks", () => {
         ],
       }),
     );
-    expect(findings[0]!.ruleId).toBe("mcp.hardcoded-secret");
+    expect(findings[0]!.ruleId).toBe("security.hardcoded-secret");
     // rotating at the wrong provider is the worst failure for this finding
     expect(findings[0]!.message).toContain("Anthropic");
     expect(findings[0]!.message).not.toContain("OpenAI");
@@ -974,11 +1024,87 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           description: "d",
           brokenReferences: ["references/gone.md"],
         }),
+        skill({
+          id: "as-no-fm",
+          path: ".agents/skills/as-no-fm",
+          sourceProvider: "agent-skills",
+          hasFrontmatter: false,
+        }),
+        skill({
+          id: "as-no-name",
+          path: ".agents/skills/as-no-name",
+          sourceProvider: "agent-skills",
+          description: "Has a description but no name.",
+        }),
+        skill({
+          id: "as-no-desc",
+          path: ".agents/skills/as-no-desc",
+          sourceProvider: "agent-skills",
+          frontmatterName: "as-no-desc",
+        }),
+        skill({
+          id: "as-bad",
+          path: ".agents/skills/as-bad",
+          sourceProvider: "agent-skills",
+          frontmatterName: "PDF-Processing",
+          description: "Bad identifier.",
+        }),
+        skill({
+          id: `${"n".repeat(65)}`,
+          path: `.agents/skills/${"n".repeat(65)}`,
+          sourceProvider: "agent-skills",
+          frontmatterName: "n".repeat(65),
+          description: "Name is too long.",
+        }),
+        skill({
+          id: "as-long-desc",
+          path: ".agents/skills/as-long-desc",
+          sourceProvider: "agent-skills",
+          frontmatterName: "as-long-desc",
+          description: "d".repeat(1025),
+        }),
       ],
       mcp: [
         {
           name: "dead",
           path: "/tmp/proj/.mcp.json",
+          schemaProfile: "claude-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "dead-vscode",
+          path: "/tmp/proj/.vscode/mcp.json",
+          schemaProfile: "vscode-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "dead-cursor",
+          path: "/tmp/proj/.cursor/mcp.json",
+          schemaProfile: "cursor-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "dead-ag",
+          path: "/tmp/proj/.agents/mcp_config.json",
+          schemaProfile: "antigravity-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "dead-codex",
+          path: "/tmp/proj/.codex/config.toml",
+          schemaProfile: "codex-toml",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
@@ -1072,6 +1198,13 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
   test("declared ids are unique", () => {
     const ids = STRUCTURAL_CHECKS.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test("every registered check has provenance and a verification date", () => {
+    for (const check of STRUCTURAL_CHECKS) {
+      expect(check.provenance).toBeString();
+      expect(check.lastVerified).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
   });
 });
 

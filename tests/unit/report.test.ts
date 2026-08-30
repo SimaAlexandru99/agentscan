@@ -396,8 +396,8 @@ describe("renderText", () => {
   test("repeated findings collapse into one block with a count", () => {
     // Six dead hooks used to print the same sentence six times, 24 lines of it.
     const many = Array.from({ length: 3 }, (_, i) => ({
-      id: `hook.missing-script:h${i}`,
-      ruleId: "hook.missing-script",
+      id: `claude.hook.missing-script:h${i}`,
+      ruleId: "claude.hook.missing-script",
       action: "warn" as const,
       severity: "error" as const,
       subject: `hook:PreToolUse:./h${i}.js`,
@@ -414,7 +414,7 @@ describe("renderText", () => {
       quiet: false,
     });
 
-    expect(text).toContain("ERROR   rule:hook.missing-script  ×3");
+    expect(text).toContain("ERROR   rule:claude.hook.missing-script  ×3");
     // the shared sentence once, without any one finding's filename
     expect(text).toContain("PreToolUse hook points at a script that does not exist\n");
     // and each occurrence as a path relative to the scanned project
@@ -427,8 +427,8 @@ describe("renderText", () => {
   test("grouped headline stays neutral when events differ", () => {
     const mixed = [
       {
-        id: "hook.missing-script:a",
-        ruleId: "hook.missing-script",
+        id: "claude.hook.missing-script:a",
+        ruleId: "claude.hook.missing-script",
         action: "warn" as const,
         severity: "error" as const,
         subject: "hook:PreToolUse:./a.js",
@@ -437,8 +437,8 @@ describe("renderText", () => {
         evidence: [{ kind: "hook", value: "PreToolUse @ /tmp/proj/.claude/settings.json" }],
       },
       {
-        id: "hook.missing-script:b",
-        ruleId: "hook.missing-script",
+        id: "claude.hook.missing-script:b",
+        ruleId: "claude.hook.missing-script",
         action: "warn" as const,
         severity: "error" as const,
         subject: "hook:SessionStart:./b.js",
@@ -490,8 +490,8 @@ describe("renderText", () => {
       facts: baseFacts({ root: "/tmp/proj" }),
       findings: [
         {
-          id: "hook.missing-script:one",
-          ruleId: "hook.missing-script",
+          id: "claude.hook.missing-script:one",
+          ruleId: "claude.hook.missing-script",
           action: "warn",
           severity: "error",
           subject: "hook:PreToolUse:./only.js",
@@ -506,7 +506,7 @@ describe("renderText", () => {
 
     expect(text).not.toContain("×1");
     expect(text).toContain("does not exist: ./only.js");
-    expect(text).toContain("ERROR   rule:hook.missing-script");
+    expect(text).toContain("ERROR   rule:claude.hook.missing-script");
   });
 
   test("colour does not let scanned content forge escapes", () => {

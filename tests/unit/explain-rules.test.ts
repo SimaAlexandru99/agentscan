@@ -50,7 +50,7 @@ describe("runRulesCommand", () => {
     const result = await runRulesCommand({ dir });
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("agent.invalid-name");
+    expect(result.stdout).toContain("claude.agent.invalid-name");
     expect(result.stdout).toContain("budget.mcp");
     // orphans are computed from facts, not shipped as a rule
     expect(result.stdout).not.toContain("skill.orphan");
@@ -64,16 +64,16 @@ describe("runRulesCommand", () => {
 
     // the checks that actually find things must not be invisible here
     for (const id of [
-      "hook.missing-script",
-      "hook.unknown-event",
-      "mcp.hardcoded-secret",
+      "claude.hook.missing-script",
+      "claude.hook.unknown-event",
+      "security.hardcoded-secret",
       "mcp.command-missing",
-      "skill.missing-description",
+      "claude.skill.missing-description",
       "skill.not-in-lock",
       "config.unreadable",
     ]) {
       expect(result.stdout).toContain(id);
     }
-    expect(result.stdout).toMatch(/hook\.missing-script\s+.+/);
+    expect(result.stdout).toMatch(/claude\.hook\.missing-script\s+.+/);
   });
 });

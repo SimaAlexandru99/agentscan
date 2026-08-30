@@ -68,30 +68,104 @@ const AGENT_CONFIG_SIGNALS = [
   "AGENTS.md",
   "CLAUDE.md",
   "skills-lock.json",
+  ".cursor",
+  ".vscode",
+  ".github",
+  ".codex",
+  ".grok",
+  ".gemini",
+  ".kiro",
+  ".windsurf",
+  ".cline",
+  ".roo",
+  ".kilo",
+  ".opencode",
+  ".continue",
+  ".junie",
+] as const;
+
+const WORKSPACE_MARKERS = [
+  "package.json",
+  "pnpm-workspace.yaml",
+  "lerna.json",
+  "go.work",
+  "Cargo.toml",
+  "pyproject.toml",
 ] as const;
 
 export function hasAgentConfigSignal(dir: string): boolean {
   return AGENT_CONFIG_SIGNALS.some((name) => existsSync(join(dir, name)));
 }
 
+function hasWorkspaceMarker(dir: string): boolean {
+  return WORKSPACE_MARKERS.some((name) => existsSync(join(dir, name)));
+}
+
 /**
- * Walk up from startDir for the nearest project root: a directory with
- * `package.json` and/or agent-config signals. Throw only when neither exists.
+ * Walk up from startDir. Prefer the nearest provider-config directory, then
+ * the nearest workspace/package root, then the nearest Git root. A child
+ * `.cursor` or `.claude` therefore wins over a parent `package.json`.
  */
 export function resolveRoot(startDir: string): string {
   let dir = resolve(startDir);
+  let nearestSignal: string | undefined;
+  let nearestWorkspace: string | undefined;
+  let nearestGit: string | undefined;
   for (;;) {
-    if (existsSync(join(dir, "package.json")) || hasAgentConfigSignal(dir)) {
-      return dir;
+    if (nearestSignal === undefined && hasAgentConfigSignal(dir)) {
+      nearestSignal = dir;
+    }
+    if (nearestWorkspace === undefined && hasWorkspaceMarker(dir)) {
+      nearestWorkspace = dir;
+    }
+    if (nearestGit === undefined && existsSync(join(dir, ".git"))) {
+      nearestGit = dir;
     }
     const parent = resolve(dir, "..");
     if (parent === dir) {
-      throw new Error(
-        `No package.json or agent configuration found walking up from ${resolve(startDir)}`,
-      );
+      break;
     }
     dir = parent;
   }
+  // Prefer whichever of signal/workspace is closer to startDir. A fixture
+  // with only package.json must not jump to a parent repo's `.claude`.
+  const root = nearer(startDir, nearestSignal, nearestWorkspace) ?? nearestGit;
+  if (root === undefined) {
+    throw new Error(
+      `No package.json or agent configuration found walking up from ${resolve(startDir)}`,
+    );
+  }
+  return root;
+}
+
+function nearer(
+  startDir: string,
+  a: string | undefined,
+  b: string | undefined,
+): string | undefined {
+  if (a === undefined) {
+    return b;
+  }
+  if (b === undefined) {
+    return a;
+  }
+  const start = resolve(startDir);
+  return hops(start, a) <= hops(start, b) ? a : b;
+}
+
+function hops(from: string, to: string): number {
+  let dir = resolve(from);
+  let n = 0;
+  const target = resolve(to);
+  while (dir !== target) {
+    const parent = resolve(dir, "..");
+    if (parent === dir) {
+      return Number.POSITIVE_INFINITY;
+    }
+    dir = parent;
+    n += 1;
+  }
+  return n;
 }
 
 /**

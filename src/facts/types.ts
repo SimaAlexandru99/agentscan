@@ -1,10 +1,14 @@
+import type { McpSchemaProfile, Provider } from "./provider";
+
 export type Action = "keep" | "delete" | "add" | "refresh" | "warn" | "drift";
 export type Severity = "error" | "warning" | "info";
 
+export type { McpSchemaProfile, Provider } from "./provider";
+
 export type SkillFact = {
   id: string;
-  /** Runtime convention that owns this skill directory. */
-  runtime?: "claude" | "agents" | "unknown";
+  /** Provider convention that owns this skill directory. */
+  sourceProvider?: Provider;
   /** Stable path-qualified identity only when duplicate ids are present. */
   instanceId?: string;
   path: string;
@@ -33,8 +37,11 @@ export type SkillFact = {
 export type McpFact = {
   name: string;
   path: string;
+  schemaProfile?: McpSchemaProfile;
+  sourceProvider?: Provider;
   hasCommand: boolean;
   hasUrl: boolean;
+  hasServerUrl?: boolean;
   /** Declared `command` string when present (stdio servers). */
   command?: string;
   /**

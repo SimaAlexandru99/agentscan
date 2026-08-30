@@ -13,7 +13,15 @@ export const defaultThresholds = {
 
 export const defaultConfig = {
   skillPaths: [".agents/skills", ".claude/skills", "skills", ".cursor/skills"],
-  mcpPaths: [".mcp.json", ".claude/mcp.json", "mcp.json"],
+  mcpPaths: [
+    ".mcp.json",
+    ".claude/mcp.json",
+    "mcp.json",
+    ".vscode/mcp.json",
+    ".cursor/mcp.json",
+    ".agents/mcp_config.json",
+    ".codex/config.toml",
+  ],
   policyFiles: ["AGENTS.md", "CLAUDE.md"],
   ignoreSkills: [] as string[],
   ignoreRules: [] as string[],

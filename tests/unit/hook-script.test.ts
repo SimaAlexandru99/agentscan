@@ -161,7 +161,7 @@ describe("hook script discovery", () => {
     expect(hooks.get(".claude/hooks/missing.js")).toBe(false);
     expect(
       runChecks(facts)
-        .filter((finding) => finding.ruleId === "hook.missing-script")
+        .filter((finding) => finding.ruleId === "claude.hook.missing-script")
         .map((finding) => finding.subject),
     ).toEqual([
       "hook:PreToolUse:.claude/hooks/directory.js",

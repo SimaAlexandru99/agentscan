@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { providerFromSkillsDir } from "../facts/provider";
 import type { ConfigErrorFact, SkillFact } from "../facts/types";
 import { hooksFromObject } from "./hooks";
 import { NESTED_DISCOVERY_MAX_DEPTH, NESTED_DISCOVERY_SKIP, readFrontmatter } from "./shared";
@@ -99,11 +100,7 @@ export function discoverSkillsInDir(
   }
   const skills: SkillFact[] = [];
   const normalizedDir = dir.replaceAll("\\", "/");
-  const runtime: SkillFact["runtime"] = normalizedDir.includes("/.claude/skills") || normalizedDir.endsWith("/.claude/skills")
-    ? "claude"
-    : normalizedDir.includes("/.agents/skills") || normalizedDir.endsWith("/.agents/skills")
-      ? "agents"
-      : "unknown";
+  const sourceProvider = providerFromSkillsDir(normalizedDir);
   for (const name of entries) {
     // `.system` under ~/.codex/skills is a container holding six real skills,
     // not a skill — reporting it suggested deleting them. Mirrors the dotfile
@@ -142,7 +139,7 @@ export function discoverSkillsInDir(
 
     const fact: SkillFact = {
       id: name,
-      runtime,
+      sourceProvider,
       path: skillDir,
       source,
       hasSkillMd,

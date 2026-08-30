@@ -93,7 +93,7 @@ describe("never claim anything about a file that failed to open", () => {
     const ids = (await report(dir)).findings.map((f) => f.ruleId);
 
     expect(ids).toContain("config.unreadable");
-    expect(ids).not.toContain("agent.missing-description");
+    expect(ids).not.toContain("claude.agent.missing-description");
   });
 
   test("an unreadable agent file is not called frontmatter-less", async () => {
@@ -105,7 +105,7 @@ describe("never claim anything about a file that failed to open", () => {
     try {
       const ids = (await report(dir)).findings.map((f) => f.ruleId);
       expect(ids).toContain("config.unreadable");
-      expect(ids).not.toContain("agent.missing-frontmatter");
+      expect(ids).not.toContain("claude.agent.missing-frontmatter");
     } finally {
       chmodSync(join(dir, ".claude/agents/a.md"), 0o644);
     }
@@ -193,7 +193,7 @@ describe("unreadable input is reported, never swallowed", () => {
 
       // the file may well have valid frontmatter — we simply could not read it,
       // and telling the user to add frontmatter sends them to fix a correct file
-      expect(ids).not.toContain("skill.missing-frontmatter");
+      expect(ids).not.toContain("claude.skill.missing-frontmatter");
       expect(ids).toContain("config.unreadable");
     } finally {
       chmodSync(join(dir, ".agents/skills/x/SKILL.md"), 0o644);
@@ -287,7 +287,7 @@ describe("the frontmatter parser reads what is there", () => {
     // `name` is optional, so an empty one is not itself a finding — what
     // matters is that the description was not swallowed into it.
     expect(ids).not.toContain("skill.name-mismatch");
-    expect(ids).not.toContain("skill.missing-description");
+    expect(ids).not.toContain("claude.skill.missing-description");
   });
 
   test("CRLF line endings do not corrupt the frontmatter block", async () => {
@@ -323,7 +323,7 @@ describe("the frontmatter parser reads what is there", () => {
     expect(ids).toContain("config.unreadable");
     // we could not read the fields; claiming they are absent would be a guess
     expect(ids).not.toContain("skill.missing-name");
-    expect(ids).not.toContain("skill.missing-description");
+    expect(ids).not.toContain("claude.skill.missing-description");
   });
 
   test("a UTF-8 BOM does not hide valid frontmatter", async () => {
@@ -333,7 +333,7 @@ describe("the frontmatter parser reads what is there", () => {
     });
     const payload = await report(dir);
     expect(payload.findings.map((f) => f.ruleId)).not.toContain(
-      "skill.missing-frontmatter",
+      "claude.skill.missing-frontmatter",
     );
   });
 });
@@ -373,11 +373,11 @@ describe("agent definitions, end to end", () => {
     });
     const payload = await report(dir);
     const agentFindings = payload.findings.filter((f) =>
-      f.ruleId.startsWith("agent."),
+      f.ruleId.includes("agent."),
     );
 
     expect(agentFindings.map((f) => f.ruleId)).toEqual([
-      "agent.missing-frontmatter",
+      "claude.agent.missing-frontmatter",
     ]);
     // good.md declares a display name unlike its filename — by design
     expect(JSON.stringify(payload.findings)).not.toContain("good");
@@ -437,7 +437,7 @@ describe("root resolution is visible", () => {
     expect(payload.root).toBe(dir);
     expect(payload.resolvedFrom).toBeUndefined();
     expect(
-      payload.findings.some((f) => f.ruleId === "hook.missing-script"),
+      payload.findings.some((f) => f.ruleId === "claude.hook.missing-script"),
     ).toBe(true);
   });
 

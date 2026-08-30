@@ -1,0 +1,35 @@
+/**
+ * Old rule ids accepted in ignoreRules / explain through 0.8.x.
+ * Findings emit the canonical (right-hand) id.
+ */
+export const RULE_ALIASES: Record<string, string> = {
+  "hook.unknown-event": "claude.hook.unknown-event",
+  "hook.missing-script": "claude.hook.missing-script",
+  "skill.missing-frontmatter": "claude.skill.missing-frontmatter",
+  "skill.missing-description": "claude.skill.missing-description",
+  "agent.missing-frontmatter": "claude.agent.missing-frontmatter",
+  "agent.missing-description": "claude.agent.missing-description",
+  "agent.missing-name": "claude.agent.missing-name",
+  "agent.duplicate-name": "claude.agent.duplicate-name",
+  "agent.invalid-name": "claude.agent.invalid-name",
+  "mcp.no-launch": "claude.mcp.no-launch",
+  "mcp.url-without-type": "claude.mcp.url-without-type",
+  "mcp.hardcoded-secret": "security.hardcoded-secret",
+};
+
+export function canonicalRuleId(id: string): string {
+  return RULE_ALIASES[id] ?? id;
+}
+
+export function ruleIdsMatch(configured: string, emitted: string): boolean {
+  return canonicalRuleId(configured) === emitted || configured === emitted;
+}
+
+export function ignoreRuleSet(ids: readonly string[]): Set<string> {
+  const out = new Set<string>();
+  for (const id of ids) {
+    out.add(id);
+    out.add(canonicalRuleId(id));
+  }
+  return out;
+}

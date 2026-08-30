@@ -61,8 +61,8 @@ describe("renderPrompt", () => {
       facts: facts(),
       findings: [
         finding({
-          id: "hook.missing-script:hook:PreToolUse:./guard.sh",
-          ruleId: "hook.missing-script",
+          id: "claude.hook.missing-script:hook:PreToolUse:./guard.sh",
+          ruleId: "claude.hook.missing-script",
           severity: "error",
           subject: "hook:PreToolUse:./guard.sh",
           message: "PreToolUse hook points at a script that does not exist",
@@ -77,7 +77,7 @@ describe("renderPrompt", () => {
     expect(out).toContain("Restore ./guard.sh");
     expect(out).toContain("The hook is registered but never runs.");
     // the id, so the executor can suppress it instead of guessing
-    expect(out).toContain("hook.missing-script:hook:PreToolUse:./guard.sh");
+    expect(out).toContain("claude.hook.missing-script:hook:PreToolUse:./guard.sh");
   });
 
   test("untrusted strings are escaped here too", () => {

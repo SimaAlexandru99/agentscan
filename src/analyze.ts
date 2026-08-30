@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { ignoreRuleSet } from "./checks/aliases";
 import { runChecks } from "./checks/index";
 import { loadConfig } from "./config/load";
 import type { AgentscanConfig } from "./config/schema";
@@ -44,7 +45,7 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
   const facts = extractFacts(root, config, { includeGlobal });
 
   const ignoredSkills = new Set(config.ignoreSkills);
-  const ignoredRules = new Set(config.ignoreRules);
+  const ignoredRules = ignoreRuleSet(config.ignoreRules);
 
   const structural = runChecks(facts, {
     requireLock: config.requireLock,

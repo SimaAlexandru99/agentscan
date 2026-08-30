@@ -52,7 +52,7 @@ describe("plugin hooks", () => {
     plugin(root, "guard-plugin", guard("${CLAUDE_PLUGIN_ROOT}/scripts/gone.sh"));
 
     const findings = findingsFor(root).filter(
-      (f) => f.ruleId === "hook.missing-script",
+      (f) => f.ruleId === "claude.hook.missing-script",
     );
     expect(findings).toHaveLength(1);
     expect(findings[0]!.severity).toBe("error");
@@ -85,7 +85,7 @@ describe("plugin hooks", () => {
     );
 
     const findings = findingsFor(root).filter(
-      (f) => f.ruleId === "hook.missing-script",
+      (f) => f.ruleId === "claude.hook.missing-script",
     );
     expect(findings).toHaveLength(1);
   });
@@ -100,7 +100,7 @@ describe("plugin hooks", () => {
       JSON.stringify({ hooks: guard("${CLAUDE_PLUGIN_ROOT}/scripts/gone.sh") }),
     );
 
-    expect(findingsFor(root).filter((f) => f.ruleId === "hook.missing-script")).toEqual([]);
+    expect(findingsFor(root).filter((f) => f.ruleId === "claude.hook.missing-script")).toEqual([]);
   });
 
   test("an unknown event in a plugin is reported like any other", () => {
@@ -110,7 +110,7 @@ describe("plugin hooks", () => {
     });
 
     const findings = findingsFor(root).filter(
-      (f) => f.ruleId === "hook.unknown-event",
+      (f) => f.ruleId === "claude.hook.unknown-event",
     );
     expect(findings).toHaveLength(1);
   });

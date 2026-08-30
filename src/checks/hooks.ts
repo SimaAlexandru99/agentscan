@@ -44,6 +44,8 @@ export const KNOWN_HOOK_EVENTS = new Set([
   "Elicitation",
   "ElicitationResult",
   "SessionEnd",
+  "PreModelSwitch",
+  "PostModelSwitch",
 ]);
 
 export function checkHookEvents(facts: Facts): Finding[] {
@@ -56,7 +58,7 @@ export function checkHookEvents(facts: Facts): Finding[] {
     }
     reported.add(event);
     out.push(
-      make("hook.unknown-event", `hook:${event}`, {
+      make("claude.hook.unknown-event", `hook:${event}`, {
         action: "warn",
         severity: "error",
         message: `"${event}" is not a hook event that gets dispatched`,
@@ -69,7 +71,7 @@ export function checkHookEvents(facts: Facts): Finding[] {
             value: [...KNOWN_HOOK_EVENTS].join(", "),
           },
         ],
-        suggest: `Fix the event name in ${hook.path} (or ignoreRules: ["hook.unknown-event"] if it is newly supported)`,
+        suggest: `Fix the event name in ${hook.path} (or ignoreRules: ["claude.hook.unknown-event"] if it is newly supported)`,
       }),
     );
   }
@@ -91,7 +93,7 @@ export function checkHooks(facts: Facts): Finding[] {
     }
     reported.add(subject);
     out.push(
-      make("hook.missing-script", subject, {
+      make("claude.hook.missing-script", subject, {
           action: "warn",
           severity: "error",
           message: `${hook.event ?? hook.name} hook points at a script that does not exist: ${hook.scriptPath}`,

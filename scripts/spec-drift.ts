@@ -30,6 +30,8 @@ const STALE_AFTER_DAYS = 90;
 const REVIEWED_NOT_EVENTS = new Set([
   // A tool name. The event that fires when it is called is `TaskCreated`.
   "TaskCreate",
+  // A tool name mentioned on TaskCompleted; the event is still `TaskCompleted`.
+  "TaskUpdate",
 ]);
 
 type Report = { drift: string[]; notes: string[] };

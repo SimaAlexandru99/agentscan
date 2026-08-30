@@ -1,11 +1,21 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
+import { parse as parseToml } from "smol-toml";
+import {
+  mcpProfileFromPath,
+  sourceProviderForMcpProfile,
+  type McpSchemaProfile,
+} from "../facts/provider";
 import type { ConfigErrorFact, McpFact } from "../facts/types";
+import { parseJsonc } from "./jsonc";
 import { readJsonConfig } from "./shared";
 
 /** Anything that makes the command a shell program rather than one path. */
 const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&|\s/;
+
+const INTERPOLATED =
+  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{input:[A-Za-z0-9_-]+\}|\$\{(?:userHome|workspaceFolder|workspaceFolderBasename|pathSeparator|\/)\}/;
 
 /**
  * Decide whether an MCP `command` value is a filesystem path we can check.
@@ -35,7 +45,6 @@ export function mcpCommandPath(command: string): string | undefined {
   ) {
     return trimmed;
   }
-  // Relative path with a slash (`bin/server`) is checkable; bare names are not.
   if (trimmed.includes("/")) {
     return trimmed;
   }
@@ -61,11 +70,116 @@ function resolveMcpCommand(
   }
   const abs = isAbsolute(expanded) ? expanded : join(root, expanded);
   try {
-    // Executables are files; a directory at the command path cannot be launched.
     return { command: extracted, exists: statSync(abs).isFile() };
   } catch {
     return { command: extracted, exists: false };
   }
+}
+
+function commandFromEntry(
+  entry: Record<string, unknown>,
+  root: string,
+): { hasCommand: boolean; command?: string; commandExists?: boolean } {
+  const raw = entry.command;
+  if (typeof raw === "string" && raw.length > 0) {
+    const resolved = resolveMcpCommand(root, raw);
+    return {
+      hasCommand: true,
+      command: raw,
+      ...(resolved === undefined ? {} : { commandExists: resolved.exists }),
+    };
+  }
+  if (Array.isArray(raw) && raw.length > 0 && typeof raw[0] === "string" && raw[0].length > 0) {
+    const first = raw[0];
+    const resolved = resolveMcpCommand(root, first);
+    return {
+      hasCommand: true,
+      command: first,
+      ...(resolved === undefined ? {} : { commandExists: resolved.exists }),
+    };
+  }
+  return { hasCommand: false };
+}
+
+function literalEnvKeysFrom(entry: Record<string, unknown>): string[] {
+  const env = entry.env;
+  if (env === null || typeof env !== "object" || Array.isArray(env)) {
+    return [];
+  }
+  const keys: string[] = [];
+  for (const [key, val] of Object.entries(env as Record<string, unknown>)) {
+    if (
+      typeof val === "string" &&
+      val.length > 0 &&
+      !INTERPOLATED.test(val) &&
+      /(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|CREDENTIAL)S?$/i.test(key)
+    ) {
+      keys.push(key);
+    }
+  }
+  return keys;
+}
+
+function looksLikeServerEntry(
+  value: unknown,
+  profile: McpSchemaProfile,
+): boolean {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const entry = value as Record<string, unknown>;
+  if (profile === "antigravity-json") {
+    return "command" in entry || "serverUrl" in entry || "url" in entry || "type" in entry;
+  }
+  return "command" in entry || "url" in entry || "type" in entry || "serverUrl" in entry;
+}
+
+function serversFromObject(
+  obj: Record<string, unknown>,
+  profile: McpSchemaProfile,
+  filePath: string,
+  errors: ConfigErrorFact[],
+): Record<string, unknown> | undefined {
+  if (profile === "vscode-json") {
+    if (
+      "servers" in obj &&
+      obj.servers !== null &&
+      typeof obj.servers === "object" &&
+      !Array.isArray(obj.servers)
+    ) {
+      return obj.servers as Record<string, unknown>;
+    }
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "no usable `servers` object",
+    });
+    return undefined;
+  }
+
+  if (
+    "mcpServers" in obj &&
+    obj.mcpServers !== null &&
+    typeof obj.mcpServers === "object" &&
+    !Array.isArray(obj.mcpServers)
+  ) {
+    return obj.mcpServers as Record<string, unknown>;
+  }
+
+  if (
+    !("mcpServers" in obj) &&
+    Object.keys(obj).length > 0 &&
+    Object.values(obj).every((v) => looksLikeServerEntry(v, profile))
+  ) {
+    return obj;
+  }
+
+  errors.push({
+    path: filePath,
+    kind: "unexpected-shape",
+    detail: "no usable `mcpServers` object and the root is not a server map",
+  });
+  return undefined;
 }
 
 function parseMcpServers(
@@ -73,94 +187,54 @@ function parseMcpServers(
   filePath: string,
   root: string,
   errors: ConfigErrorFact[],
+  profile: McpSchemaProfile,
 ): McpFact[] {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     errors.push({
       path: filePath,
       kind: "unexpected-shape",
-      detail: "MCP config root is not a JSON object",
+      detail: "MCP config root is not an object",
     });
     return [];
   }
   const obj = raw as Record<string, unknown>;
-  let servers: Record<string, unknown>;
-  if (
-    "mcpServers" in obj &&
-    obj.mcpServers !== null &&
-    typeof obj.mcpServers === "object" &&
-    !Array.isArray(obj.mcpServers)
-  ) {
-    servers = obj.mcpServers as Record<string, unknown>;
-  } else if (
-    !("mcpServers" in obj) &&
-    Object.keys(obj).length > 0 &&
-    // Every value must look like a server entry. Without this a wrapper key —
-    // the VS Code `servers` spelling, or `inputs` — becomes a phantom server
-    // reported as having no command, while the real servers under it are never
-    // inspected.
-    Object.values(obj).every(
-      (v) =>
-        v !== null &&
-        typeof v === "object" &&
-        !Array.isArray(v) &&
-        ("command" in v || "url" in v || "type" in v),
-    )
-  ) {
-    servers = obj;
-  } else {
-    errors.push({
-      path: filePath,
-      kind: "unexpected-shape",
-      detail: "no usable `mcpServers` object and the root is not a server map",
-    });
+  const servers = serversFromObject(obj, profile, filePath, errors);
+  if (servers === undefined) {
     return [];
   }
 
   const facts: McpFact[] = [];
+  const sourceProvider = sourceProviderForMcpProfile(profile);
   for (const [name, value] of Object.entries(servers)) {
-    let hasCommand = false;
     let hasUrl = false;
+    let hasServerUrl = false;
     let command: string | undefined;
     let commandExists: boolean | undefined;
+    let hasCommand = false;
     let transport: string | undefined;
-    const literalEnvKeys: string[] = [];
+    let literalEnvKeys: string[] = [];
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       const entry = value as Record<string, unknown>;
-      hasCommand =
-        typeof entry.command === "string" && entry.command.length > 0;
-      if (typeof entry.command === "string" && entry.command.length > 0) {
-        command = entry.command;
-        const resolved = resolveMcpCommand(root, entry.command);
-        if (resolved !== undefined) {
-          commandExists = resolved.exists;
-        }
-      }
+      const parsedCommand = commandFromEntry(entry, root);
+      hasCommand = parsedCommand.hasCommand;
+      command = parsedCommand.command;
+      commandExists = parsedCommand.commandExists;
       hasUrl = typeof entry.url === "string" && entry.url.length > 0;
+      hasServerUrl =
+        typeof entry.serverUrl === "string" && entry.serverUrl.length > 0;
       if (typeof entry.type === "string" && entry.type.length > 0) {
         transport = entry.type;
       }
-      const env = entry.env;
-      if (env !== null && typeof env === "object" && !Array.isArray(env)) {
-        for (const [key, val] of Object.entries(env as Record<string, unknown>)) {
-          // Gate on the key, not the value length. PATH, NODE_OPTIONS and
-          // LOG_FORMAT are all long and none is a secret — the same "narrow, no
-          // entropy guessing" principle SECRET_PATTERNS commits to.
-          if (
-            typeof val === "string" &&
-            val.length > 0 &&
-            !/\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}/.test(val) &&
-            /(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|CREDENTIAL)S?$/i.test(key)
-          ) {
-            literalEnvKeys.push(key);
-          }
-        }
-      }
+      literalEnvKeys = literalEnvKeysFrom(entry);
     }
     facts.push({
       name,
       path: filePath,
+      schemaProfile: profile,
+      sourceProvider,
       hasCommand,
       hasUrl,
+      ...(hasServerUrl ? { hasServerUrl: true } : {}),
       ...(command === undefined ? {} : { command }),
       ...(commandExists === undefined ? {} : { commandExists }),
       ...(transport === undefined ? {} : { transport }),
@@ -170,6 +244,97 @@ function parseMcpServers(
   }
   return facts;
 }
+
+function readTomlConfig(
+  path: string,
+  errors: ConfigErrorFact[],
+): unknown | undefined {
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch (err) {
+    errors.push({
+      path,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return undefined;
+  }
+  try {
+    return parseToml(text);
+  } catch (err) {
+    errors.push({
+      path,
+      kind: "unexpected-shape",
+      detail: err instanceof Error ? err.message.split("\n")[0] ?? err.message : String(err),
+    });
+    return undefined;
+  }
+}
+
+function readVscodeConfig(
+  path: string,
+  errors: ConfigErrorFact[],
+): unknown | undefined {
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch (err) {
+    errors.push({
+      path,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return undefined;
+  }
+  try {
+    return parseJsonc(text);
+  } catch (err) {
+    errors.push({
+      path,
+      kind: "invalid-json",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return undefined;
+  }
+}
+
+function parseCodexToml(
+  raw: unknown,
+  filePath: string,
+  root: string,
+  errors: ConfigErrorFact[],
+): McpFact[] {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "Codex config root is not a TOML table",
+    });
+    return [];
+  }
+  const obj = raw as Record<string, unknown>;
+  const servers = obj.mcp_servers;
+  if (servers === undefined) {
+    return [];
+  }
+  if (servers === null || typeof servers !== "object" || Array.isArray(servers)) {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "`mcp_servers` is not a TOML table",
+    });
+    return [];
+  }
+  return parseMcpServers(
+    { mcpServers: servers },
+    filePath,
+    root,
+    errors,
+    "codex-toml",
+  );
+}
+
 export function discoverMcp(
   root: string,
   mcpPaths: string[],
@@ -182,11 +347,31 @@ export function discoverMcp(
     if (!existsSync(filePath)) {
       continue;
     }
-    const raw = readJsonConfig(filePath, errors);
+    const profile = mcpProfileFromPath(filePath);
+    let raw: unknown | undefined;
+    if (profile === "codex-toml") {
+      raw = readTomlConfig(filePath, errors);
+      if (raw === undefined) {
+        continue;
+      }
+      for (const fact of parseCodexToml(raw, filePath, root, errors)) {
+        const key = `${fact.name}@${fact.path}`;
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+        facts.push(fact);
+      }
+      continue;
+    }
+    raw =
+      profile === "vscode-json" || profile === "cursor-json"
+        ? readVscodeConfig(filePath, errors)
+        : readJsonConfig(filePath, errors);
     if (raw === undefined) {
       continue;
     }
-    for (const fact of parseMcpServers(raw, filePath, root, errors)) {
+    for (const fact of parseMcpServers(raw, filePath, root, errors, profile)) {
       const key = `${fact.name}@${fact.path}`;
       if (seen.has(key)) {
         continue;
