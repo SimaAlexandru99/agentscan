@@ -196,7 +196,7 @@ export function discoverAgents(
     }
     seenDirs.add(agentsDir);
     facts.push(...discoverClaudeAgentsDir(agentsDir, root, errors));
+    facts.push(...discoverVscodeAgents(dir, errors));
   }
-  facts.push(...discoverVscodeAgents(root, errors));
   return facts;
 }

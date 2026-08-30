@@ -56,6 +56,7 @@ export type AgentSurface = {
   hasSkillsLock: boolean;
   skillsLockInvalid?: boolean;
   configErrors: ConfigErrorFact[];
+  codexProjectDocMaxBytes?: number;
 };
 
 /**
@@ -106,17 +107,37 @@ function hasWorkspaceMarker(dir: string): boolean {
   return WORKSPACE_MARKERS.some((name) => existsSync(join(dir, name)));
 }
 
+/** Optional pin that stops walk-up before a parent Git root (fixtures, nested checkouts). */
+export const SCAN_ROOT_MARKER = ".agentscan-root";
+
+export type ScanContext = {
+  requestedDir: string;
+  workspaceBoundary: string | undefined;
+  repositoryBoundary: string | undefined;
+  /** Farthest ancestor the scan may walk. Child provider dirs do not shrink this. */
+  scanBoundary: string;
+  /** Display / package root. A nearer provider signal may win over a parent package.json. */
+  projectRoot: string;
+};
+
 /**
  * Walk up from startDir. Prefer the nearest provider-config directory, then
  * the nearest workspace/package root, then the nearest Git root. A child
- * `.cursor` or `.claude` therefore wins over a parent `package.json`.
+ * `.cursor` or `.claude` therefore wins as `projectRoot` over a parent
+ * `package.json`, but `scanBoundary` stays at Git/workspace so parent Claude
+ * or Codex files remain visible.
  */
-export function resolveRoot(startDir: string): string {
-  let dir = resolve(startDir);
+export function resolveScanContext(startDir: string): ScanContext {
+  const requestedDir = resolve(startDir);
+  let dir = requestedDir;
   let nearestSignal: string | undefined;
   let nearestWorkspace: string | undefined;
   let nearestGit: string | undefined;
+  let nearestPin: string | undefined;
   for (;;) {
+    if (nearestPin === undefined && existsSync(join(dir, SCAN_ROOT_MARKER))) {
+      nearestPin = dir;
+    }
     if (nearestSignal === undefined && hasAgentConfigSignal(dir)) {
       nearestSignal = dir;
     }
@@ -134,13 +155,23 @@ export function resolveRoot(startDir: string): string {
   }
   // Prefer whichever of signal/workspace is closer to startDir. A fixture
   // with only package.json must not jump to a parent repo's `.claude`.
-  const root = nearer(startDir, nearestSignal, nearestWorkspace) ?? nearestGit;
-  if (root === undefined) {
+  const projectRoot = nearer(requestedDir, nearestSignal, nearestWorkspace) ?? nearestGit;
+  if (projectRoot === undefined) {
     throw new Error(
-      `No package.json or agent configuration found walking up from ${resolve(startDir)}`,
+      `No package.json or agent configuration found walking up from ${requestedDir}`,
     );
   }
-  return root;
+  return {
+    requestedDir,
+    workspaceBoundary: nearestWorkspace,
+    repositoryBoundary: nearestGit,
+    scanBoundary: nearestPin ?? nearestGit ?? nearestWorkspace ?? nearestSignal ?? requestedDir,
+    projectRoot,
+  };
+}
+
+export function resolveRoot(startDir: string): string {
+  return resolveScanContext(startDir).projectRoot;
 }
 
 function nearer(
@@ -270,6 +301,8 @@ export function readJsonConfig(
   }
 }
 
+export type YamlScalarKind = "string" | "number" | "boolean" | "other";
+
 export type Frontmatter = {
   hasFrontmatter: boolean;
   /** Everything after the closing fence. */
@@ -279,7 +312,9 @@ export type Frontmatter = {
   /** Read failed — say so rather than claiming the file has no frontmatter. */
   unreadable?: boolean;
   name?: string;
+  nameKind?: YamlScalarKind;
   description?: string;
+  descriptionKind?: YamlScalarKind;
   /**
    * The `hooks` mapping, unvalidated — a skill or subagent may declare hooks
    * "in the same configuration format as settings-based hooks". Handed to
@@ -290,15 +325,28 @@ export type Frontmatter = {
   hooks?: unknown;
 };
 
-function scalar(value: unknown): string | undefined {
+function yamlScalarKind(value: unknown): YamlScalarKind | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
   if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
+    return "string";
   }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
+  if (typeof value === "number") {
+    return "number";
   }
-  return undefined;
+  if (typeof value === "boolean") {
+    return "boolean";
+  }
+  return "other";
+}
+
+function scalarString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 /**
@@ -396,11 +444,19 @@ export function readFrontmatter(
 
   const record = block as Record<string, unknown>;
   const out: Frontmatter = { hasFrontmatter: true, body: text.slice(end + 4) };
-  const name = scalar(record.name);
+  const nameKind = yamlScalarKind(record.name);
+  if (nameKind !== undefined) {
+    out.nameKind = nameKind;
+  }
+  const name = scalarString(record.name);
   if (name !== undefined) {
     out.name = name;
   }
-  const description = scalar(record.description);
+  const descriptionKind = yamlScalarKind(record.description);
+  if (descriptionKind !== undefined) {
+    out.descriptionKind = descriptionKind;
+  }
+  const description = scalarString(record.description);
   if (description !== undefined) {
     out.description = description;
   }

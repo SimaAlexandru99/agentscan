@@ -27,6 +27,7 @@ export const defaultConfig = {
     ".opencode/opencode.json",
     ".opencode/opencode.jsonc",
     ".continue/config.yaml",
+    ".continue/mcpServers",
   ],
   policyFiles: ["AGENTS.md", "CLAUDE.md"],
   ignoreSkills: [] as string[],

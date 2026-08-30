@@ -45,6 +45,66 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
     lastVerified: "2026-08-30",
   },
   {
+    id: "claude.hook.invalid-group",
+    description: "Claude hook group has a matcher but no hooks array",
+    provenance: "internal-consistency",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "claude.hook.command-without-command",
+    description: "Claude command hook is missing the command field",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "claude.hook.http-without-url",
+    description: "Claude http hook is missing the url field",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "claude.hook.mcp-tool-without-name",
+    description: "Claude MCP tool hook is missing the tool name",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "claude.hook.unknown-handler-type",
+    description: "Claude hook uses a handler type that is not command, http, mcp_tool, prompt, or agent",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "vscode.hook.invalid-group",
+    description: "VS Code hook group has a matcher but no hooks array",
+    provenance: "internal-consistency",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "vscode.hook.command-without-command",
+    description: "VS Code command hook is missing the command field",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "vscode.hook.http-without-url",
+    description: "VS Code http hook is missing the url field",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "vscode.hook.mcp-tool-without-name",
+    description: "VS Code MCP tool hook is missing the tool name",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "vscode.hook.unknown-handler-type",
+    description: "VS Code hook uses an unknown handler type",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
     id: "skill.missing-skill-md",
     description: "Skill directory has no SKILL.md",
     provenance: "internal-consistency",
@@ -214,7 +274,7 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
   },
   {
     id: "continue.mcp.no-launch",
-    description: "Continue MCP server declares neither command nor url",
+    description: "Continue MCP server declares neither command, url, nor uses",
     provenance: "spec-required",
     lastVerified: "2026-08-30",
   },
@@ -273,7 +333,7 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
   {
     id: "codex.budget.instructions",
     description:
-      "Codex AGENTS.md chain exceeds the default 32 KiB project_doc_max_bytes",
+      "Codex AGENTS.md chain exceeds project_doc_max_bytes (32 KiB default)",
     provenance: "vendor-recommendation",
     lastVerified: "2026-08-30",
   },

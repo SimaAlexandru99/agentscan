@@ -30,6 +30,9 @@ function profileOf(server: McpFact): McpSchemaProfile {
 }
 
 function isLaunchable(server: McpFact): boolean {
+  if (server.launchKind === "registry-reference" || server.uses !== undefined) {
+    return true;
+  }
   const profile = profileOf(server);
   switch (profile) {
     case "antigravity-json":
@@ -86,7 +89,7 @@ function noLaunchMessage(server: McpFact): string {
     case "codex-toml":
     case "opencode-json":
     case "continue-yaml":
-      return `MCP server "${server.name}" declares neither command nor url`;
+      return `MCP server "${server.name}" declares neither command, url, nor uses`;
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }
@@ -106,7 +109,7 @@ function noLaunchSuggest(server: McpFact): string {
     case "codex-toml":
     case "opencode-json":
     case "continue-yaml":
-      return `Add a command (or url) for "${server.name}", or remove it`;
+      return `Add a command, url, or uses: block for "${server.name}", or remove it`;
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }
@@ -136,7 +139,9 @@ export function checkMcp(facts: Facts): Finding[] {
 
     if (server.command !== undefined && server.commandExists === false) {
       out.push(
-        make("mcp.command-missing", `mcp:${server.name}@${server.path}`, {
+        make("mcp.command-missing", `mcp:${server.name}@${server.path}${
+          server.platform === undefined ? "" : `:${server.platform}`
+        }`, {
           action: "warn",
           severity: "error",
           message: `MCP server "${server.name}" points at a command path that does not exist: ${server.command}`,

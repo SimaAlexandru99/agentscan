@@ -1,4 +1,4 @@
-import { basename } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import type { Facts, Finding } from "../facts/types";
 import { make } from "./make";
 
@@ -176,44 +176,86 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
  * that are not on that walk-up chain are not counted. CLAUDE.md is excluded.
  * See docs/spec/codex-agents-md.md.
  */
-function codexInstructionBudget(facts: Facts): Finding[] {
-  const chain = facts.policyFiles.filter((policy) => {
-    if (policy.kind !== "agents-md") {
-      if (policy.kind !== undefined) {
-        return false;
-      }
-      const name = basename(policy.path);
-      if (name !== "AGENTS.md" && name !== "AGENTS.override.md") {
-        return false;
-      }
+function isAgentsMdPolicy(policy: PolicyFile): boolean {
+  if (policy.kind === "agents-md") {
+    return true;
+  }
+  if (policy.kind !== undefined) {
+    return false;
+  }
+  const name = basename(policy.path);
+  return name === "AGENTS.md" || name === "AGENTS.override.md";
+}
+
+function nonempty(text: string): boolean {
+  return text.trim().length > 0;
+}
+
+/**
+ * Per directory Codex loads at most one file: non-empty AGENTS.override.md,
+ * otherwise AGENTS.md. Empty files are skipped. See docs/spec/codex-agents-md.md.
+ */
+export function effectiveCodexInstructionChain(files: PolicyFile[]): PolicyFile[] {
+  const onChain = files.filter((policy) => {
+    if (!isAgentsMdPolicy(policy)) {
+      return false;
     }
-    const hops = policy.hopsFromStart;
-    return hops !== undefined && Number.isFinite(hops);
+    return policy.hopsFromStart !== undefined && Number.isFinite(policy.hopsFromStart);
   });
+  const byDir = new Map<string, PolicyFile[]>();
+  for (const policy of onChain) {
+    const dir = resolve(dirname(policy.path));
+    const bucket = byDir.get(dir);
+    if (bucket === undefined) {
+      byDir.set(dir, [policy]);
+    } else {
+      bucket.push(policy);
+    }
+  }
+  const effective: PolicyFile[] = [];
+  for (const group of byDir.values()) {
+    const override = group.find((policy) => basename(policy.path) === "AGENTS.override.md");
+    const normal = group.find((policy) => basename(policy.path) === "AGENTS.md");
+    const pick =
+      override !== undefined && nonempty(override.text)
+        ? override
+        : normal !== undefined && nonempty(normal.text)
+          ? normal
+          : undefined;
+    if (pick !== undefined) {
+      effective.push(pick);
+    }
+  }
+  return effective;
+}
+
+function codexInstructionBudget(facts: Facts): Finding[] {
+  const chain = effectiveCodexInstructionChain(facts.policyFiles);
   if (chain.length === 0) {
     return [];
   }
+  const limit = facts.codexProjectDocMaxBytes ?? CODEX_PROJECT_DOC_MAX_BYTES;
   const bytes = chain.reduce(
     (sum, policy) => sum + Buffer.byteLength(policy.text, "utf8"),
     0,
   );
-  if (bytes <= CODEX_PROJECT_DOC_MAX_BYTES) {
+  if (bytes <= limit) {
     return [];
   }
   return [
     make("codex.budget.instructions", "rule:codex.budget.instructions", {
       action: "warn",
       severity: "info",
-      message: `Codex instruction chain exceeds ${CODEX_PROJECT_DOC_MAX_BYTES} bytes (${bytes})`,
+      message: `Codex instruction chain exceeds ${limit} bytes (${bytes})`,
       reason:
-        "Codex stops adding AGENTS.md files once the combined size reaches project_doc_max_bytes (32 KiB by default). Later files on the root→cwd chain are skipped. This is not applied to CLAUDE.md. See docs/spec/codex-agents-md.md.",
+        "Codex stops adding AGENTS.md files once the combined size reaches project_doc_max_bytes (32 KiB by default). At most one file per directory is loaded — AGENTS.override.md if it is non-empty, otherwise AGENTS.md. This is not applied to CLAUDE.md. See docs/spec/codex-agents-md.md.",
       evidence: [
         { kind: "count", value: `bytes=${bytes}` },
-        { kind: "threshold", value: String(CODEX_PROJECT_DOC_MAX_BYTES) },
+        { kind: "threshold", value: String(limit) },
         ...chain.map((policy) => ({ kind: "policy", value: policy.path })),
       ],
       suggest:
-        "Shorten AGENTS.md files on the path from the project root to the working directory",
+        "Shorten AGENTS.md files on the path from the project root to the working directory, or raise project_doc_max_bytes in .codex/config.toml",
     }),
   ];
 }

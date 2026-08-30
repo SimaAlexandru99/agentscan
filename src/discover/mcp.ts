@@ -1,16 +1,18 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { basename, isAbsolute, join } from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { parse as parseYaml } from "yaml";
 import {
   mcpProfileFromPath,
   sourceProviderForMcpProfile,
+  type McpLaunchKind,
   type McpSchemaProfile,
 } from "../facts/provider";
 import type { ConfigErrorFact, McpFact } from "../facts/types";
 import { parseJsonc } from "./jsonc";
-import { readJsonConfig } from "./shared";
+import { formatLaunch, launchesFromEntry, scriptCandidateFromLaunch } from "./launch";
+import { NESTED_DISCOVERY_MAX_DEPTH, readJsonConfig, walkFiles } from "./shared";
 
 /** Anything that makes the command a shell program rather than one path. */
 const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&|\s/;
@@ -77,29 +79,37 @@ function resolveMcpCommand(
   }
 }
 
-function commandFromEntry(
+function commandFactsFromEntry(
   entry: Record<string, unknown>,
   root: string,
-): { hasCommand: boolean; command?: string; commandExists?: boolean } {
-  const raw = entry.command;
-  if (typeof raw === "string" && raw.length > 0) {
-    const resolved = resolveMcpCommand(root, raw);
+): Array<{
+  hasCommand: boolean;
+  command?: string;
+  commandExists?: boolean;
+  platform?: NonNullable<McpFact["platform"]>;
+}> {
+  const launches = launchesFromEntry(entry);
+  if (launches.length === 0) {
+    return [{ hasCommand: false }];
+  }
+  return launches.map((launch) => {
+    const candidate = scriptCandidateFromLaunch(launch);
+    const display = candidate ?? formatLaunch(launch);
+    if (candidate === undefined) {
+      return {
+        hasCommand: true,
+        command: formatLaunch(launch),
+        ...(launch.platform === undefined ? {} : { platform: launch.platform }),
+      };
+    }
+    const resolved = resolveMcpCommand(root, candidate);
     return {
       hasCommand: true,
-      command: raw,
+      command: display,
       ...(resolved === undefined ? {} : { commandExists: resolved.exists }),
+      ...(launch.platform === undefined ? {} : { platform: launch.platform }),
     };
-  }
-  if (Array.isArray(raw) && raw.length > 0 && typeof raw[0] === "string" && raw[0].length > 0) {
-    const first = raw[0];
-    const resolved = resolveMcpCommand(root, first);
-    return {
-      hasCommand: true,
-      command: first,
-      ...(resolved === undefined ? {} : { commandExists: resolved.exists }),
-    };
-  }
-  return { hasCommand: false };
+  });
 }
 
 function literalEnvKeysFrom(entry: Record<string, unknown>): string[] {
@@ -137,7 +147,8 @@ function looksLikeServerEntry(
       "url" in entry ||
       "type" in entry ||
       "serverUrl" in entry ||
-      "httpUrl" in entry
+      "httpUrl" in entry ||
+      "uses" in entry
     );
 }
 
@@ -216,17 +227,13 @@ function parseMcpServers(
     let hasUrl = false;
     let hasServerUrl = false;
     let hasHttpUrl = false;
-    let command: string | undefined;
-    let commandExists: boolean | undefined;
-    let hasCommand = false;
     let transport: string | undefined;
     let literalEnvKeys: string[] = [];
+    let uses: string | undefined;
+    let commandVariants: ReturnType<typeof commandFactsFromEntry> = [{ hasCommand: false }];
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       const entry = value as Record<string, unknown>;
-      const parsedCommand = commandFromEntry(entry, root);
-      hasCommand = parsedCommand.hasCommand;
-      command = parsedCommand.command;
-      commandExists = parsedCommand.commandExists;
+      commandVariants = commandFactsFromEntry(entry, root);
       hasUrl = typeof entry.url === "string" && entry.url.length > 0;
       hasServerUrl =
         typeof entry.serverUrl === "string" && entry.serverUrl.length > 0;
@@ -234,23 +241,43 @@ function parseMcpServers(
       if (typeof entry.type === "string" && entry.type.length > 0) {
         transport = entry.type;
       }
+      if (typeof entry.uses === "string" && entry.uses.length > 0) {
+        uses = entry.uses;
+      }
       literalEnvKeys = literalEnvKeysFrom(entry);
     }
-    facts.push({
-      name,
-      path: filePath,
-      schemaProfile: profile,
-      sourceProvider,
-      hasCommand,
-      hasUrl,
-      ...(hasServerUrl ? { hasServerUrl: true } : {}),
-      ...(hasHttpUrl ? { hasHttpUrl: true } : {}),
-      ...(command === undefined ? {} : { command }),
-      ...(commandExists === undefined ? {} : { commandExists }),
-      ...(transport === undefined ? {} : { transport }),
-      literalEnvKeys,
-      raw: JSON.stringify(value),
-    });
+    const launchKind: McpLaunchKind = uses !== undefined
+      ? "registry-reference"
+      : commandVariants.some((variant) => variant.hasCommand)
+        ? "command"
+        : hasUrl || hasServerUrl || hasHttpUrl
+          ? "url"
+          : "no-launch";
+    const variants =
+      launchKind === "command"
+        ? commandVariants.filter((variant) => variant.hasCommand)
+        : [{ hasCommand: false as const }];
+    for (const variant of variants) {
+      const hasCommand = variant.hasCommand;
+      facts.push({
+        name,
+        path: filePath,
+        schemaProfile: profile,
+        sourceProvider,
+        launchKind,
+        hasCommand,
+        hasUrl,
+        ...(uses === undefined ? {} : { uses }),
+        ...(hasServerUrl ? { hasServerUrl: true } : {}),
+        ...(hasHttpUrl ? { hasHttpUrl: true } : {}),
+        ...(variant.command === undefined ? {} : { command: variant.command }),
+        ...(variant.commandExists === undefined ? {} : { commandExists: variant.commandExists }),
+        ...(variant.platform === undefined ? {} : { platform: variant.platform }),
+        ...(transport === undefined ? {} : { transport }),
+        literalEnvKeys,
+        raw: JSON.stringify(value),
+      });
+    }
   }
   return facts;
 }
@@ -415,32 +442,7 @@ function normalizeOpenCodeServers(servers: unknown): Record<string, unknown> {
   return out;
 }
 
-function parseContinueYaml(
-  raw: unknown,
-  filePath: string,
-  root: string,
-  errors: ConfigErrorFact[],
-): McpFact[] {
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    errors.push({
-      path: filePath,
-      kind: "unexpected-shape",
-      detail: "Continue config root is not a mapping",
-    });
-    return [];
-  }
-  const list = (raw as Record<string, unknown>).mcpServers;
-  if (list === undefined) {
-    return [];
-  }
-  if (!Array.isArray(list)) {
-    errors.push({
-      path: filePath,
-      kind: "unexpected-shape",
-      detail: "`mcpServers` is not an array",
-    });
-    return [];
-  }
+function continueServersFromList(list: unknown[]): Record<string, unknown> {
   const mapped: Record<string, unknown> = {};
   for (const [i, item] of list.entries()) {
     if (item === null || typeof item !== "object" || Array.isArray(item)) {
@@ -450,7 +452,63 @@ function parseContinueYaml(
     const name = typeof entry.name === "string" && entry.name.length > 0 ? entry.name : `server-${i}`;
     mapped[name] = entry;
   }
-  return parseMcpServers({ mcpServers: mapped }, filePath, root, errors, "continue-yaml");
+  return mapped;
+}
+
+function parseContinueDocument(
+  raw: unknown,
+  filePath: string,
+  root: string,
+  errors: ConfigErrorFact[],
+): McpFact[] {
+  if (Array.isArray(raw)) {
+    return parseMcpServers(
+      { mcpServers: continueServersFromList(raw) },
+      filePath,
+      root,
+      errors,
+      "continue-yaml",
+    );
+  }
+  if (raw === null || typeof raw !== "object") {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "Continue config root is not a mapping",
+    });
+    return [];
+  }
+  const obj = raw as Record<string, unknown>;
+  const list = obj.mcpServers;
+  if (Array.isArray(list)) {
+    return parseMcpServers(
+      { mcpServers: continueServersFromList(list) },
+      filePath,
+      root,
+      errors,
+      "continue-yaml",
+    );
+  }
+  if (list !== undefined) {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "`mcpServers` is not an array",
+    });
+    return [];
+  }
+  if (
+    typeof obj.uses === "string" ||
+    "command" in obj ||
+    "url" in obj
+  ) {
+    const name =
+      typeof obj.name === "string" && obj.name.length > 0
+        ? obj.name
+        : basename(filePath).replace(/\.(ya?ml|jsonc?)$/i, "");
+    return parseMcpServers({ mcpServers: { [name]: obj } }, filePath, root, errors, "continue-yaml");
+  }
+  return [];
 }
 
 function readYamlConfig(
@@ -480,50 +538,169 @@ function readYamlConfig(
   }
 }
 
-export function discoverMcp(
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function continueMcpFilename(name: string): boolean {
+  return /\.(ya?ml|jsonc?)$/i.test(name) && !name.startsWith(".");
+}
+
+function parseMcpFile(
+  filePath: string,
+  root: string,
+  errors: ConfigErrorFact[],
+): { facts: McpFact[]; projectDocMaxBytes?: number } {
+  const profile = mcpProfileFromPath(filePath);
+  if (profile === "codex-toml") {
+    const raw = readTomlConfig(filePath, errors);
+    if (raw === undefined) {
+      return { facts: [] };
+    }
+    return {
+      facts: parseCodexToml(raw, filePath, root, errors),
+      ...(projectDocMaxBytesFromToml(raw) === undefined
+        ? {}
+        : { projectDocMaxBytes: projectDocMaxBytesFromToml(raw) }),
+    };
+  }
+  if (profile === "continue-yaml") {
+    const raw = filePath.endsWith(".json") || filePath.endsWith(".jsonc")
+      ? readVscodeConfig(filePath, errors)
+      : readYamlConfig(filePath, errors);
+    if (raw === undefined) {
+      return { facts: [] };
+    }
+    return { facts: parseContinueDocument(raw, filePath, root, errors) };
+  }
+  if (profile === "opencode-json") {
+    const raw = readVscodeConfig(filePath, errors);
+    if (raw === undefined) {
+      return { facts: [] };
+    }
+    return { facts: parseOpenCode(raw, filePath, root, errors) };
+  }
+  const raw =
+    profile === "vscode-json" || profile === "cursor-json" || profile === "gemini-json"
+      ? readVscodeConfig(filePath, errors)
+      : readJsonConfig(filePath, errors);
+  if (raw === undefined) {
+    return { facts: [] };
+  }
+  return { facts: parseMcpServers(raw, filePath, root, errors, profile) };
+}
+
+function projectDocMaxBytesFromToml(raw: unknown): number | undefined {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+  const value = (raw as Record<string, unknown>).project_doc_max_bytes;
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.floor(value);
+  }
+  return undefined;
+}
+
+function discoverContinueMcpDir(
+  dir: string,
+  root: string,
+  errors: ConfigErrorFact[],
+  seen: Set<string>,
+): McpFact[] {
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch (err) {
+    errors.push({
+      path: dir,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return [];
+  }
+  const facts: McpFact[] = [];
+  for (const name of names) {
+    if (!continueMcpFilename(name)) {
+      continue;
+    }
+    const filePath = join(dir, name);
+    if (isDirectory(filePath)) {
+      continue;
+    }
+    for (const fact of parseMcpFile(filePath, root, errors).facts) {
+      const key = `${fact.name}@${fact.path}${fact.platform === undefined ? "" : `:${fact.platform}`}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      facts.push(fact);
+    }
+  }
+  return facts;
+}
+
+export function discoverMcpSurface(
   root: string,
   mcpPaths: string[],
   errors: ConfigErrorFact[],
-): McpFact[] {
+): { facts: McpFact[]; codexProjectDocMaxBytes?: number } {
   const facts: McpFact[] = [];
   const seen = new Set<string>();
+  let codexProjectDocMaxBytes: number | undefined;
   for (const rel of mcpPaths) {
     const filePath = join(root, rel);
     if (!existsSync(filePath)) {
       continue;
     }
-    const profile = mcpProfileFromPath(filePath);
-    let parsed: McpFact[] = [];
-    if (profile === "codex-toml") {
-      const raw = readTomlConfig(filePath, errors);
-      if (raw === undefined) {
-        continue;
-      }
-      parsed = parseCodexToml(raw, filePath, root, errors);
-    } else if (profile === "continue-yaml") {
-      const raw = readYamlConfig(filePath, errors);
-      if (raw === undefined) {
-        continue;
-      }
-      parsed = parseContinueYaml(raw, filePath, root, errors);
-    } else if (profile === "opencode-json") {
-      const raw = readVscodeConfig(filePath, errors);
-      if (raw === undefined) {
-        continue;
-      }
-      parsed = parseOpenCode(raw, filePath, root, errors);
-    } else {
-      const raw =
-        profile === "vscode-json" || profile === "cursor-json" || profile === "gemini-json"
-          ? readVscodeConfig(filePath, errors)
-          : readJsonConfig(filePath, errors);
-      if (raw === undefined) {
-        continue;
-      }
-      parsed = parseMcpServers(raw, filePath, root, errors, profile);
+    if (rel.replaceAll("\\", "/").endsWith(".continue/mcpServers") && isDirectory(filePath)) {
+      facts.push(...discoverContinueMcpDir(filePath, root, errors, seen));
+      continue;
     }
-    for (const fact of parsed) {
-      const key = `${fact.name}@${fact.path}`;
+    const parsed = parseMcpFile(filePath, root, errors);
+    if (parsed.projectDocMaxBytes !== undefined) {
+      codexProjectDocMaxBytes = parsed.projectDocMaxBytes;
+    }
+    for (const fact of parsed.facts) {
+      const key = `${fact.name}@${fact.path}${fact.platform === undefined ? "" : `:${fact.platform}`}`;
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      facts.push(fact);
+    }
+  }
+  return {
+    facts,
+    ...(codexProjectDocMaxBytes === undefined ? {} : { codexProjectDocMaxBytes }),
+  };
+}
+
+export function discoverMcp(
+  root: string,
+  mcpPaths: string[],
+  errors: ConfigErrorFact[],
+): McpFact[] {
+  return discoverMcpSurface(root, mcpPaths, errors).facts;
+}
+
+export function discoverNestedContinueMcp(
+  root: string,
+  errors: ConfigErrorFact[],
+  seen: Set<string>,
+): McpFact[] {
+  const facts: McpFact[] = [];
+  for (const abs of walkFiles(root, {
+    maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
+    match: (path, name) =>
+      path.replaceAll("\\", "/").includes("/.continue/mcpServers/") && continueMcpFilename(name),
+    errors,
+  })) {
+    for (const fact of parseMcpFile(abs, root, errors).facts) {
+      const key = `${fact.name}@${fact.path}${fact.platform === undefined ? "" : `:${fact.platform}`}`;
       if (seen.has(key)) {
         continue;
       }

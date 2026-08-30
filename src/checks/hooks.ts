@@ -1,5 +1,5 @@
 import { assertNever, type Provider } from "../facts/provider";
-import type { Facts, Finding, HookFact } from "../facts/types";
+import type { Facts, Finding, HookDefect, HookFact } from "../facts/types";
 import { make } from "./make";
 
 /**
@@ -205,8 +205,76 @@ export function checkHookEvents(facts: Facts): Finding[] {
   return out;
 }
 
-export function checkHooks(facts: Facts): Finding[] {
+function defectRuleId(provider: Provider, defect: HookDefect): string | undefined {
+  if (provider !== "claude" && provider !== "vscode") {
+    return undefined;
+  }
+  return `${provider}.hook.${defect}`;
+}
+
+function defectMessage(hook: HookFact, defect: HookDefect): string {
+  const event = hook.event ?? hook.name;
+  switch (defect) {
+    case "invalid-group":
+      return `${event} hook group is missing a \`hooks\` array`;
+    case "command-without-command":
+      return `${event} command hook declares no command`;
+    case "http-without-url":
+      return `${event} http hook declares no url`;
+    case "mcp-tool-without-name":
+      return `${event} MCP tool hook declares no tool name`;
+    case "unknown-handler-type":
+      return `${event} hook has unknown handler type "${hook.unknownHandlerType ?? "unknown"}"`;
+    default: {
+      return assertNever(defect, `unhandled hook defect: ${defect}`);
+    }
+  }
+}
+
+export function checkHookShape(facts: Facts): Finding[] {
   const out: Finding[] = [];
+  const reported = new Set<string>();
+  for (const hook of facts.hooks) {
+    const defect = hook.defect;
+    if (defect === undefined) {
+      continue;
+    }
+    const ruleId = defectRuleId(hookProvider(hook), defect);
+    if (ruleId === undefined) {
+      continue;
+    }
+    const subject = `hook:${hook.event ?? hook.name}${
+      hook.unknownHandlerType === undefined ? "" : `:${hook.unknownHandlerType}`
+    }`;
+    const key = `${ruleId}:${subject}:${hook.path}`;
+    if (reported.has(key)) {
+      continue;
+    }
+    reported.add(key);
+    out.push(
+      make(ruleId, subject, {
+        action: "warn",
+        severity: "error",
+        message: defectMessage(hook, defect),
+        reason:
+          "A hook entry that is missing its required fields never runs. The previous scanner rejected these shapes; accepting them silently hid dead configuration.",
+        evidence: [
+          { kind: "hook", value: `${hook.event ?? hook.name} @ ${hook.path}` },
+          { kind: "shape", value: defect },
+        ],
+        suggest: `Fix the ${eventLabel(hook)} entry in ${hook.path}`,
+      }),
+    );
+  }
+  return out;
+}
+
+function eventLabel(hook: HookFact): string {
+  return hook.event ?? hook.name;
+}
+
+export function checkHooks(facts: Facts): Finding[] {
+  const out: Finding[] = [...checkHookShape(facts)];
   // One HookFact per command occurrence, so the same guard under two matchers —
   // the canonical shape — produced two findings sharing one id, and `explain`
   // could reach only the first.

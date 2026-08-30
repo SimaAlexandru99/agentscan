@@ -23,6 +23,10 @@ export type Compatibility = {
   schemaProfile?: string;
 };
 
+export type SkillSchemaProfile = "claude" | "agent-skills";
+
+export type McpLaunchKind = "command" | "url" | "registry-reference" | "no-launch";
+
 export type McpSchemaProfile =
   | "claude-json"
   | "vscode-json"
@@ -32,6 +36,19 @@ export type McpSchemaProfile =
   | "gemini-json"
   | "opencode-json"
   | "continue-yaml";
+
+export function schemaProfileFromSkillsDir(dir: string): SkillSchemaProfile {
+  const normalized = dir.replaceAll("\\", "/");
+  if (
+    normalized.includes("/.agents/skills") ||
+    normalized.endsWith("/.agents/skills") ||
+    normalized.includes("/.cursor/skills") ||
+    normalized.endsWith("/.cursor/skills")
+  ) {
+    return "agent-skills";
+  }
+  return "claude";
+}
 
 export function assertNever(value: never, message: string): never {
   throw new Error(message);
@@ -93,6 +110,7 @@ export function mcpProfileFromPath(filePath: string): McpSchemaProfile {
     return "gemini-json";
   }
   if (
+    normalized.includes("/.continue/mcpServers/") ||
     normalized.endsWith("/.continue/config.yaml") ||
     normalized.endsWith(".continue/config.yaml") ||
     normalized.endsWith("/.continue/config.yml") ||

@@ -3,13 +3,14 @@ import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import type { ConfigErrorFact, HookFact } from "../facts/types";
 import type { Provider } from "../facts/provider";
+import {
+  formatLaunch,
+  launchesFromEntry,
+  scriptCandidateFromLaunch,
+} from "./launch";
 import { readJsonConfig } from "./shared";
 
-const INTERPRETERS = /^(?:bash|sh|zsh|python3?|node|bun|deno)$/;
-/** Flags that mean "the next argument is source code, not a file". */
-const INLINE_CODE_FLAGS = /^-(?:e|p|c)$/;
-/** Anything that makes the command a shell program rather than one invocation. */
-const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&/;
+export { hookScriptPath } from "./launch";
 
 /**
  * Where a hook's script paths resolve from.
@@ -42,75 +43,7 @@ const PLUGIN_ROOT = /^\$(?:CLAUDE_PLUGIN_ROOT\b|\{CLAUDE_PLUGIN_ROOT\})/;
  * skipped outright, because a command like `[ ! -f x ] || node x` handles the
  * missing file itself and flagging it would be a false positive.
  */
-export function hookScriptPath(
-  command: string,
-  bases: { plugin?: string } = {},
-): string | undefined {
-  const trimmed = command.trim();
-  if (trimmed.length === 0 || SHELL_METACHARS.test(trimmed)) {
-    return undefined;
-  }
-
-  const tokens = trimmed.match(/"[^"]*"|'[^']*'|\S+/g);
-  if (tokens === null || tokens.length === 0) {
-    return undefined;
-  }
-
-  const unquote = (t: string): string =>
-    (t.startsWith('"') && t.endsWith('"')) ||
-    (t.startsWith("'") && t.endsWith("'"))
-      ? t.slice(1, -1)
-      : t;
-
-  let i = 0;
-  const first = unquote(tokens[0] as string);
-  let interpreted = false;
-  if (INTERPRETERS.test(first)) {
-    interpreted = true;
-    i = 1;
-    while (i < tokens.length) {
-      const flag = unquote(tokens[i] as string);
-      if (!flag.startsWith("-")) {
-        break;
-      }
-      // `node -e "<code>"` — the next token is source, never a path
-      if (INLINE_CODE_FLAGS.test(flag)) {
-        return undefined;
-      }
-      i += 1;
-    }
-  }
-
-  const candidate = tokens[i] === undefined ? undefined : unquote(tokens[i] as string);
-  if (candidate === undefined || (!candidate.includes("/") && !(interpreted && /\.(?:js|mjs|cjs|ts|py|sh|bash|zsh)$/i.test(candidate)))) {
-    return undefined;
-  }
-  // A drive-letter path cannot be resolved here; do not guess.
-  if (/^[A-Za-z]:[/\\]/.test(candidate)) {
-    return undefined;
-  }
-  // Only the placeholders this source actually defines are expandable; every
-  // other variable is unknowable, and so is CLAUDE_PLUGIN_ROOT outside a plugin.
-  if (candidate.startsWith("$")) {
-    if (PROJECT_DIR.test(candidate)) {
-      return candidate;
-    }
-    return bases.plugin !== undefined && PLUGIN_ROOT.test(candidate)
-      ? candidate
-      : undefined;
-  }
-  if (
-    candidate.startsWith("/") ||
-    candidate.startsWith("./") ||
-    candidate.startsWith("../") ||
-    candidate.startsWith("~/") ||
-    candidate.startsWith(".") ||
-    (interpreted && /\.(?:js|mjs|cjs|ts|py|sh|bash|zsh)$/i.test(candidate))
-  ) {
-    return candidate;
-  }
-  return undefined;
-}
+// hookScriptPath lives in launch.ts so MCP and hooks share one argv walker.
 
 function isFile(path: string): boolean {
   try {
@@ -122,12 +55,8 @@ function isFile(path: string): boolean {
 
 function resolveHookScript(
   bases: HookBases,
-  raw: string,
+  extracted: string,
 ): { scriptPath: string; exists: boolean } | undefined {
-  const extracted = hookScriptPath(raw, bases);
-  if (extracted === undefined) {
-    return undefined;
-  }
   if (extracted.startsWith("~/")) {
     return {
       scriptPath: extracted,
@@ -171,13 +100,23 @@ function resolveHookScript(
  * format as settings-based hooks" — so they share one reader and differ only in
  * their `source` label and their path bases. See docs/spec/hook-sources.md.
  */
-const HANDLER_TYPES = new Set(["command", "http", "mcp_tool", "prompt", "agent"]);
+const HANDLER_TYPES = new Set(["command", "http", "mcp_tool", "mcp-tool", "prompt", "agent"]);
+
+function normalizeHandlerType(type: string): NonNullable<HookFact["handlerType"]> | undefined {
+  if (type === "mcp-tool" || type === "mcp_tool") {
+    return "mcp_tool";
+  }
+  if (type === "command" || type === "http" || type === "prompt" || type === "agent") {
+    return type;
+  }
+  return undefined;
+}
 
 function handlerTypeOf(item: Record<string, unknown>): HookFact["handlerType"] {
-  if (typeof item.type === "string" && HANDLER_TYPES.has(item.type)) {
-    return item.type as NonNullable<HookFact["handlerType"]>;
+  if (typeof item.type === "string") {
+    return normalizeHandlerType(item.type);
   }
-  if (item.command !== undefined) {
+  if (item.command !== undefined || item.args !== undefined) {
     return "command";
   }
   if (typeof item.url === "string") {
@@ -186,24 +125,13 @@ function handlerTypeOf(item: Record<string, unknown>): HookFact["handlerType"] {
   return undefined;
 }
 
-function commandValue(command: unknown): string | undefined {
-  if (typeof command === "string" && command.length > 0) {
-    return command;
-  }
-  if (Array.isArray(command) && command.length > 0 && typeof command[0] === "string" && command[0].length > 0) {
-    return command.filter((part): part is string => typeof part === "string").join(" ");
-  }
-  return undefined;
-}
-
-function pathCandidate(command: unknown): string | undefined {
-  if (typeof command === "string" && command.length > 0) {
-    return command;
-  }
-  if (Array.isArray(command) && typeof command[0] === "string" && command[0].length > 0) {
-    return command[0];
-  }
-  return undefined;
+function isMatcherOnlyGroup(group: Record<string, unknown>): boolean {
+  return (
+    group.matcher !== undefined &&
+    group.type === undefined &&
+    group.command === undefined &&
+    group.url === undefined
+  );
 }
 
 function isHandlerEntry(value: unknown): value is Record<string, unknown> {
@@ -215,7 +143,14 @@ function handlersFromGroups(groups: unknown): Record<string, unknown>[] {
     return [];
   }
   const first = groups[0];
-  if (isHandlerEntry(first) && (first.type !== undefined || first.command !== undefined || first.url !== undefined) && !Array.isArray(first.hooks)) {
+  if (
+    isHandlerEntry(first) &&
+    (first.type !== undefined ||
+      first.command !== undefined ||
+      first.url !== undefined ||
+      first.args !== undefined) &&
+    !Array.isArray(first.hooks)
+  ) {
     return groups.filter(isHandlerEntry);
   }
   const out: Record<string, unknown>[] = [];
@@ -261,27 +196,133 @@ export function hooksFromObject(
       errors.push({ path: filePath, kind: "unexpected-shape", detail: `invalid hook groups for ${event}` });
       continue;
     }
+
+    let invalidGroup = false;
+    for (const group of groups) {
+      if (!isHandlerEntry(group)) {
+        continue;
+      }
+      if (isMatcherOnlyGroup(group) && !Array.isArray(group.hooks)) {
+        invalidGroup = true;
+        facts.push({
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          defect: "invalid-group",
+        });
+        continue;
+      }
+      if (Array.isArray(group.hooks) && group.hooks.length === 0) {
+        invalidGroup = true;
+        facts.push({
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          defect: "invalid-group",
+        });
+      }
+    }
+
     const handlers = handlersFromGroups(groups);
     if (handlers.length === 0) {
-      facts.push({ name: event, path: filePath, event, source, sourceProvider });
+      if (!invalidGroup) {
+        facts.push({ name: event, path: filePath, event, source, sourceProvider });
+      }
       continue;
     }
     for (const item of handlers) {
+      const typeRaw = typeof item.type === "string" ? item.type : undefined;
+      if (typeRaw !== undefined && !HANDLER_TYPES.has(typeRaw)) {
+        facts.push({
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          defect: "unknown-handler-type",
+          unknownHandlerType: typeRaw,
+        });
+        continue;
+      }
       const handlerType = handlerTypeOf(item);
-      const command = commandValue(item.command);
-      const fact: HookFact = {
-        name: event,
-        path: filePath,
-        event,
-        source,
-        sourceProvider,
-        ...(handlerType === undefined ? {} : { handlerType }),
-        ...(command === undefined ? {} : { command }),
-      };
-      if (handlerType === undefined || handlerType === "command") {
-        // Prefer the full command string (joined argv) so `["node", "hook.js"]`
-        // still path-checks the script token, not only argv[0].
-        const candidate = command ?? pathCandidate(item.command);
+      if (handlerType === "http") {
+        const url = typeof item.url === "string" ? item.url : undefined;
+        facts.push({
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          handlerType: "http",
+          ...(url === undefined || url.length === 0
+            ? { defect: "http-without-url" as const }
+            : {}),
+        });
+        continue;
+      }
+      if (handlerType === "mcp_tool") {
+        const toolName =
+          (typeof item.name === "string" && item.name.length > 0 && item.name) ||
+          (typeof item.toolName === "string" && item.toolName.length > 0 && item.toolName) ||
+          (typeof item.mcp_tool === "string" && item.mcp_tool.length > 0 && item.mcp_tool) ||
+          undefined;
+        facts.push({
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          handlerType: "mcp_tool",
+          ...(toolName === undefined ? { defect: "mcp-tool-without-name" as const } : {}),
+        });
+        continue;
+      }
+      if (handlerType === "prompt" || handlerType === "agent") {
+        facts.push({
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          handlerType,
+        });
+        continue;
+      }
+
+      const launches = launchesFromEntry(item);
+      if (launches.length === 0 && (handlerType === "command" || typeRaw === "command")) {
+        facts.push({
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          handlerType: "command",
+          defect: "command-without-command",
+        });
+        continue;
+      }
+      if (launches.length === 0) {
+        facts.push({ name: event, path: filePath, event, source, sourceProvider });
+        continue;
+      }
+      for (const launch of launches) {
+        const command = formatLaunch(launch);
+        const fact: HookFact = {
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          handlerType: "command",
+          command,
+          ...(launch.platform === undefined ? {} : { platform: launch.platform }),
+        };
+        const candidate = scriptCandidateFromLaunch(launch, bases);
         if (candidate !== undefined) {
           const resolved = resolveHookScript(bases, candidate);
           if (resolved !== undefined) {
@@ -289,8 +330,8 @@ export function hooksFromObject(
             fact.scriptExists = resolved.exists;
           }
         }
+        facts.push(fact);
       }
-      facts.push(fact);
     }
   }
   return facts;

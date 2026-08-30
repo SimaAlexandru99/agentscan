@@ -1,57 +1,19 @@
+import { parse, printParseErrorCode, type ParseError } from "jsonc-parser";
+
 /**
- * Parse JSON or JSONC. Comments are stripped only outside strings so a
- * VS Code `mcp.json` with `//` notes is not `config.unreadable`.
+ * Parse JSON or JSONC with a dedicated parser so comments and trailing commas
+ * (OpenCode / VS Code) are valid, while unterminated comments stay unreadable.
  */
 export function parseJsonc(text: string): unknown {
-  const stripped = stripJsonc(text);
-  return JSON.parse(stripped) as unknown;
-}
-
-function stripJsonc(text: string): string {
-  let out = "";
-  let i = 0;
-  let inString = false;
-  let quote: '"' | "'" | undefined;
-  let escaped = false;
-  while (i < text.length) {
-    const ch = text[i]!;
-    if (inString) {
-      out += ch;
-      if (escaped) {
-        escaped = false;
-      } else if (ch === "\\") {
-        escaped = true;
-      } else if (ch === quote) {
-        inString = false;
-        quote = undefined;
-      }
-      i += 1;
-      continue;
-    }
-    if (ch === '"' || ch === "'") {
-      inString = true;
-      quote = ch;
-      out += ch;
-      i += 1;
-      continue;
-    }
-    if (ch === "/" && text[i + 1] === "/") {
-      i += 2;
-      while (i < text.length && text[i] !== "\n") {
-        i += 1;
-      }
-      continue;
-    }
-    if (ch === "/" && text[i + 1] === "*") {
-      i += 2;
-      while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) {
-        i += 1;
-      }
-      i += 2;
-      continue;
-    }
-    out += ch;
-    i += 1;
+  const errors: ParseError[] = [];
+  const value = parse(text, errors, {
+    allowTrailingComma: true,
+    disallowComments: false,
+    allowEmptyContent: false,
+  });
+  if (errors.length > 0) {
+    const first = errors[0]!;
+    throw new Error(`${printParseErrorCode(first.error)} at offset ${first.offset}`);
   }
-  return out;
+  return value;
 }

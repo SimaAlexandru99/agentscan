@@ -1,5 +1,5 @@
 import { basename, dirname } from "node:path";
-import type { Facts, Finding, SkillFact } from "../facts/types";
+import type { Facts, Finding, SkillFact, SkillSchemaProfile } from "../facts/types";
 import type { CheckOptions } from "./options";
 import { make } from "./make";
 
@@ -28,8 +28,25 @@ function skillSubject(skill: SkillFact): string {
  * loads one such directory, not every one in the tree. Derived rather than
  * stored: discovery already puts the owning directory in `path`.
  */
+function skillSchema(skill: SkillFact): SkillSchemaProfile {
+  if (skill.schemaProfile !== undefined) {
+    return skill.schemaProfile;
+  }
+  if (skill.sourceProvider === "agent-skills" || skill.sourceProvider === "cursor") {
+    return "agent-skills";
+  }
+  return "claude";
+}
+
 function skillRoot(skill: SkillFact): string {
-  return dirname(skill.path.replaceAll("\\", "/"));
+  const path = skill.path.replaceAll("\\", "/");
+  for (const marker of ["/.claude/skills", "/.agents/skills", "/.cursor/skills", "/.codex/skills"]) {
+    const index = path.lastIndexOf(marker);
+    if (index !== -1) {
+      return path.slice(0, index + marker.length);
+    }
+  }
+  return dirname(path);
 }
 
 export function checkSkillStructure(facts: Facts): Finding[] {
@@ -64,9 +81,9 @@ export function checkSkillStructure(facts: Facts): Finding[] {
       continue;
     }
 
-    const provider = skill.sourceProvider ?? "claude";
+    const schema = skillSchema(skill);
     if (!skill.hasFrontmatter) {
-      if (provider === "agent-skills") {
+      if (schema === "agent-skills") {
         out.push(
           make("agent-skills.skill.missing-frontmatter", skillSubject(skill), {
             action: "warn",
@@ -114,7 +131,7 @@ export function checkSkillStructure(facts: Facts): Finding[] {
       );
     }
 
-    if (provider === "agent-skills") {
+    if (schema === "agent-skills") {
       out.push(...checkAgentSkillsFrontmatter(skill));
     } else if (skill.description === undefined) {
       out.push(
@@ -137,13 +154,17 @@ function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
   const out: Finding[] = [];
   const dirName = basename(skill.path.replaceAll("\\", "/"));
   if (skill.frontmatterName === undefined) {
+    const typeNote =
+      skill.nameKind !== undefined && skill.nameKind !== "string"
+        ? ` (found ${skill.nameKind}, not a string)`
+        : "";
     out.push(
       make("agent-skills.skill.missing-name", skillSubject(skill), {
         action: "warn",
         severity: "error",
-        message: "SKILL.md frontmatter has no `name`",
+        message: `SKILL.md frontmatter has no string \`name\`${typeNote}`,
         reason:
-          "The Agent Skills spec requires `name` and it must match the parent directory. See docs/spec/agent-skills.md.",
+          "The Agent Skills spec requires `name` as a string and it must match the parent directory. See docs/spec/agent-skills.md.",
         evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
         suggest: `Add name: ${dirName}`,
       }),
@@ -190,13 +211,17 @@ function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
   }
 
   if (skill.description === undefined) {
+    const typeNote =
+      skill.descriptionKind !== undefined && skill.descriptionKind !== "string"
+        ? ` (found ${skill.descriptionKind}, not a string)`
+        : "";
     out.push(
       make("agent-skills.skill.missing-description", skillSubject(skill), {
         action: "warn",
         severity: "error",
-        message: "SKILL.md frontmatter has no `description`",
+        message: `SKILL.md frontmatter has no string \`description\`${typeNote}`,
         reason:
-          "The Agent Skills spec requires `description` (1–1024 characters). See docs/spec/agent-skills.md.",
+          "The Agent Skills spec requires `description` as a string (1–1024 characters). See docs/spec/agent-skills.md.",
         evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
         suggest: "Add a description that says what the skill does and when to use it",
       }),
@@ -385,7 +410,7 @@ export function checkDescriptionBudget(
       s.source === "project" &&
       s.hasSkillMd &&
       s.description !== undefined &&
-      s.sourceProvider !== "agent-skills",
+      skillSchema(s) !== "agent-skills",
   );
   // One budget per skills directory. The startup budget is spent by one session,
   // and a session loads one such directory — summing a monorepo's three apps
