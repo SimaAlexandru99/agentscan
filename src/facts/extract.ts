@@ -163,18 +163,26 @@ function inferPackageManager(
 export function extractFacts(
   root: string,
   config: AgentscanConfig,
-  opts?: { includeGlobal?: boolean },
+  opts?: { includeGlobal?: boolean; startDir?: string; scanBoundary?: string },
 ): Facts {
   const includeGlobal = opts?.includeGlobal ?? config.includeGlobal;
+  const startDir = opts?.startDir ?? root;
+  const scanBoundary = opts?.scanBoundary ?? root;
   const packageErrors: ConfigErrorFact[] = [];
   const pkg = readPackageJson(root, packageErrors);
   const dependencies = { ...(pkg.dependencies ?? {}) };
   const devDependencies = { ...(pkg.devDependencies ?? {}) };
 
-  const surface = discoverAgentSurface(root, config, { includeGlobal });
+  const surface = discoverAgentSurface(root, config, {
+    includeGlobal,
+    startDir,
+    scanBoundary,
+  });
 
   return {
     root,
+    startDir,
+    scanBoundary,
     packageManager: inferPackageManager(root, pkg),
     dependencies,
     devDependencies,
@@ -183,9 +191,14 @@ export function extractFacts(
     hooks: surface.hooks,
     mcp: surface.mcp,
     policyFiles: surface.policyFiles,
+    rules: surface.rules,
     lockedSkills: surface.lockedSkills,
     hasSkillsLock: surface.hasSkillsLock,
     skillsLockInvalid: surface.skillsLockInvalid,
+    ...(surface.skillLockRoots === undefined ? {} : { skillLockRoots: surface.skillLockRoots }),
     configErrors: [...packageErrors, ...surface.configErrors],
+    ...(surface.codexProjectDocMaxBytes === undefined
+      ? {}
+      : { codexProjectDocMaxBytes: surface.codexProjectDocMaxBytes }),
   };
 }

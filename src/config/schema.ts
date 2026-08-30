@@ -12,8 +12,23 @@ export const defaultThresholds = {
 };
 
 export const defaultConfig = {
-  skillPaths: [".agents/skills", ".claude/skills", "skills", ".cursor/skills"],
-  mcpPaths: [".mcp.json", ".claude/mcp.json", "mcp.json"],
+  skillPaths: [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills"],
+  mcpPaths: [
+    ".mcp.json",
+    ".claude/mcp.json",
+    "mcp.json",
+    ".vscode/mcp.json",
+    ".cursor/mcp.json",
+    ".agents/mcp_config.json",
+    ".codex/config.toml",
+    ".gemini/settings.json",
+    "opencode.json",
+    "opencode.jsonc",
+    ".opencode/opencode.json",
+    ".opencode/opencode.jsonc",
+    ".continue/config.yaml",
+    ".continue/mcpServers",
+  ],
   policyFiles: ["AGENTS.md", "CLAUDE.md"],
   ignoreSkills: [] as string[],
   ignoreRules: [] as string[],

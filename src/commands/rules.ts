@@ -1,3 +1,4 @@
+import { ignoreRuleSet } from "../checks/aliases";
 import { STRUCTURAL_CHECKS } from "../checks/index";
 import { loadConfig } from "../config/load";
 import { resolveRoot } from "../discover/index";
@@ -24,7 +25,7 @@ export async function runRulesCommand(
   const root = resolveRoot(options.dir ?? process.cwd());
   const config = loadConfig(root, options.configPath);
 
-  const ignored = new Set(config.ignoreRules);
+  const ignored = ignoreRuleSet(config.ignoreRules);
   const lines = STRUCTURAL_CHECKS.filter((c) => !ignored.has(c.id)).map(
     (c) => `${c.id}  ${c.description}`,
   );

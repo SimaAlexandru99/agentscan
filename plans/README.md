@@ -239,3 +239,34 @@ zero value: across 17 installed plugins, 31 of 33 hook commands use
 798 `SKILL.md` and agent files, 0 declare frontmatter `hooks:`. Both surfaces are
 documented and currently unused here — the same position `mcp.url-without-type`
 shipped in.
+
+## 2026-08-30 multi-provider audit
+
+Plans 021–034 implement the 30 August 2026 audit: 0.8.0 kills P0 false
+negatives (Agent Skills skipped, VS Code/Antigravity/Codex MCP invisible,
+root signals too narrow, Claude IDs looking universal). 0.9.0 adds
+instruction / agent / hook / rules surfaces. 1.0.0 is the honesty release.
+
+Locked decisions live in the plan files: nearest provider signal (not naive
+Git-first), no universal MCP schema, spec-first or STOP, no ProviderAdapter
+rewrite in 0.8.0, `ignoreRules` aliases for old IDs through 0.8.x.
+
+Execute 021 → 027 before any 0.9.0 work. Execute 028–034 only after 0.8.0
+is tagged and each plan's spec captures still match live pages.
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 021 | Capture specs and add provenance on the registry | P0 | M | — | DONE — [plan](021-spec-captures-and-provenance.md) |
+| 022 | Put Provider identity on facts | P0 | M | 021 | DONE — [plan](022-provider-identity-on-facts.md) |
+| 023 | Resolve the project root from the nearest provider signal | P0 | S | — | DONE — [plan](023-nearest-signal-root.md) |
+| 024 | Enable the Agent Skills profile for `.agents/skills` | P0 | L | 021, 022 | DONE — [plan](024-agent-skills-profile.md) |
+| 025 | Parse MCP configs per provider schema | P0 | L | 021, 022 | DONE — [plan](025-mcp-profile-parsers.md) |
+| 026 | Namespace Claude check IDs and split name schemas | P1 | M | 024, 025 | DONE — [plan](026-namespace-claude-check-ids.md) |
+| 027 | Label heuristics, tell the truth in README, release 0.8.0 | P1 | M | 026 | DONE — [plan](027-honesty-and-0-8-0.md) |
+| 028 | Discover instruction files with real precedence | P1 | L | 027 | DONE — [plan](028-instruction-hierarchy.md) |
+| 029 | Discover agent definitions per provider schema | P1 | L | 027, 028 | DONE — [plan](029-multi-provider-agents.md) |
+| 030 | Hook events and handlers per provider | P1 | L | 029 | DONE — [plan](030-provider-hooks.md) |
+| 031 | Discover vendor rule files with vendor limits | P2 | L | 028 | DONE — [plan](031-rules-surfaces.md) |
+| 032 | Add official-example conformance fixtures | P1 | M | 024, 025 | DONE — [plan](032-conformance-fixtures.md) |
+| 033 | Add remaining MCP and config providers | P2 | L | 025, 032 | DONE — [plan](033-remaining-providers.md) |
+| 034 | Publish the coverage matrix and release 1.0.0 | P2 | M | 033 | DONE — [plan](034-coverage-matrix-and-1-0-0.md) |

@@ -1,10 +1,10 @@
 # Hook events
 
 **Source:** https://code.claude.com/docs/en/hooks
-**Read:** 2026-08-09
-**Depends on it:** `hook.unknown-event` (`src/checks/index.ts`, `KNOWN_HOOK_EVENTS`)
+**Read:** 2026-08-30
+**Depends on it:** `claude.hook.unknown-event` (`src/checks/hooks.ts`, `KNOWN_HOOK_EVENTS`)
 
-## The complete set — 31 names
+## The complete set — 33 names
 
 ```
 SessionStart          Setup                 UserPromptSubmit
@@ -17,7 +17,7 @@ TeammateIdle          InstructionsLoaded    ConfigChange
 CwdChanged            DirectoryAdded        FileChanged
 WorktreeCreate        WorktreeRemove        PreCompact
 PostCompact           Elicitation           ElicitationResult
-SessionEnd
+SessionEnd            PreModelSwitch        PostModelSwitch
 ```
 
 Cadence, per the docs: once per session (`SessionStart`, `SessionEnd`), once per
@@ -41,6 +41,8 @@ projects. It reported `PostToolBatch` — a documented event — as a dead hook 
 - **`TaskCreate`** — appears on the page as "`TaskCreated` | When a task is being
   created via `TaskCreate`". It is a tool name; the event is `TaskCreated`.
   Recorded in `scripts/spec-drift.ts` so it is not re-adjudicated.
+- **`TaskUpdate`** — mentioned as the tool that can trigger `TaskCompleted`.
+  Not an event. Recorded in `scripts/spec-drift.ts`.
 
 ## Staleness risk: HIGH
 

@@ -1,4 +1,5 @@
 import { analyze } from "../analyze";
+import { canonicalizeFindingId } from "../checks/aliases";
 import type { Finding } from "../facts/types";
 import { safe } from "../report/safe";
 
@@ -23,7 +24,9 @@ export async function runExplain(
   options: ExplainOptions = {},
 ): Promise<ExplainResult> {
   const { findings } = analyze(options);
-  const finding = findings.find((f) => f.id === findingId);
+  const finding = findings.find(
+    (f) => f.id === findingId || f.id === canonicalizeFindingId(findingId),
+  );
 
   if (finding === undefined) {
     return {

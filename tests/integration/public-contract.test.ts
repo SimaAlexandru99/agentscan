@@ -24,6 +24,7 @@ describe("public discovery and check contracts", () => {
     expect(surface.hooks).toHaveLength(0);
     expect(surface.mcp).toHaveLength(0);
     expect(surface.policyFiles).toHaveLength(0);
+    expect(surface.rules).toHaveLength(0);
     expect(surface.lockedSkills).toHaveLength(0);
     expect(surface.configErrors).toHaveLength(0);
     expect(surface.hasSkillsLock).toBe(false);
@@ -35,8 +36,8 @@ describe("public discovery and check contracts", () => {
     expect(STRUCTURAL_CHECKS.slice(0, 4).map((check) => check.id)).toEqual([
       "config.unreadable",
       "scan.truncated",
-      "hook.unknown-event",
-      "hook.missing-script",
+      "claude.hook.unknown-event",
+      "claude.hook.missing-script",
     ]);
 
     const facts: Facts = {
@@ -57,7 +58,7 @@ describe("public discovery and check contracts", () => {
     };
     expect(runChecks(facts).map((finding) => finding.ruleId)).toEqual([
       "config.unreadable",
-      "hook.unknown-event",
+      "claude.hook.unknown-event",
     ]);
   });
 });

@@ -1,6 +1,8 @@
-import { basename } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import type { Facts, Finding } from "../facts/types";
 import { make } from "./make";
+
+const CODEX_PROJECT_DOC_MAX_BYTES = 32_768;
 
 type PolicyFile = Facts["policyFiles"][number];
 
@@ -118,6 +120,9 @@ function countFinding(args: {
  * looser match would flag every doc that mentions npm in passing.
  */
 export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
+  const claudeAgents = facts.agents.filter(
+    (agent) => agent.sourceProvider === undefined || agent.sourceProvider === "claude",
+  ).length;
   return [
     ...policyLengthFinding({
       ruleId: "budget.agents-md",
@@ -127,7 +132,7 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
       suggest:
         "Delete rather than reorganise — keep only what an agent cannot infer from the code. Or set thresholds.agentsMdLines in .agentscanrc.json",
       reason:
-        "Measured across 2,500+ repositories: past ~150 lines additional content delivers diminishing returns and raises inference cost 20-23% without improving agent performance. Unnecessary requirements actively hurt, by broadening exploration. A lean file is 40-60 lines of commands and boundaries.",
+        "Heuristic, not a published AGENTS.md requirement. Secondary measurements suggest diminishing returns past ~150 lines. Keep this at info; a long file is not a defect. See docs/spec/thresholds.md.",
     }),
     ...policyLengthFinding({
       ruleId: "budget.claude-md",
@@ -137,16 +142,16 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
       suggest:
         "Keep only what is true every session; move the rest into a skill, which loads on demand. Or set thresholds.claudeMdLines in .agentscanrc.json",
       reason:
-        "Frontier models reliably follow roughly 150-200 instructions, and Claude Code's own system prompt already spends about 50 of them. Past that the file is skim-read rather than obeyed. Imports do not help: imported files load at launch too, so splitting organises the text without reducing what competes for attention.",
+        "Claude Code's memory reference asks authors to target under 200 lines per CLAUDE.md — longer files consume more context and reduce adherence. See docs/spec/thresholds.md.",
     }),
     ...countFinding({
       ruleId: "budget.agents",
-      count: facts.agents.length,
+      count: claudeAgents,
       limit: options.agents,
       countLabel: "agents",
-      message: `Agent roster large (${facts.agents.length} > ${options.agents} definitions)`,
+      message: `Agent roster large (${claudeAgents} > ${options.agents} definitions)`,
       reason:
-        "Guidance converges on three or four specialised agents being the productive ceiling — past that, output drops rather than rises. That is about agents you run, not files on disk, so this counts definitions as a proxy: each one's description is loaded so the main session can choose between them, and a long roster dilutes that choice the same way a long skill list does. See docs/spec/thresholds.md.",
+        "Heuristic proxy, not a published requirement. Secondary write-ups converge on three or four specialised agents as a productive ceiling — that is about agents you run, not files on disk. This counts Claude definitions as a hint only. See docs/spec/thresholds.md.",
       suggest:
         "Archive definitions you do not dispatch, or set thresholds.agents in .agentscanrc.json",
     }),
@@ -157,9 +162,100 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
       countLabel: "mcp",
       message: `MCP surface above sweet spot (${facts.mcp.length} > ${options.mcp})`,
       reason:
-        "What actually degrades an agent is the number of tool definitions in context, not the number of servers: benchmarks show large models near-perfect at ~20 tools and failing outright past ~100, and a typical server carries tens of tools. Server count is the only proxy available without connecting to them, so treat this as a hint to go count the tools, not as a measurement.",
+        "Heuristic proxy, not a published requirement. Tool-count research is about definitions in context, not server entries on disk, and this scanner cannot count live tools without opening a network connection. Treat the server count as a hint. See docs/spec/thresholds.md.",
       suggest:
         "Count the tools your servers actually expose; disable unused servers in mcp.json or set thresholds.mcp in .agentscanrc.json",
+    }),
+    ...codexInstructionBudget(facts),
+  ];
+}
+
+/**
+ * Codex concatenates AGENTS.md / AGENTS.override.md from the project root
+ * down to cwd and stops at `project_doc_max_bytes` (32 KiB). Nested files
+ * that are not on that walk-up chain are not counted. CLAUDE.md is excluded.
+ * See docs/spec/codex-agents-md.md.
+ */
+function isAgentsMdPolicy(policy: PolicyFile): boolean {
+  if (policy.kind === "agents-md") {
+    return true;
+  }
+  if (policy.kind !== undefined) {
+    return false;
+  }
+  const name = basename(policy.path);
+  return name === "AGENTS.md" || name === "AGENTS.override.md";
+}
+
+function nonempty(text: string): boolean {
+  return text.trim().length > 0;
+}
+
+/**
+ * Per directory Codex loads at most one file: non-empty AGENTS.override.md,
+ * otherwise AGENTS.md. Empty files are skipped. See docs/spec/codex-agents-md.md.
+ */
+export function effectiveCodexInstructionChain(files: PolicyFile[]): PolicyFile[] {
+  const onChain = files.filter((policy) => {
+    if (!isAgentsMdPolicy(policy)) {
+      return false;
+    }
+    return policy.hopsFromStart !== undefined && Number.isFinite(policy.hopsFromStart);
+  });
+  const byDir = new Map<string, PolicyFile[]>();
+  for (const policy of onChain) {
+    const dir = resolve(dirname(policy.path));
+    const bucket = byDir.get(dir);
+    if (bucket === undefined) {
+      byDir.set(dir, [policy]);
+    } else {
+      bucket.push(policy);
+    }
+  }
+  const effective: PolicyFile[] = [];
+  for (const group of byDir.values()) {
+    const override = group.find((policy) => basename(policy.path) === "AGENTS.override.md");
+    const normal = group.find((policy) => basename(policy.path) === "AGENTS.md");
+    const pick =
+      override !== undefined && nonempty(override.text)
+        ? override
+        : normal !== undefined && nonempty(normal.text)
+          ? normal
+          : undefined;
+    if (pick !== undefined) {
+      effective.push(pick);
+    }
+  }
+  return effective;
+}
+
+function codexInstructionBudget(facts: Facts): Finding[] {
+  const chain = effectiveCodexInstructionChain(facts.policyFiles);
+  if (chain.length === 0) {
+    return [];
+  }
+  const limit = facts.codexProjectDocMaxBytes ?? CODEX_PROJECT_DOC_MAX_BYTES;
+  const bytes = chain.reduce(
+    (sum, policy) => sum + Buffer.byteLength(policy.text, "utf8"),
+    0,
+  );
+  if (bytes <= limit) {
+    return [];
+  }
+  return [
+    make("codex.budget.instructions", "rule:codex.budget.instructions", {
+      action: "warn",
+      severity: "info",
+      message: `Codex instruction chain exceeds ${limit} bytes (${bytes})`,
+      reason:
+        "Codex stops adding AGENTS.md files once the combined size reaches project_doc_max_bytes (32 KiB by default). At most one file per directory is loaded — AGENTS.override.md if it is non-empty, otherwise AGENTS.md. This is not applied to CLAUDE.md. See docs/spec/codex-agents-md.md.",
+      evidence: [
+        { kind: "count", value: `bytes=${bytes}` },
+        { kind: "threshold", value: String(limit) },
+        ...chain.map((policy) => ({ kind: "policy", value: policy.path })),
+      ],
+      suggest:
+        "Shorten AGENTS.md files on the path from the project root to the working directory, or raise project_doc_max_bytes in .codex/config.toml",
     }),
   ];
 }

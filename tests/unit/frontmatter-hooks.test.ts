@@ -50,7 +50,7 @@ function agent(root: string, name: string, command: string): void {
 function hookFindings(root: string) {
   return runChecks(
     extractFacts(root, defaultConfig, { includeGlobal: false }),
-  ).filter((f) => f.ruleId === "hook.missing-script");
+  ).filter((f) => f.ruleId === "claude.hook.missing-script");
 }
 
 describe("hooks declared in skill frontmatter", () => {
@@ -131,7 +131,7 @@ hooks:
       extractFacts(root, defaultConfig, { includeGlobal: false }),
     );
     expect(
-      findings.filter((f) => f.ruleId === "hook.unknown-event"),
+      findings.filter((f) => f.ruleId === "claude.hook.unknown-event"),
     ).toHaveLength(1);
   });
 });

@@ -1,8 +1,9 @@
 import { resolve } from "node:path";
+import { ignoreRuleSet } from "./checks/aliases";
 import { runChecks } from "./checks/index";
 import { loadConfig } from "./config/load";
 import type { AgentscanConfig } from "./config/schema";
-import { resolveRoot } from "./discover/index";
+import { resolveScanContext } from "./discover/index";
 import { extractFacts } from "./facts/extract";
 import type { Facts, Finding } from "./facts/types";
 import { sortFindings } from "./report/sort";
@@ -31,7 +32,8 @@ export type Analysis = {
  */
 export function analyze(options: AnalyzeOptions = {}): Analysis {
   const requested = resolve(options.dir ?? process.cwd());
-  const root = resolveRoot(requested);
+  const ctx = resolveScanContext(requested);
+  const root = ctx.projectRoot;
   const loaded = loadConfig(root, options.configPath);
 
   const config: AgentscanConfig = {
@@ -41,10 +43,14 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
   };
 
   const includeGlobal = options.global ?? config.includeGlobal;
-  const facts = extractFacts(root, config, { includeGlobal });
+  const facts = extractFacts(root, config, {
+    includeGlobal,
+    startDir: requested,
+    scanBoundary: ctx.scanBoundary,
+  });
 
   const ignoredSkills = new Set(config.ignoreSkills);
-  const ignoredRules = new Set(config.ignoreRules);
+  const ignoredRules = ignoreRuleSet(config.ignoreRules);
 
   const structural = runChecks(facts, {
     requireLock: config.requireLock,

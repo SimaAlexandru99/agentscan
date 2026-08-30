@@ -1,7 +1,7 @@
 {
   "name": "@chimix/agentscan",
-  "version": "0.7.0",
-  "description": "Find broken agent configuration in a project — hooks whose scripts are gone, MCP servers misconfigured by schema, skills that disagree with their lockfile",
+  "version": "1.0.0",
+  "description": "Offline linter for Claude Code, portable Agent Skills, AGENTS.md, and MCP/hooks/rules for VS Code, Cursor, Codex, Gemini, OpenCode, and Continue",
   "type": "module",
   "bin": {
     "agentscan": "./dist/cli.js"
@@ -48,6 +48,8 @@
   },
   "license": "MIT",
   "dependencies": {
+    "jsonc-parser": "^3.3.1",
+    "smol-toml": "^1.8.0",
     "yaml": "^2.7.0",
     "zod": "^3.24.0"
   },

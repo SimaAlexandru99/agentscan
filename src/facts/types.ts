@@ -1,10 +1,35 @@
+import type {
+  McpLaunchKind,
+  McpSchemaProfile,
+  Provider,
+  SkillSchemaProfile,
+} from "./provider";
+
 export type Action = "keep" | "delete" | "add" | "refresh" | "warn" | "drift";
 export type Severity = "error" | "warning" | "info";
 
+export type {
+  McpLaunchKind,
+  McpSchemaProfile,
+  Provider,
+  SkillSchemaProfile,
+} from "./provider";
+
+export type YamlScalarKind = "string" | "number" | "boolean" | "other";
+export type HookDefect =
+  | "invalid-group"
+  | "command-without-command"
+  | "http-without-url"
+  | "mcp-tool-without-name"
+  | "unknown-handler-type";
+export type OsPlatform = "windows" | "linux" | "osx";
+
 export type SkillFact = {
   id: string;
-  /** Runtime convention that owns this skill directory. */
-  runtime?: "claude" | "agents" | "unknown";
+  /** Provider convention that owns this skill directory. */
+  sourceProvider?: Provider;
+  /** File-schema contract. Distinct from product identity — `.cursor/skills` is Agent Skills. */
+  schemaProfile?: SkillSchemaProfile;
   /** Stable path-qualified identity only when duplicate ids are present. */
   instanceId?: string;
   path: string;
@@ -20,8 +45,12 @@ export type SkillFact = {
   unparseableFrontmatter?: boolean;
   /** Bundled files the body points at that resolve nowhere. */
   brokenReferences?: string[];
-  /** `name:` from frontmatter, when present. */
+  /** `name:` from frontmatter, when present as a string. */
   frontmatterName?: string;
+  /** YAML type of `name:` before any string coercion. */
+  nameKind?: YamlScalarKind;
+  /** YAML type of `description:` before any string coercion. */
+  descriptionKind?: YamlScalarKind;
   /**
    * Hooks declared in this file's own frontmatter, one of the seven documented
    * registration sites. Kept on the item because that is where the base for a
@@ -33,8 +62,30 @@ export type SkillFact = {
 export type McpFact = {
   name: string;
   path: string;
+  schemaProfile?: McpSchemaProfile;
+  sourceProvider?: Provider;
+  launchKind?: McpLaunchKind;
+  /** Continue registry block, e.g. `continuedev/continue-docs-mcp`. */
+  uses?: string;
+  platform?: OsPlatform;
+  /** Declared working directory when present. */
+  cwd?: string;
+  /** OpenCode V1 vs V2 map that produced this entry. */
+  opencodeSchema?: "v1" | "v2";
+  /**
+   * V1 `{ enabled }` override that may inherit a server defined outside this
+   * file. Skip hard launch/schema errors — the launch data is not local.
+   */
+  opencodeInherit?: boolean;
+  opencodeDefect?:
+    | "missing-type"
+    | "local-without-command"
+    | "remote-without-url"
+    | "invalid-launch-for-type";
   hasCommand: boolean;
   hasUrl: boolean;
+  hasServerUrl?: boolean;
+  hasHttpUrl?: boolean;
   /** Declared `command` string when present (stdio servers). */
   command?: string;
   /**
@@ -63,16 +114,30 @@ export type HookFact = {
    *
    * See docs/spec/hook-sources.md.
    */
-  source?: "settings" | "plugin" | "skill" | "agent";
+  source?: "settings" | "plugin" | "skill" | "agent" | "vscode-hooks";
+  sourceProvider?: Provider;
+  handlerType?: "command" | "http" | "mcp_tool" | "prompt" | "agent";
+  defect?: HookDefect;
+  unknownHandlerType?: string;
+  platform?: OsPlatform;
+  /** Declared working directory when present. */
+  cwd?: string;
   /** Script path parsed out of `command`, resolved against the project root. */
   scriptPath?: string;
   /** false only when scriptPath was extracted and does not exist on disk. */
   scriptExists?: boolean;
 };
 
+export type AgentSchemaProfile = "claude-md" | "vscode-agent-md";
+
 export type AgentFact = {
   name: string;
   path: string;
+  sourceProvider?: Provider;
+  schemaProfile?: AgentSchemaProfile;
+  /** One `.claude/agents` (or provider) directory — duplicates are scoped here. */
+  namespace?: string;
+  nameSource?: "frontmatter" | "filename";
   /** Frontmatter present and parseable as a `---` block. */
   hasFrontmatter: boolean;
   /** File exists but could not be read; its fields are unknown, not absent. */
@@ -108,10 +173,35 @@ export type LockedSkillFact = {
   source?: string;
   skillPath?: string;
   computedHash?: string;
+  /** Directory that contains the lockfile governing this entry. */
+  lockRoot?: string;
+  lockPath?: string;
+};
+
+export type PolicyFileFact = {
+  path: string;
+  text: string;
+  sourceProvider?: Provider;
+  kind?: "agents-md" | "claude-md" | "vscode-instructions";
+  hopsFromStart?: number;
+  nearest?: boolean;
+};
+
+export type RuleFact = {
+  path: string;
+  sourceProvider: Provider;
+  lineCount: number;
+  byteLength: number;
 };
 
 export type Facts = {
   root: string;
+  /** Directory the user asked to scan; walk-up discovery starts here. */
+  startDir?: string;
+  /** Farthest ancestor this scan may walk. A child `.cursor` does not shrink it. */
+  scanBoundary?: string;
+  /** Codex `project_doc_max_bytes` when declared in `.codex/config.toml`. */
+  codexProjectDocMaxBytes?: number;
   packageManager: "bun" | "npm" | "pnpm" | "yarn" | "unknown";
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
@@ -119,11 +209,14 @@ export type Facts = {
   agents: AgentFact[];
   hooks: HookFact[];
   mcp: McpFact[];
-  policyFiles: { path: string; text: string }[];
+  policyFiles: PolicyFileFact[];
+  rules?: RuleFact[];
   /** skills-lock.json entries; empty when the project has no lockfile. */
   lockedSkills: LockedSkillFact[];
   hasSkillsLock: boolean;
   skillsLockInvalid?: boolean;
+  /** Directories that own a readable skills-lock.json in this scan. */
+  skillLockRoots?: string[];
   configErrors: ConfigErrorFact[];
 };
 

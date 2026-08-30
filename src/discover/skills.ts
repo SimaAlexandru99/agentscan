@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
+import { providerFromSkillsDir, schemaProfileFromSkillsDir } from "../facts/provider";
 import type { ConfigErrorFact, SkillFact } from "../facts/types";
 import { hooksFromObject } from "./hooks";
 import { NESTED_DISCOVERY_MAX_DEPTH, NESTED_DISCOVERY_SKIP, readFrontmatter } from "./shared";
@@ -76,6 +77,128 @@ function brokenReferences(
   );
 }
 
+function readDirNames(dir: string, errors: ConfigErrorFact[]): string[] | undefined {
+  try {
+    return readdirSync(dir);
+  } catch (err) {
+    errors.push({
+      path: dir,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return undefined;
+  }
+}
+
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function isFile(path: string): boolean {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Directories that actually contain SKILL.md. Intermediate grouping folders
+ * (`.cursor/skills/frontend/deploy`) are not skills.
+ */
+function findSkillMdDirs(
+  dir: string,
+  errors: ConfigErrorFact[],
+  depth = 0,
+): string[] {
+  const names = readDirNames(dir, errors);
+  if (names === undefined) {
+    return [];
+  }
+  if (isFile(join(dir, "SKILL.md"))) {
+    return [dir];
+  }
+  if (depth >= NESTED_DISCOVERY_MAX_DEPTH) {
+    return [];
+  }
+  const out: string[] = [];
+  for (const name of names) {
+    if (name.startsWith(".") || name === "node_modules" || NESTED_DISCOVERY_SKIP.has(name)) {
+      continue;
+    }
+    const child = join(dir, name);
+    if (!isDirectory(child)) {
+      continue;
+    }
+    out.push(...findSkillMdDirs(child, errors, depth + 1));
+  }
+  return out;
+}
+
+function skillFactFromDir(
+  skillDir: string,
+  source: "project" | "global",
+  skillsRoot: string,
+  errors: ConfigErrorFact[],
+  root: string,
+  opts: { hasSkillMd: boolean; unreadable?: boolean },
+): SkillFact {
+  const normalizedRoot = skillsRoot.replaceAll("\\", "/");
+  const sourceProvider = providerFromSkillsDir(normalizedRoot);
+  const schemaProfile = schemaProfileFromSkillsDir(normalizedRoot);
+  const skillMd = join(skillDir, "SKILL.md");
+  const fm = opts.hasSkillMd
+    ? readFrontmatter(skillMd, errors)
+    : { hasFrontmatter: false as const };
+  const fact: SkillFact = {
+    id: basename(skillDir),
+    sourceProvider,
+    schemaProfile,
+    path: skillDir,
+    source,
+    hasSkillMd: opts.hasSkillMd,
+    hasFrontmatter: fm.hasFrontmatter,
+  };
+  if (opts.unreadable === true || fm.unreadable === true) {
+    fact.unreadable = true;
+  }
+  if (fm.unparseable === true) {
+    fact.unparseableFrontmatter = true;
+  }
+  if (fm.body !== undefined) {
+    const broken = brokenReferences(fm.body, skillDir, root);
+    if (broken.length > 0) {
+      fact.brokenReferences = broken;
+    }
+  }
+  if (fm.description !== undefined) {
+    fact.description = fm.description;
+  }
+  if (fm.descriptionKind !== undefined) {
+    fact.descriptionKind = fm.descriptionKind;
+  }
+  if (fm.name !== undefined) {
+    fact.frontmatterName = fm.name;
+  }
+  if (fm.nameKind !== undefined) {
+    fact.nameKind = fm.nameKind;
+  }
+  if (fm.hooks !== undefined) {
+    const hooks = hooksFromObject(fm.hooks, skillMd, "skill", {
+      project: root,
+      own: skillDir,
+    }, errors);
+    if (hooks.length > 0) {
+      fact.frontmatterHooks = hooks;
+    }
+  }
+  return fact;
+}
+
 export function discoverSkillsInDir(
   dir: string,
   source: "project" | "global",
@@ -85,99 +208,48 @@ export function discoverSkillsInDir(
   if (!existsSync(dir)) {
     return [];
   }
-  let entries: string[];
-  try {
-    entries = readdirSync(dir);
-  } catch (err) {
-    // An unreadable skills dir looks exactly like a project with no skills.
-    errors.push({
-      path: dir,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
+  const names = readDirNames(dir, errors);
+  if (names === undefined) {
     return [];
   }
-  const skills: SkillFact[] = [];
-  const normalizedDir = dir.replaceAll("\\", "/");
-  const runtime: SkillFact["runtime"] = normalizedDir.includes("/.claude/skills") || normalizedDir.endsWith("/.claude/skills")
-    ? "claude"
-    : normalizedDir.includes("/.agents/skills") || normalizedDir.endsWith("/.agents/skills")
-      ? "agents"
-      : "unknown";
-  for (const name of entries) {
+
+  const found = findSkillMdDirs(dir, errors);
+  const foundSet = new Set(found.map((path) => resolve(path)));
+  const skills = found.map((skillDir) =>
+    skillFactFromDir(skillDir, source, dir, errors, root, { hasSkillMd: true }),
+  );
+
+  for (const name of names) {
     // `.system` under ~/.codex/skills is a container holding six real skills,
-    // not a skill — reporting it suggested deleting them. Mirrors the dotfile
-    // filter discoverAgents already has.
+    // not a skill — reporting it suggested deleting them.
     if (name.startsWith(".") || name === "node_modules") {
       continue;
     }
-    const skillDir = join(dir, name);
-    let st: ReturnType<typeof statSync>;
-    try {
-      st = statSync(skillDir);
-    } catch {
+    const child = join(dir, name);
+    if (!isDirectory(child)) {
       continue;
     }
-    if (!st.isDirectory()) {
+    const resolved = resolve(child);
+    if (foundSet.has(resolved) || found.some((path) => resolve(path).startsWith(`${resolved}/`))) {
       continue;
     }
-    const skillMd = join(skillDir, "SKILL.md");
-    // existsSync cannot tell ENOENT from EACCES, so on an unreadable directory
-    // "no SKILL.md" is a claim about a file we never got to look at.
     let dirReadable = true;
     try {
-      readdirSync(skillDir);
+      readdirSync(child);
     } catch (err) {
       dirReadable = false;
       errors.push({
-        path: skillDir,
+        path: child,
         kind: "unreadable",
         detail: err instanceof Error ? err.message : String(err),
       });
     }
-    const hasSkillMd = dirReadable && existsSync(skillMd);
-    const fm = hasSkillMd
-      ? readFrontmatter(skillMd, errors)
-      : { hasFrontmatter: false as const };
-
-    const fact: SkillFact = {
-      id: name,
-      runtime,
-      path: skillDir,
-      source,
-      hasSkillMd,
-      hasFrontmatter: fm.hasFrontmatter,
-    };
-    if (fm.unreadable === true || !dirReadable) {
-      fact.unreadable = true;
-    }
-    if (fm.unparseable === true) {
-      fact.unparseableFrontmatter = true;
-    }
-    if (fm.body !== undefined) {
-      const broken = brokenReferences(fm.body, skillDir, root);
-      if (broken.length > 0) {
-        fact.brokenReferences = broken;
-      }
-    }
-    if (fm.description !== undefined) {
-      fact.description = fm.description;
-    }
-    if (fm.name !== undefined) {
-      fact.frontmatterName = fm.name;
-    }
-    if (fm.hooks !== undefined) {
-      // A relative script path resolves against the skill's own directory
-      // first, then the project root — see resolveHookScript.
-      const hooks = hooksFromObject(fm.hooks, skillMd, "skill", {
-        project: root,
-        own: skillDir,
-      }, errors);
-      if (hooks.length > 0) {
-        fact.frontmatterHooks = hooks;
-      }
-    }
-    skills.push(fact);
+    skills.push(
+      skillFactFromDir(child, source, dir, errors, root, {
+        hasSkillMd: false,
+        ...(dirReadable ? {} : { unreadable: true }),
+      }),
+    );
   }
   return skills;
 }
@@ -186,6 +258,8 @@ type NestedDiscoveryOptions = {
   /** @internal test seam; deliberately not a CLI option. */
   onDirectoryRead?: () => void;
 };
+
+const NESTED_SKILL_PARENTS = new Set([".claude", ".cursor", ".agents", ".codex"]);
 
 export function discoverNestedClaudeSkills(
   root: string,
@@ -203,7 +277,7 @@ export function discoverNestedClaudeSkills(
       return undefined;
     }
   };
-  const inspectClaude = (dir: string): void => {
+  const inspectSkillsParent = (dir: string): void => {
     const entries = read(dir);
     if (entries === undefined) return;
     for (const entry of entries) {
@@ -218,12 +292,12 @@ export function discoverNestedClaudeSkills(
     if (entries === undefined) return;
     for (const entry of entries) {
       if (!entry.isDirectory() || NESTED_DISCOVERY_SKIP.has(entry.name)) continue;
-      if (entry.name.startsWith(".") && entry.name !== ".claude") continue;
+      if (entry.name.startsWith(".") && !NESTED_SKILL_PARENTS.has(entry.name)) continue;
       const child = join(dir, entry.name);
-      if (entry.name === ".claude") {
-        // A .claude directory is a container, not another tree to recurse.
+      if (NESTED_SKILL_PARENTS.has(entry.name)) {
+        // A provider directory is a container, not another tree to recurse.
         // This also excludes .claude/worktrees snapshots by construction.
-        inspectClaude(child);
+        inspectSkillsParent(child);
         continue;
       }
       if (depth >= NESTED_DISCOVERY_MAX_DEPTH) continue;

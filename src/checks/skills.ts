@@ -1,7 +1,12 @@
-import { dirname } from "node:path";
-import type { Facts, Finding, SkillFact } from "../facts/types";
+import { basename, dirname, isAbsolute, resolve, sep } from "node:path";
+import type { Facts, Finding, LockedSkillFact, SkillFact, SkillSchemaProfile } from "../facts/types";
 import type { CheckOptions } from "./options";
 import { make } from "./make";
+
+/** Agent Skills name: [a-z0-9]+ hyphen segments, 1–64 chars. See docs/spec/agent-skills.md. */
+const AGENT_SKILLS_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const AGENT_SKILLS_NAME_MAX = 64;
+const AGENT_SKILLS_DESCRIPTION_MAX = 1024;
 
 /** Global skills live outside the repo; say so, or a reader cannot tell. */
 function skillEvidence(skill: SkillFact, value: string): Finding["evidence"] {
@@ -23,8 +28,29 @@ function skillSubject(skill: SkillFact): string {
  * loads one such directory, not every one in the tree. Derived rather than
  * stored: discovery already puts the owning directory in `path`.
  */
+function skillSchema(skill: SkillFact): SkillSchemaProfile {
+  if (skill.schemaProfile !== undefined) {
+    return skill.schemaProfile;
+  }
+  if (
+    skill.sourceProvider === "agent-skills" ||
+    skill.sourceProvider === "cursor" ||
+    skill.sourceProvider === "codex"
+  ) {
+    return "agent-skills";
+  }
+  return "claude";
+}
+
 function skillRoot(skill: SkillFact): string {
-  return dirname(skill.path.replaceAll("\\", "/"));
+  const path = skill.path.replaceAll("\\", "/");
+  for (const marker of ["/.claude/skills", "/.agents/skills", "/.cursor/skills", "/.codex/skills"]) {
+    const index = path.lastIndexOf(marker);
+    if (index !== -1) {
+      return path.slice(0, index + marker.length);
+    }
+  }
+  return dirname(path);
 }
 
 export function checkSkillStructure(facts: Facts): Finding[] {
@@ -59,23 +85,38 @@ export function checkSkillStructure(facts: Facts): Finding[] {
       continue;
     }
 
-    if (skill.runtime !== "agents" && !skill.hasFrontmatter) {
-      out.push(
-        make("skill.missing-frontmatter", skillSubject(skill), {
-          action: "warn",
-          severity: "warning",
-          message: "SKILL.md has no YAML frontmatter block",
-          reason:
-            "Skill discovery reads `name` and `description` from frontmatter; without it the skill cannot be matched to a task.",
-          evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
-          suggest: "Add a --- delimited block with name and description",
-        }),
-      );
+    const schema = skillSchema(skill);
+    if (!skill.hasFrontmatter) {
+      if (schema === "agent-skills") {
+        out.push(
+          make("agent-skills.skill.missing-frontmatter", skillSubject(skill), {
+            action: "warn",
+            severity: "error",
+            message: "SKILL.md has no YAML frontmatter block",
+            reason:
+              "The Agent Skills spec requires YAML frontmatter with name and description. See docs/spec/agent-skills.md.",
+            evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+            suggest: "Add a --- delimited block with name and description",
+          }),
+        );
+      } else {
+        out.push(
+          make("claude.skill.missing-frontmatter", skillSubject(skill), {
+            action: "warn",
+            severity: "warning",
+            message: "SKILL.md has no YAML frontmatter block",
+            reason:
+              "Skill discovery reads `name` and `description` from frontmatter; without it the skill cannot be matched to a task.",
+            evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+            suggest: "Add a --- delimited block with name and description",
+          }),
+        );
+      }
       continue;
     }
 
     const broken = skill.brokenReferences;
-    if (skill.runtime !== "agents" && broken !== undefined && broken.length > 0) {
+    if (broken !== undefined && broken.length > 0) {
       const shown = broken.slice(0, 3).join(", ");
       const rest = broken.length - Math.min(3, broken.length);
       out.push(
@@ -94,12 +135,12 @@ export function checkSkillStructure(facts: Facts): Finding[] {
       );
     }
 
-    if (skill.runtime !== "agents" && skill.description === undefined) {
+    if (schema === "agent-skills") {
+      out.push(...checkAgentSkillsFrontmatter(skill));
+    } else if (skill.description === undefined) {
       out.push(
-        make("skill.missing-description", skillSubject(skill), {
+        make("claude.skill.missing-description", skillSubject(skill), {
           action: "warn",
-          // The spec marks description "Recommended", not required — a skill
-          // without one still loads when invoked by name.
           severity: "info",
           message: "SKILL.md frontmatter has no `description`",
           reason:
@@ -111,6 +152,132 @@ export function checkSkillStructure(facts: Facts): Finding[] {
     }
   }
   return out;
+}
+
+function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
+  const out: Finding[] = [];
+  const dirName = basename(skill.path.replaceAll("\\", "/"));
+  if (skill.frontmatterName === undefined) {
+    const typeNote =
+      skill.nameKind !== undefined && skill.nameKind !== "string"
+        ? ` (found ${skill.nameKind}, not a string)`
+        : "";
+    out.push(
+      make("agent-skills.skill.missing-name", skillSubject(skill), {
+        action: "warn",
+        severity: "error",
+        message: `SKILL.md frontmatter has no string \`name\`${typeNote}`,
+        reason:
+          "The Agent Skills spec requires `name` as a string and it must match the parent directory. See docs/spec/agent-skills.md.",
+        evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+        suggest: `Add name: ${dirName}`,
+      }),
+    );
+  } else {
+    const name = skill.frontmatterName;
+    if (name.length > AGENT_SKILLS_NAME_MAX) {
+      out.push(
+        make("agent-skills.skill.name-too-long", skillSubject(skill), {
+          action: "warn",
+          severity: "error",
+          message: `Skill name is ${name.length} characters (max ${AGENT_SKILLS_NAME_MAX})`,
+          reason: "The Agent Skills spec limits `name` to 64 characters. See docs/spec/agent-skills.md.",
+          evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+          suggest: "Shorten the frontmatter name",
+        }),
+      );
+    } else if (!AGENT_SKILLS_NAME.test(name)) {
+      out.push(
+        make("agent-skills.skill.invalid-name", skillSubject(skill), {
+          action: "warn",
+          severity: "error",
+          message: `Skill name "${name}" is not a valid Agent Skills identifier`,
+          reason:
+            "Name must be lowercase letters, numbers, and hyphens, without a leading or trailing hyphen or consecutive hyphens. See docs/spec/agent-skills.md.",
+          evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+          suggest: "Use a lowercase hyphenated name that matches the directory",
+        }),
+      );
+    }
+    if (name !== dirName) {
+      out.push(
+        make("agent-skills.skill.name-does-not-match-directory", skillSubject(skill), {
+          action: "warn",
+          severity: "error",
+          message: `Skill name "${name}" does not match directory "${dirName}"`,
+          reason:
+            "The Agent Skills spec requires `name` to match the parent directory. See docs/spec/agent-skills.md.",
+          evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+          suggest: `Set name: ${dirName} or rename the directory`,
+        }),
+      );
+    }
+  }
+
+  if (skill.description === undefined) {
+    const typeNote =
+      skill.descriptionKind !== undefined && skill.descriptionKind !== "string"
+        ? ` (found ${skill.descriptionKind}, not a string)`
+        : "";
+    out.push(
+      make("agent-skills.skill.missing-description", skillSubject(skill), {
+        action: "warn",
+        severity: "error",
+        message: `SKILL.md frontmatter has no string \`description\`${typeNote}`,
+        reason:
+          "The Agent Skills spec requires `description` as a string (1–1024 characters). See docs/spec/agent-skills.md.",
+        evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+        suggest: "Add a description that says what the skill does and when to use it",
+      }),
+    );
+  } else if (skill.description.length > AGENT_SKILLS_DESCRIPTION_MAX) {
+    out.push(
+      make("agent-skills.skill.description-too-long", skillSubject(skill), {
+        action: "warn",
+        severity: "error",
+        message: `Skill description is ${skill.description.length} characters (max ${AGENT_SKILLS_DESCRIPTION_MAX})`,
+        reason: "The Agent Skills spec limits `description` to 1024 characters. See docs/spec/agent-skills.md.",
+        evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+        suggest: "Shorten the description",
+      }),
+    );
+  }
+  return out;
+}
+
+function skillAbs(skill: SkillFact, facts: Facts): string {
+  return isAbsolute(skill.path) ? resolve(skill.path) : resolve(facts.root, skill.path);
+}
+
+function lockRootsOf(facts: Facts): string[] {
+  if (facts.skillLockRoots !== undefined && facts.skillLockRoots.length > 0) {
+    return facts.skillLockRoots.map((root) => resolve(root));
+  }
+  const fromEntries = [
+    ...new Set(
+      facts.lockedSkills
+        .map((entry) => entry.lockRoot)
+        .filter((root): root is string => root !== undefined)
+        .map((root) => resolve(root)),
+    ),
+  ];
+  if (fromEntries.length > 0) {
+    return fromEntries;
+  }
+  return facts.hasSkillsLock ? [resolve(facts.root)] : [];
+}
+
+function underRoot(absPath: string, root: string): boolean {
+  return absPath === root || absPath.startsWith(`${root}${sep}`);
+}
+
+/** Nearest lock directory that is an ancestor of the skill path. */
+function governingLockRoot(skillPath: string, lockRoots: string[]): string | undefined {
+  const owners = lockRoots.filter((root) => underRoot(skillPath, root));
+  if (owners.length === 0) {
+    return undefined;
+  }
+  return owners.reduce((nearest, root) => (root.length > nearest.length ? root : nearest));
 }
 
 export function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
@@ -143,10 +310,25 @@ export function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding
     return out;
   }
 
-  const onDisk = new Set(projectSkills.map((s) => s.id));
-  const locked = new Map(facts.lockedSkills.map((l) => [l.id, l]));
+  const lockRoots = lockRootsOf(facts);
+  const byRoot = new Map<string, LockedSkillFact[]>();
+  for (const entry of facts.lockedSkills) {
+    const root = resolve(entry.lockRoot ?? facts.root);
+    const bucket = byRoot.get(root);
+    if (bucket === undefined) {
+      byRoot.set(root, [entry]);
+    } else {
+      bucket.push(entry);
+    }
+  }
 
   for (const skill of projectSkills) {
+    const gov = governingLockRoot(skillAbs(skill, facts), lockRoots);
+    if (gov === undefined) {
+      // No lockfile owns this skill — do not compare it to a distant lock.
+      continue;
+    }
+    const locked = new Map((byRoot.get(gov) ?? []).map((entry) => [entry.id, entry]));
     if (locked.has(skill.id)) {
       continue;
     }
@@ -164,27 +346,40 @@ export function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding
     );
   }
 
-  for (const entry of facts.lockedSkills) {
-    if (onDisk.has(entry.id)) {
-      continue;
-    }
-    const from = entry.source === undefined ? "" : ` (from ${entry.source})`;
-    out.push(
-      make("skill.locked-not-installed", `skill:${entry.id}`, {
-        action: "add",
-        severity: "warning",
-        message: `skills-lock.json pins "${entry.id}"${from} but it is not installed`,
-        reason:
-          "The lockfile and the working tree disagree: either the install was removed without updating the lock, or the install never completed.",
-        evidence: [
-          { kind: "lock", value: entry.id },
-          ...(entry.source === undefined
-            ? []
-            : [{ kind: "source", value: entry.source }]),
-        ],
-        suggest: "Reinstall the skill, or drop the entry from skills-lock.json",
-      }),
+  const multipleLocks = lockRoots.length > 1;
+  for (const [root, entries] of byRoot) {
+    const inScope = projectSkills.filter(
+      (skill) => governingLockRoot(skillAbs(skill, facts), lockRoots) === root,
     );
+    const onDisk = new Set(inScope.map((skill) => skill.id));
+    for (const entry of entries) {
+      if (onDisk.has(entry.id)) {
+        continue;
+      }
+      const from = entry.source === undefined ? "" : ` (from ${entry.source})`;
+      const subject = multipleLocks && entry.lockPath !== undefined
+        ? `skill:${entry.id}@${entry.lockPath}`
+        : `skill:${entry.id}`;
+      out.push(
+        make("skill.locked-not-installed", subject, {
+          action: "add",
+          severity: "warning",
+          message: `skills-lock.json pins "${entry.id}"${from} but it is not installed`,
+          reason:
+            "The lockfile and the working tree disagree: either the install was removed without updating the lock, or the install never completed.",
+          evidence: [
+            { kind: "lock", value: entry.id },
+            ...(entry.source === undefined
+              ? []
+              : [{ kind: "source", value: entry.source }]),
+            ...(entry.lockPath === undefined
+              ? []
+              : [{ kind: "lockfile", value: entry.lockPath }]),
+          ],
+          suggest: "Reinstall the skill, or drop the entry from skills-lock.json",
+        }),
+      );
+    }
   }
 
   return out;
@@ -212,9 +407,8 @@ export function checkDuplicateDescriptions(facts: Facts): Finding[] {
     if (skill.source !== "project" || skill.description === undefined) {
       continue;
     }
-    if (skill.runtime === "agents") {
-      continue;
-    }
+    // Agent Skills and Claude skills in the same owning directory still
+    // compete if a session loads both; keep the exact-match heuristic.
     // Group by the directory that owns the skill, not by runtime convention.
     // Nested discovery flattens every `.claude/skills` under the scan root into
     // one list, so in a monorepo `app-a/.claude/skills/deploy` and
@@ -242,7 +436,7 @@ export function checkDuplicateDescriptions(facts: Facts): Finding[] {
       // `{a, b+c}` produced one id.
       make("skill.duplicate-description", `skills:${sorted.join(" ")}`, {
         action: "warn",
-        severity: "warning",
+        severity: "info",
         message: `${sorted.length} skills share one description: ${sorted.join(", ")}`,
         reason:
           "Claude routes on the description. When two are identical the choice between those skills is arbitrary, and the one that loses is inert while still costing context every time.",
@@ -279,7 +473,11 @@ export function checkDescriptionBudget(
   // folder with no SKILL.md contributes nothing, and the same report calls it
   // "not a loadable skill".
   const project = facts.skills.filter(
-    (s) => s.source === "project" && s.hasSkillMd && s.description !== undefined,
+    (s) =>
+      s.source === "project" &&
+      s.hasSkillMd &&
+      s.description !== undefined &&
+      skillSchema(s) !== "agent-skills",
   );
   // One budget per skills directory. The startup budget is spent by one session,
   // and a session loads one such directory — summing a monorepo's three apps

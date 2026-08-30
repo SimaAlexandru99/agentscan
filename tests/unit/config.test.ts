@@ -16,11 +16,11 @@ describe("ignoreFindings", () => {
     const dir = mkdtempSync(join(tmpdir(), "agentscan-cfg-"));
     writeFileSync(
       join(dir, ".agentscanrc.json"),
-      JSON.stringify({ ignoreFindings: ["hook.missing-script:hook:X:./a.sh"] }),
+      JSON.stringify({ ignoreFindings: ["claude.hook.missing-script:hook:X:./a.sh"] }),
       "utf8",
     );
     expect(loadConfig(dir).ignoreFindings).toEqual([
-      "hook.missing-script:hook:X:./a.sh",
+      "claude.hook.missing-script:hook:X:./a.sh",
     ]);
   });
 });

@@ -23,22 +23,46 @@ to appear in real projects.** When adding a check:
 
 | File | Covers | Checks that depend on it |
 |------|--------|--------------------------|
-| [hook-events.md](hook-events.md) | The 31 dispatched hook event names | `hook.unknown-event` |
-| [hook-sources.md](hook-sources.md) | The seven files a hook can be registered in, and how each one's script paths resolve | `hook.missing-script`, `hook.unknown-event` |
-| [skills.md](skills.md) | SKILL.md frontmatter fields and what is required | `skill.missing-frontmatter`, `skill.missing-description`, and two deleted checks |
-| [agents.md](agents.md) | Subagent frontmatter: required fields, the name format, and the one documented load failure | every `agent.*` check |
-| [mcp.md](mcp.md) | `.mcp.json` shape and transports | `mcp.no-launch`, `mcp.url-without-type`, `mcp.command-missing` |
-| [thresholds.md](thresholds.md) | Every numeric threshold and its evidence | all `budget.*`, `skill.description-budget` |
+| [hook-events.md](hook-events.md) | The 31 dispatched hook event names | `claude.hook.unknown-event` |
+| [hook-sources.md](hook-sources.md) | The seven files a hook can be registered in, and how each one's script paths resolve | `claude.hook.missing-script`, `claude.hook.unknown-event` |
+| [skills.md](skills.md) | Claude Code SKILL.md frontmatter fields | `claude.skill.missing-frontmatter`, `claude.skill.missing-description`, and two deleted checks |
+| [agent-skills.md](agent-skills.md) | Portable Agent Skills required `name` / `description` | `agent-skills.skill.*` |
+| [agents.md](agents.md) | Claude subagent frontmatter | every `claude.agent.*` check |
+| [mcp.md](mcp.md) | Claude `.mcp.json` shape and transports | `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `mcp.command-missing` |
+| [vscode-mcp.md](vscode-mcp.md) | VS Code `.vscode/mcp.json` `servers` wrapper | `vscode.mcp.no-launch` |
+| [cursor-mcp.md](cursor-mcp.md) | Cursor `.cursor/mcp.json` | `cursor.mcp.no-launch` |
+| [antigravity-mcp.md](antigravity-mcp.md) | Antigravity `serverUrl` | `antigravity.mcp.no-launch` |
+| [codex-mcp.md](codex-mcp.md) | Codex `[mcp_servers.*]` TOML | `codex.mcp.no-launch` |
+| [thresholds.md](thresholds.md) | Every numeric threshold and its evidence | all `budget.*`, `skill.description-budget`, `codex.budget.instructions`, `cursor.rule.too-large` |
+| [agents-md.md](agents-md.md) | Portable AGENTS.md — no required fields, nested nearest-wins | discovery; `budget.agents-md` stays heuristic |
+| [claude-memory.md](claude-memory.md) | Walk-up `CLAUDE.md` / `.claude/CLAUDE.md` and `.claude/rules` | `budget.claude-md` |
+| [claude-subagents.md](claude-subagents.md) | Walk-up `.claude/agents`; duplicates per directory | `claude.agent.duplicate-name` scope |
+| [codex-agents-md.md](codex-agents-md.md) | Codex root→cwd chain and 32 KiB cap | `codex.budget.instructions` |
+| [vscode-instructions.md](vscode-instructions.md) | `.github/copilot-instructions.md` and `*.instructions.md` | discovery only |
+| [vscode-agents.md](vscode-agents.md) | `.github/agents`; name defaults to filename | do not emit `claude.agent.*` |
+| [vscode-hooks.md](vscode-hooks.md) | `.github/hooks/*.json` and eight events | `vscode.hook.*` |
+| [cursor-rules.md](cursor-rules.md) | `.cursor/rules/**/*.mdc` under 500 lines | `cursor.rule.too-large` |
+| [gemini-mcp.md](gemini-mcp.md) | `.gemini/settings.json` `command` / `url` / `httpUrl` | `gemini.mcp.no-launch` |
+| [opencode-mcp.md](opencode-mcp.md) | `opencode.json(c)` V1 vs V2 | `opencode.mcp.no-launch`, `opencode.mcp.missing-type`, `opencode.mcp.local-without-command`, `opencode.mcp.remote-without-url`, `opencode.mcp.invalid-launch-for-type` |
+| [continue-mcp.md](continue-mcp.md) | `.continue/config.yaml` and `.continue/mcpServers/*` including `uses` | `continue.mcp.no-launch` |
+| [cursor-skills.md](cursor-skills.md) | Nested `.cursor/skills` / `.agents/skills` Agent Skills contract | `agent-skills.skill.*` |
+| [codex-skills.md](codex-skills.md) | Codex `.codex/skills` Agent Skills contract | `agent-skills.skill.*` |
+
+Each `STRUCTURAL_CHECKS` entry also carries `provenance` (`spec-required`,
+`vendor-recommendation`, `security`, `internal-consistency`, or `heuristic`)
+so the registry can tell a published requirement from a size opinion.
 
 ## What is not spec-backed
 
-Some checks assert internal consistency rather than conformance to a spec, and
-need no source: `hook.missing-script`, `mcp.command-missing`,
-`skill.broken-reference`, `skill.not-in-lock`, `skill.locked-not-installed`,
-`skill.missing-skill-md`, `skill.duplicate-description`, `skill.no-lockfile`,
-`config.unreadable`. Each compares two things this repo can both observe — a
-config entry and the filesystem. They cannot be wrong about an external standard
-because they do not claim one.
+Some checks assert internal consistency rather than conformance to a spec:
+`claude.hook.missing-script`, `mcp.command-missing`, `skill.broken-reference`,
+`skill.locked-not-installed`, `skill.missing-skill-md`, `config.unreadable`.
+Each compares two things this repo can both observe — a config entry and the
+filesystem.
+
+These are **heuristics** (installer policy or size opinions) and stay at `info`:
+`skill.not-in-lock`, `skill.no-lockfile`, `skill.duplicate-description`,
+`skill.description-budget`, `budget.agents-md`, `budget.agents`, `budget.mcp`.
 
 `scan.truncated` is not about the scanned project at all: it reports a limit of
 this scanner, so that a check reading a bounded prefix of a file never looks
@@ -50,7 +74,8 @@ like a check that read all of it.
 bun run spec:check
 ```
 
-Diffs the hardcoded hook-event set against the live docs page and warns when the
+Diffs the hardcoded Claude and VS Code hook-event sets against the live docs
+pages, checks `scripts/spec-surfaces.ts` lastVerified dates, and warns when the
 newest capture here is over 90 days old. It makes network calls, so it is a
 release-time script and is never reached from `agentscan check` — the scan path
 touches no network and that is worth more than automatic freshness. It

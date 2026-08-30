@@ -56,6 +56,10 @@ describe("hookScriptPath — extracts", () => {
     );
   });
 
+  test("interpreter plus a bare script filename", () => {
+    expect(hookScriptPath("node hook.js")).toBe("hook.js");
+  });
+
   test("${CLAUDE_PLUGIN_ROOT} only where a plugin defines it", () => {
     // 31 of 33 hook commands across 17 installed plugins use this placeholder,
     // so refusing it would read 2 of them. In a settings file there is no
@@ -161,7 +165,7 @@ describe("hook script discovery", () => {
     expect(hooks.get(".claude/hooks/missing.js")).toBe(false);
     expect(
       runChecks(facts)
-        .filter((finding) => finding.ruleId === "hook.missing-script")
+        .filter((finding) => finding.ruleId === "claude.hook.missing-script")
         .map((finding) => finding.subject),
     ).toEqual([
       "hook:PreToolUse:.claude/hooks/directory.js",

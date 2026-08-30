@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-27-111111?style=flat-square" alt="27 checks">
-  <img src="https://img.shields.io/badge/tests-250%20passing-111111?style=flat-square" alt="250 tests">
+  <img src="https://img.shields.io/badge/checks-59-111111?style=flat-square" alt="59 checks">
+  <img src="https://img.shields.io/badge/tests-345%20passing-111111?style=flat-square" alt="345 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -15,8 +15,8 @@
 </p>
 
 <p align="center">
-  <strong>27 checks &middot; 4.2k lines &middot; 0 network calls &middot; every check sourced to a published spec line</strong><br>
-  <sub>Alpha. An earlier build reported 37 findings across 17 real projects of which <strong>25 were false</strong> — two checks had been written from what real projects looked like instead of from the spec. Both were deleted, and every check that survived is recorded in <a href="docs/spec/">docs/spec/</a> with the URL it came from and the date it was read. That story is the reason this tool exists in its current shape.</sub>
+  <strong>59 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <sub>An offline linter for Claude Code, portable Agent Skills, nested AGENTS.md, and the MCP / hooks / rules surfaces that 1.0.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — <code>full</code> only where discovery, spec-required fields, and a conformance fixture (or equivalent tests) all exist.</sub>
 </p>
 
 ---
@@ -47,7 +47,7 @@ think you have has silently not existed for six weeks.
 ```console
 $ agentscan check
 
-ERROR   rule:hook.missing-script
+ERROR   rule:claude.hook.missing-script
         PreToolUse hook points at a script that does not exist: .claude/hooks/guard-destructive-bash.js
           PreToolUse @ .claude/settings.json · .claude/hooks/guard-destructive-bash.js
 
@@ -59,12 +59,13 @@ of the filesystem**, where nothing else in your stack will ever tell you.
 
 ## How it works
 
-No AI, no network, no heuristics. Read the config, read the disk, compare:
+No AI, no network on `check`. Read the config, read the disk, compare:
 
 ```
-1. Discover    .claude/ .agents/ .mcp.json AGENTS.md skills-lock.json plugin hooks/
+1. Discover    .claude/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       27 checks, each against one published spec line
+3. Check       59 checks, each labeled spec-required, vendor-recommendation,
+               security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
 
@@ -73,13 +74,17 @@ scans and never opens a socket.
 
 ## What it will not do
 
-It will not compare a skill's frontmatter `name` to its directory, and it will
-not validate model ids or MCP tool names. All three need a hardcoded list of
-valid values, with everything absent from the list reported as broken. That is
-exactly how the 25 false findings happened: a hook-event list with 9 names when
-the spec has 31, calling working hooks dead at severity `error`.
+It will not compare a Claude-native skill's frontmatter `name` to its directory
+(portable Agent Skills under `.agents/skills` and Cursor `.cursor/skills` still
+require that match), and it will not validate model ids or MCP tool names.
+Those last two need a hardcoded list of valid values, with everything absent
+from the list reported as broken. That is exactly how the 25 false findings
+happened: a hook-event list with 9 names when the spec has 31, calling working
+hooks dead at severity `error`.
 
-A check here has to point at a spec line. If it cannot, it does not ship.
+A spec-required check has to point at a published line. If it cannot, it does
+not ship as an error. Size opinions and installer policy remain as `info`
+heuristics and are labeled that way in the registry.
 
 ## Try it in 30 seconds
 
@@ -123,7 +128,7 @@ bunx @chimix/agentscan rules
 bunx @chimix/agentscan check ~/your-project --verbose
 
 # why one specific finding fired
-bunx @chimix/agentscan explain hook.missing-script:hook:PreToolUse:./x.js ~/your-project
+bunx @chimix/agentscan explain claude.hook.missing-script:hook:PreToolUse:./x.js ~/your-project
 ```
 
 `check` never opens a socket and never writes to the tree it scans. Contributing
@@ -138,7 +143,7 @@ The Action runs from its own checkout, so it uses the ref you pin rather than
 whatever is on npm:
 
 ```yaml
-- uses: SimaAlexandru99/agentscan@v0
+- uses: SimaAlexandru99/agentscan@v1
   with:
     fail-on: error
 ```
@@ -193,18 +198,18 @@ Flags for `check`:
   │  ⌒  │   6 error · 2 warning · 11 info hidden (--verbose)
   └─────┘
 
-agentscan v0.7.0 — touchagency
+agentscan v1.0.0 — touchagency
 
 Scanned: 46 deps · 108 skills · 1 mcp · 2 agents · packageManager=bun
 
-ERROR   rule:hook.missing-script  ×6
+ERROR   rule:claude.hook.missing-script  ×6
         Hook points at a script that does not exist
           PostToolUse @ .claude/settings.json · .claude/hooks/notify-related-tests.js
           PreToolUse @ .claude/settings.json · .claude/hooks/guard-destructive-bash.js
           PreToolUse @ .claude/settings.json · .claude/hooks/protect-artists-json.js
           PreToolUse @ .claude/settings.json · .claude/hooks/protect-env.js
 
-WARN    rule:agent.invalid-name  ×2
+WARN    rule:claude.agent.invalid-name  ×2
         2 findings
           .claude/agents/marketing-seo-specialist.md
           .claude/agents/testing-accessibility-auditor.md
@@ -225,7 +230,7 @@ JSON shape (abridged):
 
 ```json
 {
-  "version": "0.7.0",
+  "version": "1.0.0",
   "root": "/path/to/project",
   "factsSummary": {
     "packageManager": "bun",
@@ -235,8 +240,8 @@ JSON shape (abridged):
   },
   "findings": [
     {
-      "id": "hook.missing-script:hook:PreToolUse:.claude/hooks/protect-env.js",
-      "ruleId": "hook.missing-script",
+      "id": "claude.hook.missing-script:hook:PreToolUse:.claude/hooks/protect-env.js",
+      "ruleId": "claude.hook.missing-script",
       "action": "warn",
       "severity": "error",
       "subject": "hook:PreToolUse:.claude/hooks/protect-env.js",
@@ -255,11 +260,14 @@ Same tree → same sorted findings, with stable unique `id`s.
 
 Adds `~/.claude/skills` and `~/.codex/skills` to the structural checks: a
 `SKILL.md` that is malformed is malformed wherever it lives, and those findings
-carry a `source: global` evidence entry so you can tell them apart.
+carry a `source: global` evidence entry so you can tell them apart. Codex skills
+use the Agent Skills contract (`name` and `description` required).
 
 Lockfile checks stay project-scoped — a project lockfile cannot pin a skill that
 lives in your home directory, so reporting one as "not in the lockfile" could
-only ever be wrong.
+only ever be wrong. In a monorepo, each `skills-lock.json` governs only the
+skills under its directory (nearest lock wins). A skill with no ancestor
+lockfile is not compared to a distant lock.
 
 `includeGlobal: true` in `.agentscanrc.json` does the same thing without the
 flag.
@@ -305,7 +313,7 @@ only says how many points of unspecified trouble is too much.
 ## CI
 
 ```yaml
-- uses: SimaAlexandru99/agentscan@v0
+- uses: SimaAlexandru99/agentscan@v1
   with:
     fail-on: error        # never | warning | error
     output: human         # human | json | prompt
@@ -333,8 +341,8 @@ Optional `.agentscanrc.json` (create with `agentscan init`):
 
 ```json
 {
-  "skillPaths": [".agents/skills", ".claude/skills", "skills", ".cursor/skills"],
-  "mcpPaths": [".mcp.json", ".claude/mcp.json", "mcp.json"],
+  "skillPaths": [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills"],
+  "mcpPaths": [".mcp.json", ".claude/mcp.json", "mcp.json", ".vscode/mcp.json", ".cursor/mcp.json", ".agents/mcp_config.json", ".codex/config.toml"],
   "policyFiles": ["AGENTS.md", "CLAUDE.md"],
   "ignoreSkills": [],
   "ignoreRules": [],
@@ -401,7 +409,7 @@ each finding, and `--json` carries it as `.findings[].id`, so the value you copy
 out of the report is the value you paste:
 
 ```json
-{ "ignoreFindings": ["hook.missing-script:hook:PreToolUse:./bin/wrapper"] }
+{ "ignoreFindings": ["claude.hook.missing-script:hook:PreToolUse:./bin/wrapper"] }
 ```
 
 ## What it checks
@@ -409,41 +417,92 @@ out of the report is the value you paste:
 Every check lives in `src/checks/` and runs on every `check`. `agentscan rules`
 lists all of them with their ids; `agentscan explain <id>` details any finding.
 
-Most validate one discovered item against its own file on disk. The four
-`budget.*` entries at the bottom judge aggregate size instead, as does
-`skill.description-budget` — all five are **info**, all five are sourced to
-`docs/spec/thresholds.md`, and all five are retuned through `thresholds` in
-`.agentscanrc.json` rather than switched off.
+Most validate one discovered item against its own file on disk. Budget and
+hygiene checks are **info** (hidden unless `--verbose`). Each registry entry
+carries `provenance`: spec-required, vendor-recommendation, security,
+internal-consistency, or heuristic. `agentscan rules` lists them all.
 
 | id | Severity | Catches |
 |----|----------|---------|
 | `config.unreadable` | error | A config file that is not valid JSON, so whatever it declares is silently not in effect |
 | `scan.truncated` | info | A file past the scan cap, so the checks that read its body saw only a prefix — about this tool's reach, not about your project |
-| `hook.missing-script` | error | A registered hook whose script does not exist — it never runs. Reads all four in-tree registration sites (see below) |
-| `hook.unknown-event` | error | A hook registered under an event name that is never dispatched |
-| `agent.missing-frontmatter` | error | An agent definition with no `---` block |
-| `agent.missing-description` | error | Agent frontmatter has no `description` |
-| `agent.missing-name` | error | Agent frontmatter has no `name` |
-| `agent.invalid-name` | warning | Agent name is not lowercase letters, numbers, and hyphens |
-| `agent.duplicate-name` | error | Multiple agent files declare the same name |
-| `mcp.no-launch` | error | An MCP server with neither `command` nor `url` — unlaunchable by schema |
+| `claude.hook.missing-script` | error | A registered Claude command hook whose script does not exist — it never runs |
+| `claude.hook.unknown-event` | error | A Claude hook registered under an event name that is never dispatched |
+| `vscode.hook.missing-script` | error | A VS Code command hook whose script does not exist |
+| `vscode.hook.unknown-event` | error | A VS Code hook registered under an event name that is never dispatched |
+| `claude.agent.missing-frontmatter` | error | A Claude agent definition with no `---` block |
+| `claude.agent.missing-description` | error | Claude agent frontmatter has no `description` |
+| `claude.agent.missing-name` | error | Claude agent frontmatter has no `name` |
+| `claude.agent.invalid-name` | warning | Claude agent name is not lowercase letters, numbers, and hyphens |
+| `claude.agent.duplicate-name` | error | Multiple Claude agent files declare the same name |
+| `claude.mcp.no-launch` | error | A Claude MCP server with neither `command` nor `url` |
+| `claude.mcp.url-without-type` | error | A Claude remote MCP server with a `url` but no `type` — read as stdio and skipped |
+| `vscode.mcp.no-launch` | error | A VS Code MCP server (`servers`) with neither `command` nor `url` |
+| `cursor.mcp.no-launch` | error | A Cursor MCP server with neither `command` nor `url` |
+| `antigravity.mcp.no-launch` | error | An Antigravity MCP server with neither `command` nor `serverUrl` |
+| `codex.mcp.no-launch` | error | A Codex `[mcp_servers.*]` entry with neither `command` nor `url` |
+| `gemini.mcp.no-launch` | error | A Gemini MCP server with neither `command`, `url`, nor `httpUrl` |
+| `opencode.mcp.no-launch` | error | An OpenCode MCP server with neither `command` nor `url` |
+| `opencode.mcp.missing-type` | error | An OpenCode MCP server missing `type: local` or `type: remote` |
+| `opencode.mcp.local-without-command` | error | An OpenCode `type: local` server with no `command` |
+| `opencode.mcp.remote-without-url` | error | An OpenCode `type: remote` server with no `url` |
+| `opencode.mcp.invalid-launch-for-type` | error | An OpenCode server whose launch field does not match its `type` |
+| `continue.mcp.no-launch` | error | A Continue MCP server with neither `command`, `url`, nor `uses` |
+| `claude.hook.command-without-command` | error | A Claude `type: command` hook with no `command` |
+| `claude.hook.invalid-group` | error | A Claude hook matcher group with no `hooks` array |
 | `mcp.command-missing` | error | An MCP `command` that is a path-like value whose file does not exist on disk |
-| `mcp.url-without-type` | error | A remote MCP server with a `url` but no `type` — read as stdio, misconfigured by schema, and skipped |
-| `mcp.hardcoded-secret` | error | A token-shaped literal in MCP config (the value is never echoed back) |
-| `mcp.literal-env` | warning | Long literal `env` values that should be `${VAR}` |
+| `security.hardcoded-secret` | error | A token-shaped literal in MCP config (the value is never echoed back) |
+| `mcp.literal-env` | warning | Secret-named `env` values that are literals instead of interpolation |
 | `skill.missing-skill-md` | warning | A directory under a skill path with no `SKILL.md` |
-| `skill.missing-frontmatter` | warning | `SKILL.md` with no `---` block |
+| `claude.skill.missing-frontmatter` | warning | Claude `SKILL.md` with no `---` block |
+| `claude.skill.missing-description` | info | Claude frontmatter has no `description` (Recommended) |
+| `agent-skills.skill.missing-frontmatter` | error | Portable skill `SKILL.md` has no YAML frontmatter |
+| `agent-skills.skill.missing-name` | error | Portable skill frontmatter has no required `name` |
+| `agent-skills.skill.missing-description` | error | Portable skill frontmatter has no required `description` |
+| `agent-skills.skill.invalid-name` | error | Portable skill name is not `[a-z0-9]` + hyphens |
+| `agent-skills.skill.name-does-not-match-directory` | error | Portable skill `name` does not match its directory |
+| `agent-skills.skill.name-too-long` | error | Portable skill name exceeds 64 characters |
+| `agent-skills.skill.description-too-long` | error | Portable skill description exceeds 1024 characters |
 | `skill.broken-reference` | warning | The body points at a bundled file that does not exist |
-| `skill.duplicate-description` | warning | Two or more skills carry an identical description, so routing between them is arbitrary |
-| `skill.missing-description` | info | Frontmatter has no `description`, so Claude will not load the skill on its own |
+| `skill.duplicate-description` | info | Two or more skills carry an identical description (heuristic) |
 | `skill.locked-not-installed` | warning | `skills-lock.json` pins a skill that is not on disk |
-| `skill.not-in-lock` | info | A skill on disk that the lockfile does not track — local and unpinned |
-| `skill.description-budget` | info | Skill names + descriptions exceed the startup character budget |
+| `skill.not-in-lock` | info | A skill on disk that the lockfile does not track (installer policy) |
+| `skill.description-budget` | info | Claude skill names + descriptions exceed the startup character budget (heuristic) |
 | `skill.no-lockfile` | info | Skills present with no lockfile at all (only with `requireLock`) |
-| `budget.agents-md` | info | `AGENTS.md` past the point where added lines stop helping (>150) |
-| `budget.claude-md` | info | `CLAUDE.md` past the instruction count a model reliably follows (>200) |
-| `budget.agents` | info | More agent definitions than a focused set (>8 in `.claude/agents`) |
-| `budget.mcp` | info | More MCP servers than the point where tool selection degrades (>5) |
+| `budget.agents-md` | info | `AGENTS.md` past a secondary 150-line hint (heuristic; not an AGENTS.md requirement) |
+| `budget.claude-md` | info | `CLAUDE.md` past the official “target under 200 lines” recommendation |
+| `budget.agents` | info | More agent definitions than a focused set (>8) — heuristic proxy |
+| `budget.mcp` | info | More MCP servers than a tool-selection hint (>5) — heuristic proxy |
+| `codex.budget.instructions` | info | Codex root→cwd `AGENTS.md` chain exceeds the default 32 KiB |
+| `cursor.rule.too-large` | info | A `.cursor/rules/*.mdc` file exceeds the 500-line recommendation |
+
+### Coverage in 1.0.0
+
+`full` means documented locations are discovered, spec-required fields are checked, and a conformance fixture (or equivalent tests) is green. `partial` means some locations or some checks. `none` means not implemented. Official pages that could not be captured are `none`, not guessed.
+
+| Ecosystem | instructions | skills | agents | hooks | MCP |
+|-----------|--------------|--------|--------|-------|-----|
+| Agent Skills | none | full | none | none | none |
+| AGENTS.md | partial (nested + nearest-wins; no required fields) | none | none | none | none |
+| Claude Code | partial (walk-up `CLAUDE.md`; 200-line target) | partial (native; `name` optional) | partial (walk-up `.claude/agents`) | partial (33 events; command handlers only) | full (`claude-json`) |
+| Codex | partial (32 KiB chain; no invented agents TOML) | full (Agent Skills; `.codex/skills`) | none | none | full (`codex-toml`) |
+| VS Code | partial (`.github` instruction files; no required fields) | none | partial (filename may be the name) | full (8 events) | full (`servers`) |
+| Cursor | none | full (Agent Skills; nested `SKILL.md`) | none | none | full |
+| Grok | none | none | none | none | none |
+| Antigravity | none | via Agent Skills | none | none | full (`serverUrl`) |
+| Gemini | none | none | none | none | full (`command` / `url` / `httpUrl`) |
+| Windsurf | none | none | none | none | none (official page is global-only) |
+| Kiro | none | none | none | none | none |
+| Cline | none | none | none | none | none |
+| Roo | none | none | none | none | none |
+| Kilo | none | none | none | none | none |
+| OpenCode | none | none | none | none | full (V1 and V2) |
+| Junie | none | none | none | none | none |
+| Continue | none | none | none | none | full (`config.yaml` + `.continue/mcpServers/*` + `uses`) |
+
+Cursor project rules (`.cursor/rules/**/*.mdc`) are a separate surface: discovery plus `cursor.rule.too-large` at info. Claude `.claude/rules/**/*.md` is inventoried and has no published line budget.
+
+Old 0.7 rule ids still work in `ignoreRules` and `explain` (for example `hook.missing-script` aliases `claude.hook.missing-script`).
 
 Agent definitions are checked for structure only. An agent's frontmatter `name`
 is not compared to the filename; it must simply be a valid lowercase identifier
@@ -461,8 +520,8 @@ illustration, not a pointer.
 
 ### Where it looks for hooks
 
-The hooks reference lists seven places a hook can be registered. agentscan reads
-the four that live inside the scanned project:
+The Claude hooks reference lists seven places a hook can be registered. agentscan
+reads the four that live inside the scanned project, plus VS Code workspace hooks:
 
 | Registered in | Script paths resolve against |
 |---|---|
@@ -470,14 +529,15 @@ the four that live inside the scanned project:
 | A plugin's `hooks/hooks.json` (a directory with `.claude-plugin/plugin.json`, or the scan root itself) | the plugin root, `${CLAUDE_PLUGIN_ROOT}` |
 | `SKILL.md` frontmatter | the skill's own directory, then the project root |
 | `.claude/agents/*.md` frontmatter | the agent file's directory, then the project root |
+| `.github/hooks/*.json` (VS Code) | project root and the hooks directory |
 
 `${CLAUDE_PLUGIN_ROOT}` is expanded **only** for a hook that came from a plugin.
 In a settings file it names nothing, so the path is skipped rather than guessed
 at — measured across 17 installed plugins, 31 of 33 plugin hook commands use it
-and none of them are settings hooks. `hook.unknown-event` covers all four sites
+and none of them are settings hooks. `claude.hook.unknown-event` covers all four sites
 at no extra cost. Sources and measurements: [docs/spec/hook-sources.md](docs/spec/hook-sources.md).
 
-`hook.missing-script` and `mcp.command-missing` are deliberately conservative.
+`claude.hook.missing-script` and `mcp.command-missing` are deliberately conservative.
 A value is only resolved when it is path-like and the answer is certain; shell
 programs (`a && b`, `$(...)`, pipes), bare PATH binaries (`npx`, `uvx`), and
 unresolved env vars are skipped. A false "broken" on a working `npx` server
@@ -486,15 +546,17 @@ Only `$CLAUDE_PROJECT_DIR` is expanded — other variables are left alone rather
 than guessed at. Schema checks judge misconfiguration, not whether a correctly
 shaped entry will start at runtime.
 
-Checks are written against the published specs, not against what happens to
-appear in real projects. Two that were written the other way round shipped as
-false positives — a nine-name hook-event list where the spec has 31, and a
-`name` must equal the directory rule that the spec explicitly contradicts
-(`name` is optional and defaults to the directory). Both are gone.
+Spec-required checks are written against published pages, not against what
+happens to appear in real projects. Two that were written the other way round
+shipped as false positives — a nine-name hook-event list where the spec has 31,
+and a `name` must equal the directory rule that Claude's spec explicitly
+contradicts. Both are gone. Heuristics that remain (`skill.duplicate-description`,
+the installer lock checks, and the size budgets other than `budget.claude-md`)
+are labeled in the registry and stay at `info`.
 
-Every assumption a check encodes is recorded in **[docs/spec/](docs/spec/)**
-with its source URL, the date it was read, and an honest confidence rating.
-When adding a check, add its spec line there first.
+Assumptions are recorded in **[docs/spec/](docs/spec/)** with source URL, read
+date, and provenance. When adding a spec-required check, add its spec line there
+first.
 
 ## Known limits
 

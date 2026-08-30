@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { hasAgentConfigSignal, resolveRoot } from "../../src/discover/index";
+import { hasAgentConfigSignal, resolveRoot, resolveScanContext } from "../../src/discover/index";
 
 describe("resolveRoot", () => {
   test("uses package.json when present", () => {
@@ -33,5 +33,60 @@ describe("resolveRoot", () => {
     expect(() => resolveRoot(empty)).toThrow(
       /No package\.json or agent configuration found/,
     );
+  });
+
+  test("uses a .cursor directory without package.json", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentscan-root-cursor-"));
+    mkdirSync(join(root, ".cursor"), { recursive: true });
+    expect(hasAgentConfigSignal(root)).toBe(true);
+    expect(resolveRoot(root)).toBe(root);
+  });
+
+  test("uses a .vscode directory without package.json", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentscan-root-vscode-"));
+    mkdirSync(join(root, ".vscode"), { recursive: true });
+    expect(resolveRoot(root)).toBe(root);
+  });
+
+  test("uses a .github directory without package.json", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentscan-root-github-"));
+    mkdirSync(join(root, ".github"), { recursive: true });
+    expect(resolveRoot(root)).toBe(root);
+  });
+
+  test("prefers a child .cursor over a parent package.json", () => {
+    const parent = mkdtempSync(join(tmpdir(), "agentscan-root-cursor-child-"));
+    writeFileSync(join(parent, "package.json"), '{"name":"mono"}', "utf8");
+    const child = join(parent, "notes");
+    mkdirSync(join(child, ".cursor"), { recursive: true });
+    expect(resolveRoot(child)).toBe(child);
+  });
+
+  test("falls back to a git root when no provider signal exists", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentscan-root-git-"));
+    mkdirSync(join(root, ".git"), { recursive: true });
+    const nested = join(root, "pkg", "src");
+    mkdirSync(nested, { recursive: true });
+    expect(resolveRoot(nested)).toBe(root);
+  });
+
+  test("scanBoundary stays at git when a child .cursor is the project root", () => {
+    const parent = mkdtempSync(join(tmpdir(), "agentscan-scan-bound-"));
+    mkdirSync(join(parent, ".git"), { recursive: true });
+    mkdirSync(join(parent, ".claude"), { recursive: true });
+    const child = join(parent, "apps", "web");
+    mkdirSync(join(child, ".cursor"), { recursive: true });
+    const ctx = resolveScanContext(child);
+    expect(ctx.projectRoot).toBe(child);
+    expect(ctx.scanBoundary).toBe(parent);
+  });
+
+  test("a nearer package.json wins over a parent provider signal", () => {
+    const parent = mkdtempSync(join(tmpdir(), "agentscan-root-pkg-vs-signal-"));
+    mkdirSync(join(parent, ".claude"), { recursive: true });
+    const child = join(parent, "pkg");
+    mkdirSync(child, { recursive: true });
+    writeFileSync(join(child, "package.json"), '{"name":"pkg"}', "utf8");
+    expect(resolveRoot(child)).toBe(child);
   });
 });

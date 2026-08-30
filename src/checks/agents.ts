@@ -1,6 +1,10 @@
 import type { Facts, Finding } from "../facts/types";
 import { make } from "./make";
 
+function isClaudeAgent(sourceProvider: string | undefined): boolean {
+  return sourceProvider === undefined || sourceProvider === "claude";
+}
+
 /**
  * Agent definitions, checked for structure only.
  *
@@ -13,11 +17,18 @@ import { make } from "./make";
  *
  * Frontmatter `name` is deliberately not compared to the filename — see
  * docs/spec/skills.md for the same trap, and the regression test that guards it.
+ *
+ * VS Code agents default `name` to the filename and do not require frontmatter;
+ * applying `claude.agent.*` to them is a false positive. See docs/spec/vscode-agents.md.
+ * Duplicate names are scoped to one `namespace` (one `.claude/agents` directory).
  */
 export function checkAgents(facts: Facts): Finding[] {
   const out: Finding[] = [];
   const names = new Map<string, string[]>();
   for (const agent of facts.agents) {
+    if (!isClaudeAgent(agent.sourceProvider)) {
+      continue;
+    }
     if (agent.unreadable === true || agent.unparseableFrontmatter === true) {
       // config.unreadable names it. Anything else here would be a statement
       // about a file the adjacent finding admits we could not read.
@@ -26,7 +37,7 @@ export function checkAgents(facts: Facts): Finding[] {
 
     if (!agent.hasFrontmatter) {
       out.push(
-        make("agent.missing-frontmatter", `agent:${agent.name}`, {
+        make("claude.agent.missing-frontmatter", `agent:${agent.name}`, {
           action: "warn",
           severity: "error",
           message: "Agent definition has no YAML frontmatter block",
@@ -40,7 +51,7 @@ export function checkAgents(facts: Facts): Finding[] {
     }
     if (agent.description === undefined) {
       out.push(
-        make("agent.missing-description", `agent:${agent.name}`, {
+        make("claude.agent.missing-description", `agent:${agent.name}`, {
           action: "warn",
           severity: "error",
           message: "Agent frontmatter has no `description`",
@@ -53,7 +64,7 @@ export function checkAgents(facts: Facts): Finding[] {
     }
     if (agent.frontmatterName === undefined) {
       out.push(
-        make("agent.missing-name", `agent:${agent.name}`, {
+        make("claude.agent.missing-name", `agent:${agent.name}`, {
           action: "warn",
           severity: "error",
           message: "Agent frontmatter has no `name`",
@@ -65,7 +76,7 @@ export function checkAgents(facts: Facts): Finding[] {
     } else {
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(agent.frontmatterName)) {
         out.push(
-          make("agent.invalid-name", `agent:${agent.name}`, {
+          make("claude.agent.invalid-name", `agent:${agent.name}`, {
             action: "warn",
             // Warning, not error. The reference states the format — "Unique
             // identifier using lowercase letters and hyphens" — but names a
@@ -81,16 +92,28 @@ export function checkAgents(facts: Facts): Finding[] {
           }),
         );
       }
-      const list = names.get(agent.frontmatterName) ?? [];
-      list.push(agent.path); names.set(agent.frontmatterName, list);
+      const scope = agent.namespace ?? "";
+      const key = `${scope}\0${agent.frontmatterName}`;
+      const list = names.get(key) ?? [];
+      list.push(agent.path);
+      names.set(key, list);
     }
   }
-  for (const [name, paths] of names) if (paths.length > 1) {
-    out.push(make("agent.duplicate-name", `agent:${name}`, {
-      action: "warn", severity: "error", message: `Agent name "${name}" is declared by multiple files`,
-      reason: "Duplicate names make dispatch ambiguous.", evidence: paths.map((path) => ({ kind: "agent", value: path })),
-      suggest: "Give each agent a unique frontmatter name",
-    }));
+  for (const [key, paths] of names) {
+    if (paths.length > 1) {
+      const name = key.slice(key.indexOf("\0") + 1);
+      out.push(
+        make("claude.agent.duplicate-name", `agent:${name}`, {
+          action: "warn",
+          severity: "error",
+          message: `Agent name "${name}" is declared by multiple files`,
+          reason:
+            "Duplicate names make dispatch ambiguous within one `.claude/agents` directory, including its subfolders. The same name in a different walk-up layer is nearest-wins, not a duplicate. See docs/spec/claude-subagents.md.",
+          evidence: paths.map((path) => ({ kind: "agent", value: path })),
+          suggest: "Give each agent a unique frontmatter name",
+        }),
+      );
+    }
   }
   return out;
 }
