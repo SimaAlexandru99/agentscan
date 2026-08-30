@@ -1,4 +1,4 @@
-import { parse, printParseErrorCode, type ParseError } from "jsonc-parser";
+import { parse, printParseErrorCode, type ParseError } from "jsonc-parser/lib/esm/main.js";
 
 /**
  * Parse JSON or JSONC with a dedicated parser so comments and trailing commas
