@@ -34,6 +34,17 @@ to appear in real projects.** When adding a check:
 | [antigravity-mcp.md](antigravity-mcp.md) | Antigravity `serverUrl` | `antigravity.mcp.no-launch` |
 | [codex-mcp.md](codex-mcp.md) | Codex `[mcp_servers.*]` TOML | `codex.mcp.no-launch` |
 | [thresholds.md](thresholds.md) | Every numeric threshold and its evidence | all `budget.*`, `skill.description-budget`, `codex.budget.instructions`, `cursor.rule.too-large` |
+| [agents-md.md](agents-md.md) | Portable AGENTS.md — no required fields, nested nearest-wins | discovery; `budget.agents-md` stays heuristic |
+| [claude-memory.md](claude-memory.md) | Walk-up `CLAUDE.md` / `.claude/CLAUDE.md` and `.claude/rules` | `budget.claude-md` |
+| [claude-subagents.md](claude-subagents.md) | Walk-up `.claude/agents`; duplicates per directory | `claude.agent.duplicate-name` scope |
+| [codex-agents-md.md](codex-agents-md.md) | Codex root→cwd chain and 32 KiB cap | `codex.budget.instructions` |
+| [vscode-instructions.md](vscode-instructions.md) | `.github/copilot-instructions.md` and `*.instructions.md` | discovery only |
+| [vscode-agents.md](vscode-agents.md) | `.github/agents`; name defaults to filename | do not emit `claude.agent.*` |
+| [vscode-hooks.md](vscode-hooks.md) | `.github/hooks/*.json` and eight events | `vscode.hook.*` |
+| [cursor-rules.md](cursor-rules.md) | `.cursor/rules/**/*.mdc` under 500 lines | `cursor.rule.too-large` |
+| [gemini-mcp.md](gemini-mcp.md) | `.gemini/settings.json` `command` / `url` / `httpUrl` | `gemini.mcp.no-launch` |
+| [opencode-mcp.md](opencode-mcp.md) | `opencode.json(c)` V1 vs V2 | `opencode.mcp.no-launch` |
+| [continue-mcp.md](continue-mcp.md) | `.continue/config.yaml` `mcpServers` array | `continue.mcp.no-launch` |
 
 Each `STRUCTURAL_CHECKS` entry also carries `provenance` (`spec-required`,
 `vendor-recommendation`, `security`, `internal-consistency`, or `heuristic`)
@@ -61,7 +72,8 @@ like a check that read all of it.
 bun run spec:check
 ```
 
-Diffs the hardcoded hook-event set against the live docs page and warns when the
+Diffs the hardcoded Claude and VS Code hook-event sets against the live docs
+pages, checks `scripts/spec-surfaces.ts` lastVerified dates, and warns when the
 newest capture here is over 90 days old. It makes network calls, so it is a
 release-time script and is never reached from `agentscan check` — the scan path
 touches no network and that is worth more than automatic freshness. It
