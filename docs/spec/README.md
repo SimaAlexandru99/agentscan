@@ -44,7 +44,8 @@ to appear in real projects.** When adding a check:
 | [cursor-rules.md](cursor-rules.md) | `.cursor/rules/**/*.mdc` under 500 lines | `cursor.rule.too-large` |
 | [gemini-mcp.md](gemini-mcp.md) | `.gemini/settings.json` `command` / `url` / `httpUrl` | `gemini.mcp.no-launch` |
 | [opencode-mcp.md](opencode-mcp.md) | `opencode.json(c)` V1 vs V2 | `opencode.mcp.no-launch` |
-| [continue-mcp.md](continue-mcp.md) | `.continue/config.yaml` `mcpServers` array | `continue.mcp.no-launch` |
+| [continue-mcp.md](continue-mcp.md) | `.continue/config.yaml` and `.continue/mcpServers/*` including `uses` | `continue.mcp.no-launch` |
+| [cursor-skills.md](cursor-skills.md) | Nested `.cursor/skills` / `.agents/skills` Agent Skills contract | `agent-skills.skill.*` |
 
 Each `STRUCTURAL_CHECKS` entry also carries `provenance` (`spec-required`,
 `vendor-recommendation`, `security`, `internal-consistency`, or `heuristic`)

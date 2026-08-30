@@ -74,11 +74,13 @@ scans and never opens a socket.
 
 ## What it will not do
 
-It will not compare a skill's frontmatter `name` to its directory, and it will
-not validate model ids or MCP tool names. All three need a hardcoded list of
-valid values, with everything absent from the list reported as broken. That is
-exactly how the 25 false findings happened: a hook-event list with 9 names when
-the spec has 31, calling working hooks dead at severity `error`.
+It will not compare a Claude-native skill's frontmatter `name` to its directory
+(portable Agent Skills under `.agents/skills` and Cursor `.cursor/skills` still
+require that match), and it will not validate model ids or MCP tool names.
+Those last two need a hardcoded list of valid values, with everything absent
+from the list reported as broken. That is exactly how the 25 false findings
+happened: a hook-event list with 9 names when the spec has 31, calling working
+hooks dead at severity `error`.
 
 A spec-required check has to point at a published line. If it cannot, it does
 not ship as an error. Size opinions and installer policy remain as `info`
@@ -141,7 +143,7 @@ The Action runs from its own checkout, so it uses the ref you pin rather than
 whatever is on npm:
 
 ```yaml
-- uses: SimaAlexandru99/agentscan@v0
+- uses: SimaAlexandru99/agentscan@v1
   with:
     fail-on: error
 ```
@@ -308,7 +310,7 @@ only says how many points of unspecified trouble is too much.
 ## CI
 
 ```yaml
-- uses: SimaAlexandru99/agentscan@v0
+- uses: SimaAlexandru99/agentscan@v1
   with:
     fail-on: error        # never | warning | error
     output: human         # human | json | prompt
@@ -438,7 +440,9 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `codex.mcp.no-launch` | error | A Codex `[mcp_servers.*]` entry with neither `command` nor `url` |
 | `gemini.mcp.no-launch` | error | A Gemini MCP server with neither `command`, `url`, nor `httpUrl` |
 | `opencode.mcp.no-launch` | error | An OpenCode MCP server with neither `command` nor `url` |
-| `continue.mcp.no-launch` | error | A Continue MCP server with neither `command` nor `url` |
+| `continue.mcp.no-launch` | error | A Continue MCP server with neither `command`, `url`, nor `uses` |
+| `claude.hook.command-without-command` | error | A Claude `type: command` hook with no `command` |
+| `claude.hook.invalid-group` | error | A Claude hook matcher group with no `hooks` array |
 | `mcp.command-missing` | error | An MCP `command` that is a path-like value whose file does not exist on disk |
 | `security.hardcoded-secret` | error | A token-shaped literal in MCP config (the value is never echoed back) |
 | `mcp.literal-env` | warning | Secret-named `env` values that are literals instead of interpolation |
@@ -476,7 +480,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | Claude Code | partial (walk-up `CLAUDE.md`; 200-line target) | partial (native; `name` optional) | partial (walk-up `.claude/agents`) | partial (33 events; command handlers only) | full (`claude-json`) |
 | Codex | partial (32 KiB chain; no invented agents TOML) | none | none | none | full (`codex-toml`) |
 | VS Code | partial (`.github` instruction files; no required fields) | none | partial (filename may be the name) | full (8 events) | full (`servers`) |
-| Cursor | none | inventory only | none | none | full |
+| Cursor | none | full (Agent Skills; nested `SKILL.md`) | none | none | full |
 | Grok | none | none | none | none | none |
 | Antigravity | none | via Agent Skills | none | none | full (`serverUrl`) |
 | Gemini | none | none | none | none | full (`command` / `url` / `httpUrl`) |
@@ -487,7 +491,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | Kilo | none | none | none | none | none |
 | OpenCode | none | none | none | none | full (V1 and V2) |
 | Junie | none | none | none | none | none |
-| Continue | none | none | none | none | full (YAML `mcpServers` array) |
+| Continue | none | none | none | none | full (`config.yaml` + `.continue/mcpServers/*` + `uses`) |
 
 Cursor project rules (`.cursor/rules/**/*.mdc`) are a separate surface: discovery plus `cursor.rule.too-large` at info. Claude `.claude/rules/**/*.md` is inventoried and has no published line budget.
 

@@ -42,9 +42,9 @@ descriptions share a character budget of roughly **1–2% of the context window*
 16,000 bytes ≈ 4,000 tokens ≈ 2% of a 200k window. Configurable via
 `thresholds.skillDescriptionBytes`.
 
-This is **not** applied to portable Agent Skills (`sourceProvider: "agent-skills"`).
-The Agent Skills spec caps a single description at 1024 characters; that is a
-different check.
+This is **not** applied to Agent Skills schema profiles (`.agents/skills` and
+`.cursor/skills`). The Agent Skills spec caps a single description at 1024
+characters; that is a different check.
 
 Confidence: **medium**. Mechanism is attested; the exact 1–2% figure is secondary.
 

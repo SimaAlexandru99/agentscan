@@ -118,6 +118,14 @@ export const SPEC_SURFACES: SpecSurface[] = [
   },
   {
     provider: "cursor",
+    surface: "skills",
+    lastVerified: "2026-08-30",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://cursor.com/docs/skills",
+  },
+  {
+    provider: "cursor",
     surface: "rules",
     lastVerified: "2026-08-30",
     sourceType: "official",

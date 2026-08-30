@@ -6,7 +6,8 @@
 
 This is **not** the Claude Code skills page. Claude native `name` is optional and
 defaults to the directory; see [skills.md](skills.md). Applying this file's
-required-name rules to `.claude/skills` is a false positive.
+required-name rules to `.claude/skills` is a false positive. Cursor
+`.cursor/skills` uses this contract; see [cursor-skills.md](cursor-skills.md).
 
 ## Directory structure
 
