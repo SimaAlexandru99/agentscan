@@ -85,6 +85,14 @@ export const SPEC_SURFACES: SpecSurface[] = [
     url: "https://learn.chatgpt.com/docs/extend/mcp",
   },
   {
+    provider: "codex",
+    surface: "skills",
+    lastVerified: "2026-08-30",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://agentskills.io/specification",
+  },
+  {
     provider: "vscode",
     surface: "instructions",
     lastVerified: "2026-08-30",

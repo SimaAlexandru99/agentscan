@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-55-111111?style=flat-square" alt="55 checks">
-  <img src="https://img.shields.io/badge/tests-315%20passing-111111?style=flat-square" alt="315 tests">
+  <img src="https://img.shields.io/badge/checks-59-111111?style=flat-square" alt="59 checks">
+  <img src="https://img.shields.io/badge/tests-333%20passing-111111?style=flat-square" alt="333 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <strong>55 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <strong>59 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
   <sub>An offline linter for Claude Code, portable Agent Skills, nested AGENTS.md, and the MCP / hooks / rules surfaces that 1.0.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — <code>full</code> only where discovery, spec-required fields, and a conformance fixture (or equivalent tests) all exist.</sub>
 </p>
 
@@ -64,7 +64,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       55 checks, each labeled spec-required, vendor-recommendation,
+3. Check       59 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -260,11 +260,14 @@ Same tree → same sorted findings, with stable unique `id`s.
 
 Adds `~/.claude/skills` and `~/.codex/skills` to the structural checks: a
 `SKILL.md` that is malformed is malformed wherever it lives, and those findings
-carry a `source: global` evidence entry so you can tell them apart.
+carry a `source: global` evidence entry so you can tell them apart. Codex skills
+use the Agent Skills contract (`name` and `description` required).
 
 Lockfile checks stay project-scoped — a project lockfile cannot pin a skill that
 lives in your home directory, so reporting one as "not in the lockfile" could
-only ever be wrong.
+only ever be wrong. In a monorepo, each `skills-lock.json` governs only the
+skills under its directory (nearest lock wins). A skill with no ancestor
+lockfile is not compared to a distant lock.
 
 `includeGlobal: true` in `.agentscanrc.json` does the same thing without the
 flag.
@@ -338,7 +341,7 @@ Optional `.agentscanrc.json` (create with `agentscan init`):
 
 ```json
 {
-  "skillPaths": [".agents/skills", ".claude/skills", "skills", ".cursor/skills"],
+  "skillPaths": [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills"],
   "mcpPaths": [".mcp.json", ".claude/mcp.json", "mcp.json", ".vscode/mcp.json", ".cursor/mcp.json", ".agents/mcp_config.json", ".codex/config.toml"],
   "policyFiles": ["AGENTS.md", "CLAUDE.md"],
   "ignoreSkills": [],
@@ -440,6 +443,10 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `codex.mcp.no-launch` | error | A Codex `[mcp_servers.*]` entry with neither `command` nor `url` |
 | `gemini.mcp.no-launch` | error | A Gemini MCP server with neither `command`, `url`, nor `httpUrl` |
 | `opencode.mcp.no-launch` | error | An OpenCode MCP server with neither `command` nor `url` |
+| `opencode.mcp.missing-type` | error | An OpenCode MCP server missing `type: local` or `type: remote` |
+| `opencode.mcp.local-without-command` | error | An OpenCode `type: local` server with no `command` |
+| `opencode.mcp.remote-without-url` | error | An OpenCode `type: remote` server with no `url` |
+| `opencode.mcp.invalid-launch-for-type` | error | An OpenCode server whose launch field does not match its `type` |
 | `continue.mcp.no-launch` | error | A Continue MCP server with neither `command`, `url`, nor `uses` |
 | `claude.hook.command-without-command` | error | A Claude `type: command` hook with no `command` |
 | `claude.hook.invalid-group` | error | A Claude hook matcher group with no `hooks` array |
@@ -478,7 +485,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | Agent Skills | none | full | none | none | none |
 | AGENTS.md | partial (nested + nearest-wins; no required fields) | none | none | none | none |
 | Claude Code | partial (walk-up `CLAUDE.md`; 200-line target) | partial (native; `name` optional) | partial (walk-up `.claude/agents`) | partial (33 events; command handlers only) | full (`claude-json`) |
-| Codex | partial (32 KiB chain; no invented agents TOML) | none | none | none | full (`codex-toml`) |
+| Codex | partial (32 KiB chain; no invented agents TOML) | full (Agent Skills; `.codex/skills`) | none | none | full (`codex-toml`) |
 | VS Code | partial (`.github` instruction files; no required fields) | none | partial (filename may be the name) | full (8 events) | full (`servers`) |
 | Cursor | none | full (Agent Skills; nested `SKILL.md`) | none | none | full |
 | Grok | none | none | none | none | none |

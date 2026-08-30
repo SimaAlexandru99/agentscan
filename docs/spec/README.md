@@ -43,9 +43,10 @@ to appear in real projects.** When adding a check:
 | [vscode-hooks.md](vscode-hooks.md) | `.github/hooks/*.json` and eight events | `vscode.hook.*` |
 | [cursor-rules.md](cursor-rules.md) | `.cursor/rules/**/*.mdc` under 500 lines | `cursor.rule.too-large` |
 | [gemini-mcp.md](gemini-mcp.md) | `.gemini/settings.json` `command` / `url` / `httpUrl` | `gemini.mcp.no-launch` |
-| [opencode-mcp.md](opencode-mcp.md) | `opencode.json(c)` V1 vs V2 | `opencode.mcp.no-launch` |
+| [opencode-mcp.md](opencode-mcp.md) | `opencode.json(c)` V1 vs V2 | `opencode.mcp.no-launch`, `opencode.mcp.missing-type`, `opencode.mcp.local-without-command`, `opencode.mcp.remote-without-url`, `opencode.mcp.invalid-launch-for-type` |
 | [continue-mcp.md](continue-mcp.md) | `.continue/config.yaml` and `.continue/mcpServers/*` including `uses` | `continue.mcp.no-launch` |
 | [cursor-skills.md](cursor-skills.md) | Nested `.cursor/skills` / `.agents/skills` Agent Skills contract | `agent-skills.skill.*` |
+| [codex-skills.md](codex-skills.md) | Codex `.codex/skills` Agent Skills contract | `agent-skills.skill.*` |
 
 Each `STRUCTURAL_CHECKS` entry also carries `provenance` (`spec-required`,
 `vendor-recommendation`, `security`, `internal-consistency`, or `heuristic`)
