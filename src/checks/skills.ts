@@ -1,5 +1,5 @@
-import { basename, dirname } from "node:path";
-import type { Facts, Finding, SkillFact, SkillSchemaProfile } from "../facts/types";
+import { basename, dirname, isAbsolute, resolve, sep } from "node:path";
+import type { Facts, Finding, LockedSkillFact, SkillFact, SkillSchemaProfile } from "../facts/types";
 import type { CheckOptions } from "./options";
 import { make } from "./make";
 
@@ -32,7 +32,11 @@ function skillSchema(skill: SkillFact): SkillSchemaProfile {
   if (skill.schemaProfile !== undefined) {
     return skill.schemaProfile;
   }
-  if (skill.sourceProvider === "agent-skills" || skill.sourceProvider === "cursor") {
+  if (
+    skill.sourceProvider === "agent-skills" ||
+    skill.sourceProvider === "cursor" ||
+    skill.sourceProvider === "codex"
+  ) {
     return "agent-skills";
   }
   return "claude";
@@ -241,6 +245,41 @@ function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
   return out;
 }
 
+function skillAbs(skill: SkillFact, facts: Facts): string {
+  return isAbsolute(skill.path) ? resolve(skill.path) : resolve(facts.root, skill.path);
+}
+
+function lockRootsOf(facts: Facts): string[] {
+  if (facts.skillLockRoots !== undefined && facts.skillLockRoots.length > 0) {
+    return facts.skillLockRoots.map((root) => resolve(root));
+  }
+  const fromEntries = [
+    ...new Set(
+      facts.lockedSkills
+        .map((entry) => entry.lockRoot)
+        .filter((root): root is string => root !== undefined)
+        .map((root) => resolve(root)),
+    ),
+  ];
+  if (fromEntries.length > 0) {
+    return fromEntries;
+  }
+  return facts.hasSkillsLock ? [resolve(facts.root)] : [];
+}
+
+function underRoot(absPath: string, root: string): boolean {
+  return absPath === root || absPath.startsWith(`${root}${sep}`);
+}
+
+/** Nearest lock directory that is an ancestor of the skill path. */
+function governingLockRoot(skillPath: string, lockRoots: string[]): string | undefined {
+  const owners = lockRoots.filter((root) => underRoot(skillPath, root));
+  if (owners.length === 0) {
+    return undefined;
+  }
+  return owners.reduce((nearest, root) => (root.length > nearest.length ? root : nearest));
+}
+
 export function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding[] {
   const out: Finding[] = [];
   // A project lockfile cannot pin a skill that lives in the user's home
@@ -271,10 +310,25 @@ export function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding
     return out;
   }
 
-  const onDisk = new Set(projectSkills.map((s) => s.id));
-  const locked = new Map(facts.lockedSkills.map((l) => [l.id, l]));
+  const lockRoots = lockRootsOf(facts);
+  const byRoot = new Map<string, LockedSkillFact[]>();
+  for (const entry of facts.lockedSkills) {
+    const root = resolve(entry.lockRoot ?? facts.root);
+    const bucket = byRoot.get(root);
+    if (bucket === undefined) {
+      byRoot.set(root, [entry]);
+    } else {
+      bucket.push(entry);
+    }
+  }
 
   for (const skill of projectSkills) {
+    const gov = governingLockRoot(skillAbs(skill, facts), lockRoots);
+    if (gov === undefined) {
+      // No lockfile owns this skill — do not compare it to a distant lock.
+      continue;
+    }
+    const locked = new Map((byRoot.get(gov) ?? []).map((entry) => [entry.id, entry]));
     if (locked.has(skill.id)) {
       continue;
     }
@@ -292,27 +346,40 @@ export function checkLockIntegrity(facts: Facts, options: CheckOptions): Finding
     );
   }
 
-  for (const entry of facts.lockedSkills) {
-    if (onDisk.has(entry.id)) {
-      continue;
-    }
-    const from = entry.source === undefined ? "" : ` (from ${entry.source})`;
-    out.push(
-      make("skill.locked-not-installed", `skill:${entry.id}`, {
-        action: "add",
-        severity: "warning",
-        message: `skills-lock.json pins "${entry.id}"${from} but it is not installed`,
-        reason:
-          "The lockfile and the working tree disagree: either the install was removed without updating the lock, or the install never completed.",
-        evidence: [
-          { kind: "lock", value: entry.id },
-          ...(entry.source === undefined
-            ? []
-            : [{ kind: "source", value: entry.source }]),
-        ],
-        suggest: "Reinstall the skill, or drop the entry from skills-lock.json",
-      }),
+  const multipleLocks = lockRoots.length > 1;
+  for (const [root, entries] of byRoot) {
+    const inScope = projectSkills.filter(
+      (skill) => governingLockRoot(skillAbs(skill, facts), lockRoots) === root,
     );
+    const onDisk = new Set(inScope.map((skill) => skill.id));
+    for (const entry of entries) {
+      if (onDisk.has(entry.id)) {
+        continue;
+      }
+      const from = entry.source === undefined ? "" : ` (from ${entry.source})`;
+      const subject = multipleLocks && entry.lockPath !== undefined
+        ? `skill:${entry.id}@${entry.lockPath}`
+        : `skill:${entry.id}`;
+      out.push(
+        make("skill.locked-not-installed", subject, {
+          action: "add",
+          severity: "warning",
+          message: `skills-lock.json pins "${entry.id}"${from} but it is not installed`,
+          reason:
+            "The lockfile and the working tree disagree: either the install was removed without updating the lock, or the install never completed.",
+          evidence: [
+            { kind: "lock", value: entry.id },
+            ...(entry.source === undefined
+              ? []
+              : [{ kind: "source", value: entry.source }]),
+            ...(entry.lockPath === undefined
+              ? []
+              : [{ kind: "lockfile", value: entry.lockPath }]),
+          ],
+          suggest: "Reinstall the skill, or drop the entry from skills-lock.json",
+        }),
+      );
+    }
   }
 
   return out;

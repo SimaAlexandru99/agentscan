@@ -8,6 +8,8 @@ This is **not** the Claude Code skills page. Claude native `name` is optional an
 defaults to the directory; see [skills.md](skills.md). Applying this file's
 required-name rules to `.claude/skills` is a false positive. Cursor
 `.cursor/skills` uses this contract; see [cursor-skills.md](cursor-skills.md).
+Codex `.codex/skills` (project-local and `~/.codex/skills`) uses this contract
+too; see [codex-skills.md](codex-skills.md).
 
 ## Directory structure
 

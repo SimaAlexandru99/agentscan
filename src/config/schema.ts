@@ -12,7 +12,7 @@ export const defaultThresholds = {
 };
 
 export const defaultConfig = {
-  skillPaths: [".agents/skills", ".claude/skills", "skills", ".cursor/skills"],
+  skillPaths: [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills"],
   mcpPaths: [
     ".mcp.json",
     ".claude/mcp.json",

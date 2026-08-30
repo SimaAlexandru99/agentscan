@@ -43,7 +43,9 @@ export function schemaProfileFromSkillsDir(dir: string): SkillSchemaProfile {
     normalized.includes("/.agents/skills") ||
     normalized.endsWith("/.agents/skills") ||
     normalized.includes("/.cursor/skills") ||
-    normalized.endsWith("/.cursor/skills")
+    normalized.endsWith("/.cursor/skills") ||
+    normalized.includes("/.codex/skills") ||
+    normalized.endsWith("/.codex/skills")
   ) {
     return "agent-skills";
   }
@@ -73,6 +75,12 @@ export function providerFromSkillsDir(dir: string): Provider {
     normalized.endsWith("/.cursor/skills")
   ) {
     return "cursor";
+  }
+  if (
+    normalized.includes("/.codex/skills") ||
+    normalized.endsWith("/.codex/skills")
+  ) {
+    return "codex";
   }
   return "unknown";
 }
