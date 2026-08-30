@@ -1,7 +1,7 @@
 {
   "name": "@chimix/agentscan",
-  "version": "0.8.0",
-  "description": "Offline linter for Claude Code config, portable Agent Skills, and MCP files for VS Code, Cursor, Antigravity, and Codex",
+  "version": "1.0.0",
+  "description": "Offline linter for Claude Code, portable Agent Skills, AGENTS.md, and MCP/hooks/rules for VS Code, Cursor, Codex, Gemini, OpenCode, and Continue",
   "type": "module",
   "bin": {
     "agentscan": "./dist/cli.js"

@@ -15,7 +15,8 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { KNOWN_HOOK_EVENTS } from "../src/checks/index";
+import { KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "../src/checks/index";
+import { SPEC_SURFACES, surfaceStalenessNotes } from "./spec-surfaces";
 
 const SPEC_DIR = join(import.meta.dir, "../docs/spec");
 /** Re-read the sources when the newest capture is older than this. */
@@ -130,9 +131,33 @@ function checkCaptureDates(report: Report): void {
   }
 }
 
+function checkSurfaceStaleness(report: Report): void {
+  for (const note of surfaceStalenessNotes()) {
+    report.drift.push(note);
+  }
+  report.notes.push(`tracking ${SPEC_SURFACES.length} captured spec surfaces`);
+}
+
+async function checkVscodeHookEvents(report: Report): Promise<void> {
+  const url = "https://code.visualstudio.com/docs/agent-customization/hooks";
+  const html = await page(url);
+  if (html === null) {
+    report.notes.push(`could not fetch ${url} — VS Code hook events unverified`);
+    return;
+  }
+  const missingFromPage = [...VSCODE_HOOK_EVENTS].filter((e) => !html.includes(e));
+  if (missingFromPage.length > 0) {
+    report.drift.push(
+      `VS Code hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
+    );
+  }
+}
+
 const report: Report = { drift: [], notes: [] };
 checkCaptureDates(report);
+checkSurfaceStaleness(report);
 await checkHookEvents(report);
+await checkVscodeHookEvents(report);
 
 for (const note of report.notes) {
   process.stdout.write(`note: ${note}\n`);
