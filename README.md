@@ -12,6 +12,7 @@
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
   <img src="https://img.shields.io/npm/v/@chimix/agentscan?style=flat-square&color=111111&label=npm" alt="npm version">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-1.0.0-111111?style=flat-square" alt="Changelog"></a>
 </p>
 
 <p align="center">
@@ -583,6 +584,21 @@ first.
   that read it see all of it. Reporting the cap as `config.unreadable` at
   severity error is a defect this tool shipped and [plan 019](plans/019-findings-say-true-things.md) fixed.
 
+## Releases
+
+Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
+GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
+and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
+
+**1.0.0** (30 August 2026) is the first stable release: 59 checks, 345 tests,
+still offline on `check`. It adds portable Agent Skills (including Cursor and
+Codex skill trees), MCP profiles for VS Code / Cursor / Codex / Antigravity /
+Gemini / OpenCode / Continue, nested `AGENTS.md`, walk-up agents, VS Code
+hooks, and platform-aware launch checks — a `windows:` script is not
+POSIX-joined when the scanner runs on Linux. Old 0.7 rule ids still work in
+`ignoreRules` and `explain`. 0.9.0 was planned as a separate train and shipped
+inside this release.
+
 ## Development
 
 ```bash
@@ -607,6 +623,8 @@ Before publishing a release:
 2. Run `bun run build`, then verify `node dist/cli.js --version` prints it.
 3. Run `bun run typecheck`, `bun test`, and `bun run spec:check`.
 4. Refresh the test-count badge and version examples above from that release run.
+5. Add a section to [CHANGELOG.md](CHANGELOG.md) for the version, then publish
+   the GitHub release from that text.
 
 ## Design docs
 
