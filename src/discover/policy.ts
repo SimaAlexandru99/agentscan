@@ -209,21 +209,18 @@ export function discoverPolicyFiles(
   return out;
 }
 
-/**
- * skills-lock.json — the oracle for which skills are managed installs pinned to
- * an upstream source, and which are local and unpinned.
- */
-export function discoverSkillsLock(
-  root: string,
+type ParsedLock = {
+  entries: LockedSkillFact[];
+  invalid?: boolean;
+};
+
+function parseSkillsLockFile(
+  filePath: string,
   errors: ConfigErrorFact[],
-): { locked: LockedSkillFact[]; present: boolean; invalid?: boolean } {
-  const filePath = join(root, "skills-lock.json");
-  if (!existsSync(filePath)) {
-    return { locked: [], present: false };
-  }
+): ParsedLock {
   const raw = readJsonConfig(filePath, errors);
   if (raw === undefined) {
-    return { locked: [], present: true, invalid: true };
+    return { entries: [], invalid: true };
   }
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     errors.push({
@@ -231,7 +228,7 @@ export function discoverSkillsLock(
       kind: "unexpected-shape",
       detail: "skills-lock.json is not a JSON object",
     });
-    return { locked: [], present: true, invalid: true };
+    return { entries: [], invalid: true };
   }
   const skills = (raw as Record<string, unknown>).skills;
   if (skills === null || typeof skills !== "object" || Array.isArray(skills)) {
@@ -240,12 +237,13 @@ export function discoverSkillsLock(
       kind: "unexpected-shape",
       detail: "skills-lock.json has no `skills` object",
     });
-    return { locked: [], present: true, invalid: true };
+    return { entries: [], invalid: true };
   }
 
+  const lockRoot = dirname(resolve(filePath));
   const locked: LockedSkillFact[] = [];
   for (const [id, value] of Object.entries(skills as Record<string, unknown>)) {
-    const entry: LockedSkillFact = { id };
+    const entry: LockedSkillFact = { id, lockRoot, lockPath: filePath };
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       const v = value as Record<string, unknown>;
       if (typeof v.source === "string") {
@@ -260,5 +258,71 @@ export function discoverSkillsLock(
     }
     locked.push(entry);
   }
-  return { locked, present: true };
+  return { entries: locked };
+}
+
+/**
+ * skills-lock.json — the oracle for which skills are managed installs pinned to
+ * an upstream source, and which are local and unpinned. One lockfile governs
+ * the skills under its directory; a monorepo may have several.
+ */
+export function discoverSkillsLocks(
+  scanBoundary: string,
+  projectRoot: string,
+  errors: ConfigErrorFact[],
+): {
+  locked: LockedSkillFact[];
+  present: boolean;
+  invalid?: boolean;
+  lockRoots: string[];
+} {
+  const seen = new Set<string>();
+  const locked: LockedSkillFact[] = [];
+  const lockRoots: string[] = [];
+  let present = false;
+  let validCount = 0;
+
+  const consider = (filePath: string): void => {
+    const resolved = resolve(filePath);
+    if (seen.has(resolved) || !existsSync(resolved)) {
+      return;
+    }
+    seen.add(resolved);
+    present = true;
+    const parsed = parseSkillsLockFile(resolved, errors);
+    if (parsed.invalid === true) {
+      return;
+    }
+    validCount += 1;
+    lockRoots.push(dirname(resolved));
+    locked.push(...parsed.entries);
+  };
+
+  consider(join(projectRoot, "skills-lock.json"));
+  for (const abs of walkFiles(scanBoundary, {
+    maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
+    match: (_abs, name) => name === "skills-lock.json",
+    errors,
+  })) {
+    consider(abs);
+  }
+
+  return {
+    locked,
+    present,
+    lockRoots,
+    ...(present && validCount === 0 ? { invalid: true } : {}),
+  };
+}
+
+export function discoverSkillsLock(
+  root: string,
+  errors: ConfigErrorFact[],
+): { locked: LockedSkillFact[]; present: boolean; invalid?: boolean } {
+  const found = discoverSkillsLocks(root, root, errors);
+  return {
+    locked: found.locked,
+    present: found.present,
+    ...(found.invalid === undefined ? {} : { invalid: found.invalid }),
+  };
 }

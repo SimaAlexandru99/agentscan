@@ -55,6 +55,7 @@ export type AgentSurface = {
   lockedSkills: LockedSkillFact[];
   hasSkillsLock: boolean;
   skillsLockInvalid?: boolean;
+  skillLockRoots?: string[];
   configErrors: ConfigErrorFact[];
   codexProjectDocMaxBytes?: number;
 };

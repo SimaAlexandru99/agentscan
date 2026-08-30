@@ -195,6 +195,7 @@ export function extractFacts(
     lockedSkills: surface.lockedSkills,
     hasSkillsLock: surface.hasSkillsLock,
     skillsLockInvalid: surface.skillsLockInvalid,
+    ...(surface.skillLockRoots === undefined ? {} : { skillLockRoots: surface.skillLockRoots }),
     configErrors: [...packageErrors, ...surface.configErrors],
     ...(surface.codexProjectDocMaxBytes === undefined
       ? {}

@@ -12,7 +12,7 @@ import { discoverAgents } from "./agents";
 import { discoverHooks, discoverVscodeHooks } from "./hooks";
 import { discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
 import { discoverPluginHooks } from "./plugins";
-import { discoverPolicyFiles, discoverSkillsLock } from "./policy";
+import { discoverPolicyFiles, discoverSkillsLocks } from "./policy";
 import { discoverRules } from "./rules";
 import {
   disambiguateSkills,
@@ -78,7 +78,7 @@ export function discoverAgentSurface(
     );
   }
 
-  const lock = discoverSkillsLock(root, configErrors);
+  const lock = discoverSkillsLocks(scanBoundary, root, configErrors);
   const agents = discoverAgents(scanBoundary, configErrors, startDir);
 
   const hooks: HookFact[] = [];
@@ -120,6 +120,7 @@ export function discoverAgentSurface(
     lockedSkills: lock.locked,
     hasSkillsLock: lock.present,
     skillsLockInvalid: lock.invalid,
+    ...(lock.lockRoots.length === 0 ? {} : { skillLockRoots: lock.lockRoots }),
     configErrors,
     ...(codexProjectDocMaxBytes === undefined ? {} : { codexProjectDocMaxBytes }),
   };
