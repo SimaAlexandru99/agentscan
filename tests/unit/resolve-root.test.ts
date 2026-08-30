@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { hasAgentConfigSignal, resolveRoot } from "../../src/discover/index";
+import { hasAgentConfigSignal, resolveRoot, resolveScanContext } from "../../src/discover/index";
 
 describe("resolveRoot", () => {
   test("uses package.json when present", () => {
@@ -68,6 +68,17 @@ describe("resolveRoot", () => {
     const nested = join(root, "pkg", "src");
     mkdirSync(nested, { recursive: true });
     expect(resolveRoot(nested)).toBe(root);
+  });
+
+  test("scanBoundary stays at git when a child .cursor is the project root", () => {
+    const parent = mkdtempSync(join(tmpdir(), "agentscan-scan-bound-"));
+    mkdirSync(join(parent, ".git"), { recursive: true });
+    mkdirSync(join(parent, ".claude"), { recursive: true });
+    const child = join(parent, "apps", "web");
+    mkdirSync(join(child, ".cursor"), { recursive: true });
+    const ctx = resolveScanContext(child);
+    expect(ctx.projectRoot).toBe(child);
+    expect(ctx.scanBoundary).toBe(parent);
   });
 
   test("a nearer package.json wins over a parent provider signal", () => {
