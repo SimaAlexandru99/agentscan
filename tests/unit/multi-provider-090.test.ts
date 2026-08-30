@@ -250,7 +250,7 @@ describe("remaining MCP profiles", () => {
     expect(analyze({ dir: root }).findings.map((f) => f.ruleId)).toEqual([]);
   });
 
-  test("OpenCode empty server emits opencode.mcp.no-launch", () => {
+  test("OpenCode V2 empty server emits missing-type, not a generic no-launch", () => {
     const root = tmpProject("agentscan-opencode-dead-");
     write(root, "package.json", "{}");
     write(
@@ -259,7 +259,7 @@ describe("remaining MCP profiles", () => {
       JSON.stringify({ mcp: { servers: { dead: {} } } }),
     );
     expect(analyze({ dir: root }).findings.map((f) => f.ruleId)).toEqual([
-      "opencode.mcp.no-launch",
+      "opencode.mcp.missing-type",
     ]);
   });
 });

@@ -273,6 +273,30 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
     lastVerified: "2026-08-30",
   },
   {
+    id: "opencode.mcp.missing-type",
+    description: "OpenCode MCP server is missing type local or remote",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "opencode.mcp.local-without-command",
+    description: "OpenCode local MCP server declares no command",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "opencode.mcp.remote-without-url",
+    description: "OpenCode remote MCP server declares no url",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "opencode.mcp.invalid-launch-for-type",
+    description: "OpenCode MCP server launch field does not match its type",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
     id: "continue.mcp.no-launch",
     description: "Continue MCP server declares neither command, url, nor uses",
     provenance: "spec-required",

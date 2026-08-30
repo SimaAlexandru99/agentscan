@@ -68,6 +68,20 @@ export type McpFact = {
   /** Continue registry block, e.g. `continuedev/continue-docs-mcp`. */
   uses?: string;
   platform?: OsPlatform;
+  /** Declared working directory when present. */
+  cwd?: string;
+  /** OpenCode V1 vs V2 map that produced this entry. */
+  opencodeSchema?: "v1" | "v2";
+  /**
+   * V1 `{ enabled }` override that may inherit a server defined outside this
+   * file. Skip hard launch/schema errors — the launch data is not local.
+   */
+  opencodeInherit?: boolean;
+  opencodeDefect?:
+    | "missing-type"
+    | "local-without-command"
+    | "remote-without-url"
+    | "invalid-launch-for-type";
   hasCommand: boolean;
   hasUrl: boolean;
   hasServerUrl?: boolean;
@@ -106,6 +120,8 @@ export type HookFact = {
   defect?: HookDefect;
   unknownHandlerType?: string;
   platform?: OsPlatform;
+  /** Declared working directory when present. */
+  cwd?: string;
   /** Script path parsed out of `command`, resolved against the project root. */
   scriptPath?: string;
   /** false only when scriptPath was extracted and does not exist on disk. */
@@ -157,6 +173,9 @@ export type LockedSkillFact = {
   source?: string;
   skillPath?: string;
   computedHash?: string;
+  /** Directory that contains the lockfile governing this entry. */
+  lockRoot?: string;
+  lockPath?: string;
 };
 
 export type PolicyFileFact = {
@@ -196,6 +215,8 @@ export type Facts = {
   lockedSkills: LockedSkillFact[];
   hasSkillsLock: boolean;
   skillsLockInvalid?: boolean;
+  /** Directories that own a readable skills-lock.json in this scan. */
+  skillLockRoots?: string[];
   configErrors: ConfigErrorFact[];
 };
 

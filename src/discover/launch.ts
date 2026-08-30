@@ -1,4 +1,5 @@
-import { basename } from "node:path";
+import { homedir } from "node:os";
+import { basename, isAbsolute, join } from "node:path";
 
 export type OsPlatform = "windows" | "linux" | "osx";
 
@@ -6,7 +7,21 @@ export type LaunchCommand = {
   executable: string;
   args: string[];
   platform?: OsPlatform;
+  /** Working directory declared on the entry or an OS override. */
+  cwd?: string;
 };
+
+export type CwdResolution =
+  | { status: "absent" }
+  | { status: "unresolved" }
+  | { status: "ok"; abs: string };
+
+/**
+ * Placeholders the host expands at runtime. We cannot resolve these offline
+ * without inventing a workspace, so path checks stay silent.
+ */
+const UNRESOLVED_CWD =
+  /\$\{[^}]+\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z0-9_]+%/;
 
 const INTERPRETERS = new Set([
   "bash",
@@ -164,18 +179,57 @@ function stringArgs(value: unknown): string[] {
   return value.filter((part): part is string => typeof part === "string");
 }
 
+export function optionalCwd(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+export function cwdIsUnresolved(cwd: string): boolean {
+  return UNRESOLVED_CWD.test(cwd);
+}
+
+/**
+ * Resolve a declared cwd against the project root. Unresolved interpolations
+ * are not guessed — callers must skip existence checks.
+ */
+export function resolveLaunchCwd(cwd: string | undefined, projectRoot: string): CwdResolution {
+  if (cwd === undefined) {
+    return { status: "absent" };
+  }
+  if (cwdIsUnresolved(cwd)) {
+    return { status: "unresolved" };
+  }
+  let expanded = cwd;
+  if (expanded.startsWith("~/")) {
+    expanded = join(homedir(), expanded.slice(2));
+  }
+  const abs = isAbsolute(expanded) ? expanded : join(projectRoot, expanded);
+  return { status: "ok", abs };
+}
+
+function withCwd(launch: LaunchCommand, cwd: string | undefined): LaunchCommand {
+  return cwd === undefined ? launch : { ...launch, cwd };
+}
+
 export function launchFromCommandArgs(
   command: unknown,
   args?: unknown,
   platform?: OsPlatform,
+  cwd?: string,
 ): LaunchCommand | undefined {
   const extra = stringArgs(args);
   if (typeof command === "string" && command.length > 0) {
-    return {
-      executable: command,
-      args: extra,
-      ...(platform === undefined ? {} : { platform }),
-    };
+    return withCwd(
+      {
+        executable: command,
+        args: extra,
+        ...(platform === undefined ? {} : { platform }),
+      },
+      cwd,
+    );
   }
   if (
     Array.isArray(command) &&
@@ -184,22 +238,39 @@ export function launchFromCommandArgs(
     command[0].length > 0
   ) {
     const parts = command.filter((part): part is string => typeof part === "string");
-    return {
-      executable: parts[0]!,
-      args: [...parts.slice(1), ...extra],
-      ...(platform === undefined ? {} : { platform }),
-    };
+    return withCwd(
+      {
+        executable: parts[0]!,
+        args: [...parts.slice(1), ...extra],
+        ...(platform === undefined ? {} : { platform }),
+      },
+      cwd,
+    );
   }
   return undefined;
 }
 
-function launchFromOverride(value: unknown, platform: OsPlatform): LaunchCommand | undefined {
+function launchFromOverride(
+  value: unknown,
+  platform: OsPlatform,
+  base: LaunchCommand | undefined,
+): LaunchCommand | undefined {
   if (typeof value === "string" && value.length > 0) {
-    return launchFromCommandArgs(value, undefined, platform);
+    return launchFromCommandArgs(value, undefined, platform, base?.cwd);
   }
   if (value !== null && typeof value === "object" && !Array.isArray(value)) {
     const record = value as Record<string, unknown>;
-    return launchFromCommandArgs(record.command, record.args, platform);
+    const cwd = optionalCwd(record.cwd) ?? base?.cwd;
+    if (record.command !== undefined || record.args !== undefined) {
+      const own = launchFromCommandArgs(record.command, record.args, platform, cwd);
+      if (own !== undefined) {
+        return own;
+      }
+    }
+    if (base !== undefined) {
+      return withCwd({ ...base, platform }, cwd);
+    }
+    return launchFromCommandArgs(record.command, record.args, platform, cwd);
   }
   return undefined;
 }
@@ -207,7 +278,8 @@ function launchFromOverride(value: unknown, platform: OsPlatform): LaunchCommand
 /** Default launch plus each OS-specific override, kept as separate argv lists. */
 export function launchesFromEntry(entry: Record<string, unknown>): LaunchCommand[] {
   const out: LaunchCommand[] = [];
-  const base = launchFromCommandArgs(entry.command, entry.args);
+  const baseCwd = optionalCwd(entry.cwd);
+  const base = launchFromCommandArgs(entry.command, entry.args, undefined, baseCwd);
   if (base !== undefined) {
     out.push(base);
   }
@@ -215,7 +287,7 @@ export function launchesFromEntry(entry: Record<string, unknown>): LaunchCommand
     if (entry[os] === undefined) {
       continue;
     }
-    const override = launchFromOverride(entry[os], os);
+    const override = launchFromOverride(entry[os], os, base);
     if (override !== undefined) {
       out.push(override);
     }

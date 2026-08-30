@@ -11,7 +11,12 @@ import {
 } from "../facts/provider";
 import type { ConfigErrorFact, McpFact } from "../facts/types";
 import { parseJsonc } from "./jsonc";
-import { formatLaunch, launchesFromEntry, scriptCandidateFromLaunch } from "./launch";
+import {
+  formatLaunch,
+  launchesFromEntry,
+  resolveLaunchCwd,
+  scriptCandidateFromLaunch,
+} from "./launch";
 import { NESTED_DISCOVERY_MAX_DEPTH, readJsonConfig, walkFiles } from "./shared";
 
 /** Anything that makes the command a shell program rather than one path. */
@@ -86,6 +91,7 @@ function commandFactsFromEntry(
   hasCommand: boolean;
   command?: string;
   commandExists?: boolean;
+  cwd?: string;
   platform?: NonNullable<McpFact["platform"]>;
 }> {
   const launches = launchesFromEntry(entry);
@@ -95,17 +101,21 @@ function commandFactsFromEntry(
   return launches.map((launch) => {
     const candidate = scriptCandidateFromLaunch(launch);
     const display = candidate ?? formatLaunch(launch);
-    if (candidate === undefined) {
+    const cwd = resolveLaunchCwd(launch.cwd, root);
+    if (candidate === undefined || cwd.status === "unresolved") {
       return {
         hasCommand: true,
         command: formatLaunch(launch),
+        ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
         ...(launch.platform === undefined ? {} : { platform: launch.platform }),
       };
     }
-    const resolved = resolveMcpCommand(root, candidate);
+    const base = cwd.status === "ok" ? cwd.abs : root;
+    const resolved = resolveMcpCommand(base, candidate);
     return {
       hasCommand: true,
       command: display,
+      ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
       ...(resolved === undefined ? {} : { commandExists: resolved.exists }),
       ...(launch.platform === undefined ? {} : { platform: launch.platform }),
     };
@@ -246,13 +256,14 @@ function parseMcpServers(
       }
       literalEnvKeys = literalEnvKeysFrom(entry);
     }
-    const launchKind: McpLaunchKind = uses !== undefined
-      ? "registry-reference"
-      : commandVariants.some((variant) => variant.hasCommand)
-        ? "command"
-        : hasUrl || hasServerUrl || hasHttpUrl
-          ? "url"
-          : "no-launch";
+    const launchKind: McpLaunchKind =
+      profile === "continue-yaml" && uses !== undefined
+        ? "registry-reference"
+        : commandVariants.some((variant) => variant.hasCommand)
+          ? "command"
+          : hasUrl || hasServerUrl || hasHttpUrl
+            ? "url"
+            : "no-launch";
     const variants =
       launchKind === "command"
         ? commandVariants.filter((variant) => variant.hasCommand)
@@ -272,6 +283,7 @@ function parseMcpServers(
         ...(hasHttpUrl ? { hasHttpUrl: true } : {}),
         ...(variant.command === undefined ? {} : { command: variant.command }),
         ...(variant.commandExists === undefined ? {} : { commandExists: variant.commandExists }),
+        ...(variant.cwd === undefined ? {} : { cwd: variant.cwd }),
         ...(variant.platform === undefined ? {} : { platform: variant.platform }),
         ...(transport === undefined ? {} : { transport }),
         literalEnvKeys,
@@ -409,7 +421,12 @@ function parseOpenCode(
       });
       return [];
     }
-    return parseMcpServers({ mcpServers: normalizeOpenCodeServers(v2) }, filePath, root, errors, "opencode-json");
+    const servers = normalizeOpenCodeServers(v2);
+    return annotateOpenCode(
+      parseMcpServers({ mcpServers: servers }, filePath, root, errors, "opencode-json"),
+      servers,
+      "v2",
+    );
   }
   const v1: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(table)) {
@@ -420,7 +437,64 @@ function parseOpenCode(
       v1[name] = value;
     }
   }
-  return parseMcpServers({ mcpServers: normalizeOpenCodeServers(v1) }, filePath, root, errors, "opencode-json");
+  const servers = normalizeOpenCodeServers(v1);
+  return annotateOpenCode(
+    parseMcpServers({ mcpServers: servers }, filePath, root, errors, "opencode-json"),
+    servers,
+    "v1",
+  );
+}
+
+function entryHasCommand(entry: Record<string, unknown>): boolean {
+  return launchesFromEntry(entry).length > 0;
+}
+
+function classifyOpenCodeEntry(
+  entry: Record<string, unknown>,
+  schema: "v1" | "v2",
+): Pick<McpFact, "opencodeSchema" | "opencodeInherit" | "opencodeDefect"> {
+  const type = typeof entry.type === "string" ? entry.type : undefined;
+  const hasCommand = entryHasCommand(entry);
+  const hasUrl = typeof entry.url === "string" && entry.url.length > 0;
+
+  if (schema === "v1" && !hasCommand && !hasUrl) {
+    return { opencodeSchema: "v1", opencodeInherit: true };
+  }
+
+  if (type !== "local" && type !== "remote") {
+    return { opencodeSchema: schema, opencodeDefect: "missing-type" };
+  }
+  if (type === "local") {
+    if (hasUrl) {
+      return { opencodeSchema: schema, opencodeDefect: "invalid-launch-for-type" };
+    }
+    if (!hasCommand) {
+      return { opencodeSchema: schema, opencodeDefect: "local-without-command" };
+    }
+    return { opencodeSchema: schema };
+  }
+  if (hasCommand) {
+    return { opencodeSchema: schema, opencodeDefect: "invalid-launch-for-type" };
+  }
+  if (!hasUrl) {
+    return { opencodeSchema: schema, opencodeDefect: "remote-without-url" };
+  }
+  return { opencodeSchema: schema };
+}
+
+function annotateOpenCode(
+  facts: McpFact[],
+  servers: Record<string, unknown>,
+  schema: "v1" | "v2",
+): McpFact[] {
+  return facts.map((fact) => {
+    const raw = servers[fact.name];
+    const entry =
+      raw !== null && typeof raw === "object" && !Array.isArray(raw)
+        ? (raw as Record<string, unknown>)
+        : {};
+    return { ...fact, ...classifyOpenCodeEntry(entry, schema) };
+  });
 }
 
 function normalizeOpenCodeServers(servers: unknown): Record<string, unknown> {

@@ -30,7 +30,7 @@ function profileOf(server: McpFact): McpSchemaProfile {
 }
 
 function isLaunchable(server: McpFact): boolean {
-  if (server.launchKind === "registry-reference" || server.uses !== undefined) {
+  if (server.launchKind === "registry-reference") {
     return true;
   }
   const profile = profileOf(server);
@@ -83,13 +83,14 @@ function noLaunchMessage(server: McpFact): string {
       return `MCP server "${server.name}" declares neither command nor serverUrl`;
     case "gemini-json":
       return `MCP server "${server.name}" declares neither command, url, nor httpUrl`;
+    case "continue-yaml":
+      return `MCP server "${server.name}" declares neither command, url, nor uses`;
     case "claude-json":
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
     case "opencode-json":
-    case "continue-yaml":
-      return `MCP server "${server.name}" declares neither command, url, nor uses`;
+      return `MCP server "${server.name}" declares neither command nor url`;
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }
@@ -103,13 +104,14 @@ function noLaunchSuggest(server: McpFact): string {
       return `Add a command (or serverUrl) for "${server.name}", or remove it`;
     case "gemini-json":
       return `Add a command, url, or httpUrl for "${server.name}", or remove it`;
+    case "continue-yaml":
+      return `Add a command, url, or uses: block for "${server.name}", or remove it`;
     case "claude-json":
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
     case "opencode-json":
-    case "continue-yaml":
-      return `Add a command, url, or uses: block for "${server.name}", or remove it`;
+      return `Add a command or url for "${server.name}", or remove it`;
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }
@@ -120,10 +122,75 @@ function redactInterpolated(raw: string): string {
   return raw.replace(INTERPOLATED, "");
 }
 
+function openCodeDefectRule(
+  defect: NonNullable<McpFact["opencodeDefect"]>,
+): string {
+  switch (defect) {
+    case "missing-type":
+      return "opencode.mcp.missing-type";
+    case "local-without-command":
+      return "opencode.mcp.local-without-command";
+    case "remote-without-url":
+      return "opencode.mcp.remote-without-url";
+    case "invalid-launch-for-type":
+      return "opencode.mcp.invalid-launch-for-type";
+    default: {
+      return assertNever(defect, `unhandled OpenCode MCP defect: ${defect}`);
+    }
+  }
+}
+
+function openCodeDefectMessage(server: McpFact, defect: NonNullable<McpFact["opencodeDefect"]>): string {
+  switch (defect) {
+    case "missing-type":
+      return `OpenCode MCP server "${server.name}" is missing a valid type ("local" or "remote")`;
+    case "local-without-command":
+      return `OpenCode MCP server "${server.name}" is type local but declares no command`;
+    case "remote-without-url":
+      return `OpenCode MCP server "${server.name}" is type remote but declares no url`;
+    case "invalid-launch-for-type":
+      return `OpenCode MCP server "${server.name}" declares a launch field that does not match type "${server.transport ?? "unknown"}"`;
+    default: {
+      return assertNever(defect, `unhandled OpenCode MCP defect: ${defect}`);
+    }
+  }
+}
+
+function openCodeDefectSuggest(server: McpFact, defect: NonNullable<McpFact["opencodeDefect"]>): string {
+  switch (defect) {
+    case "missing-type":
+      return `Set "type": "local" with command, or "type": "remote" with url, on "${server.name}"`;
+    case "local-without-command":
+      return `Add a command array for "${server.name}", or change type to remote`;
+    case "remote-without-url":
+      return `Add a url for "${server.name}", or change type to local`;
+    case "invalid-launch-for-type":
+      return `Keep only the launch field that matches type on "${server.name}"`;
+    default: {
+      return assertNever(defect, `unhandled OpenCode MCP defect: ${defect}`);
+    }
+  }
+}
+
 export function checkMcp(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const server of facts.mcp) {
-    if (!isLaunchable(server)) {
+    if (server.opencodeInherit === true) {
+      // V1 enabled-only override — launch data may live in an external file.
+    } else if (server.opencodeDefect !== undefined) {
+      const defect = server.opencodeDefect;
+      out.push(
+        make(openCodeDefectRule(defect), `mcp:${server.name}@${server.path}`, {
+          action: "warn",
+          severity: "error",
+          message: openCodeDefectMessage(server, defect),
+          reason:
+            "OpenCode V2 requires type local+command or remote+url. V1 uses the same pair on servers listed directly under mcp. See docs/spec/opencode-mcp.md.",
+          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
+          suggest: openCodeDefectSuggest(server, defect),
+        }),
+      );
+    } else if (!isLaunchable(server)) {
       out.push(
         make(noLaunchId(profileOf(server)), `mcp:${server.name}@${server.path}`, {
           action: "warn",

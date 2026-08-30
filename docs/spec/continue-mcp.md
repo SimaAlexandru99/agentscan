@@ -27,6 +27,9 @@ Launch is `command`, `url`, or `uses`. A `uses:` block is a
 `registry-reference`, not a missing launch field. Official command examples
 use `npx` / `uvx` and `${{ secrets.NAME }}` interpolation (not a literal secret).
 
+`uses:` is a Continue registry field only. The same key on Claude, VS Code,
+Cursor, Codex, Gemini, Antigravity, or OpenCode is not a launch method.
+
 Do not apply Claude's `url`-without-`type` rule.
 
 ## Staleness risk: HIGH

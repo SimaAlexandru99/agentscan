@@ -6,6 +6,7 @@ import type { Provider } from "../facts/provider";
 import {
   formatLaunch,
   launchesFromEntry,
+  resolveLaunchCwd,
   scriptCandidateFromLaunch,
 } from "./launch";
 import { readJsonConfig } from "./shared";
@@ -56,6 +57,7 @@ function isFile(path: string): boolean {
 function resolveHookScript(
   bases: HookBases,
   extracted: string,
+  cwdAbs?: string,
 ): { scriptPath: string; exists: boolean } | undefined {
   if (extracted.startsWith("~/")) {
     return {
@@ -79,6 +81,9 @@ function resolveHookScript(
   }
   if (isAbsolute(extracted)) {
     return { scriptPath: extracted, exists: isFile(extracted) };
+  }
+  if (cwdAbs !== undefined) {
+    return { scriptPath: extracted, exists: isFile(join(cwdAbs, extracted)) };
   }
   // A bare relative path has no documented base — the placeholders above exist
   // precisely because the working directory is not guaranteed. Try the
@@ -321,10 +326,16 @@ export function hooksFromObject(
           handlerType: "command",
           command,
           ...(launch.platform === undefined ? {} : { platform: launch.platform }),
+          ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
         };
+        const cwd = resolveLaunchCwd(launch.cwd, bases.project);
         const candidate = scriptCandidateFromLaunch(launch, bases);
-        if (candidate !== undefined) {
-          const resolved = resolveHookScript(bases, candidate);
+        if (candidate !== undefined && cwd.status !== "unresolved") {
+          const resolved = resolveHookScript(
+            bases,
+            candidate,
+            cwd.status === "ok" ? cwd.abs : undefined,
+          );
           if (resolved !== undefined) {
             fact.scriptPath = resolved.scriptPath;
             fact.scriptExists = resolved.exists;

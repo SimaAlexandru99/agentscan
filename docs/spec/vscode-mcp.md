@@ -28,9 +28,16 @@ Top-level key is `servers`, not `mcpServers`. Official example:
 }
 ```
 
-Launch is `command` (stdio) or `url` (remote). The docs tell authors to avoid
+Launch is `command` (stdio) or `url` (remote). Optional `cwd` and OS overrides
+(`windows` / `linux` / `osx`) are honoured when path-checking a script.
+Unresolved interpolations in `cwd` (`${workspaceFolder}`, `${env:…}`) skip the
+existence check rather than invent a path.
+
+The docs tell authors to avoid
 hardcoding secrets and to use input variables (`${input:...}`) or environment
 files. `${input:...}` is interpolation, not a literal secret.
+
+`uses:` is not a VS Code launch field.
 
 The file is often JSONC (comments). A comment must not make the scan report
 `config.unreadable`.
