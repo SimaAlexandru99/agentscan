@@ -263,10 +263,10 @@ is tagged and each plan's spec captures still match live pages.
 | 025 | Parse MCP configs per provider schema | P0 | L | 021, 022 | DONE — [plan](025-mcp-profile-parsers.md) |
 | 026 | Namespace Claude check IDs and split name schemas | P1 | M | 024, 025 | DONE — [plan](026-namespace-claude-check-ids.md) |
 | 027 | Label heuristics, tell the truth in README, release 0.8.0 | P1 | M | 026 | DONE — [plan](027-honesty-and-0-8-0.md) |
-| 028 | Discover instruction files with real precedence | P1 | L | 027 | TODO — [plan](028-instruction-hierarchy.md) |
-| 029 | Discover agent definitions per provider schema | P1 | L | 027, 028 | TODO — [plan](029-multi-provider-agents.md) |
-| 030 | Hook events and handlers per provider | P1 | L | 029 | TODO — [plan](030-provider-hooks.md) |
-| 031 | Discover vendor rule files with vendor limits | P2 | L | 028 | TODO — [plan](031-rules-surfaces.md) |
-| 032 | Add official-example conformance fixtures | P1 | M | 024, 025 | TODO — [plan](032-conformance-fixtures.md) |
-| 033 | Add remaining MCP and config providers | P2 | L | 025, 032 | TODO — [plan](033-remaining-providers.md) |
-| 034 | Publish the coverage matrix and release 1.0.0 | P2 | M | 033 | TODO — [plan](034-coverage-matrix-and-1-0-0.md) |
+| 028 | Discover instruction files with real precedence | P1 | L | 027 | DONE — [plan](028-instruction-hierarchy.md) |
+| 029 | Discover agent definitions per provider schema | P1 | L | 027, 028 | DONE — [plan](029-multi-provider-agents.md) |
+| 030 | Hook events and handlers per provider | P1 | L | 029 | DONE — [plan](030-provider-hooks.md) |
+| 031 | Discover vendor rule files with vendor limits | P2 | L | 028 | DONE — [plan](031-rules-surfaces.md) |
+| 032 | Add official-example conformance fixtures | P1 | M | 024, 025 | DONE — [plan](032-conformance-fixtures.md) |
+| 033 | Add remaining MCP and config providers | P2 | L | 025, 032 | DONE — [plan](033-remaining-providers.md) |
+| 034 | Publish the coverage matrix and release 1.0.0 | P2 | M | 033 | DONE — [plan](034-coverage-matrix-and-1-0-0.md) |
