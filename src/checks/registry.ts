@@ -33,6 +33,18 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
     lastVerified: "2026-08-30",
   },
   {
+    id: "vscode.hook.unknown-event",
+    description: "VS Code hook registered under an event name that is never dispatched",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "vscode.hook.missing-script",
+    description: "VS Code hook points at a script that does not exist, so it never runs",
+    provenance: "internal-consistency",
+    lastVerified: "2026-08-30",
+  },
+  {
     id: "skill.missing-skill-md",
     description: "Skill directory has no SKILL.md",
     provenance: "internal-consistency",
@@ -189,6 +201,24 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
     lastVerified: "2026-08-30",
   },
   {
+    id: "gemini.mcp.no-launch",
+    description: "Gemini MCP server declares neither command, url, nor httpUrl",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "opencode.mcp.no-launch",
+    description: "OpenCode MCP server declares neither command nor url",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "continue.mcp.no-launch",
+    description: "Continue MCP server declares neither command nor url",
+    provenance: "spec-required",
+    lastVerified: "2026-08-30",
+  },
+  {
     id: "mcp.command-missing",
     description: "MCP server command is a path that does not exist on disk",
     provenance: "internal-consistency",
@@ -238,6 +268,19 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
     description:
       "Project MCP server count above the point where tool selection may degrade",
     provenance: "heuristic",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "codex.budget.instructions",
+    description:
+      "Codex AGENTS.md chain exceeds the default 32 KiB project_doc_max_bytes",
+    provenance: "vendor-recommendation",
+    lastVerified: "2026-08-30",
+  },
+  {
+    id: "cursor.rule.too-large",
+    description: "Cursor project rule exceeds the 500-line recommendation",
+    provenance: "vendor-recommendation",
     lastVerified: "2026-08-30",
   },
 ];

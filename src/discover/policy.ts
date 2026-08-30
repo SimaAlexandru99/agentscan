@@ -1,37 +1,214 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
-import type { ConfigErrorFact, LockedSkillFact } from "../facts/types";
-import { readCapped, readJsonConfig, POLICY_CAP } from "./shared";
+import { basename, dirname, join, resolve } from "node:path";
+import type { Provider } from "../facts/provider";
+import type { ConfigErrorFact, LockedSkillFact, PolicyFileFact } from "../facts/types";
+import {
+  ancestorDirsInclusive,
+  hopsFrom,
+  NESTED_DISCOVERY_MAX_DEPTH,
+  POLICY_CAP,
+  readCapped,
+  readJsonConfig,
+  walkFiles,
+} from "./shared";
 
+function readPolicyFile(
+  filePath: string,
+  errors: ConfigErrorFact[],
+  meta: {
+    sourceProvider: Provider;
+    kind: NonNullable<PolicyFileFact["kind"]>;
+    startDir: string;
+  },
+): PolicyFileFact | undefined {
+  if (!existsSync(filePath)) {
+    return undefined;
+  }
+  try {
+    const result = readCapped(filePath, POLICY_CAP);
+    const text = result.buf.subarray(0, POLICY_CAP).toString("utf8");
+    if (result.truncated) {
+      errors.push({
+        path: filePath,
+        kind: "truncated",
+        detail: `file exceeds ${POLICY_CAP} byte scan cap`,
+      });
+    }
+    return {
+      path: filePath,
+      text,
+      sourceProvider: meta.sourceProvider,
+      kind: meta.kind,
+      hopsFromStart: hopsFrom(meta.startDir, dirname(filePath)),
+    };
+  } catch (err) {
+    errors.push({
+      path: filePath,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return undefined;
+  }
+}
+
+function addUnique(
+  out: PolicyFileFact[],
+  seen: Set<string>,
+  fact: PolicyFileFact | undefined,
+): void {
+  if (fact === undefined) {
+    return;
+  }
+  const key = resolve(fact.path);
+  if (seen.has(key)) {
+    return;
+  }
+  seen.add(key);
+  out.push(fact);
+}
+
+/**
+ * Instruction files: configured names, walk-up CLAUDE.md / AGENTS.md, nested
+ * AGENTS.md, and VS Code instruction files. See docs/spec/agents-md.md,
+ * docs/spec/claude-memory.md, docs/spec/vscode-instructions.md.
+ */
 export function discoverPolicyFiles(
   root: string,
   policyFiles: string[],
   errors: ConfigErrorFact[],
-): { path: string; text: string }[] {
-  const out: { path: string; text: string }[] = [];
+  startDir = root,
+): PolicyFileFact[] {
+  const out: PolicyFileFact[] = [];
+  const seen = new Set<string>();
+  const start = resolve(startDir);
+
   for (const rel of policyFiles) {
-    const filePath = join(root, rel);
-    if (!existsSync(filePath)) {
-      continue;
-    }
-    try {
-      const result = readCapped(filePath, POLICY_CAP);
-      const text = result.buf.subarray(0, POLICY_CAP).toString("utf8");
-      out.push({ path: filePath, text });
-      // A policy file past the cap is still a valid policy file; only the line
-      // count below it undercounts. Says so at info rather than calling the
-      // file unreadable at error.
-      if (result.truncated) errors.push({ path: filePath, kind: "truncated", detail: `file exceeds ${POLICY_CAP} byte scan cap` });
-    } catch (err) {
-      errors.push({
-        path: filePath,
-        kind: "unreadable",
-        detail: err instanceof Error ? err.message : String(err),
-      });
+    const kind =
+      basename(rel) === "CLAUDE.md" || basename(rel) === "CLAUDE.local.md"
+        ? "claude-md"
+        : basename(rel).endsWith(".instructions.md") ||
+            basename(rel) === "copilot-instructions.md"
+          ? "vscode-instructions"
+          : "agents-md";
+    const sourceProvider: Provider =
+      kind === "claude-md" ? "claude" : kind === "vscode-instructions" ? "vscode" : "unknown";
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(root, rel), errors, { sourceProvider, kind, startDir: start }),
+    );
+  }
+
+  for (const dir of ancestorDirsInclusive(start, root)) {
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(dir, "AGENTS.md"), errors, {
+        sourceProvider: "unknown",
+        kind: "agents-md",
+        startDir: start,
+      }),
+    );
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(dir, "AGENTS.override.md"), errors, {
+        sourceProvider: "codex",
+        kind: "agents-md",
+        startDir: start,
+      }),
+    );
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(dir, "CLAUDE.md"), errors, {
+        sourceProvider: "claude",
+        kind: "claude-md",
+        startDir: start,
+      }),
+    );
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(dir, ".claude", "CLAUDE.md"), errors, {
+        sourceProvider: "claude",
+        kind: "claude-md",
+        startDir: start,
+      }),
+    );
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(dir, "CLAUDE.local.md"), errors, {
+        sourceProvider: "claude",
+        kind: "claude-md",
+        startDir: start,
+      }),
+    );
+  }
+
+  for (const abs of walkFiles(root, {
+    maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
+    match: (_abs, name) => name === "AGENTS.md" || name === "AGENTS.override.md",
+    errors,
+  })) {
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(abs, errors, {
+        sourceProvider: basename(abs) === "AGENTS.override.md" ? "codex" : "unknown",
+        kind: "agents-md",
+        startDir: start,
+      }),
+    );
+  }
+
+  addUnique(
+    out,
+    seen,
+    readPolicyFile(join(root, ".github", "copilot-instructions.md"), errors, {
+      sourceProvider: "vscode",
+      kind: "vscode-instructions",
+      startDir: start,
+    }),
+  );
+  const instructionsDir = join(root, ".github", "instructions");
+  if (existsSync(instructionsDir)) {
+    for (const abs of walkFiles(instructionsDir, {
+      maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
+      match: (_abs, name) => name.endsWith(".instructions.md"),
+      errors,
+    })) {
+      addUnique(
+        out,
+        seen,
+        readPolicyFile(abs, errors, {
+          sourceProvider: "vscode",
+          kind: "vscode-instructions",
+          startDir: start,
+        }),
+      );
     }
   }
+
+  const agentsMd = out.filter((f) => f.kind === "agents-md");
+  const onChain = agentsMd.filter(
+    (f) => Number.isFinite(f.hopsFromStart ?? Number.POSITIVE_INFINITY),
+  );
+  if (onChain.length > 0) {
+    const nearestHops = Math.min(
+      ...onChain.map((f) => f.hopsFromStart ?? Number.POSITIVE_INFINITY),
+    );
+    for (const fact of onChain) {
+      if ((fact.hopsFromStart ?? Number.POSITIVE_INFINITY) === nearestHops) {
+        fact.nearest = true;
+      }
+    }
+  }
+
   return out;
 }
+
 /**
  * skills-lock.json — the oracle for which skills are managed installs pinned to
  * an upstream source, and which are local and unpinned.

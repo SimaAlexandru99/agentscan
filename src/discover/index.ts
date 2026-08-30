@@ -6,10 +6,11 @@ import type {
   SkillFact,
 } from "../facts/types";
 import { discoverAgents } from "./agents";
-import { discoverHooks } from "./hooks";
+import { discoverHooks, discoverVscodeHooks } from "./hooks";
 import { discoverMcp } from "./mcp";
 import { discoverPluginHooks } from "./plugins";
 import { discoverPolicyFiles, discoverSkillsLock } from "./policy";
+import { discoverRules } from "./rules";
 import {
   disambiguateSkills,
   discoverNestedClaudeSkills,
@@ -31,8 +32,13 @@ export { skillReferences } from "./skills";
 export function discoverAgentSurface(
   root: string,
   config: AgentscanConfig,
-  opts: { includeGlobal: boolean; onNestedDirectoryRead?: () => void },
+  opts: {
+    includeGlobal: boolean;
+    onNestedDirectoryRead?: () => void;
+    startDir?: string;
+  },
 ): AgentSurface {
+  const startDir = opts.startDir ?? root;
   const configErrors: ConfigErrorFact[] = [];
   const skills: SkillFact[] = [];
   for (const rel of config.skillPaths) {
@@ -57,7 +63,7 @@ export function discoverAgentSurface(
 
   const lock = discoverSkillsLock(root, configErrors);
 
-  const agents = discoverAgents(root, configErrors);
+  const agents = discoverAgents(root, configErrors, startDir);
 
   return {
     skills: disambiguateSkills(skills, root),
@@ -68,12 +74,14 @@ export function discoverAgentSurface(
     // relative script path lives. See docs/spec/hook-sources.md.
     hooks: [
       ...discoverHooks(root, configErrors),
+      ...discoverVscodeHooks(root, configErrors),
       ...discoverPluginHooks(root, configErrors),
       ...skills.flatMap((s) => s.frontmatterHooks ?? []),
       ...agents.flatMap((a) => a.frontmatterHooks ?? []),
     ],
     mcp: discoverMcp(root, config.mcpPaths, configErrors),
-    policyFiles: discoverPolicyFiles(root, config.policyFiles, configErrors),
+    policyFiles: discoverPolicyFiles(root, config.policyFiles, configErrors, startDir),
+    rules: discoverRules(root, configErrors),
     lockedSkills: lock.locked,
     hasSkillsLock: lock.present,
     skillsLockInvalid: lock.invalid,

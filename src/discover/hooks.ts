@@ -1,7 +1,8 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import type { ConfigErrorFact, HookFact } from "../facts/types";
+import type { Provider } from "../facts/provider";
 import { readJsonConfig } from "./shared";
 
 const INTERPRETERS = /^(?:bash|sh|zsh|python3?|node|bun|deno)$/;
@@ -169,12 +170,78 @@ function resolveHookScript(
  * format as settings-based hooks" — so they share one reader and differ only in
  * their `source` label and their path bases. See docs/spec/hook-sources.md.
  */
+const HANDLER_TYPES = new Set(["command", "http", "mcp_tool", "prompt", "agent"]);
+
+function handlerTypeOf(item: Record<string, unknown>): HookFact["handlerType"] {
+  if (typeof item.type === "string" && HANDLER_TYPES.has(item.type)) {
+    return item.type as NonNullable<HookFact["handlerType"]>;
+  }
+  if (item.command !== undefined) {
+    return "command";
+  }
+  if (typeof item.url === "string") {
+    return "http";
+  }
+  return undefined;
+}
+
+function commandValue(command: unknown): string | undefined {
+  if (typeof command === "string" && command.length > 0) {
+    return command;
+  }
+  if (Array.isArray(command) && command.length > 0 && typeof command[0] === "string" && command[0].length > 0) {
+    return command.filter((part): part is string => typeof part === "string").join(" ");
+  }
+  return undefined;
+}
+
+function pathCandidate(command: unknown): string | undefined {
+  if (typeof command === "string" && command.length > 0) {
+    return command;
+  }
+  if (Array.isArray(command) && typeof command[0] === "string" && command[0].length > 0) {
+    return command[0];
+  }
+  return undefined;
+}
+
+function isHandlerEntry(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function handlersFromGroups(groups: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(groups)) {
+    return [];
+  }
+  const first = groups[0];
+  if (isHandlerEntry(first) && (first.type !== undefined || first.command !== undefined || first.url !== undefined) && !Array.isArray(first.hooks)) {
+    return groups.filter(isHandlerEntry);
+  }
+  const out: Record<string, unknown>[] = [];
+  for (const group of groups) {
+    if (!isHandlerEntry(group)) {
+      continue;
+    }
+    const inner = group.hooks;
+    if (!Array.isArray(inner)) {
+      continue;
+    }
+    for (const entry of inner) {
+      if (isHandlerEntry(entry)) {
+        out.push(entry);
+      }
+    }
+  }
+  return out;
+}
+
 export function hooksFromObject(
   hooks: unknown,
   filePath: string,
   source: NonNullable<HookFact["source"]>,
   bases: HookBases,
   errors: ConfigErrorFact[],
+  sourceProvider: Provider = "claude",
 ): HookFact[] {
   if (hooks === null || typeof hooks !== "object" || Array.isArray(hooks)) {
     errors.push({
@@ -189,39 +256,38 @@ export function hooksFromObject(
   for (const [event, groups] of Object.entries(
     hooks as Record<string, unknown>,
   )) {
-    const malformed = !Array.isArray(groups) || groups.some((group) => {
-      if (group === null || typeof group !== "object" || Array.isArray(group)) {
-        return true;
-      }
-      const inner = (group as Record<string, unknown>).hooks;
-      if (!Array.isArray(inner)) return true;
-      return inner.some((entry) => {
-        if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
-          return true;
-        }
-        const item = entry as Record<string, unknown>;
-        return (
-          (item.command !== undefined &&
-            (typeof item.command !== "string" || item.command.length === 0)) ||
-          (item.type === "command" && typeof item.command !== "string")
-        );
-      });
-    });
-    if (malformed) {
+    if (!Array.isArray(groups)) {
       errors.push({ path: filePath, kind: "unexpected-shape", detail: `invalid hook groups for ${event}` });
       continue;
     }
-    const commands = collectHookCommands(groups);
-    if (commands.length === 0) {
-      facts.push({ name: event, path: filePath, event, source });
+    const handlers = handlersFromGroups(groups);
+    if (handlers.length === 0) {
+      facts.push({ name: event, path: filePath, event, source, sourceProvider });
       continue;
     }
-    for (const command of commands) {
-      const fact: HookFact = { name: event, path: filePath, event, source, command };
-      const resolved = resolveHookScript(bases, command);
-      if (resolved !== undefined) {
-        fact.scriptPath = resolved.scriptPath;
-        fact.scriptExists = resolved.exists;
+    for (const item of handlers) {
+      const handlerType = handlerTypeOf(item);
+      const command = commandValue(item.command);
+      const fact: HookFact = {
+        name: event,
+        path: filePath,
+        event,
+        source,
+        sourceProvider,
+        ...(handlerType === undefined ? {} : { handlerType }),
+        ...(command === undefined ? {} : { command }),
+      };
+      if (handlerType === undefined || handlerType === "command") {
+        // Prefer the full command string (joined argv) so `["node", "hook.js"]`
+        // still path-checks the script token, not only argv[0].
+        const candidate = command ?? pathCandidate(item.command);
+        if (candidate !== undefined) {
+          const resolved = resolveHookScript(bases, candidate);
+          if (resolved !== undefined) {
+            fact.scriptPath = resolved.scriptPath;
+            fact.scriptExists = resolved.exists;
+          }
+        }
       }
       facts.push(fact);
     }
@@ -260,35 +326,56 @@ export function discoverHooks(
     }
     // No plugin base: `${CLAUDE_PLUGIN_ROOT}` in a settings file names nothing.
     facts.push(
-      ...hooksFromObject(hooks, filePath, "settings", { project: root }, errors),
+      ...hooksFromObject(hooks, filePath, "settings", { project: root }, errors, "claude"),
     );
   }
   return facts;
 }
 
-/** `hooks[event]` is an array of matcher groups, each with a `hooks` array. */
-function collectHookCommands(groups: unknown): string[] {
-  if (!Array.isArray(groups)) {
+export function discoverVscodeHooks(
+  root: string,
+  errors: ConfigErrorFact[],
+): HookFact[] {
+  const dir = join(root, ".github", "hooks");
+  if (!existsSync(dir)) {
     return [];
   }
-  const out: string[] = [];
-  for (const group of groups) {
-    if (group === null || typeof group !== "object" || Array.isArray(group)) {
-      continue;
-    }
-    const inner = (group as Record<string, unknown>).hooks;
-    if (!Array.isArray(inner)) {
-      continue;
-    }
-    for (const entry of inner) {
-      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
-        continue;
-      }
-      const command = (entry as Record<string, unknown>).command;
-      if (typeof command === "string" && command.length > 0) {
-        out.push(command);
-      }
-    }
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch (err) {
+    errors.push({
+      path: dir,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return [];
   }
-  return out;
+  const facts: HookFact[] = [];
+  for (const name of names) {
+    if (!name.endsWith(".json") || name.startsWith(".")) {
+      continue;
+    }
+    const filePath = join(dir, name);
+    const raw = readJsonConfig(filePath, errors);
+    if (raw === undefined) {
+      continue;
+    }
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      errors.push({
+        path: filePath,
+        kind: "unexpected-shape",
+        detail: "hook file is not a JSON object",
+      });
+      continue;
+    }
+    const hooks = (raw as Record<string, unknown>).hooks;
+    if (hooks === undefined) {
+      continue;
+    }
+    facts.push(
+      ...hooksFromObject(hooks, filePath, "vscode-hooks", { project: root, own: dir }, errors, "vscode"),
+    );
+  }
+  return facts;
 }

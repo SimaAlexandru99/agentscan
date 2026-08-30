@@ -5,6 +5,7 @@ import { checkConfigErrors } from "./config";
 import { checkHookEvents, checkHooks } from "./hooks";
 import { checkMcp } from "./mcp";
 import type { CheckOptions } from "./options";
+import { checkRules } from "./rules";
 import {
   checkDescriptionBudget,
   checkDuplicateDescriptions,
@@ -13,7 +14,7 @@ import {
 } from "./skills";
 
 export type { CheckOptions } from "./options";
-export { KNOWN_HOOK_EVENTS } from "./hooks";
+export { KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "./hooks";
 export { STRUCTURAL_CHECKS } from "./registry";
 export type { RuleProvenance, StructuralCheck } from "./provenance";
 export { canonicalRuleId, ignoreRuleSet, RULE_ALIASES } from "./aliases";
@@ -35,6 +36,7 @@ export function runChecks(
     ...checkDescriptionBudget(facts, options),
     ...checkAgents(facts),
     ...checkMcp(facts),
+    ...checkRules(facts),
     ...(options.budgets === undefined
       ? []
       : runBudgets(facts, options.budgets)),

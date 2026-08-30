@@ -23,7 +23,7 @@ const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
 ];
 
 const INTERPOLATED =
-  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{input:[A-Za-z0-9_-]+\}/;
+  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{input:[A-Za-z0-9_-]+\}|\$[A-Za-z_][A-Za-z0-9_]*/;
 
 function profileOf(server: McpFact): McpSchemaProfile {
   return server.schemaProfile ?? "claude-json";
@@ -38,7 +38,11 @@ function isLaunchable(server: McpFact): boolean {
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
+    case "opencode-json":
+    case "continue-yaml":
       return server.hasCommand || server.hasUrl;
+    case "gemini-json":
+      return server.hasCommand || server.hasUrl || server.hasHttpUrl === true;
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }
@@ -57,6 +61,12 @@ function noLaunchId(profile: McpSchemaProfile): string {
       return "antigravity.mcp.no-launch";
     case "codex-toml":
       return "codex.mcp.no-launch";
+    case "gemini-json":
+      return "gemini.mcp.no-launch";
+    case "opencode-json":
+      return "opencode.mcp.no-launch";
+    case "continue-yaml":
+      return "continue.mcp.no-launch";
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }
@@ -64,17 +74,41 @@ function noLaunchId(profile: McpSchemaProfile): string {
 }
 
 function noLaunchMessage(server: McpFact): string {
-  if (profileOf(server) === "antigravity-json") {
-    return `MCP server "${server.name}" declares neither command nor serverUrl`;
+  switch (profileOf(server)) {
+    case "antigravity-json":
+      return `MCP server "${server.name}" declares neither command nor serverUrl`;
+    case "gemini-json":
+      return `MCP server "${server.name}" declares neither command, url, nor httpUrl`;
+    case "claude-json":
+    case "vscode-json":
+    case "cursor-json":
+    case "codex-toml":
+    case "opencode-json":
+    case "continue-yaml":
+      return `MCP server "${server.name}" declares neither command nor url`;
+    default: {
+      return assertNever(profileOf(server), `unhandled MCP schema profile: ${profileOf(server)}`);
+    }
   }
-  return `MCP server "${server.name}" declares neither command nor url`;
 }
 
 function noLaunchSuggest(server: McpFact): string {
-  if (profileOf(server) === "antigravity-json") {
-    return `Add a command (or serverUrl) for "${server.name}", or remove it`;
+  switch (profileOf(server)) {
+    case "antigravity-json":
+      return `Add a command (or serverUrl) for "${server.name}", or remove it`;
+    case "gemini-json":
+      return `Add a command, url, or httpUrl for "${server.name}", or remove it`;
+    case "claude-json":
+    case "vscode-json":
+    case "cursor-json":
+    case "codex-toml":
+    case "opencode-json":
+    case "continue-yaml":
+      return `Add a command (or url) for "${server.name}", or remove it`;
+    default: {
+      return assertNever(profileOf(server), `unhandled MCP schema profile: ${profileOf(server)}`);
+    }
   }
-  return `Add a command (or url) for "${server.name}", or remove it`;
 }
 
 function redactInterpolated(raw: string): string {

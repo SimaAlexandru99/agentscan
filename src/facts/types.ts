@@ -42,6 +42,7 @@ export type McpFact = {
   hasCommand: boolean;
   hasUrl: boolean;
   hasServerUrl?: boolean;
+  hasHttpUrl?: boolean;
   /** Declared `command` string when present (stdio servers). */
   command?: string;
   /**
@@ -70,16 +71,25 @@ export type HookFact = {
    *
    * See docs/spec/hook-sources.md.
    */
-  source?: "settings" | "plugin" | "skill" | "agent";
+  source?: "settings" | "plugin" | "skill" | "agent" | "vscode-hooks";
+  sourceProvider?: Provider;
+  handlerType?: "command" | "http" | "mcp_tool" | "prompt" | "agent";
   /** Script path parsed out of `command`, resolved against the project root. */
   scriptPath?: string;
   /** false only when scriptPath was extracted and does not exist on disk. */
   scriptExists?: boolean;
 };
 
+export type AgentSchemaProfile = "claude-md" | "vscode-agent-md";
+
 export type AgentFact = {
   name: string;
   path: string;
+  sourceProvider?: Provider;
+  schemaProfile?: AgentSchemaProfile;
+  /** One `.claude/agents` (or provider) directory — duplicates are scoped here. */
+  namespace?: string;
+  nameSource?: "frontmatter" | "filename";
   /** Frontmatter present and parseable as a `---` block. */
   hasFrontmatter: boolean;
   /** File exists but could not be read; its fields are unknown, not absent. */
@@ -117,8 +127,26 @@ export type LockedSkillFact = {
   computedHash?: string;
 };
 
+export type PolicyFileFact = {
+  path: string;
+  text: string;
+  sourceProvider?: Provider;
+  kind?: "agents-md" | "claude-md" | "vscode-instructions";
+  hopsFromStart?: number;
+  nearest?: boolean;
+};
+
+export type RuleFact = {
+  path: string;
+  sourceProvider: Provider;
+  lineCount: number;
+  byteLength: number;
+};
+
 export type Facts = {
   root: string;
+  /** Directory the user asked to scan; walk-up discovery starts here. */
+  startDir?: string;
   packageManager: "bun" | "npm" | "pnpm" | "yarn" | "unknown";
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
@@ -126,7 +154,8 @@ export type Facts = {
   agents: AgentFact[];
   hooks: HookFact[];
   mcp: McpFact[];
-  policyFiles: { path: string; text: string }[];
+  policyFiles: PolicyFileFact[];
+  rules?: RuleFact[];
   /** skills-lock.json entries; empty when the project has no lockfile. */
   lockedSkills: LockedSkillFact[];
   hasSkillsLock: boolean;

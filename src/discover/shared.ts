@@ -1,4 +1,4 @@
-import { closeSync, existsSync, openSync, readFileSync, readSync } from "node:fs";
+import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type {
@@ -7,6 +7,8 @@ import type {
   HookFact,
   LockedSkillFact,
   McpFact,
+  PolicyFileFact,
+  RuleFact,
   SkillFact,
 } from "../facts/types";
 
@@ -48,7 +50,8 @@ export type AgentSurface = {
   agents: AgentFact[];
   hooks: HookFact[];
   mcp: McpFact[];
-  policyFiles: { path: string; text: string }[];
+  policyFiles: PolicyFileFact[];
+  rules: RuleFact[];
   lockedSkills: LockedSkillFact[];
   hasSkillsLock: boolean;
   skillsLockInvalid?: boolean;
@@ -82,6 +85,8 @@ const AGENT_CONFIG_SIGNALS = [
   ".opencode",
   ".continue",
   ".junie",
+  "opencode.json",
+  "opencode.jsonc",
 ] as const;
 
 const WORKSPACE_MARKERS = [
@@ -151,6 +156,72 @@ function nearer(
   }
   const start = resolve(startDir);
   return hops(start, a) <= hops(start, b) ? a : b;
+}
+
+/** Directories from startDir up through root, startDir first. */
+export function ancestorDirsInclusive(startDir: string, root: string): string[] {
+  const start = resolve(startDir);
+  const stop = resolve(root);
+  const out: string[] = [];
+  let dir = start;
+  for (;;) {
+    out.push(dir);
+    if (dir === stop) {
+      break;
+    }
+    const parent = resolve(dir, "..");
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  return out;
+}
+
+export function hopsFrom(from: string, to: string): number {
+  return hops(resolve(from), resolve(to));
+}
+
+export function walkFiles(
+  dir: string,
+  opts: {
+    maxDepth: number;
+    match: (absPath: string, name: string) => boolean;
+    onDirectoryRead?: () => void;
+    errors?: ConfigErrorFact[];
+  },
+  depth = 0,
+): string[] {
+  let entries: import("node:fs").Dirent[];
+  try {
+    opts.onDirectoryRead?.();
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch (err) {
+    opts.errors?.push({
+      path: dir,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return [];
+  }
+  const out: string[] = [];
+  for (const entry of entries) {
+    if (NESTED_DISCOVERY_SKIP.has(entry.name)) {
+      continue;
+    }
+    const abs = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (depth >= opts.maxDepth) {
+        continue;
+      }
+      out.push(...walkFiles(abs, opts, depth + 1));
+      continue;
+    }
+    if (entry.isFile() && opts.match(abs, entry.name)) {
+      out.push(abs);
+    }
+  }
+  return out;
 }
 
 function hops(from: string, to: string): number {

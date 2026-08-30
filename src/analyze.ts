@@ -42,7 +42,10 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
   };
 
   const includeGlobal = options.global ?? config.includeGlobal;
-  const facts = extractFacts(root, config, { includeGlobal });
+  const facts = extractFacts(root, config, {
+    includeGlobal,
+    startDir: requested,
+  });
 
   const ignoredSkills = new Set(config.ignoreSkills);
   const ignoredRules = ignoreRuleSet(config.ignoreRules);

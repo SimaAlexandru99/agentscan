@@ -2,6 +2,8 @@ import { basename } from "node:path";
 import type { Facts, Finding } from "../facts/types";
 import { make } from "./make";
 
+const CODEX_PROJECT_DOC_MAX_BYTES = 32_768;
+
 type PolicyFile = Facts["policyFiles"][number];
 
 /**
@@ -118,6 +120,9 @@ function countFinding(args: {
  * looser match would flag every doc that mentions npm in passing.
  */
 export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
+  const claudeAgents = facts.agents.filter(
+    (agent) => agent.sourceProvider === undefined || agent.sourceProvider === "claude",
+  ).length;
   return [
     ...policyLengthFinding({
       ruleId: "budget.agents-md",
@@ -141,12 +146,12 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
     }),
     ...countFinding({
       ruleId: "budget.agents",
-      count: facts.agents.length,
+      count: claudeAgents,
       limit: options.agents,
       countLabel: "agents",
-      message: `Agent roster large (${facts.agents.length} > ${options.agents} definitions)`,
+      message: `Agent roster large (${claudeAgents} > ${options.agents} definitions)`,
       reason:
-        "Heuristic proxy, not a published requirement. Secondary write-ups converge on three or four specialised agents as a productive ceiling — that is about agents you run, not files on disk. This counts definitions as a hint only. See docs/spec/thresholds.md.",
+        "Heuristic proxy, not a published requirement. Secondary write-ups converge on three or four specialised agents as a productive ceiling — that is about agents you run, not files on disk. This counts Claude definitions as a hint only. See docs/spec/thresholds.md.",
       suggest:
         "Archive definitions you do not dispatch, or set thresholds.agents in .agentscanrc.json",
     }),
@@ -160,6 +165,55 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
         "Heuristic proxy, not a published requirement. Tool-count research is about definitions in context, not server entries on disk, and this scanner cannot count live tools without opening a network connection. Treat the server count as a hint. See docs/spec/thresholds.md.",
       suggest:
         "Count the tools your servers actually expose; disable unused servers in mcp.json or set thresholds.mcp in .agentscanrc.json",
+    }),
+    ...codexInstructionBudget(facts),
+  ];
+}
+
+/**
+ * Codex concatenates AGENTS.md / AGENTS.override.md from the project root
+ * down to cwd and stops at `project_doc_max_bytes` (32 KiB). Nested files
+ * that are not on that walk-up chain are not counted. CLAUDE.md is excluded.
+ * See docs/spec/codex-agents-md.md.
+ */
+function codexInstructionBudget(facts: Facts): Finding[] {
+  const chain = facts.policyFiles.filter((policy) => {
+    if (policy.kind !== "agents-md") {
+      if (policy.kind !== undefined) {
+        return false;
+      }
+      const name = basename(policy.path);
+      if (name !== "AGENTS.md" && name !== "AGENTS.override.md") {
+        return false;
+      }
+    }
+    const hops = policy.hopsFromStart;
+    return hops !== undefined && Number.isFinite(hops);
+  });
+  if (chain.length === 0) {
+    return [];
+  }
+  const bytes = chain.reduce(
+    (sum, policy) => sum + Buffer.byteLength(policy.text, "utf8"),
+    0,
+  );
+  if (bytes <= CODEX_PROJECT_DOC_MAX_BYTES) {
+    return [];
+  }
+  return [
+    make("codex.budget.instructions", "rule:codex.budget.instructions", {
+      action: "warn",
+      severity: "info",
+      message: `Codex instruction chain exceeds ${CODEX_PROJECT_DOC_MAX_BYTES} bytes (${bytes})`,
+      reason:
+        "Codex stops adding AGENTS.md files once the combined size reaches project_doc_max_bytes (32 KiB by default). Later files on the root→cwd chain are skipped. This is not applied to CLAUDE.md. See docs/spec/codex-agents-md.md.",
+      evidence: [
+        { kind: "count", value: `bytes=${bytes}` },
+        { kind: "threshold", value: String(CODEX_PROJECT_DOC_MAX_BYTES) },
+        ...chain.map((policy) => ({ kind: "policy", value: policy.path })),
+      ],
+      suggest:
+        "Shorten AGENTS.md files on the path from the project root to the working directory",
     }),
   ];
 }

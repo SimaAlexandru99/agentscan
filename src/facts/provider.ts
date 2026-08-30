@@ -28,7 +28,10 @@ export type McpSchemaProfile =
   | "vscode-json"
   | "cursor-json"
   | "antigravity-json"
-  | "codex-toml";
+  | "codex-toml"
+  | "gemini-json"
+  | "opencode-json"
+  | "continue-yaml";
 
 export function assertNever(value: never, message: string): never {
   throw new Error(message);
@@ -83,6 +86,25 @@ export function mcpProfileFromPath(filePath: string): McpSchemaProfile {
   ) {
     return "codex-toml";
   }
+  if (
+    normalized.endsWith("/.gemini/settings.json") ||
+    normalized.endsWith(".gemini/settings.json")
+  ) {
+    return "gemini-json";
+  }
+  if (
+    normalized.endsWith("/.continue/config.yaml") ||
+    normalized.endsWith(".continue/config.yaml") ||
+    normalized.endsWith("/.continue/config.yml") ||
+    normalized.endsWith(".continue/config.yml")
+  ) {
+    return "continue-yaml";
+  }
+  if (
+    /(?:^|\/)(?:\.opencode\/)?opencode\.jsonc?$/.test(normalized)
+  ) {
+    return "opencode-json";
+  }
   return "claude-json";
 }
 
@@ -100,6 +122,12 @@ export function sourceProviderForMcpProfile(
       return "antigravity";
     case "codex-toml":
       return "codex";
+    case "gemini-json":
+      return "gemini";
+    case "opencode-json":
+      return "opencode";
+    case "continue-yaml":
+      return "continue";
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }

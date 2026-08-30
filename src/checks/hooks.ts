@@ -1,4 +1,5 @@
-import type { Facts, Finding } from "../facts/types";
+import { assertNever, type Provider } from "../facts/provider";
+import type { Facts, Finding, HookFact } from "../facts/types";
 import { make } from "./make";
 
 /**
@@ -10,7 +11,7 @@ import { make } from "./make";
  * lags upstream again the escape hatch is
  * `ignoreRules: ["hook.unknown-event"]`, but the right fix is to update it.
  *
- * Source: docs/spec/hook-events.md (read 2026-08-09)
+ * Source: docs/spec/hook-events.md (read 2026-08-30)
  */
 export const KNOWN_HOOK_EVENTS = new Set([
   "SessionStart",
@@ -48,35 +49,162 @@ export const KNOWN_HOOK_EVENTS = new Set([
   "PostModelSwitch",
 ]);
 
+/** Source: docs/spec/vscode-hooks.md (read 2026-08-30) */
+export const VSCODE_HOOK_EVENTS = new Set([
+  "SessionStart",
+  "UserPromptSubmit",
+  "PreToolUse",
+  "PostToolUse",
+  "PreCompact",
+  "SubagentStart",
+  "SubagentStop",
+  "Stop",
+]);
+
+function hookProvider(hook: HookFact): Provider {
+  return hook.sourceProvider ?? "claude";
+}
+
+function eventsFor(provider: Provider): Set<string> | undefined {
+  switch (provider) {
+    case "claude":
+      return KNOWN_HOOK_EVENTS;
+    case "vscode":
+      return VSCODE_HOOK_EVENTS;
+    case "agent-skills":
+    case "codex":
+    case "cursor":
+    case "grok":
+    case "antigravity":
+    case "gemini":
+    case "windsurf":
+    case "kiro":
+    case "cline":
+    case "roo":
+    case "kilo":
+    case "opencode":
+    case "junie":
+    case "continue":
+    case "unknown":
+      return undefined;
+    default: {
+      return assertNever(provider, `unhandled hook provider: ${provider}`);
+    }
+  }
+}
+
+function unknownEventRuleId(provider: Provider): string | undefined {
+  switch (provider) {
+    case "claude":
+      return "claude.hook.unknown-event";
+    case "vscode":
+      return "vscode.hook.unknown-event";
+    case "agent-skills":
+    case "codex":
+    case "cursor":
+    case "grok":
+    case "antigravity":
+    case "gemini":
+    case "windsurf":
+    case "kiro":
+    case "cline":
+    case "roo":
+    case "kilo":
+    case "opencode":
+    case "junie":
+    case "continue":
+    case "unknown":
+      return undefined;
+    default: {
+      return assertNever(provider, `unhandled hook provider: ${provider}`);
+    }
+  }
+}
+
+function missingScriptRuleId(provider: Provider): string | undefined {
+  switch (provider) {
+    case "claude":
+      return "claude.hook.missing-script";
+    case "vscode":
+      return "vscode.hook.missing-script";
+    case "agent-skills":
+    case "codex":
+    case "cursor":
+    case "grok":
+    case "antigravity":
+    case "gemini":
+    case "windsurf":
+    case "kiro":
+    case "cline":
+    case "roo":
+    case "kilo":
+    case "opencode":
+    case "junie":
+    case "continue":
+    case "unknown":
+      return undefined;
+    default: {
+      return assertNever(provider, `unhandled hook provider: ${provider}`);
+    }
+  }
+}
+
+function isCommandHandler(hook: HookFact): boolean {
+  const type = hook.handlerType;
+  if (type === undefined) {
+    return hook.command !== undefined || hook.scriptPath !== undefined;
+  }
+  switch (type) {
+    case "command":
+      return true;
+    case "http":
+    case "mcp_tool":
+    case "prompt":
+    case "agent":
+      return false;
+    default: {
+      return assertNever(type, `unhandled hook handler type: ${type}`);
+    }
+  }
+}
+
 export function checkHookEvents(facts: Facts): Finding[] {
   const out: Finding[] = [];
   const reported = new Set<string>();
   for (const hook of facts.hooks) {
-    const event = hook.event ?? hook.name;
-    if (KNOWN_HOOK_EVENTS.has(event) || reported.has(event)) {
+    const provider = hookProvider(hook);
+    const known = eventsFor(provider);
+    const ruleId = unknownEventRuleId(provider);
+    if (known === undefined || ruleId === undefined) {
       continue;
     }
-    reported.add(event);
+    const event = hook.event ?? hook.name;
+    const key = `${provider}:${event}`;
+    if (known.has(event) || reported.has(key)) {
+      continue;
+    }
+    reported.add(key);
     out.push(
-      make("claude.hook.unknown-event", `hook:${event}`, {
+      make(ruleId, `hook:${event}`, {
         action: "warn",
         severity: "error",
         message: `"${event}" is not a hook event that gets dispatched`,
         reason:
-          "Hook events are matched by exact name. An unrecognised name never matches, so everything registered under it silently never runs — a typo here looks identical to a working hook.",
+          "Hook events are matched by exact name. An unrecognised name never matches, so everything registered under it silently never runs — a typo here looks identical to a working hook. Event sets are per provider; a VS Code name is not validated against Claude's list.",
         evidence: [
           { kind: "hook", value: `${event} @ ${hook.path}` },
           {
             kind: "known",
-            value: [...KNOWN_HOOK_EVENTS].join(", "),
+            value: [...known].join(", "),
           },
         ],
-        suggest: `Fix the event name in ${hook.path} (or ignoreRules: ["claude.hook.unknown-event"] if it is newly supported)`,
+        suggest: `Fix the event name in ${hook.path} (or ignoreRules: ["${ruleId}"] if it is newly supported)`,
       }),
     );
   }
   return out;
 }
+
 export function checkHooks(facts: Facts): Finding[] {
   const out: Finding[] = [];
   // One HookFact per command occurrence, so the same guard under two matchers —
@@ -84,30 +212,38 @@ export function checkHooks(facts: Facts): Finding[] {
   // could reach only the first.
   const reported = new Set<string>();
   for (const hook of facts.hooks) {
+    if (!isCommandHandler(hook)) {
+      continue;
+    }
     if (hook.scriptPath === undefined || hook.scriptExists !== false) {
       continue;
     }
-    const subject = `hook:${hook.event ?? hook.name}:${hook.scriptPath}`;
-    if (reported.has(subject)) {
+    const provider = hookProvider(hook);
+    const ruleId = missingScriptRuleId(provider);
+    if (ruleId === undefined) {
       continue;
     }
-    reported.add(subject);
+    const subject = `hook:${hook.event ?? hook.name}:${hook.scriptPath}`;
+    if (reported.has(`${ruleId}:${subject}`)) {
+      continue;
+    }
+    reported.add(`${ruleId}:${subject}`);
     out.push(
-      make("claude.hook.missing-script", subject, {
-          action: "warn",
-          severity: "error",
-          message: `${hook.event ?? hook.name} hook points at a script that does not exist: ${hook.scriptPath}`,
-          reason:
-            "The hook is registered but its script is missing, so it never runs. A guard hook that silently does nothing is worse than no hook — the config claims a protection that is not in effect. A relative path is looked for beside the file that declared it and at the project root; it is at neither.",
-          evidence: [
-            { kind: "hook", value: `${hook.event ?? hook.name} @ ${hook.path}` },
-            { kind: "script", value: hook.scriptPath },
-            // Only when it is not a settings file, so the common finding renders
-            // exactly as before. Same idiom as `source: global` on skills.
-            ...(hook.source === undefined || hook.source === "settings"
-              ? []
-              : [{ kind: "source", value: hook.source }]),
-          ],
+      make(ruleId, subject, {
+        action: "warn",
+        severity: "error",
+        message: `${hook.event ?? hook.name} hook points at a script that does not exist: ${hook.scriptPath}`,
+        reason:
+          "The hook is registered but its script is missing, so it never runs. A guard hook that silently does nothing is worse than no hook — the config claims a protection that is not in effect. A relative path is looked for beside the file that declared it and at the project root; it is at neither. Non-command handlers (http, mcp_tool, prompt, agent) are not path-checked.",
+        evidence: [
+          { kind: "hook", value: `${hook.event ?? hook.name} @ ${hook.path}` },
+          { kind: "script", value: hook.scriptPath },
+          // Only when it is not a settings file, so the common finding renders
+          // exactly as before. Same idiom as `source: global` on skills.
+          ...(hook.source === undefined || hook.source === "settings"
+            ? []
+            : [{ kind: "source", value: hook.source }]),
+        ],
         suggest: `Restore ${hook.scriptPath} or remove the hook from ${hook.path}`,
       }),
     );
