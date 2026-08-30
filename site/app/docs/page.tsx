@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 export const metadata: Metadata = {
   title: "Docs",
   description:
-    "Quickstart, check flags, and CI setup for the agentscan CLI.",
+    "Quickstart, check flags, and CI for agentscan 1.0.0 (59 checks).",
 };
 
 const flags = [
@@ -32,7 +32,7 @@ const flags = [
   },
   {
     flag: "--verbose",
-    meaning: "Show KEEP + info-severity findings",
+    meaning: "Show KEEP + info-severity findings, and print each finding's id",
   },
   {
     flag: "--fail-on <level>",
@@ -60,8 +60,10 @@ export default function DocsPage() {
           Docs
         </h1>
         <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-          agentscan audits agent configuration on disk. Scans are read-only and
-          never open a network connection. Full behavior lives in the{" "}
+          agentscan 1.0.0 audits agent configuration on disk — 59 checks.
+          Scans are read-only and never open a network connection. Spec-required
+          checks cite a published spec line; heuristics stay at info and are
+          labeled. Full behavior lives in the{" "}
           <a
             href="https://github.com/SimaAlexandru99/agentscan#readme"
             target="_blank"
@@ -180,7 +182,10 @@ bun run src/cli.ts check ~/your-project`}
           <h3 className="mt-8 font-medium text-foreground">Do</h3>
           <p className="mt-3 text-muted-foreground">
             From the repo root. Findings are facts. Do not skip{" "}
-            <code className="font-mono text-foreground">hook.missing-script</code>.
+            <code className="font-mono text-foreground">
+              claude.hook.missing-script
+            </code>{" "}
+            (error).
           </p>
           <pre className="mt-3 overflow-x-auto rounded-xl border border-border bg-muted/30 p-4 font-mono text-sm leading-relaxed">
             {`npx @chimix/agentscan@latest --output prompt`}
@@ -215,7 +220,7 @@ bun run src/cli.ts check ~/your-project`}
             rather than whatever is on npm:
           </p>
           <pre className="mt-4 overflow-x-auto rounded-xl border border-border bg-muted/30 p-4 font-mono text-sm leading-relaxed">
-            {`- uses: SimaAlexandru99/agentscan@v0
+            {`- uses: SimaAlexandru99/agentscan@v1
   with:
     fail-on: error        # never | warning | error
     output: human         # human | json | prompt`}

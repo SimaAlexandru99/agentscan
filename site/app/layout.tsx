@@ -22,11 +22,11 @@ export const metadata: Metadata = {
     template: "%s · agentscan",
   },
   description:
-    "Find broken agent configuration — hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile. No AI, no network, writes nothing.",
+    "Find broken agent configuration — hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile. 1.0.0, 59 checks. No AI, no network on check, writes nothing.",
   openGraph: {
     title: "agentscan — audit agent config before it fails silently",
     description:
-      "Find broken agent configuration — hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile. No AI, no network, writes nothing.",
+      "Find broken agent configuration — hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile. 1.0.0, 59 checks. No AI, no network on check, writes nothing.",
     url: "https://agentscan.space",
     siteName: "agentscan",
     type: "website",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "agentscan — audit agent config before it fails silently",
     description:
-      "Find broken agent configuration. No AI, no network, writes nothing.",
+      "Find broken agent configuration. 1.0.0, 59 checks. No AI, no network on check, writes nothing.",
   },
 };
 

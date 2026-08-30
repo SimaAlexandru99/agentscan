@@ -21,7 +21,7 @@ From the repo root:
 npx @chimix/agentscan@latest --output prompt
 ```
 
-`--output prompt` is the handoff for the agent that fixes. Do not skip `hook.missing-script`.
+`--output prompt` is the handoff for the agent that fixes. Do not skip `claude.hook.missing-script` (error).
 
 No project handy:
 
