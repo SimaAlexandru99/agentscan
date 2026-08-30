@@ -4,9 +4,18 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 
 export const metadata: Metadata = {
-  title: "Docs",
+  title: { absolute: "agentscan docs — 1.0.0, 59 checks" },
   description:
     "Quickstart, check flags, and CI for agentscan 1.0.0 (59 checks).",
+  alternates: {
+    canonical: "/docs",
+    types: { "text/markdown": "/docs.md" },
+  },
+  openGraph: {
+    title: "agentscan docs",
+    url: "/docs",
+    type: "website",
+  },
 };
 
 const flags = [
@@ -57,7 +66,7 @@ export default function DocsPage() {
     <>
       <article className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-          Docs
+          agentscan docs
         </h1>
         <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
           agentscan 1.0.0 audits agent configuration on disk — 59 checks.

@@ -51,3 +51,23 @@ jobs:
       # Dogfood: this repo has a skill and a lockfile, so a clean report here is
       # a real signal rather than a vacuous one.
       - run: bun run src/cli.ts check .
+
+  site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build
+
+      - run: bun test
+
+      - run: bun run lint

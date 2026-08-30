@@ -1,0 +1,3 @@
+[test]
+# CLI suite only. Marketing-site tests run from site/ via `bun test` there.
+root = "tests"
