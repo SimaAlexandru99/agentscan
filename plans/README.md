@@ -256,13 +256,13 @@ is tagged and each plan's spec captures still match live pages.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 021 | Capture specs and add provenance on the registry | P0 | M | — | TODO — [plan](021-spec-captures-and-provenance.md) |
-| 022 | Put Provider identity on facts | P0 | M | 021 | TODO — [plan](022-provider-identity-on-facts.md) |
-| 023 | Resolve the project root from the nearest provider signal | P0 | S | — | TODO — [plan](023-nearest-signal-root.md) |
-| 024 | Enable the Agent Skills profile for `.agents/skills` | P0 | L | 021, 022 | TODO — [plan](024-agent-skills-profile.md) |
-| 025 | Parse MCP configs per provider schema | P0 | L | 021, 022 | TODO — [plan](025-mcp-profile-parsers.md) |
-| 026 | Namespace Claude check IDs and split name schemas | P1 | M | 024, 025 | TODO — [plan](026-namespace-claude-check-ids.md) |
-| 027 | Label heuristics, tell the truth in README, release 0.8.0 | P1 | M | 026 | TODO — [plan](027-honesty-and-0-8-0.md) |
+| 021 | Capture specs and add provenance on the registry | P0 | M | — | DONE — [plan](021-spec-captures-and-provenance.md) |
+| 022 | Put Provider identity on facts | P0 | M | 021 | DONE — [plan](022-provider-identity-on-facts.md) |
+| 023 | Resolve the project root from the nearest provider signal | P0 | S | — | DONE — [plan](023-nearest-signal-root.md) |
+| 024 | Enable the Agent Skills profile for `.agents/skills` | P0 | L | 021, 022 | DONE — [plan](024-agent-skills-profile.md) |
+| 025 | Parse MCP configs per provider schema | P0 | L | 021, 022 | DONE — [plan](025-mcp-profile-parsers.md) |
+| 026 | Namespace Claude check IDs and split name schemas | P1 | M | 024, 025 | DONE — [plan](026-namespace-claude-check-ids.md) |
+| 027 | Label heuristics, tell the truth in README, release 0.8.0 | P1 | M | 026 | IN PROGRESS — [plan](027-honesty-and-0-8-0.md) |
 | 028 | Discover instruction files with real precedence | P1 | L | 027 | TODO — [plan](028-instruction-hierarchy.md) |
 | 029 | Discover agent definitions per provider schema | P1 | L | 027, 028 | TODO — [plan](029-multi-provider-agents.md) |
 | 030 | Hook events and handlers per provider | P1 | L | 029 | TODO — [plan](030-provider-hooks.md) |

@@ -146,7 +146,7 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
       countLabel: "agents",
       message: `Agent roster large (${facts.agents.length} > ${options.agents} definitions)`,
       reason:
-        "Guidance converges on three or four specialised agents being the productive ceiling — past that, output drops rather than rises. That is about agents you run, not files on disk, so this counts definitions as a proxy: each one's description is loaded so the main session can choose between them, and a long roster dilutes that choice the same way a long skill list does. See docs/spec/thresholds.md.",
+        "Heuristic proxy, not a published requirement. Secondary write-ups converge on three or four specialised agents as a productive ceiling — that is about agents you run, not files on disk. This counts definitions as a hint only. See docs/spec/thresholds.md.",
       suggest:
         "Archive definitions you do not dispatch, or set thresholds.agents in .agentscanrc.json",
     }),
@@ -157,7 +157,7 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
       countLabel: "mcp",
       message: `MCP surface above sweet spot (${facts.mcp.length} > ${options.mcp})`,
       reason:
-        "What actually degrades an agent is the number of tool definitions in context, not the number of servers: benchmarks show large models near-perfect at ~20 tools and failing outright past ~100, and a typical server carries tens of tools. Server count is the only proxy available without connecting to them, so treat this as a hint to go count the tools, not as a measurement.",
+        "Heuristic proxy, not a published requirement. Tool-count research is about definitions in context, not server entries on disk, and this scanner cannot count live tools without opening a network connection. Treat the server count as a hint. See docs/spec/thresholds.md.",
       suggest:
         "Count the tools your servers actually expose; disable unused servers in mcp.json or set thresholds.mcp in .agentscanrc.json",
     }),

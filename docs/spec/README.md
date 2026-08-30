@@ -33,7 +33,7 @@ to appear in real projects.** When adding a check:
 | [cursor-mcp.md](cursor-mcp.md) | Cursor `.cursor/mcp.json` | `cursor.mcp.no-launch` |
 | [antigravity-mcp.md](antigravity-mcp.md) | Antigravity `serverUrl` | `antigravity.mcp.no-launch` |
 | [codex-mcp.md](codex-mcp.md) | Codex `[mcp_servers.*]` TOML | `codex.mcp.no-launch` |
-| [thresholds.md](thresholds.md) | Every numeric threshold and its evidence | all `budget.*`, `skill.description-budget` |
+| [thresholds.md](thresholds.md) | Every numeric threshold and its evidence | all `budget.*`, `skill.description-budget`, `codex.budget.instructions`, `cursor.rule.too-large` |
 
 Each `STRUCTURAL_CHECKS` entry also carries `provenance` (`spec-required`,
 `vendor-recommendation`, `security`, `internal-consistency`, or `heuristic`)
@@ -41,13 +41,15 @@ so the registry can tell a published requirement from a size opinion.
 
 ## What is not spec-backed
 
-Some checks assert internal consistency rather than conformance to a spec, and
-need no source: `hook.missing-script`, `mcp.command-missing`,
-`skill.broken-reference`, `skill.not-in-lock`, `skill.locked-not-installed`,
-`skill.missing-skill-md`, `skill.duplicate-description`, `skill.no-lockfile`,
-`config.unreadable`. Each compares two things this repo can both observe — a
-config entry and the filesystem. They cannot be wrong about an external standard
-because they do not claim one.
+Some checks assert internal consistency rather than conformance to a spec:
+`claude.hook.missing-script`, `mcp.command-missing`, `skill.broken-reference`,
+`skill.locked-not-installed`, `skill.missing-skill-md`, `config.unreadable`.
+Each compares two things this repo can both observe — a config entry and the
+filesystem.
+
+These are **heuristics** (installer policy or size opinions) and stay at `info`:
+`skill.not-in-lock`, `skill.no-lockfile`, `skill.duplicate-description`,
+`skill.description-budget`, `budget.agents-md`, `budget.agents`, `budget.mcp`.
 
 `scan.truncated` is not about the scanned project at all: it reports a limit of
 this scanner, so that a check reading a bounded prefix of a file never looks
