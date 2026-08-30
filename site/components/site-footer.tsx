@@ -7,6 +7,8 @@ export function SiteFooter() {
         <p>
           <span className="text-foreground">agentscan</span>
           {" · "}
+          1.0.0
+          {" · "}
           MIT
         </p>
         <div className="flex flex-wrap gap-x-4 gap-y-2">

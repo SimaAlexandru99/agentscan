@@ -57,7 +57,7 @@ not decoration. Docs stay static for reading.
 
 - shadcn `Button` (base-nova) for primary/ghost actions
 - `CopyCommand` — client clipboard for `npx @chimix/agentscan check`
-- `TerminalDemo` — static README-shaped `hook.missing-script` sample
+- `TerminalDemo` — static README killer-case `claude.hook.missing-script` (error) sample
 - `SiteHeader` / `SiteFooter` — Docs, GitHub, npm
 
 ## Out of scope

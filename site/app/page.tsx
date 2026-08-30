@@ -31,6 +31,9 @@ export default function HomePage() {
             Linters read the code your agent writes. This reads the agent itself
             — skills, hooks, MCP servers, lockfiles, and policy files.
           </p>
+          <p className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-200 duration-700 mt-3 font-mono text-sm text-muted-foreground">
+            1.0.0 · 59 checks · offline on check
+          </p>
 
           <div className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-300 duration-700 mt-8 space-y-4">
             <CopyCommand />
@@ -70,21 +73,22 @@ export default function HomePage() {
             How it works
           </h2>
           <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-            No AI, no heuristics. Read the config, read the disk, compare. Same
-            tree in, same findings out, every time.
+            No AI, no network on check. Read the config, read the disk, compare.
+            Same tree in, same findings out, every time.
           </p>
           <ul className="mt-8 space-y-4 text-base leading-relaxed text-foreground/90">
             <li className="border-l-2 border-primary/70 pl-4">
-              No AI — structural checks only, against published specs.
+              59 checks, each labeled spec-required, vendor-recommendation,
+              security, internal-consistency, or heuristic.
             </li>
             <li className="border-l-2 border-primary/70 pl-4">
-              No network — the scan never opens a socket.
+              No network — check never opens a socket.
             </li>
             <li className="border-l-2 border-primary/70 pl-4">
               Writes nothing — the scanned tree is left untouched.
             </li>
             <li className="border-l-2 border-primary/70 pl-4">
-              Every check sourced to a published spec line in{" "}
+              Spec-required checks cite a published line in{" "}
               <a
                 href="https://github.com/SimaAlexandru99/agentscan/tree/master/docs/spec"
                 target="_blank"
@@ -93,7 +97,7 @@ export default function HomePage() {
               >
                 docs/spec/
               </a>
-              .
+              . Heuristics stay at info and are labeled.
             </li>
           </ul>
         </div>
@@ -105,13 +109,13 @@ export default function HomePage() {
             Why the tool looks like this
           </h2>
           <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-            Alpha. An earlier build reported 37 findings across 17 real projects
-            of which <span className="text-foreground">25 were false</span> —
-            two checks had been written from what real projects looked like
-            instead of from the spec. Both were deleted, and every check that
-            survived is recorded in docs/spec/ with the URL it came from and the
-            date it was read. That story is the reason this tool exists in its
-            current shape.
+            An earlier build reported 37 findings across 17 real projects of
+            which <span className="text-foreground">25 were false</span> — two
+            checks had been written from what real projects looked like instead
+            of from the spec. Both were deleted. Spec-required checks cite a
+            published line in docs/spec/. Heuristics stay at info and are
+            labeled. 1.0.0 is the first stable release: 59 checks, 345 tests,
+            still offline on check.
           </p>
         </div>
       </section>
@@ -156,6 +160,7 @@ export default function HomePage() {
               {[
                 ["muted", "When   hooks · skills · MCP · AGENTS.md · skills-lock.json"],
                 ["default", "Do     npx @chimix/agentscan@latest --output prompt"],
+                ["muted", "       do not skip claude.hook.missing-script (error)"],
                 ["muted", "Don't  write the tree · guess if a hook is valid"],
               ].map(([tone, line]) => (
                 <div
