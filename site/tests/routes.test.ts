@@ -132,6 +132,7 @@ describe("public routes", () => {
     const res = await probe("/llms.txt");
     expect(res.status).toBe(200);
     expect(res.contentType).toMatch(/text\/markdown/);
+    expect(varyIncludesAccept(res.vary)).toBe(true);
     expect(res.body).toContain("## When to use");
     expect(res.body).toContain("npx @chimix/agentscan@latest");
     expect(res.body).not.toMatch(/agentscan\.space\/openapi/);

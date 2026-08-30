@@ -10,6 +10,7 @@ import {
   isNegotiablePath,
   markdownForPath,
   markdownResponse,
+  normalizeContentPath,
   notAcceptableResponse,
 } from "@/lib/markdown";
 import { absoluteUrl } from "@/lib/site";
@@ -53,12 +54,16 @@ export function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const explicitMarkdown = pathname.endsWith(".md");
+  const markdownOnly =
+    normalizeContentPath(pathname) === "/llms.txt" ||
+    normalizeContentPath(pathname) ===
+      "/.well-known/agent-skills/agentscan/skill";
 
   if (!explicitMarkdown && !isNegotiablePath(pathname)) {
     return NextResponse.next();
   }
 
-  if (explicitMarkdown) {
+  if (explicitMarkdown || markdownOnly) {
     return markdownFor(request);
   }
 
