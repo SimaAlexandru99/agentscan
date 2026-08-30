@@ -59,7 +59,7 @@ describe("nested Agent Skills discovery", () => {
 
   test("Cursor skill without name or description gets Agent Skills errors", () => {
     const root = tmpProject("agentscan-cursor-required-");
-    write(root, ".cursor/skills/bare/SKILL.md", "---\n---\n");
+    write(root, ".cursor/skills/bare/SKILL.md", "---\nlicense: MIT\n---\n");
     const ids = ruleIds(root);
     expect(ids).toContain("agent-skills.skill.missing-name");
     expect(ids).toContain("agent-skills.skill.missing-description");

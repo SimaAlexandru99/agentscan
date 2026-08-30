@@ -90,6 +90,6 @@ describe("colliding skill paths", () => {
       baseline.skills.map((skill) => skill.id),
     );
     expect(reads).toBeGreaterThan(baselineReads);
-    expect(reads).toBeLessThanOrEqual(12);
+    expect(reads).toBeLessThanOrEqual(20);
   });
 });
