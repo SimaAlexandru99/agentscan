@@ -12,11 +12,11 @@ import {
 import type { ConfigErrorFact, McpFact } from "../facts/types";
 import { parseJsonc } from "./jsonc";
 import {
-  cwdSkipsExistenceCheck,
   formatLaunch,
   launchesFromEntry,
   resolveLaunchCwd,
   scriptCandidateFromLaunch,
+  skipLaunchExistenceCheck,
 } from "./launch";
 import { NESTED_DISCOVERY_MAX_DEPTH, readJsonConfig, walkFiles } from "./shared";
 
@@ -88,6 +88,7 @@ function resolveMcpCommand(
 function commandFactsFromEntry(
   entry: Record<string, unknown>,
   root: string,
+  hostPlatform: NodeJS.Platform = process.platform,
 ): Array<{
   hasCommand: boolean;
   command?: string;
@@ -102,8 +103,8 @@ function commandFactsFromEntry(
   return launches.map((launch) => {
     const candidate = scriptCandidateFromLaunch(launch);
     const display = candidate ?? formatLaunch(launch);
-    const cwd = resolveLaunchCwd(launch.cwd, root);
-    if (candidate === undefined || cwdSkipsExistenceCheck(cwd)) {
+    const cwd = resolveLaunchCwd(launch.cwd, root, hostPlatform);
+    if (candidate === undefined || skipLaunchExistenceCheck(launch, cwd, candidate, hostPlatform)) {
       return {
         hasCommand: true,
         command: formatLaunch(launch),

@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { basename, isAbsolute, join } from "node:path";
+import { basename, join, posix, win32 } from "node:path";
 
 export type OsPlatform = "windows" | "linux" | "osx";
 
@@ -80,7 +80,7 @@ function interpreterName(executable: string): string {
 }
 
 function isPathLike(candidate: string, interpreted: boolean): boolean {
-  if (candidate.length === 0 || /^[A-Za-z]:[/\\]/.test(candidate)) {
+  if (candidate.length === 0 || isWindowsAbsOrUnc(candidate)) {
     return false;
   }
   if (
@@ -192,19 +192,76 @@ export function cwdIsUnresolved(cwd: string): boolean {
   return UNRESOLVED_CWD.test(cwd);
 }
 
+export function nodePlatformOf(os: OsPlatform): NodeJS.Platform {
+  switch (os) {
+    case "windows":
+      return "win32";
+    case "linux":
+      return "linux";
+    case "osx":
+      return "darwin";
+    default: {
+      const _exhaustive: never = os;
+      return _exhaustive;
+    }
+  }
+}
+
 /**
- * Windows drive (`C:\`, `D:/`) and UNC (`\\server\share`, `//server/share`)
- * paths. On POSIX these are not `path.isAbsolute`, so joining them onto the
- * project root invents a relative folder named `C:\…`.
+ * Platform-neutral launches are checked on every host. An OS override is
+ * checked only when it names this process's platform.
+ */
+export function launchMatchesHost(
+  launch: Pick<LaunchCommand, "platform">,
+  hostPlatform: NodeJS.Platform = process.platform,
+): boolean {
+  return launch.platform === undefined || nodePlatformOf(launch.platform) === hostPlatform;
+}
+
+function pathApiForHost(hostPlatform: NodeJS.Platform): typeof posix | typeof win32 {
+  return hostPlatform === "win32" ? win32 : posix;
+}
+
+/**
+ * Windows drive-relative (`C:foo`). `path.win32.isAbsolute` is false; joining
+ * this onto a POSIX project root would invent a folder named `C:foo`.
+ */
+export function isWindowsDriveRelative(value: string): boolean {
+  return /^[A-Za-z]:/.test(value) && !win32.isAbsolute(value);
+}
+
+/**
+ * Windows drive (`C:\`, `D:/`) and UNC (`\\server\share`, `//server/share`).
+ * `/home/me` is `win32.isAbsolute` too — it is not a Windows path.
  */
 export function isWindowsAbsOrUnc(value: string): boolean {
-  if (/^[A-Za-z]:/.test(value)) {
+  if (!win32.isAbsolute(value)) {
+    return false;
+  }
+  if (value.length >= 2 && value.charAt(1) === ":") {
     return true;
   }
-  if (value.startsWith("\\\\")) {
+  return value.startsWith("\\\\") || value.startsWith("//");
+}
+
+export function isPosixAbsolutePath(value: string): boolean {
+  return posix.isAbsolute(value) && !value.startsWith("//");
+}
+
+export function pathSkipsExistenceCheck(
+  value: string,
+  hostPlatform: NodeJS.Platform = process.platform,
+): boolean {
+  if (isWindowsDriveRelative(value)) {
     return true;
   }
-  return /^\/\/[^/]+\/[^/]/.test(value);
+  if (isWindowsAbsOrUnc(value)) {
+    return hostPlatform !== "win32";
+  }
+  if (isPosixAbsolutePath(value)) {
+    return hostPlatform === "win32";
+  }
+  return false;
 }
 
 export function cwdSkipsExistenceCheck(resolution: CwdResolution): boolean {
@@ -223,9 +280,28 @@ export function cwdSkipsExistenceCheck(resolution: CwdResolution): boolean {
 }
 
 /**
- * Resolve a declared cwd against the project root. Unresolved interpolations
- * and paths that belong to another OS are not guessed — callers must skip
- * existence checks.
+ * Skip existence checks when the launch belongs to another OS, the cwd cannot
+ * be resolved on this host, or the script path itself is foreign. Callers
+ * still inventory the launch fact.
+ */
+export function skipLaunchExistenceCheck(
+  launch: LaunchCommand,
+  cwd: CwdResolution,
+  script: string | undefined,
+  hostPlatform: NodeJS.Platform = process.platform,
+): boolean {
+  if (!launchMatchesHost(launch, hostPlatform)) {
+    return true;
+  }
+  if (cwdSkipsExistenceCheck(cwd)) {
+    return true;
+  }
+  return script !== undefined && pathSkipsExistenceCheck(script, hostPlatform);
+}
+
+/**
+ * Resolve a declared cwd against the project root. Unresolved interpolations,
+ * drive-relative `C:foo`, and paths that belong to another OS are not guessed.
  */
 export function resolveLaunchCwd(
   cwd: string | undefined,
@@ -235,17 +311,21 @@ export function resolveLaunchCwd(
   if (cwd === undefined) {
     return { status: "absent" };
   }
-  if (cwdIsUnresolved(cwd)) {
+  if (cwdIsUnresolved(cwd) || isWindowsDriveRelative(cwd)) {
     return { status: "unresolved" };
   }
   if (isWindowsAbsOrUnc(cwd)) {
     return hostPlatform === "win32" ? { status: "ok", abs: cwd } : { status: "foreign" };
   }
+  if (isPosixAbsolutePath(cwd) && hostPlatform === "win32") {
+    return { status: "foreign" };
+  }
   let expanded = cwd;
   if (expanded.startsWith("~/")) {
     expanded = join(homedir(), expanded.slice(2));
   }
-  const abs = isAbsolute(expanded) ? expanded : join(projectRoot, expanded);
+  const pathApi = pathApiForHost(hostPlatform);
+  const abs = pathApi.isAbsolute(expanded) ? expanded : pathApi.join(projectRoot, expanded);
   return { status: "ok", abs };
 }
 

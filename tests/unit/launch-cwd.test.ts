@@ -6,6 +6,8 @@ import { analyze } from "../../src/analyze";
 import {
   cwdSkipsExistenceCheck,
   isWindowsAbsOrUnc,
+  isWindowsDriveRelative,
+  pathSkipsExistenceCheck,
   resolveLaunchCwd,
 } from "../../src/discover/launch";
 
@@ -151,6 +153,9 @@ describe("launch cwd resolution", () => {
     expect(isWindowsAbsOrUnc("//server/share/hooks")).toBe(true);
     expect(isWindowsAbsOrUnc("./runtime")).toBe(false);
     expect(isWindowsAbsOrUnc("/home/me/app")).toBe(false);
+    expect(isWindowsAbsOrUnc("C:relative")).toBe(false);
+    expect(isWindowsDriveRelative("C:relative")).toBe(true);
+    expect(isWindowsDriveRelative("C:\\Users\\me\\app")).toBe(false);
 
     expect(resolveLaunchCwd("C:\\Users\\me\\app", "/tmp/proj", "linux")).toEqual({
       status: "foreign",
@@ -169,6 +174,14 @@ describe("launch cwd resolution", () => {
       abs: "C:\\Users\\me\\app",
     });
     expect(resolveLaunchCwd("./runtime", "/tmp/proj", "linux").status).toBe("ok");
+    expect(resolveLaunchCwd("C:relative", "/tmp/proj", "linux")).toEqual({
+      status: "unresolved",
+    });
+    expect(resolveLaunchCwd("/home/me/app", "C:\\repo", "win32")).toEqual({
+      status: "foreign",
+    });
+    expect(pathSkipsExistenceCheck("/home/me/bin/format.sh", "win32")).toBe(true);
+    expect(pathSkipsExistenceCheck("C:\\Users\\me\\format.ps1", "linux")).toBe(true);
     expect(cwdSkipsExistenceCheck({ status: "foreign" })).toBe(true);
     expect(cwdSkipsExistenceCheck({ status: "unresolved" })).toBe(true);
     expect(cwdSkipsExistenceCheck({ status: "ok", abs: "/tmp/proj/runtime" })).toBe(false);

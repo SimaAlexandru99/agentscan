@@ -182,7 +182,7 @@ describe("launch argv and OS overrides", () => {
     expect(findings[0]!.message).toContain("mcp.js");
   });
 
-  test("VS Code hook OS overrides are each path-checked", () => {
+  test("VS Code hook OS overrides are path-checked only on the host platform", () => {
     const root = tmpProject("agentscan-vscode-os-");
     write(
       root,
@@ -202,16 +202,35 @@ describe("launch argv and OS overrides", () => {
         },
       }),
     );
-    const subjects = analyze({ dir: root })
-      .findings.filter((finding) => finding.ruleId === "vscode.hook.missing-script")
+    const analysis = analyze({ dir: root });
+    const subjects = analysis.findings
+      .filter((finding) => finding.ruleId === "vscode.hook.missing-script")
       .map((finding) => finding.subject)
       .sort();
-    expect(subjects).toEqual([
-      "hook:PreToolUse:./hooks/default.js",
-      "hook:PreToolUse:./hooks/linux.js",
-      "hook:PreToolUse:./hooks/mac.js",
-      "hook:PreToolUse:./hooks/win.js",
-    ]);
+    const expected = ["hook:PreToolUse:./hooks/default.js"];
+    if (process.platform === "linux") {
+      expected.push("hook:PreToolUse:./hooks/linux.js");
+    } else if (process.platform === "darwin") {
+      expected.push("hook:PreToolUse:./hooks/mac.js");
+    } else if (process.platform === "win32") {
+      expected.push("hook:PreToolUse:./hooks/win.js");
+    }
+    expect(subjects).toEqual(expected.sort());
+    const windows = analysis.facts.hooks.find((hook) => hook.platform === "windows");
+    const osx = analysis.facts.hooks.find((hook) => hook.platform === "osx");
+    const linux = analysis.facts.hooks.find((hook) => hook.platform === "linux");
+    expect(windows?.command).toContain("win.js");
+    expect(osx?.command).toContain("mac.js");
+    expect(linux?.command).toContain("linux.js");
+    if (process.platform !== "win32") {
+      expect(windows?.scriptExists).toBeUndefined();
+    }
+    if (process.platform !== "darwin") {
+      expect(osx?.scriptExists).toBeUndefined();
+    }
+    if (process.platform !== "linux") {
+      expect(linux?.scriptExists).toBeUndefined();
+    }
   });
 
   test("command type without command is a schema error", () => {

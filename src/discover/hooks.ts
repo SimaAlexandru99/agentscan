@@ -6,9 +6,9 @@ import type { Provider } from "../facts/provider";
 import {
   formatLaunch,
   launchesFromEntry,
-  cwdSkipsExistenceCheck,
   resolveLaunchCwd,
   scriptCandidateFromLaunch,
+  skipLaunchExistenceCheck,
 } from "./launch";
 import { readJsonConfig } from "./shared";
 
@@ -184,6 +184,7 @@ export function hooksFromObject(
   bases: HookBases,
   errors: ConfigErrorFact[],
   sourceProvider: Provider = "claude",
+  hostPlatform: NodeJS.Platform = process.platform,
 ): HookFact[] {
   if (hooks === null || typeof hooks !== "object" || Array.isArray(hooks)) {
     errors.push({
@@ -329,9 +330,9 @@ export function hooksFromObject(
           ...(launch.platform === undefined ? {} : { platform: launch.platform }),
           ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
         };
-        const cwd = resolveLaunchCwd(launch.cwd, bases.project);
+        const cwd = resolveLaunchCwd(launch.cwd, bases.project, hostPlatform);
         const candidate = scriptCandidateFromLaunch(launch, bases);
-        if (candidate !== undefined && !cwdSkipsExistenceCheck(cwd)) {
+        if (candidate !== undefined && !skipLaunchExistenceCheck(launch, cwd, candidate, hostPlatform)) {
           const resolved = resolveHookScript(
             bases,
             candidate,

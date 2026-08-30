@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/checks-59-111111?style=flat-square" alt="59 checks">
-  <img src="https://img.shields.io/badge/tests-336%20passing-111111?style=flat-square" alt="336 tests">
+  <img src="https://img.shields.io/badge/tests-345%20passing-111111?style=flat-square" alt="345 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">

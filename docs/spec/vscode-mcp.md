@@ -31,9 +31,13 @@ Top-level key is `servers`, not `mcpServers`. Official example:
 Launch is `command` (stdio) or `url` (remote). Optional `cwd` and OS overrides
 (`windows` / `linux` / `osx`) are honoured when path-checking a script.
 Unresolved interpolations in `cwd` (`${workspaceFolder}`, `${env:…}`) skip the
-existence check rather than invent a path. Windows drive and UNC cwd values
-(`C:\…`, `\\server\share`) are not joined as relative POSIX paths when the
-scanner is running on Linux or macOS — those existence checks are skipped.
+existence check rather than invent a path. An OS-specific launch that does not
+match `process.platform` is inventoried but not existence-checked — Windows
+`.\scripts\server.js` / UNC script paths on Linux, and POSIX `/home/…` paths
+on Windows, do not emit `mcp.command-missing`. Host-matching overrides and
+platform-neutral launches stay fully checked. Windows drive and UNC cwd
+values are not joined as relative POSIX paths when the scanner is running on
+Linux or macOS.
 
 The docs tell authors to avoid
 hardcoding secrets and to use input variables (`${input:...}`) or environment
