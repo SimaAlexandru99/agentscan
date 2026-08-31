@@ -27,21 +27,26 @@ Native Command Code provider. 72 checks, 377 tests. Includes 1.0.1.
   `skills` array (replace, not merge; relative paths resolve against the git
   root). User `~/.commandcode/skills` and `~/.agents/skills` under
   `--global`.
-- Memory: per directory `AGENTS.md`, else `.commandcode/AGENTS.md` — at most
-  one. User `~/.commandcode/AGENTS.md` under `--global`. Unresolved `@path`
-  is not a hard error. Codex's instruction chain excludes
+- Memory: project `AGENTS.md`, else `.commandcode/AGENTS.md`. Subdirectory
+  walk-up is `AGENTS.md` only. Nested `<dir>/.commandcode/AGENTS.md` is not
+  Command Code memory. User `~/.commandcode/AGENTS.md` under `--global`.
+  Unresolved `@path` is not a hard error. Codex's instruction chain excludes
   `.commandcode/AGENTS.md`.
 - Agents: `<project>/.commandcode/agents/*.md` at the Command Code project
   root only (git root, or cwd outside a git repo); filename supplies
   `name`; no `claude.agent.*` on these files. Checks:
   `commandcode.agent.reserved-name` (`explore` / `plan` / `review` /
   `general`), `invalid-permission-mode`, `invalid-field-type` covering every
-  documented typed field. `maxTurns` must be a positive integer.
+  documented custom-agent typed field (`reasoningEffort` is not one of them).
+  `maxTurns` must be a positive integer.
 - Hooks: four events (`PreToolUse`, `PostToolUse`, `Stop`, `SessionStart`);
   nested `hooks` array required; `type` must be the string `"command"`;
   `command` must be a string (not an argv array); `matcher` must be a string
   when present. Timeout 0–600. A matcher on `Stop` / `SessionStart` is
-  runtime-dead, not a schema error. `COMMANDCODE_PROJECT_DIR` and
+  runtime-dead, not a schema error. Project and user hooks for the same event
+  coexist; only an exact duplicate command string is deduplicated (project
+  wins). `settings.local.json` follows settings merge (an event array
+  replaces the project array for that event). `COMMANDCODE_PROJECT_DIR` and
   `COMMANDCODE_CWD` expand against the Command Code project root.
 - Settings: Command Code project root is the git root (a child `.cursor`
   does not hide `<git-root>/.commandcode/`). `model` inventoried, not
@@ -61,8 +66,9 @@ Native Command Code provider. 72 checks, 377 tests. Includes 1.0.1.
 - Default `skillPaths` includes `.commandcode/skills`.
 - `--global` / `includeGlobal` also scans `~/.commandcode/skills`,
   `~/.agents/skills`, user Command Code agents, MCP, and memory.
-- Coverage matrix: Command Code row. Shared `.mcp.json` is `mcp-json`, not
-  Claude-only.
+- Coverage matrix: Command Code row. Skills are `full`. MCP is `partial`
+  because documented local `projects/{project}/mcp.json` is unread. Shared
+  `.mcp.json` is `mcp-json`, not Claude-only.
 
 ## 1.0.1 — 2026-08-31
 

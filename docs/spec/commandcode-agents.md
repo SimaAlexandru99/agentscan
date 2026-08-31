@@ -25,7 +25,9 @@ inventories each readable file and sets `commandcodeEffective`. Spec/runtime
 
 Quoted table: `name` is required, default **filename**. Do not invent a
 missing-name error until that fallback is applied. Only these keys are read;
-anything else is ignored.
+anything else is ignored. Unknown frontmatter keys are not type-checked.
+`reasoningEffort` is settings/model configuration, not a documented
+custom-agent field — do not invent a type rule for it.
 
 Sanitized to `a-z A-Z 0-9 _ -`. Sanitised names still load — do not treat
 Claude's lowercase-hyphen identifier rule as a Command Code load failure.
@@ -43,7 +45,6 @@ Reserved names: `explore`, `plan`, `review`, `general`. Quoted:
 | `tools` | string or string[] | no | `"*"` or a list; do not enumerate tool ids |
 | `disallowedTools` | string or string[] | no | same format |
 | `model` | string | no | any `/model` id — **do not enumerate** |
-| `reasoningEffort` | string | no | model-specific; unknown levels are dropped at load with a warning. No closed list on this page — do not invent one |
 | `maxTurns` | positive integer | no | default 100; `0` and `-1` are invalid |
 | `permissionMode` | string | no | `default`, `auto-accept`, `bypass`, `plan`, `dont-ask` |
 | `background` | boolean | no | |
@@ -51,7 +52,8 @@ Reserved names: `explore`, `plan`, `review`, `general`. Quoted:
 
 Validate documented types and the `permissionMode` enum. Do not invent
 unknown-model or unknown-tool checks (same failure class as the 9-of-31 hook
-list). Do not enumerate model ids or reasoning-effort values.
+list). Do not enumerate model ids. Do not invent a type rule for unknown
+agent frontmatter keys.
 
 `commandcode.agent.invalid-field-type` covers every documented typed field
 when the value is present and the type is wrong. Filename fallback for a

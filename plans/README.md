@@ -276,7 +276,9 @@ is tagged and each plan's spec captures still match live pages.
 No numbered plan file. Shipped as **1.1.0** (72 checks), including the **1.0.1**
 shared `.mcp.json` hotfix (`mcp-json` profile, `transport` / `type` alias). Spec
 captures: `docs/spec/commandcode-*.md`. Local `projects/{slug}/mcp.json` is
-unread because the slug encoding is unpublished. Follow-up on this branch
+unread because the slug encoding is unpublished, so Command Code MCP coverage
+is `partial`. Follow-up on this branch
 fixes git-root project semantics, provider-specific discovery, strict
-HookEntry shape, complete agent field types, and effective-vs-shadowed
-runtime checks.
+HookEntry shape, custom-agent field types without undocumented
+`reasoningEffort`, hook project/user coexistence, nested memory walk-up, and
+effective-vs-shadowed runtime checks.

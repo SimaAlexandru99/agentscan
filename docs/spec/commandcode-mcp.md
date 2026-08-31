@@ -54,7 +54,7 @@ positive. An unknown value such as `"ftp"` is invalid for both consumers.
 | project | `.mcp.json` | always (shared MCP JSON profile) |
 | user | `~/.commandcode/mcp.json` | `--global` / `includeGlobal` |
 | settings inline | `mcp.servers` in the settings.json family | always for project files; user settings under `--global` |
-| local | `~/.commandcode/projects/{project}/mcp.json` | only if the project slug can be resolved from a published rule |
+| local | `~/.commandcode/projects/{project}/mcp.json` | unread — slug encoding is unpublished (coverage: **partial**) |
 
 The sessions page says local state is "keyed by a slug of the working
 directory" but does not publish the encoding. Until it does, do **not**
@@ -84,5 +84,9 @@ in `mcp-tokens.json`. Scanning those files would copy secrets into facts.
 
 It does not spawn servers, complete OAuth, or prove a correctly shaped entry
 will connect. `${VAR}` in config values is resolved at Command Code runtime.
+
+Coverage is **partial**: the documented local file
+`~/.commandcode/projects/{project}/mcp.json` is unread because the slug
+encoding is unpublished. Command Code skills remain `full`.
 
 ## Staleness risk: HIGH

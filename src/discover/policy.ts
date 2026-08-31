@@ -69,10 +69,23 @@ function addUnique(
   out.push(fact);
 }
 
+/** Project-root Command Code fallback: `<project>/.commandcode/AGENTS.md`. */
+function isCommandcodeProjectMemoryFallback(abs: string, commandcodeProjectRoot: string): boolean {
+  return (
+    basename(abs) === "AGENTS.md" &&
+    basename(dirname(abs)) === ".commandcode" &&
+    resolve(dirname(dirname(abs))) === resolve(commandcodeProjectRoot)
+  );
+}
+
 /**
  * Instruction files: configured names, walk-up CLAUDE.md / AGENTS.md, nested
  * AGENTS.md, and VS Code instruction files. See docs/spec/agents-md.md,
- * docs/spec/claude-memory.md, docs/spec/vscode-instructions.md.
+ * docs/spec/claude-memory.md, docs/spec/vscode-instructions.md,
+ * docs/spec/commandcode-memory.md.
+ *
+ * Command Code project-root fallback is `<commandcodeProjectRoot>/.commandcode/AGENTS.md`.
+ * Nested `<dir>/.commandcode/AGENTS.md` is not Command Code memory.
  */
 export function discoverPolicyFiles(
   root: string,
@@ -80,6 +93,7 @@ export function discoverPolicyFiles(
   errors: ConfigErrorFact[],
   startDir = root,
   includeGlobal = false,
+  commandcodeProjectRoot = root,
 ): PolicyFileFact[] {
   const out: PolicyFileFact[] = [];
   const seen = new Set<string>();
@@ -112,7 +126,10 @@ export function discoverPolicyFiles(
         startDir: start,
       }),
     );
-    if (!existsSync(join(dir, "AGENTS.md"))) {
+    if (
+      resolve(dir) === resolve(commandcodeProjectRoot) &&
+      !existsSync(join(dir, "AGENTS.md"))
+    ) {
       addUnique(
         out,
         seen,
@@ -172,7 +189,10 @@ export function discoverPolicyFiles(
         return false;
       }
       if (basename(dirname(abs)) === ".commandcode") {
-        return !existsSync(join(dirname(dirname(abs)), "AGENTS.md"));
+        return (
+          isCommandcodeProjectMemoryFallback(abs, commandcodeProjectRoot) &&
+          !existsSync(join(commandcodeProjectRoot, "AGENTS.md"))
+        );
       }
       return true;
     },

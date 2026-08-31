@@ -503,7 +503,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | Agent Skills | none | full | none | none | none |
 | AGENTS.md | partial (nested + nearest-wins; no required fields) | none | none | none | none |
 | Claude Code | partial (walk-up `CLAUDE.md`; 200-line target) | partial (native; `name` optional) | partial (walk-up `.claude/agents`) | partial (33 events; command handlers only) | full (`claude-json`; shared `.mcp.json` is `mcp-json`) |
-| Command Code | partial (per-dir `AGENTS.md` else `.commandcode/AGENTS.md`; `@path` is not a hard error) | full (Agent Skills; git-root `.commandcode/skills` + 10-hop `.agents/skills`) | partial (filename name; reserved names; no missing-description) | partial (4 events; command handlers; nested groups; git-root settings) | full (`mcp-json` + `commandcode-json`; git-root project file; `transport` / `type` alias) |
+| Command Code | partial (project `AGENTS.md` else `.commandcode/AGENTS.md`; walk-up `AGENTS.md`; `@path` is not a hard error) | full (Agent Skills; git-root `.commandcode/skills` + 10-hop `.agents/skills`) | partial (filename name; reserved names; no missing-description) | partial (4 events; command handlers; nested groups; git-root settings; project+user coexist) | partial (`mcp-json` + `commandcode-json`; git-root project file; `transport` / `type` alias; local `projects/{project}/mcp.json` unread) |
 | Codex | partial (32 KiB chain; no invented agents TOML) | full (Agent Skills; `.codex/skills`) | none | none | full (`codex-toml`) |
 | VS Code | partial (`.github` instruction files; no required fields) | none | partial (filename may be the name) | full (8 events) | full (`servers`) |
 | Cursor | none | full (Agent Skills; nested `SKILL.md`) | none | none | full |
@@ -597,7 +597,8 @@ first.
   Bun's `import.meta.dir` / `import.meta.main` and is not the Node entrypoint.
 - **Command Code local MCP is unread.** `~/.commandcode/projects/{project}/mcp.json`
   is keyed by a working-directory slug that the sessions page does not publish.
-  Until it does, that path is skipped rather than guessed. Bundled Command Code
+  Until it does, that path is skipped rather than guessed, so Command Code MCP
+  coverage is `partial`. Bundled Command Code
   skills and `--skill` launch flags are not project files and are not scanned.
   `mods.paths` are inventoried; the TypeScript is never executed or imported.
   `auth.json` and `mcp-tokens.json` are never opened. Command Code project

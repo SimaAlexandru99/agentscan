@@ -231,6 +231,7 @@ export function discoverAgentSurface(
       configErrors,
       startDir,
       opts.includeGlobal,
+      commandcodeProjectRoot,
     ),
     rules,
     lockedSkills: lock.locked,

@@ -338,9 +338,6 @@ function firstInvalidCommandcodeAgentField(
   if (fields.model !== undefined && typeof fields.model !== "string") {
     return "model";
   }
-  if (fields.reasoningEffort !== undefined && typeof fields.reasoningEffort !== "string") {
-    return "reasoningEffort";
-  }
   if (fields.maxTurns !== undefined && !isPositiveInteger(fields.maxTurns)) {
     return "maxTurns";
   }
@@ -585,26 +582,85 @@ export function applyCommandcodeMcpPrecedence(
   }
 }
 
+function hookEventKey(hook: HookFact): string {
+  return hook.event ?? hook.name;
+}
+
+/** Official hook docs: duplicate identity is the exact command string. */
+function hookCommandIdentity(hook: HookFact): string | undefined {
+  if (typeof hook.command === "string" && hook.command.length > 0) {
+    return hook.command;
+  }
+  return undefined;
+}
+
+/**
+ * Command Code hook scopes: settings.json-family merge first, then project vs
+ * user coexistence. Official hooks page: project and user hooks for the same
+ * event both run (project first); only an exact duplicate command string is
+ * dropped in favor of the higher-priority scope.
+ *
+ * settings.local.json vs project settings.json follows settings merge: the
+ * `hooks` object is a map (deep-merged), and each event's array is a scalar
+ * for that merge (the higher layer that defines the event replaces it).
+ */
 export function applyCommandcodeHookPrecedence(hooks: HookFact[]): void {
-  const byEvent = new Map<string, number>();
+  const winningProjectFamilyRank = new Map<string, number>();
   for (const hook of hooks) {
     if (hook.sourceProvider !== "commandcode") {
       continue;
     }
-    const rank = SETTINGS_LAYER_RANK[hook.commandcodeSettingsLayer ?? "project"];
-    const event = hook.event ?? hook.name;
-    const current = byEvent.get(event);
+    const layer = hook.commandcodeSettingsLayer ?? "project";
+    if (layer === "user") {
+      continue;
+    }
+    const event = hookEventKey(hook);
+    const rank = SETTINGS_LAYER_RANK[layer];
+    const current = winningProjectFamilyRank.get(event);
     if (current === undefined || rank > current) {
-      byEvent.set(event, rank);
+      winningProjectFamilyRank.set(event, rank);
     }
   }
+
+  const effectiveProjectCommands = new Map<string, Set<string>>();
   for (const hook of hooks) {
     if (hook.sourceProvider !== "commandcode") {
       continue;
     }
-    const rank = SETTINGS_LAYER_RANK[hook.commandcodeSettingsLayer ?? "project"];
-    const event = hook.event ?? hook.name;
-    hook.commandcodeEffective = rank === byEvent.get(event);
+    const layer = hook.commandcodeSettingsLayer ?? "project";
+    if (layer === "user") {
+      continue;
+    }
+    const event = hookEventKey(hook);
+    const rank = SETTINGS_LAYER_RANK[layer];
+    const effective = winningProjectFamilyRank.get(event) === rank;
+    hook.commandcodeEffective = effective;
+    if (!effective) {
+      continue;
+    }
+    const identity = hookCommandIdentity(hook);
+    if (identity === undefined) {
+      continue;
+    }
+    const commands = effectiveProjectCommands.get(event);
+    if (commands === undefined) {
+      effectiveProjectCommands.set(event, new Set([identity]));
+    } else {
+      commands.add(identity);
+    }
+  }
+
+  for (const hook of hooks) {
+    if (hook.sourceProvider !== "commandcode") {
+      continue;
+    }
+    if (hook.commandcodeSettingsLayer !== "user") {
+      continue;
+    }
+    const identity = hookCommandIdentity(hook);
+    const eventCommands = effectiveProjectCommands.get(hookEventKey(hook));
+    hook.commandcodeEffective =
+      identity === undefined || eventCommands === undefined || !eventCommands.has(identity);
   }
 }
 

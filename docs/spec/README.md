@@ -34,7 +34,7 @@ to appear in real projects.** When adding a check:
 | [commandcode-hooks.md](commandcode-hooks.md) | Four events, command handlers, timeout 0–600 | `commandcode.hook.*` |
 | [commandcode-skills.md](commandcode-skills.md) | `.commandcode/skills`, `.agents` compatibility, extra locations | `agent-skills.skill.*` |
 | [commandcode-agents.md](commandcode-agents.md) | Filename name fallback, reserved names, field types | `commandcode.agent.*` |
-| [commandcode-memory.md](commandcode-memory.md) | At most one `AGENTS.md` per directory; `@path` is not a hard error | discovery |
+| [commandcode-memory.md](commandcode-memory.md) | Project `AGENTS.md` else `.commandcode/AGENTS.md`; walk-up `AGENTS.md`; `@path` is not a hard error | discovery |
 | [commandcode-commands.md](commandcode-commands.md) | `.commandcode/commands` inventory | none |
 | [commandcode-mods.md](commandcode-mods.md) | Mods inventory-only; never execute | none |
 | [vscode-mcp.md](vscode-mcp.md) | VS Code `.vscode/mcp.json` `servers` wrapper | `vscode.mcp.no-launch` |
