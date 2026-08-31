@@ -14,7 +14,7 @@ intermediate commit that this train does not cut.
 ## 1.1.0 — 2026-08-31
 
 Native Command Code provider, then a correctness pass over every registered
-check against 2026-08-31 official docs. Includes 1.0.1. **87 checks**, **411
+check against 2026-08-31 official docs. Includes 1.0.1. **87 checks**, **420
 tests**.
 
 ### Added

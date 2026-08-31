@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { analyze } from "../../src/analyze";
+import { runChecks, STRUCTURAL_CHECKS } from "../../src/checks/index";
 import { defaultConfig } from "../../src/config/schema";
 import { extractFacts } from "../../src/facts/extract";
+import type { Facts } from "../../src/facts/types";
 
 function tmpProject(prefix: string): string {
   const root = mkdtempSync(join(tmpdir(), prefix));
@@ -440,5 +442,138 @@ describe("Codex AGENTS chain knobs", () => {
     expect(facts.codexProjectRoot).toBe(startDir);
     const findings = analyze({ dir: startDir }).findings;
     expect(findings.map((f) => f.ruleId)).not.toContain("codex.budget.instructions");
+  });
+});
+
+describe("Remaining spec-required negative fixtures", () => {
+  test("Claude http hook requires url", () => {
+    const root = tmpProject("agentscan-claude-http-");
+    write(
+      root,
+      ".claude/settings.json",
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [{ hooks: [{ type: "http" }] }],
+        },
+      }),
+    );
+    expect(ruleIds(root)).toContain("claude.hook.http-without-url");
+  });
+
+  test("native VS Code command hook requires command", () => {
+    const root = tmpProject("agentscan-vscode-cmd-");
+    write(
+      root,
+      ".github/hooks/format.json",
+      JSON.stringify({
+        hooks: {
+          PostToolUse: [{ type: "command" }],
+        },
+      }),
+    );
+    expect(ruleIds(root)).toContain("vscode.hook.command-without-command");
+  });
+
+  test("Agent Skills required fields, name contract, and length limits", () => {
+    const root = tmpProject("agentscan-as-required-");
+    write(root, ".agents/skills/bare/SKILL.md", "Hello without frontmatter.\n");
+    write(
+      root,
+      ".agents/skills/pdf/SKILL.md",
+      "---\nname: PDF-Processing\ndescription: Extract text from PDFs.\n---\n\nBody.\n",
+    );
+    const longName = "a".repeat(65);
+    write(
+      root,
+      `.agents/skills/${longName}/SKILL.md`,
+      `---\nname: ${longName}\ndescription: Name exceeds sixty-four characters.\n---\n\nBody.\n`,
+    );
+    write(
+      root,
+      ".agents/skills/long-desc/SKILL.md",
+      `---\nname: long-desc\ndescription: ${"x".repeat(1025)}\n---\n\nBody.\n`,
+    );
+    const ids = ruleIds(root);
+    expect(ids).toContain("agent-skills.skill.missing-frontmatter");
+    expect(ids).toContain("agent-skills.skill.invalid-name");
+    expect(ids).toContain("agent-skills.skill.name-does-not-match-directory");
+    expect(ids).toContain("agent-skills.skill.name-too-long");
+    expect(ids).toContain("agent-skills.skill.description-too-long");
+  });
+
+  test("Claude agent missing name", () => {
+    const root = tmpProject("agentscan-agent-noname-");
+    write(root, ".claude/agents/reviewer.md", "---\ndescription: Reviews code.\n---\n");
+    expect(ruleIds(root)).toContain("claude.agent.missing-name");
+  });
+
+  test("Claude agent duplicate name in one directory", () => {
+    const root = tmpProject("agentscan-agent-dup-");
+    write(root, ".claude/agents/a.md", "---\nname: twin\ndescription: First twin.\n---\n");
+    write(root, ".claude/agents/b.md", "---\nname: twin\ndescription: Second twin.\n---\n");
+    expect(ruleIds(root)).toContain("claude.agent.duplicate-name");
+  });
+
+  test("Continue config.yaml empty server is no-launch", () => {
+    const root = tmpProject("agentscan-continue-empty-");
+    write(root, ".continue/config.yaml", "mcpServers:\n  - name: dead\n");
+    expect(ruleIds(root)).toContain("continue.mcp.no-launch");
+  });
+
+  test("Command Code settings mcp.servers empty is no-launch", () => {
+    const root = tmpProject("agentscan-cc-mcp-empty-");
+    write(
+      root,
+      ".commandcode/settings.json",
+      JSON.stringify({ mcp: { servers: { dead: {} } } }),
+    );
+    expect(ruleIds(root)).toContain("commandcode.mcp.no-launch");
+  });
+
+  test("OpenCode no-launch is the check-layer fallback without a typed defect", () => {
+    const facts: Facts = {
+      root: "/tmp/proj",
+      packageManager: "bun",
+      dependencies: {},
+      devDependencies: {},
+      skills: [],
+      agents: [],
+      hooks: [],
+      mcp: [
+        {
+          name: "dead",
+          path: "/tmp/proj/opencode.json",
+          schemaProfile: "opencode-json",
+          sourceProvider: "opencode",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+      ],
+      policyFiles: [],
+      lockedSkills: [],
+      hasSkillsLock: false,
+      configErrors: [],
+    };
+    expect(runChecks(facts).map((finding) => finding.ruleId)).toContain("opencode.mcp.no-launch");
+  });
+
+  test("every spec-required check id is named in docs/spec", () => {
+    const specDir = join(import.meta.dir, "../../docs/spec");
+    const specText = readdirSync(specDir)
+      .filter((name) => name.endsWith(".md"))
+      .map((name) => readFileSync(join(specDir, name), "utf8"))
+      .join("\n");
+    const missing = STRUCTURAL_CHECKS.filter((check) => check.provenance === "spec-required")
+      .map((check) => check.id)
+      .filter((id) => {
+        if (specText.includes(id)) {
+          return false;
+        }
+        const wildcard = `${id.split(".").slice(0, -1).join(".")}.*`;
+        return !specText.includes(wildcard);
+      });
+    expect(missing).toEqual([]);
   });
 });
