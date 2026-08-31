@@ -512,6 +512,19 @@ function parseCodexToml(
   return parseTomlMcpServers(raw, filePath, root, errors, "codex-toml");
 }
 
+/** MCP servers only — does not extract `project_doc_*` knobs. */
+export function parseCodexTomlFile(
+  filePath: string,
+  root: string,
+  errors: ConfigErrorFact[],
+): McpFact[] {
+  const raw = readTomlConfig(filePath, errors);
+  if (raw === undefined) {
+    return [];
+  }
+  return parseCodexToml(raw, filePath, root, errors);
+}
+
 export function parseGrokTomlFile(
   filePath: string,
   root: string,

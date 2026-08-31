@@ -10,6 +10,7 @@ import type {
   SkillFact,
 } from "../facts/types";
 import { discoverAgents } from "./agents";
+import { discoverCodexUserMcp } from "./codex";
 import {
   applyCommandcodeAgentPrecedence,
   applyCommandcodeHookPrecedence,
@@ -214,6 +215,14 @@ export function discoverAgentSurface(
     hooks.push(...discoverCopilotUserHooks(configErrors));
     hooks.push(...discoverGrokHooks(join(grokHomeDir(), "hooks"), grokHomeDir(), configErrors));
     for (const fact of discoverGrokUserMcp(configErrors)) {
+      const key = mcpKey(fact);
+      if (mcpSeen.has(key)) {
+        continue;
+      }
+      mcpSeen.add(key);
+      mcp.push(fact);
+    }
+    for (const fact of discoverCodexUserMcp(configErrors)) {
       const key = mcpKey(fact);
       if (mcpSeen.has(key)) {
         continue;

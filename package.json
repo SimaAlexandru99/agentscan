@@ -1,6 +1,6 @@
 {
   "name": "@chimix/agentscan",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Offline linter for Claude Code, Command Code, Grok Build, portable Agent Skills, AGENTS.md, and MCP/hooks/rules for VS Code, Cursor, Codex, Gemini, OpenCode, and Continue",
   "type": "module",
   "bin": {

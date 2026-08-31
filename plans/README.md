@@ -271,6 +271,16 @@ is tagged and each plan's spec captures still match live pages.
 | 033 | Add remaining MCP and config providers | P2 | L | 025, 032 | DONE — [plan](033-remaining-providers.md) |
 | 034 | Publish the coverage matrix and release 1.0.0 | P2 | M | 033 | DONE — [plan](034-coverage-matrix-and-1-0-0.md) |
 
+## 2026-08-31 Codex user MCP under `--global`
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 036 | Codex user MCP under `--global` | P2 | S | 035 | DONE |
+
+Shipped as **1.2.1** (95 checks). `$CODEX_HOME/config.toml` or
+`~/.codex/config.toml` only with `--global`. No `codexEffective` shadowing.
+Unread: system, managed, requirements, profiles, plugins, trust, `auth.json`.
+
 ## 2026-08-31 Grok Build native provider
 
 | Plan | Title | Priority | Effort | Depends on | Status |
