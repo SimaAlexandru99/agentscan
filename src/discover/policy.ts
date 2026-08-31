@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import type { Provider } from "../facts/provider";
 import type { ConfigErrorFact, LockedSkillFact, PolicyFileFact } from "../facts/types";
@@ -19,6 +20,7 @@ function readPolicyFile(
     sourceProvider: Provider;
     kind: NonNullable<PolicyFileFact["kind"]>;
     startDir: string;
+    hopsDir?: string;
   },
 ): PolicyFileFact | undefined {
   if (!existsSync(filePath)) {
@@ -39,7 +41,7 @@ function readPolicyFile(
       text,
       sourceProvider: meta.sourceProvider,
       kind: meta.kind,
-      hopsFromStart: hopsFrom(meta.startDir, dirname(filePath)),
+      hopsFromStart: hopsFrom(meta.startDir, meta.hopsDir ?? dirname(filePath)),
     };
   } catch (err) {
     errors.push({
@@ -77,6 +79,7 @@ export function discoverPolicyFiles(
   policyFiles: string[],
   errors: ConfigErrorFact[],
   startDir = root,
+  includeGlobal = false,
 ): PolicyFileFact[] {
   const out: PolicyFileFact[] = [];
   const seen = new Set<string>();
@@ -109,6 +112,18 @@ export function discoverPolicyFiles(
         startDir: start,
       }),
     );
+    if (!existsSync(join(dir, "AGENTS.md"))) {
+      addUnique(
+        out,
+        seen,
+        readPolicyFile(join(dir, ".commandcode", "AGENTS.md"), errors, {
+          sourceProvider: "commandcode",
+          kind: "agents-md",
+          startDir: start,
+          hopsDir: dir,
+        }),
+      );
+    }
     addUnique(
       out,
       seen,
@@ -149,16 +164,33 @@ export function discoverPolicyFiles(
 
   for (const abs of walkFiles(root, {
     maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
-    match: (_abs, name) => name === "AGENTS.md" || name === "AGENTS.override.md",
+    match: (abs, name) => {
+      if (name === "AGENTS.override.md") {
+        return true;
+      }
+      if (name !== "AGENTS.md") {
+        return false;
+      }
+      if (basename(dirname(abs)) === ".commandcode") {
+        return !existsSync(join(dirname(dirname(abs)), "AGENTS.md"));
+      }
+      return true;
+    },
     errors,
   })) {
+    const commandcodeMemory = basename(dirname(abs)) === ".commandcode";
     addUnique(
       out,
       seen,
       readPolicyFile(abs, errors, {
-        sourceProvider: basename(abs) === "AGENTS.override.md" ? "codex" : "unknown",
+        sourceProvider: commandcodeMemory
+          ? "commandcode"
+          : basename(abs) === "AGENTS.override.md"
+            ? "codex"
+            : "unknown",
         kind: "agents-md",
         startDir: start,
+        ...(commandcodeMemory ? { hopsDir: dirname(dirname(abs)) } : {}),
       }),
     );
   }
@@ -189,6 +221,18 @@ export function discoverPolicyFiles(
         }),
       );
     }
+  }
+
+  if (includeGlobal) {
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(homedir(), ".commandcode", "AGENTS.md"), errors, {
+        sourceProvider: "commandcode",
+        kind: "agents-md",
+        startDir: start,
+      }),
+    );
   }
 
   const agentsMd = out.filter((f) => f.kind === "agents-md");

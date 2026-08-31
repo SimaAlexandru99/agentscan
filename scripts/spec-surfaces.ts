@@ -180,6 +180,46 @@ export const SPEC_SURFACES: SpecSurface[] = [
     stalenessRisk: "high",
     url: "https://docs.continue.dev/customize/deep-dives/mcp",
   },
+  {
+    provider: "commandcode",
+    surface: "mcp",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://commandcode.ai/docs/mcp",
+  },
+  {
+    provider: "commandcode",
+    surface: "hooks",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://commandcode.ai/docs/hooks",
+  },
+  {
+    provider: "commandcode",
+    surface: "skills",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://commandcode.ai/docs/skills",
+  },
+  {
+    provider: "commandcode",
+    surface: "agents",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://commandcode.ai/docs/agents",
+  },
+  {
+    provider: "commandcode",
+    surface: "instructions",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://commandcode.ai/docs/memory",
+  },
 ];
 
 const STALE_AFTER_DAYS = 90;

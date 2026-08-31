@@ -35,7 +35,8 @@ function skillSchema(skill: SkillFact): SkillSchemaProfile {
   if (
     skill.sourceProvider === "agent-skills" ||
     skill.sourceProvider === "cursor" ||
-    skill.sourceProvider === "codex"
+    skill.sourceProvider === "codex" ||
+    skill.sourceProvider === "commandcode"
   ) {
     return "agent-skills";
   }
@@ -44,7 +45,7 @@ function skillSchema(skill: SkillFact): SkillSchemaProfile {
 
 function skillRoot(skill: SkillFact): string {
   const path = skill.path.replaceAll("\\", "/");
-  for (const marker of ["/.claude/skills", "/.agents/skills", "/.cursor/skills", "/.codex/skills"]) {
+  for (const marker of ["/.claude/skills", "/.agents/skills", "/.cursor/skills", "/.codex/skills", "/.commandcode/skills"]) {
     const index = path.lastIndexOf(marker);
     if (index !== -1) {
       return path.slice(0, index + marker.length);

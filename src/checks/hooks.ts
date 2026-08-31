@@ -1,3 +1,4 @@
+import { COMMANDCODE_HOOK_EVENTS } from "../facts/commandcode";
 import { assertNever, type Provider } from "../facts/provider";
 import type { Facts, Finding, HookDefect, HookFact } from "../facts/types";
 import { make } from "./make";
@@ -71,6 +72,8 @@ function eventsFor(provider: Provider): Set<string> | undefined {
       return KNOWN_HOOK_EVENTS;
     case "vscode":
       return VSCODE_HOOK_EVENTS;
+    case "commandcode":
+      return COMMANDCODE_HOOK_EVENTS;
     case "agent-skills":
     case "codex":
     case "cursor":
@@ -99,6 +102,8 @@ function unknownEventRuleId(provider: Provider): string | undefined {
       return "claude.hook.unknown-event";
     case "vscode":
       return "vscode.hook.unknown-event";
+    case "commandcode":
+      return "commandcode.hook.unknown-event";
     case "agent-skills":
     case "codex":
     case "cursor":
@@ -127,6 +132,8 @@ function missingScriptRuleId(provider: Provider): string | undefined {
       return "claude.hook.missing-script";
     case "vscode":
       return "vscode.hook.missing-script";
+    case "commandcode":
+      return "commandcode.hook.missing-script";
     case "agent-skills":
     case "codex":
     case "cursor":
@@ -206,10 +213,43 @@ export function checkHookEvents(facts: Facts): Finding[] {
 }
 
 function defectRuleId(provider: Provider, defect: HookDefect): string | undefined {
-  if (provider !== "claude" && provider !== "vscode") {
-    return undefined;
+  switch (provider) {
+    case "claude":
+    case "vscode":
+      return `${provider}.hook.${defect}`;
+    case "commandcode":
+      switch (defect) {
+        case "invalid-group":
+        case "command-without-command":
+        case "unknown-handler-type":
+          return `commandcode.hook.${defect}`;
+        case "http-without-url":
+        case "mcp-tool-without-name":
+          return undefined;
+        default: {
+          return assertNever(defect, `unhandled hook defect: ${defect}`);
+        }
+      }
+    case "agent-skills":
+    case "codex":
+    case "cursor":
+    case "grok":
+    case "antigravity":
+    case "gemini":
+    case "windsurf":
+    case "kiro":
+    case "cline":
+    case "roo":
+    case "kilo":
+    case "opencode":
+    case "junie":
+    case "continue":
+    case "unknown":
+      return undefined;
+    default: {
+      return assertNever(provider, `unhandled hook provider: ${provider}`);
+    }
   }
-  return `${provider}.hook.${defect}`;
 }
 
 function defectMessage(hook: HookFact, defect: HookDefect): string {
@@ -280,6 +320,29 @@ export function checkHooks(facts: Facts): Finding[] {
   // could reach only the first.
   const reported = new Set<string>();
   for (const hook of facts.hooks) {
+    if (hookProvider(hook) === "commandcode" && hook.timeoutOutOfBounds === true) {
+      const subject = `hook:${hook.event ?? hook.name}:timeout`;
+      const key = `commandcode.hook.timeout-out-of-bounds:${subject}:${hook.path}`;
+      if (!reported.has(key)) {
+        reported.add(key);
+        const bound =
+          hook.timeout === undefined ? "not a number in 0–600" : String(hook.timeout);
+        out.push(
+          make("commandcode.hook.timeout-out-of-bounds", subject, {
+            action: "warn",
+            severity: "error",
+            message: `${hook.event ?? hook.name} hook timeout is out of bounds (${bound}; want 0–600 seconds)`,
+            reason:
+              "Command Code hook timeouts are seconds in the closed range 0–600. A value outside that range is not a valid timeout. See docs/spec/commandcode-hooks.md.",
+            evidence: [
+              { kind: "hook", value: `${hook.event ?? hook.name} @ ${hook.path}` },
+              { kind: "timeout", value: bound },
+            ],
+            suggest: `Set timeout to an integer from 0 to 600 in ${hook.path}`,
+          }),
+        );
+      }
+    }
     if (!isCommandHandler(hook)) {
       continue;
     }

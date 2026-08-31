@@ -7,9 +7,11 @@ import type {
   HookFact,
   LockedSkillFact,
   McpFact,
+  ModFact,
   PolicyFileFact,
   RuleFact,
   SkillFact,
+  SlashCommandFact,
 } from "../facts/types";
 
 export const POLICY_CAP = 100_000;
@@ -58,6 +60,10 @@ export type AgentSurface = {
   skillLockRoots?: string[];
   configErrors: ConfigErrorFact[];
   codexProjectDocMaxBytes?: number;
+  slashCommands?: SlashCommandFact[];
+  mods?: ModFact[];
+  commandcodeModel?: string;
+  commandcodeModelSource?: string;
 };
 
 /**
@@ -87,6 +93,7 @@ const AGENT_CONFIG_SIGNALS = [
   ".opencode",
   ".continue",
   ".junie",
+  ".commandcode",
   "opencode.json",
   "opencode.jsonc",
 ] as const;
@@ -324,6 +331,8 @@ export type Frontmatter = {
    * See docs/spec/hook-sources.md.
    */
   hooks?: unknown;
+  /** Full YAML mapping, for provider-specific field validation. */
+  fields?: Record<string, unknown>;
 };
 
 function yamlScalarKind(value: unknown): YamlScalarKind | undefined {
@@ -464,5 +473,6 @@ export function readFrontmatter(
   if (record.hooks !== undefined) {
     out.hooks = record.hooks;
   }
+  out.fields = record;
   return out;
 }

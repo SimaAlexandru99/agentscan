@@ -9,6 +9,17 @@ import type {
   SkillFact,
 } from "../facts/types";
 import { discoverAgents } from "./agents";
+import {
+  discoverCommandcodeCommands,
+  discoverCommandcodeHooks,
+  discoverCommandcodeInlineMcp,
+  discoverCommandcodeMods,
+  discoverCommandcodeUserMcp,
+  readCommandcodeSettingsLayers,
+  resolveSkillLocation,
+  winningCommandcodeModel,
+  winningSkillsExtraDirs,
+} from "./commandcode";
 import { discoverHooks, discoverVscodeHooks } from "./hooks";
 import { discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
 import { discoverPluginHooks } from "./plugins";
@@ -68,18 +79,45 @@ export function discoverAgentSurface(
     }),
   );
 
-  if (opts.includeGlobal) {
-    const home = homedir();
+  const ccLayers = readCommandcodeSettingsLayers(root, configErrors, opts.includeGlobal);
+  for (const declared of winningSkillsExtraDirs(ccLayers)) {
+    const abs = resolve(resolveSkillLocation(root, declared));
+    if (configuredRoots.has(abs)) {
+      continue;
+    }
+    configuredRoots.add(abs);
+    const homeRoot = resolve(homedir());
+    const source = abs === homeRoot || abs.startsWith(`${homeRoot}/`) ? "global" : "project";
+    const extra = discoverSkillsInDir(abs, source, configErrors, root);
     skills.push(
-      ...discoverSkillsInDir(join(home, ".claude", "skills"), "global", configErrors, root),
-    );
-    skills.push(
-      ...discoverSkillsInDir(join(home, ".codex", "skills"), "global", configErrors, root),
+      ...extra.map((skill) =>
+        skill.schemaProfile === "agent-skills"
+          ? skill
+          : { ...skill, schemaProfile: "agent-skills" as const },
+      ),
     );
   }
 
+  if (opts.includeGlobal) {
+    const home = homedir();
+    const globalSkillDirs = [
+      join(home, ".claude", "skills"),
+      join(home, ".codex", "skills"),
+      join(home, ".commandcode", "skills"),
+      join(home, ".agents", "skills"),
+    ];
+    for (const abs of globalSkillDirs) {
+      const resolved = resolve(abs);
+      if (configuredRoots.has(resolved)) {
+        continue;
+      }
+      configuredRoots.add(resolved);
+      skills.push(...discoverSkillsInDir(abs, "global", configErrors, root));
+    }
+  }
+
   const lock = discoverSkillsLocks(scanBoundary, root, configErrors);
-  const agents = discoverAgents(scanBoundary, configErrors, startDir);
+  const agents = discoverAgents(scanBoundary, configErrors, startDir, opts.includeGlobal);
 
   const hooks: HookFact[] = [];
   const mcp: McpFact[] = [];
@@ -105,6 +143,33 @@ export function discoverAgentSurface(
   }
   mcp.push(...discoverNestedContinueMcp(scanBoundary, configErrors, mcpSeen));
   hooks.push(...discoverPluginHooks(scanBoundary, configErrors));
+  hooks.push(...discoverCommandcodeHooks(root, ccLayers, configErrors));
+  for (const fact of discoverCommandcodeInlineMcp(root, ccLayers, configErrors)) {
+    const key = mcpKey(fact);
+    if (mcpSeen.has(key)) {
+      continue;
+    }
+    mcpSeen.add(key);
+    mcp.push(fact);
+  }
+  if (opts.includeGlobal) {
+    for (const fact of discoverCommandcodeUserMcp(root, configErrors)) {
+      const key = mcpKey(fact);
+      if (mcpSeen.has(key)) {
+        continue;
+      }
+      mcpSeen.add(key);
+      mcp.push(fact);
+    }
+  }
+  const slashCommands = discoverCommandcodeCommands(
+    scanBoundary,
+    opts.includeGlobal,
+    configErrors,
+    startDir,
+  );
+  const mods = discoverCommandcodeMods(ccLayers);
+  const winningModel = winningCommandcodeModel(ccLayers);
 
   return {
     skills: disambiguateSkills(skills, root),
@@ -115,7 +180,13 @@ export function discoverAgentSurface(
       ...agents.flatMap((a) => a.frontmatterHooks ?? []),
     ],
     mcp,
-    policyFiles: discoverPolicyFiles(scanBoundary, config.policyFiles, configErrors, startDir),
+    policyFiles: discoverPolicyFiles(
+      scanBoundary,
+      config.policyFiles,
+      configErrors,
+      startDir,
+      opts.includeGlobal,
+    ),
     rules,
     lockedSkills: lock.locked,
     hasSkillsLock: lock.present,
@@ -123,5 +194,10 @@ export function discoverAgentSurface(
     ...(lock.lockRoots.length === 0 ? {} : { skillLockRoots: lock.lockRoots }),
     configErrors,
     ...(codexProjectDocMaxBytes === undefined ? {} : { codexProjectDocMaxBytes }),
+    ...(slashCommands.length === 0 ? {} : { slashCommands }),
+    ...(mods.length === 0 ? {} : { mods }),
+    ...(winningModel === undefined
+      ? {}
+      : { commandcodeModel: winningModel.model, commandcodeModelSource: winningModel.source }),
   };
 }

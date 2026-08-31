@@ -16,6 +16,9 @@ describe("mcpCommandPath", () => {
     expect(mcpCommandPath("$CLAUDE_PROJECT_DIR/bin/server")).toBe(
       "$CLAUDE_PROJECT_DIR/bin/server",
     );
+    expect(mcpCommandPath("$COMMANDCODE_PROJECT_DIR/bin/server")).toBe(
+      "$COMMANDCODE_PROJECT_DIR/bin/server",
+    );
   });
 
   test("skips bare binaries, shell, and unresolved env", () => {

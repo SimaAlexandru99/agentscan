@@ -192,6 +192,14 @@ export function extractFacts(
     mcp: surface.mcp,
     policyFiles: surface.policyFiles,
     rules: surface.rules,
+    slashCommands: surface.slashCommands,
+    mods: surface.mods,
+    ...(surface.commandcodeModel === undefined
+      ? {}
+      : {
+          commandcodeModel: surface.commandcodeModel,
+          commandcodeModelSource: surface.commandcodeModelSource,
+        }),
     lockedSkills: surface.lockedSkills,
     hasSkillsLock: surface.hasSkillsLock,
     skillsLockInvalid: surface.skillsLockInvalid,

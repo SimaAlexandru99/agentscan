@@ -15,6 +15,7 @@ export type Provider =
   | "opencode"
   | "junie"
   | "continue"
+  | "commandcode"
   | "unknown";
 
 export type Compatibility = {
@@ -29,6 +30,8 @@ export type McpLaunchKind = "command" | "url" | "registry-reference" | "no-launc
 
 export type McpSchemaProfile =
   | "claude-json"
+  | "mcp-json"
+  | "commandcode-json"
   | "vscode-json"
   | "cursor-json"
   | "antigravity-json"
@@ -45,7 +48,9 @@ export function schemaProfileFromSkillsDir(dir: string): SkillSchemaProfile {
     normalized.includes("/.cursor/skills") ||
     normalized.endsWith("/.cursor/skills") ||
     normalized.includes("/.codex/skills") ||
-    normalized.endsWith("/.codex/skills")
+    normalized.endsWith("/.codex/skills") ||
+    normalized.includes("/.commandcode/skills") ||
+    normalized.endsWith("/.commandcode/skills")
   ) {
     return "agent-skills";
   }
@@ -82,11 +87,29 @@ export function providerFromSkillsDir(dir: string): Provider {
   ) {
     return "codex";
   }
+  if (
+    normalized.includes("/.commandcode/skills") ||
+    normalized.endsWith("/.commandcode/skills")
+  ) {
+    return "commandcode";
+  }
   return "unknown";
 }
 
 export function mcpProfileFromPath(filePath: string): McpSchemaProfile {
   const normalized = filePath.replaceAll("\\", "/");
+  if (
+    normalized.endsWith("/.commandcode/mcp.json") ||
+    normalized.endsWith(".commandcode/mcp.json") ||
+    /(?:^|\/)\.commandcode\/settings(?:\.local)?\.json$/.test(normalized)
+  ) {
+    return "commandcode-json";
+  }
+  if (
+    /(?:^|\/)\.mcp\.json$/.test(normalized)
+  ) {
+    return "mcp-json";
+  }
   if (
     normalized.endsWith("/.vscode/mcp.json") ||
     normalized.endsWith(".vscode/mcp.json")
@@ -140,6 +163,10 @@ export function sourceProviderForMcpProfile(
   switch (profile) {
     case "claude-json":
       return "claude";
+    case "mcp-json":
+      return "unknown";
+    case "commandcode-json":
+      return "commandcode";
     case "vscode-json":
       return "vscode";
     case "cursor-json":
@@ -154,6 +181,34 @@ export function sourceProviderForMcpProfile(
       return "opencode";
     case "continue-yaml":
       return "continue";
+    default: {
+      return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
+    }
+  }
+}
+
+export function consumedByForMcpProfile(profile: McpSchemaProfile): Provider[] {
+  switch (profile) {
+    case "mcp-json":
+      return ["claude", "commandcode"];
+    case "commandcode-json":
+      return ["commandcode"];
+    case "claude-json":
+      return ["claude"];
+    case "vscode-json":
+      return ["vscode"];
+    case "cursor-json":
+      return ["cursor"];
+    case "antigravity-json":
+      return ["antigravity"];
+    case "codex-toml":
+      return ["codex"];
+    case "gemini-json":
+      return ["gemini"];
+    case "opencode-json":
+      return ["opencode"];
+    case "continue-yaml":
+      return ["continue"];
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }

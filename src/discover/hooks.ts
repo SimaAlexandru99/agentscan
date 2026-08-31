@@ -1,8 +1,14 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
-import type { ConfigErrorFact, HookFact } from "../facts/types";
+import {
+  COMMANDCODE_HOOK_HANDLER_TYPES,
+  COMMANDCODE_HOOK_TIMEOUT_MAX,
+  COMMANDCODE_HOOK_TIMEOUT_MIN,
+  COMMANDCODE_PROJECT_DIR,
+} from "../facts/commandcode";
 import type { Provider } from "../facts/provider";
+import type { ConfigErrorFact, HookFact } from "../facts/types";
 import {
   formatLaunch,
   launchesFromEntry,
@@ -66,9 +72,9 @@ function resolveHookScript(
       exists: isFile(join(homedir(), extracted.slice(2))),
     };
   }
-  if (PROJECT_DIR.test(extracted)) {
+  if (PROJECT_DIR.test(extracted) || COMMANDCODE_PROJECT_DIR.test(extracted)) {
     const rel = extracted.replace(
-      /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\})\/?/,
+      /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\}|COMMANDCODE_PROJECT_DIR|\{COMMANDCODE_PROJECT_DIR\}|COMMANDCODE_CWD|\{COMMANDCODE_CWD\})\/?/,
       "",
     );
     return { scriptPath: extracted, exists: isFile(join(bases.project, rel)) };
@@ -108,6 +114,13 @@ function resolveHookScript(
  */
 const HANDLER_TYPES = new Set(["command", "http", "mcp_tool", "mcp-tool", "prompt", "agent"]);
 
+function allowedHandlerTypes(provider: Provider): Set<string> {
+  if (provider === "commandcode") {
+    return COMMANDCODE_HOOK_HANDLER_TYPES;
+  }
+  return HANDLER_TYPES;
+}
+
 function normalizeHandlerType(type: string): NonNullable<HookFact["handlerType"]> | undefined {
   if (type === "mcp-tool" || type === "mcp_tool") {
     return "mcp_tool";
@@ -144,12 +157,16 @@ function isHandlerEntry(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function handlersFromGroups(groups: unknown): Record<string, unknown>[] {
+function handlersFromGroups(
+  groups: unknown,
+  nestedOnly = false,
+): Record<string, unknown>[] {
   if (!Array.isArray(groups)) {
     return [];
   }
   const first = groups[0];
   if (
+    !nestedOnly &&
     isHandlerEntry(first) &&
     (first.type !== undefined ||
       first.command !== undefined ||
@@ -175,6 +192,20 @@ function handlersFromGroups(groups: unknown): Record<string, unknown>[] {
     }
   }
   return out;
+}
+
+function timeoutFromEntry(item: Record<string, unknown>): Pick<HookFact, "timeout" | "timeoutOutOfBounds"> {
+  if (!("timeout" in item)) {
+    return {};
+  }
+  const value = item.timeout;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    if (value < COMMANDCODE_HOOK_TIMEOUT_MIN || value > COMMANDCODE_HOOK_TIMEOUT_MAX) {
+      return { timeout: value, timeoutOutOfBounds: true };
+    }
+    return { timeout: value };
+  }
+  return { timeoutOutOfBounds: true };
 }
 
 export function hooksFromObject(
@@ -205,11 +236,16 @@ export function hooksFromObject(
     }
 
     let invalidGroup = false;
+    const requireNested = sourceProvider === "commandcode";
     for (const group of groups) {
       if (!isHandlerEntry(group)) {
         continue;
       }
-      if (isMatcherOnlyGroup(group) && !Array.isArray(group.hooks)) {
+      const missingHooks = !Array.isArray(group.hooks);
+      if (
+        (isMatcherOnlyGroup(group) && missingHooks) ||
+        (requireNested && missingHooks)
+      ) {
         invalidGroup = true;
         facts.push({
           name: event,
@@ -234,7 +270,7 @@ export function hooksFromObject(
       }
     }
 
-    const handlers = handlersFromGroups(groups);
+    const handlers = handlersFromGroups(groups, requireNested);
     if (handlers.length === 0) {
       if (!invalidGroup) {
         facts.push({ name: event, path: filePath, event, source, sourceProvider });
@@ -243,7 +279,9 @@ export function hooksFromObject(
     }
     for (const item of handlers) {
       const typeRaw = typeof item.type === "string" ? item.type : undefined;
-      if (typeRaw !== undefined && !HANDLER_TYPES.has(typeRaw)) {
+      const allowed = allowedHandlerTypes(sourceProvider);
+      const timeoutFacts = sourceProvider === "commandcode" ? timeoutFromEntry(item) : {};
+      if (typeRaw !== undefined && !allowed.has(typeRaw)) {
         facts.push({
           name: event,
           path: filePath,
@@ -252,10 +290,45 @@ export function hooksFromObject(
           sourceProvider,
           defect: "unknown-handler-type",
           unknownHandlerType: typeRaw,
+          ...timeoutFacts,
         });
         continue;
       }
       const handlerType = handlerTypeOf(item);
+      if (
+        sourceProvider === "commandcode" &&
+        handlerType !== undefined &&
+        handlerType !== "command"
+      ) {
+        facts.push({
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          defect: "unknown-handler-type",
+          unknownHandlerType: typeRaw ?? handlerType,
+          ...timeoutFacts,
+        });
+        continue;
+      }
+      if (
+        sourceProvider === "commandcode" &&
+        typeRaw === undefined &&
+        handlerType !== "command"
+      ) {
+        facts.push({
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          handlerType: "command",
+          defect: "command-without-command",
+          ...timeoutFacts,
+        });
+        continue;
+      }
       if (handlerType === "http") {
         const url = typeof item.url === "string" ? item.url : undefined;
         facts.push({
@@ -310,11 +383,19 @@ export function hooksFromObject(
           sourceProvider,
           handlerType: "command",
           defect: "command-without-command",
+          ...timeoutFacts,
         });
         continue;
       }
       if (launches.length === 0) {
-        facts.push({ name: event, path: filePath, event, source, sourceProvider });
+        facts.push({
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          ...timeoutFacts,
+        });
         continue;
       }
       for (const launch of launches) {
@@ -329,6 +410,7 @@ export function hooksFromObject(
           command,
           ...(launch.platform === undefined ? {} : { platform: launch.platform }),
           ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
+          ...timeoutFacts,
         };
         const cwd = resolveLaunchCwd(launch.cwd, bases.project, hostPlatform);
         const candidate = scriptCandidateFromLaunch(launch, bases);

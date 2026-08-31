@@ -205,6 +205,10 @@ export function effectiveCodexInstructionChain(files: PolicyFile[]): PolicyFile[
   const byDir = new Map<string, PolicyFile[]>();
   for (const policy of onChain) {
     const dir = resolve(dirname(policy.path));
+    if (basename(dir) === ".commandcode" && basename(policy.path) === "AGENTS.md") {
+      // Command Code memory, not a Codex AGENTS.md. See docs/spec/commandcode-memory.md.
+      continue;
+    }
     const bucket = byDir.get(dir);
     if (bucket === undefined) {
       byDir.set(dir, [policy]);

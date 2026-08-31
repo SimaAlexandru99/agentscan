@@ -28,7 +28,15 @@ to appear in real projects.** When adding a check:
 | [skills.md](skills.md) | Claude Code SKILL.md frontmatter fields | `claude.skill.missing-frontmatter`, `claude.skill.missing-description`, and two deleted checks |
 | [agent-skills.md](agent-skills.md) | Portable Agent Skills required `name` / `description` | `agent-skills.skill.*` |
 | [agents.md](agents.md) | Claude subagent frontmatter | every `claude.agent.*` check |
-| [mcp.md](mcp.md) | Claude `.mcp.json` shape and transports | `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `mcp.command-missing` |
+| [mcp.md](mcp.md) | Claude MCP shape and transports; `.mcp.json` is shared | `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `mcp.command-missing` |
+| [commandcode-mcp.md](commandcode-mcp.md) | Command Code `transport` / `type` alias; shared `.mcp.json` | `commandcode.mcp.*` |
+| [commandcode-settings.md](commandcode-settings.md) | Settings layers, inline `mcp.servers`, files never to read | discovery |
+| [commandcode-hooks.md](commandcode-hooks.md) | Four events, command handlers, timeout 0–600 | `commandcode.hook.*` |
+| [commandcode-skills.md](commandcode-skills.md) | `.commandcode/skills`, `.agents` compatibility, extra locations | `agent-skills.skill.*` |
+| [commandcode-agents.md](commandcode-agents.md) | Filename name fallback, reserved names, field types | `commandcode.agent.*` |
+| [commandcode-memory.md](commandcode-memory.md) | At most one `AGENTS.md` per directory; `@path` is not a hard error | discovery |
+| [commandcode-commands.md](commandcode-commands.md) | `.commandcode/commands` inventory | none |
+| [commandcode-mods.md](commandcode-mods.md) | Mods inventory-only; never execute | none |
 | [vscode-mcp.md](vscode-mcp.md) | VS Code `.vscode/mcp.json` `servers` wrapper | `vscode.mcp.no-launch` |
 | [cursor-mcp.md](cursor-mcp.md) | Cursor `.cursor/mcp.json` | `cursor.mcp.no-launch` |
 | [antigravity-mcp.md](antigravity-mcp.md) | Antigravity `serverUrl` | `antigravity.mcp.no-launch` |
@@ -74,9 +82,9 @@ like a check that read all of it.
 bun run spec:check
 ```
 
-Diffs the hardcoded Claude and VS Code hook-event sets against the live docs
-pages, checks `scripts/spec-surfaces.ts` lastVerified dates, and warns when the
-newest capture here is over 90 days old. It makes network calls, so it is a
+Diffs the hardcoded Claude, VS Code, and Command Code hook-event sets against
+the live docs pages, checks `scripts/spec-surfaces.ts` lastVerified dates, and
+warns when the newest capture here is over 90 days old. It makes network calls, so it is a
 release-time script and is never reached from `agentscan check` — the scan path
 touches no network and that is worth more than automatic freshness. It
 over-reports by design; adjudicated false alarms go in `REVIEWED_NOT_EVENTS`.

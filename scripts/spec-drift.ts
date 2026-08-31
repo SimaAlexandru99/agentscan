@@ -15,7 +15,7 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "../src/checks/index";
+import { COMMANDCODE_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "../src/checks/index";
 import { SPEC_SURFACES, surfaceStalenessNotes } from "./spec-surfaces";
 
 const SPEC_DIR = join(import.meta.dir, "../docs/spec");
@@ -153,11 +153,27 @@ async function checkVscodeHookEvents(report: Report): Promise<void> {
   }
 }
 
+async function checkCommandcodeHookEvents(report: Report): Promise<void> {
+  const url = "https://commandcode.ai/docs/hooks";
+  const html = await page(url);
+  if (html === null) {
+    report.notes.push(`could not fetch ${url} — Command Code hook events unverified`);
+    return;
+  }
+  const missingFromPage = [...COMMANDCODE_HOOK_EVENTS].filter((e) => !html.includes(e));
+  if (missingFromPage.length > 0) {
+    report.drift.push(
+      `Command Code hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
+    );
+  }
+}
+
 const report: Report = { drift: [], notes: [] };
 checkCaptureDates(report);
 checkSurfaceStaleness(report);
 await checkHookEvents(report);
 await checkVscodeHookEvents(report);
+await checkCommandcodeHookEvents(report);
 
 for (const note of report.notes) {
   process.stdout.write(`note: ${note}\n`);

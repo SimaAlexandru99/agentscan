@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "stripe": {
+      "transport": "http",
+      "url": "https://mcp.stripe.com"
+    },
+    "local": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "mcp-server"]
+    }
+  }
+}

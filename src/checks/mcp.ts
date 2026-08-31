@@ -38,6 +38,8 @@ function isLaunchable(server: McpFact): boolean {
     case "antigravity-json":
       return server.hasCommand || server.hasServerUrl === true;
     case "claude-json":
+    case "mcp-json":
+    case "commandcode-json":
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
@@ -55,7 +57,12 @@ function isLaunchable(server: McpFact): boolean {
 function noLaunchId(profile: McpSchemaProfile): string {
   switch (profile) {
     case "claude-json":
+    case "mcp-json":
+      // Shared `.mcp.json` still needs a launch field for Claude. Command Code
+      // transport defects fire first when `transport`/`type` is present.
       return "claude.mcp.no-launch";
+    case "commandcode-json":
+      return "commandcode.mcp.no-launch";
     case "vscode-json":
       return "vscode.mcp.no-launch";
     case "cursor-json":
@@ -86,6 +93,8 @@ function noLaunchMessage(server: McpFact): string {
     case "continue-yaml":
       return `MCP server "${server.name}" declares neither command, url, nor uses`;
     case "claude-json":
+    case "mcp-json":
+    case "commandcode-json":
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
@@ -107,6 +116,8 @@ function noLaunchSuggest(server: McpFact): string {
     case "continue-yaml":
       return `Add a command, url, or uses: block for "${server.name}", or remove it`;
     case "claude-json":
+    case "mcp-json":
+    case "commandcode-json":
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
@@ -172,10 +183,79 @@ function openCodeDefectSuggest(server: McpFact, defect: NonNullable<McpFact["ope
   }
 }
 
+function commandcodeDefectRule(
+  defect: NonNullable<McpFact["commandcodeDefect"]>,
+): string {
+  switch (defect) {
+    case "invalid-transport":
+      return "commandcode.mcp.invalid-transport";
+    case "http-without-url":
+      return "commandcode.mcp.http-without-url";
+    case "stdio-without-command":
+      return "commandcode.mcp.stdio-without-command";
+    default: {
+      return assertNever(defect, `unhandled Command Code MCP defect: ${defect}`);
+    }
+  }
+}
+
+function commandcodeDefectMessage(
+  server: McpFact,
+  defect: NonNullable<McpFact["commandcodeDefect"]>,
+): string {
+  switch (defect) {
+    case "invalid-transport":
+      return `MCP server "${server.name}" has invalid transport "${server.transport ?? "unknown"}" (want "http" or "stdio")`;
+    case "http-without-url":
+      return `MCP server "${server.name}" is HTTP transport but declares no url`;
+    case "stdio-without-command":
+      return `MCP server "${server.name}" is stdio transport but declares no command`;
+    default: {
+      return assertNever(defect, `unhandled Command Code MCP defect: ${defect}`);
+    }
+  }
+}
+
+function commandcodeDefectSuggest(
+  server: McpFact,
+  defect: NonNullable<McpFact["commandcodeDefect"]>,
+): string {
+  switch (defect) {
+    case "invalid-transport":
+      return `Set "transport": "http" with url, or "transport": "stdio" with command, on "${server.name}"`;
+    case "http-without-url":
+      return `Add a url for "${server.name}", or change transport to stdio`;
+    case "stdio-without-command":
+      return `Add a command for "${server.name}", or change transport to http`;
+    default: {
+      return assertNever(defect, `unhandled Command Code MCP defect: ${defect}`);
+    }
+  }
+}
+
+function claudeUrlNeedsType(server: McpFact): boolean {
+  if (server.inventoryOnly === true || !server.hasUrl) {
+    return false;
+  }
+  const profile = profileOf(server);
+  if (profile === "claude-json") {
+    if (server.transportField === "transport") {
+      return true;
+    }
+    return server.transport === undefined;
+  }
+  if (profile === "mcp-json") {
+    return server.transport === undefined;
+  }
+  return false;
+}
+
 export function checkMcp(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const server of facts.mcp) {
-    if (server.opencodeInherit === true) {
+    if (server.inventoryOnly === true) {
+      // Unnamed inline mcp.servers item — present in the inventory only.
+    } else if (server.opencodeInherit === true) {
       // V1 enabled-only override — launch data may live in an external file.
     } else if (server.opencodeDefect !== undefined) {
       const defect = server.opencodeDefect;
@@ -188,6 +268,19 @@ export function checkMcp(facts: Facts): Finding[] {
             "OpenCode V2 requires type local+command or remote+url. V1 uses the same pair on servers listed directly under mcp. See docs/spec/opencode-mcp.md.",
           evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
           suggest: openCodeDefectSuggest(server, defect),
+        }),
+      );
+    } else if (server.commandcodeDefect !== undefined) {
+      const defect = server.commandcodeDefect;
+      out.push(
+        make(commandcodeDefectRule(defect), `mcp:${server.name}@${server.path}`, {
+          action: "warn",
+          severity: "error",
+          message: commandcodeDefectMessage(server, defect),
+          reason:
+            "Command Code MCP transports are http (url) or stdio (command). `type` is an alias for `transport`. On shared `.mcp.json`, Claude's sse/ws types are left alone. See docs/spec/commandcode-mcp.md.",
+          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
+          suggest: commandcodeDefectSuggest(server, defect),
         }),
       );
     } else if (!isLaunchable(server)) {
@@ -223,18 +316,14 @@ export function checkMcp(facts: Facts): Finding[] {
       );
     }
 
-    if (
-      profileOf(server) === "claude-json" &&
-      server.hasUrl &&
-      server.transport === undefined
-    ) {
+    if (claudeUrlNeedsType(server)) {
       out.push(
         make("claude.mcp.url-without-type", `mcp:${server.name}@${server.path}`, {
           action: "warn",
           severity: "error",
           message: `MCP server "${server.name}" has a url but no transport type`,
           reason:
-            "An entry with no `type` is read as a stdio server, so a remote server declared this way is misconfigured by schema and is skipped — its tools never appear. See docs/spec/mcp.md.",
+            "An entry with no `type` is read as a stdio server, so a remote server declared this way is misconfigured by schema and is skipped — its tools never appear. On shared `.mcp.json`, a Command Code `transport` field satisfies the other consumer and this check does not fire. See docs/spec/mcp.md and docs/spec/commandcode-mcp.md.",
           evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
           suggest: `Add "type": "http" (or "sse" / "ws") to "${server.name}"`,
         }),

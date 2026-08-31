@@ -4,6 +4,15 @@
 **Read:** 2026-08-09
 **Depends on it:** `mcp.no-launch`, `mcp.url-without-type`, `mcp.hardcoded-secret`, `mcp.literal-env`, `mcp.command-missing`
 
+## Shared path `.mcp.json`
+
+`.mcp.json` is also Command Code's project-scope MCP file. Do not assume
+the path is Claude-only. Command Code documents `transport: "http" | "stdio"`
+with `type` as an alias; a valid Command Code HTTP entry has `transport` and
+`url` and no `type`. That shape must not emit `claude.mcp.url-without-type`.
+See [commandcode-mcp.md](commandcode-mcp.md). `.claude/mcp.json` remains
+Claude-only and still requires `type` for a remote `url`.
+
 ## Top-level key
 
 `mcpServers`. The docs use it 12 times; the string `"servers"` (the VS Code

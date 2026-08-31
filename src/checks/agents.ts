@@ -1,8 +1,87 @@
-import type { Facts, Finding } from "../facts/types";
+import type { CommandcodeAgentDefect, Facts, Finding } from "../facts/types";
+import { assertNever } from "../facts/provider";
 import { make } from "./make";
 
 function isClaudeAgent(sourceProvider: string | undefined): boolean {
   return sourceProvider === undefined || sourceProvider === "claude";
+}
+
+function isCommandcodeAgent(sourceProvider: string | undefined): boolean {
+  return sourceProvider === "commandcode";
+}
+
+function commandcodeAgentRule(defect: CommandcodeAgentDefect): string {
+  switch (defect) {
+    case "reserved-name":
+      return "commandcode.agent.reserved-name";
+    case "invalid-permission-mode":
+      return "commandcode.agent.invalid-permission-mode";
+    case "invalid-field-type":
+      return "commandcode.agent.invalid-field-type";
+    default: {
+      return assertNever(defect, `unhandled Command Code agent defect: ${defect}`);
+    }
+  }
+}
+
+function commandcodeAgentMessage(
+  agent: Facts["agents"][number],
+  defect: CommandcodeAgentDefect,
+): string {
+  switch (defect) {
+    case "reserved-name":
+      return `Agent name "${agent.name}" is reserved and will be ignored`;
+    case "invalid-permission-mode":
+      return `Agent "${agent.name}" has invalid permissionMode "${agent.permissionMode ?? "unknown"}"`;
+    case "invalid-field-type":
+      return `Agent "${agent.name}" field "${agent.invalidField ?? "unknown"}" has the wrong type`;
+    default: {
+      return assertNever(defect, `unhandled Command Code agent defect: ${defect}`);
+    }
+  }
+}
+
+function commandcodeAgentSuggest(
+  agent: Facts["agents"][number],
+  defect: CommandcodeAgentDefect,
+): string {
+  switch (defect) {
+    case "reserved-name":
+      return `Rename ${agent.path} — explore, plan, review, and general are reserved`;
+    case "invalid-permission-mode":
+      return `Use permissionMode default, auto-accept, bypass, plan, or dont-ask in ${agent.path}`;
+    case "invalid-field-type":
+      return `Fix the type of ${agent.invalidField ?? "the field"} in ${agent.path}`;
+    default: {
+      return assertNever(defect, `unhandled Command Code agent defect: ${defect}`);
+    }
+  }
+}
+
+function checkCommandcodeAgents(facts: Facts): Finding[] {
+  const out: Finding[] = [];
+  for (const agent of facts.agents) {
+    if (!isCommandcodeAgent(agent.sourceProvider)) {
+      continue;
+    }
+    if (agent.unreadable === true || agent.unparseableFrontmatter === true) {
+      continue;
+    }
+    for (const defect of agent.commandcodeDefects ?? []) {
+      out.push(
+        make(commandcodeAgentRule(defect), `agent:${agent.name}`, {
+          action: "warn",
+          severity: "error",
+          message: commandcodeAgentMessage(agent, defect),
+          reason:
+            "Command Code custom agents ignore reserved names (explore, plan, review, general), accept permissionMode from a closed list, and drop mistyped fields. Filename supplies name when frontmatter omits it. See docs/spec/commandcode-agents.md.",
+          evidence: [{ kind: "agent", value: agent.path }],
+          suggest: commandcodeAgentSuggest(agent, defect),
+        }),
+      );
+    }
+  }
+  return out;
 }
 
 /**
@@ -115,5 +194,5 @@ export function checkAgents(facts: Facts): Finding[] {
       );
     }
   }
-  return out;
+  return [...out, ...checkCommandcodeAgents(facts)];
 }

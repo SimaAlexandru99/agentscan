@@ -4,12 +4,17 @@ import { basename, isAbsolute, join } from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { parse as parseYaml } from "yaml";
 import {
+  consumedByForMcpProfile,
   mcpProfileFromPath,
   sourceProviderForMcpProfile,
   type McpLaunchKind,
   type McpSchemaProfile,
 } from "../facts/provider";
 import type { ConfigErrorFact, McpFact } from "../facts/types";
+import {
+  CLAUDE_MCP_TRANSPORTS,
+  COMMANDCODE_MCP_TRANSPORTS,
+} from "../facts/commandcode";
 import { parseJsonc } from "./jsonc";
 import {
   formatLaunch,
@@ -41,7 +46,9 @@ export function mcpCommandPath(command: string): string | undefined {
     return undefined;
   }
   if (trimmed.startsWith("$")) {
-    return /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\})/.test(trimmed)
+    return /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\}|COMMANDCODE_PROJECT_DIR\b|\{COMMANDCODE_PROJECT_DIR\}|COMMANDCODE_CWD\b|\{COMMANDCODE_CWD\})/.test(
+      trimmed,
+    )
       ? trimmed
       : undefined;
   }
@@ -73,7 +80,7 @@ function resolveMcpCommand(
     expanded = join(homedir(), expanded.slice(2));
   } else if (expanded.startsWith("$")) {
     expanded = expanded.replace(
-      /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\})\/?/,
+      /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\}|COMMANDCODE_PROJECT_DIR|\{COMMANDCODE_PROJECT_DIR\}|COMMANDCODE_CWD|\{COMMANDCODE_CWD\})\/?/,
       "",
     );
   }
@@ -158,6 +165,7 @@ function looksLikeServerEntry(
       "command" in entry ||
       "url" in entry ||
       "type" in entry ||
+      "transport" in entry ||
       "serverUrl" in entry ||
       "httpUrl" in entry ||
       "uses" in entry
@@ -212,6 +220,46 @@ function serversFromObject(
   return undefined;
 }
 
+function transportFromEntry(entry: Record<string, unknown>): {
+  transport?: string;
+  transportField?: "transport" | "type";
+} {
+  if (typeof entry.transport === "string" && entry.transport.length > 0) {
+    return { transport: entry.transport, transportField: "transport" };
+  }
+  if (typeof entry.type === "string" && entry.type.length > 0) {
+    return { transport: entry.type, transportField: "type" };
+  }
+  return {};
+}
+
+function commandcodeMcpDefect(
+  profile: McpSchemaProfile,
+  declared: string | undefined,
+  hasCommand: boolean,
+  hasUrl: boolean,
+): McpFact["commandcodeDefect"] {
+  if (profile !== "mcp-json" && profile !== "commandcode-json") {
+    return undefined;
+  }
+  if (declared !== undefined) {
+    if (COMMANDCODE_MCP_TRANSPORTS.has(declared)) {
+      if (declared === "http" && !hasUrl) {
+        return "http-without-url";
+      }
+      if (declared === "stdio" && !hasCommand) {
+        return "stdio-without-command";
+      }
+      return undefined;
+    }
+    if (profile === "mcp-json" && CLAUDE_MCP_TRANSPORTS.has(declared)) {
+      return undefined;
+    }
+    return "invalid-transport";
+  }
+  return undefined;
+}
+
 function parseMcpServers(
   raw: unknown,
   filePath: string,
@@ -235,11 +283,13 @@ function parseMcpServers(
 
   const facts: McpFact[] = [];
   const sourceProvider = sourceProviderForMcpProfile(profile);
+  const consumedBy = consumedByForMcpProfile(profile);
   for (const [name, value] of Object.entries(servers)) {
     let hasUrl = false;
     let hasServerUrl = false;
     let hasHttpUrl = false;
     let transport: string | undefined;
+    let transportField: McpFact["transportField"];
     let literalEnvKeys: string[] = [];
     let uses: string | undefined;
     let commandVariants: ReturnType<typeof commandFactsFromEntry> = [{ hasCommand: false }];
@@ -250,9 +300,9 @@ function parseMcpServers(
       hasServerUrl =
         typeof entry.serverUrl === "string" && entry.serverUrl.length > 0;
       hasHttpUrl = typeof entry.httpUrl === "string" && entry.httpUrl.length > 0;
-      if (typeof entry.type === "string" && entry.type.length > 0) {
-        transport = entry.type;
-      }
+      const declared = transportFromEntry(entry);
+      transport = declared.transport;
+      transportField = declared.transportField;
       if (typeof entry.uses === "string" && entry.uses.length > 0) {
         uses = entry.uses;
       }
@@ -272,11 +322,13 @@ function parseMcpServers(
         : [{ hasCommand: false as const }];
     for (const variant of variants) {
       const hasCommand = variant.hasCommand;
+      const defect = commandcodeMcpDefect(profile, transport, hasCommand, hasUrl);
       facts.push({
         name,
         path: filePath,
         schemaProfile: profile,
         sourceProvider,
+        consumedBy,
         launchKind,
         hasCommand,
         hasUrl,
@@ -288,12 +340,75 @@ function parseMcpServers(
         ...(variant.cwd === undefined ? {} : { cwd: variant.cwd }),
         ...(variant.platform === undefined ? {} : { platform: variant.platform }),
         ...(transport === undefined ? {} : { transport }),
+        ...(transportField === undefined ? {} : { transportField }),
+        ...(defect === undefined ? {} : { commandcodeDefect: defect }),
         literalEnvKeys,
         raw: JSON.stringify(value),
       });
     }
   }
   return facts;
+}
+
+export function parseInlineCommandcodeMcp(
+  mcpValue: unknown,
+  filePath: string,
+  root: string,
+  errors: ConfigErrorFact[],
+): McpFact[] {
+  if (mcpValue === undefined) {
+    return [];
+  }
+  if (mcpValue === null || typeof mcpValue !== "object" || Array.isArray(mcpValue)) {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "`mcp` is not an object",
+    });
+    return [];
+  }
+  const servers = (mcpValue as Record<string, unknown>).servers;
+  if (servers === undefined) {
+    return [];
+  }
+  if (Array.isArray(servers)) {
+    const map: Record<string, unknown> = {};
+    const unnamed = new Set<string>();
+    for (const [i, item] of servers.entries()) {
+      if (item === null || typeof item !== "object" || Array.isArray(item)) {
+        continue;
+      }
+      const entry = item as Record<string, unknown>;
+      if (typeof entry.name === "string" && entry.name.length > 0) {
+        map[entry.name] = entry;
+      } else {
+        const key = `inline-${i}`;
+        unnamed.add(key);
+        map[key] = entry;
+      }
+    }
+    return parseMcpServers({ mcpServers: map }, filePath, root, errors, "commandcode-json").map(
+      (fact) =>
+        unnamed.has(fact.name)
+          ? { ...fact, inventoryOnly: true, commandcodeDefect: undefined }
+          : fact,
+    );
+  }
+  if (servers !== null && typeof servers === "object") {
+    return parseMcpServers(
+      { mcpServers: servers },
+      filePath,
+      root,
+      errors,
+      "commandcode-json",
+    );
+  }
+  errors.push({
+    path: filePath,
+    kind: "unexpected-shape",
+    detail: "`mcp.servers` is not an array or object",
+  });
+  return [];
 }
 
 function readTomlConfig(
@@ -728,7 +843,7 @@ export function discoverMcpSurface(
   const seen = new Set<string>();
   let codexProjectDocMaxBytes: number | undefined;
   for (const rel of mcpPaths) {
-    const filePath = join(root, rel);
+    const filePath = isAbsolute(rel) ? rel : join(root, rel);
     if (!existsSync(filePath)) {
       continue;
     }

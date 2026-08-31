@@ -1,0 +1,61 @@
+{
+  "model": "inventory-only",
+  "skills": ["extra-skills"],
+  "mcp": {
+    "servers": [
+      {
+        "name": "docs",
+        "transport": "http",
+        "url": "https://example.com/mcp"
+      }
+    ]
+  },
+  "mods": {
+    "paths": ["./mods/example.ts"]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$COMMANDCODE_PROJECT_DIR/scripts/cc-hook.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$COMMANDCODE_CWD/scripts/cc-hook.sh",
+            "timeout": 0
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/cc-hook.sh",
+            "timeout": 600
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/cc-hook.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

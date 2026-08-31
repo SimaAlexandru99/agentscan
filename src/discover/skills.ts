@@ -259,7 +259,7 @@ type NestedDiscoveryOptions = {
   onDirectoryRead?: () => void;
 };
 
-const NESTED_SKILL_PARENTS = new Set([".claude", ".cursor", ".agents", ".codex"]);
+const NESTED_SKILL_PARENTS = new Set([".claude", ".cursor", ".agents", ".codex", ".commandcode"]);
 
 export function discoverNestedClaudeSkills(
   root: string,

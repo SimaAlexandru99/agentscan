@@ -64,6 +64,13 @@ export type McpFact = {
   path: string;
   schemaProfile?: McpSchemaProfile;
   sourceProvider?: Provider;
+  /** Providers that honestly consume this path's schema. Shared `.mcp.json` lists both. */
+  consumedBy?: Provider[];
+  /** Which JSON key supplied `transport`, when either is present. */
+  transportField?: "transport" | "type";
+  commandcodeDefect?: CommandcodeMcpDefect;
+  /** Array item from `mcp.servers` with no `name` — inventoried, not schema-checked. */
+  inventoryOnly?: boolean;
   launchKind?: McpLaunchKind;
   /** Continue registry block, e.g. `continuedev/continue-docs-mcp`. */
   uses?: string;
@@ -118,6 +125,9 @@ export type HookFact = {
   sourceProvider?: Provider;
   handlerType?: "command" | "http" | "mcp_tool" | "prompt" | "agent";
   defect?: HookDefect;
+  /** Declared timeout in seconds, when present and numeric. */
+  timeout?: number;
+  timeoutOutOfBounds?: boolean;
   unknownHandlerType?: string;
   platform?: OsPlatform;
   /** Declared working directory when present. */
@@ -128,7 +138,17 @@ export type HookFact = {
   scriptExists?: boolean;
 };
 
-export type AgentSchemaProfile = "claude-md" | "vscode-agent-md";
+export type AgentSchemaProfile = "claude-md" | "vscode-agent-md" | "commandcode-md";
+
+export type CommandcodeAgentDefect =
+  | "reserved-name"
+  | "invalid-permission-mode"
+  | "invalid-field-type";
+
+export type CommandcodeMcpDefect =
+  | "invalid-transport"
+  | "http-without-url"
+  | "stdio-without-command";
 
 export type AgentFact = {
   name: string;
@@ -153,6 +173,24 @@ export type AgentFact = {
   description?: string;
   /** Hooks declared in this agent's frontmatter. See docs/spec/hook-sources.md. */
   frontmatterHooks?: HookFact[];
+  permissionMode?: string;
+  commandcodeDefects?: CommandcodeAgentDefect[];
+  invalidField?: string;
+};
+
+/** Custom slash command markdown. Inventory only for Command Code. */
+export type SlashCommandFact = {
+  name: string;
+  path: string;
+  source: "project" | "global";
+  sourceProvider: Provider;
+};
+
+/** Declared mod path. Experimental inventory — never executed. */
+export type ModFact = {
+  path: string;
+  declaredFrom: string;
+  sourceProvider: Provider;
 };
 
 /** A config file agentscan could not read — itself a finding, never swallowed. */
@@ -211,6 +249,11 @@ export type Facts = {
   mcp: McpFact[];
   policyFiles: PolicyFileFact[];
   rules?: RuleFact[];
+  slashCommands?: SlashCommandFact[];
+  mods?: ModFact[];
+  /** Winning Command Code settings `model`, when a settings file declares one. */
+  commandcodeModel?: string;
+  commandcodeModelSource?: string;
   /** skills-lock.json entries; empty when the project has no lockfile. */
   lockedSkills: LockedSkillFact[];
   hasSkillsLock: boolean;
