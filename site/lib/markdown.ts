@@ -59,7 +59,7 @@ No AI, no network on check. Read the config, read the disk, compare. Same tree i
 
 ## Why the tool looks like this
 
-An earlier build reported 37 findings across 17 real projects of which 25 were false — two checks had been written from what real projects looked like instead of from the spec. Both were deleted. Spec-required checks cite a published line in docs/spec/. Heuristics stay at info and are labeled. ${PRODUCT_VERSION} is the first stable release: ${PRODUCT_CHECKS} checks, 345 tests, still offline on check.
+An earlier build reported 37 findings across 17 real projects of which 25 were false — two checks had been written from what real projects looked like instead of from the spec. Both were deleted. Spec-required checks cite a published line in docs/spec/. Heuristics stay at info and are labeled. 1.0.0 was the first stable release. ${PRODUCT_VERSION} ships ${PRODUCT_CHECKS} checks, still offline on check.
 
 ## For agents
 
@@ -125,7 +125,7 @@ The package is scoped \`${NPM_PACKAGE}\` because npm rejects the bare name. The 
 | \`--verbose\` | Show KEEP + info-severity findings, and print each finding's id |
 | \`--fail-on <level>\` | never (default) · warning · error |
 | \`--fail-under <0-100>\` | Fail when the score drops below this floor |
-| \`--global\` | Also scan ~/.claude/skills and ~/.codex/skills |
+| \`--global\` | Also scan ~/.claude/skills, ~/.codex/skills, ~/.commandcode/skills, and ~/.agents/skills |
 | \`--config <path>\` | Config file path |
 
 v1 does not write the tree — no apply, no skill delete/install. Findings may suggest shell commands; you run them yourself.
@@ -195,7 +195,7 @@ It exists for a specific failure: a hook still registered after its script was d
 
 The product is the published npm package \`${NPM_PACKAGE}\` (the bare name was rejected as too close to an unrelated package). The command you type is \`agentscan\`. Run it with \`${RUN_COMMAND}\` on Node 20.11+ or Bun. Scans are read-only: they do not write the tree they scan and they do not open a network connection.
 
-An earlier build reported 37 findings across 17 real projects of which 25 were false, because two checks were written from what projects happened to look like instead of from a published spec line. Those checks were deleted. Spec-required checks now cite a line in [docs/spec/](${GITHUB_REPO}/tree/master/docs/spec). Heuristics stay at info and are labeled. ${PRODUCT_VERSION} is the first stable release.
+An earlier build reported 37 findings across 17 real projects of which 25 were false, because two checks were written from what projects happened to look like instead of from a published spec line. Those checks were deleted. Spec-required checks now cite a line in [docs/spec/](${GITHUB_REPO}/tree/master/docs/spec). Heuristics stay at info and are labeled. 1.0.0 was the first stable release. ${PRODUCT_VERSION} ships ${PRODUCT_CHECKS} checks.
 
 This website is the public marketing and docs surface for that CLI. It is not a hosted scanner, not a SaaS dashboard, and not NextJourney. There is no account system on this origin.
 

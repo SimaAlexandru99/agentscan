@@ -270,3 +270,10 @@ is tagged and each plan's spec captures still match live pages.
 | 032 | Add official-example conformance fixtures | P1 | M | 024, 025 | DONE — [plan](032-conformance-fixtures.md) |
 | 033 | Add remaining MCP and config providers | P2 | L | 025, 032 | DONE — [plan](033-remaining-providers.md) |
 | 034 | Publish the coverage matrix and release 1.0.0 | P2 | M | 033 | DONE — [plan](034-coverage-matrix-and-1-0-0.md) |
+
+## 2026-08-31 Command Code native provider
+
+No numbered plan file. Shipped as **1.1.0** (72 checks), including the **1.0.1**
+shared `.mcp.json` hotfix (`mcp-json` profile, `transport` / `type` alias). Spec
+captures: `docs/spec/commandcode-*.md`. Local `projects/{slug}/mcp.json` is
+unread because the slug encoding is unpublished.

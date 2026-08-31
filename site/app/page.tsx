@@ -6,6 +6,7 @@ import { SoftwareApplicationJsonLd } from "@/components/json-ld";
 import { SiteFooter } from "@/components/site-footer";
 import { TerminalDemo } from "@/components/terminal-demo";
 import { buttonVariants } from "@/components/ui/button";
+import { PRODUCT_CHECKS, PRODUCT_VERSION } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -46,7 +47,7 @@ export default function HomePage() {
             — skills, hooks, MCP servers, lockfiles, and policy files.
           </p>
           <p className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-200 duration-700 mt-3 font-mono text-sm text-muted-foreground">
-            1.0.0 · 59 checks · offline on check
+            {PRODUCT_VERSION} · {PRODUCT_CHECKS} checks · offline on check
           </p>
 
           <div className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-300 duration-700 mt-8 space-y-4">
@@ -92,7 +93,7 @@ export default function HomePage() {
           </p>
           <ul className="mt-8 space-y-4 text-base leading-relaxed text-foreground/90">
             <li className="border-l-2 border-primary/70 pl-4">
-              59 checks, each labeled spec-required, vendor-recommendation,
+              {PRODUCT_CHECKS} checks, each labeled spec-required, vendor-recommendation,
               security, internal-consistency, or heuristic.
             </li>
             <li className="border-l-2 border-primary/70 pl-4">
@@ -128,8 +129,8 @@ export default function HomePage() {
             checks had been written from what real projects looked like instead
             of from the spec. Both were deleted. Spec-required checks cite a
             published line in docs/spec/. Heuristics stay at info and are
-            labeled. 1.0.0 is the first stable release: 59 checks, 345 tests,
-            still offline on check.
+            labeled. 1.0.0 was the first stable release. {PRODUCT_VERSION} ships{" "}
+            {PRODUCT_CHECKS} checks, still offline on check.
           </p>
         </div>
       </section>

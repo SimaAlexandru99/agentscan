@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { PRODUCT_VERSION } from "@/lib/site";
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-border/60">
@@ -7,7 +9,7 @@ export function SiteFooter() {
         <p>
           <span className="text-foreground">agentscan</span>
           {" · "}
-          1.0.0
+          {PRODUCT_VERSION}
           {" · "}
           MIT
         </p>

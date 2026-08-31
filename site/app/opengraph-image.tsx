@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+import { PRODUCT_CHECKS, PRODUCT_VERSION } from "@/lib/site";
+
 export const alt = "agentscan — audit agent config before it fails silently";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -51,7 +53,7 @@ export default function OpenGraphImage() {
             color: "#f0b100",
           }}
         >
-          1.0.0 · 59 checks · offline on check
+          {`${PRODUCT_VERSION} · ${PRODUCT_CHECKS} checks · offline on check`}
         </div>
       </div>
     ),

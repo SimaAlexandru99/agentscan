@@ -5,19 +5,19 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-59-111111?style=flat-square" alt="59 checks">
-  <img src="https://img.shields.io/badge/tests-345%20passing-111111?style=flat-square" alt="345 tests">
+  <img src="https://img.shields.io/badge/checks-72-111111?style=flat-square" alt="72 checks">
+  <img src="https://img.shields.io/badge/tests-365%20passing-111111?style=flat-square" alt="365 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
   <img src="https://img.shields.io/npm/v/@chimix/agentscan?style=flat-square&color=111111&label=npm" alt="npm version">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-1.0.0-111111?style=flat-square" alt="Changelog"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-1.1.0-111111?style=flat-square" alt="Changelog"></a>
 </p>
 
 <p align="center">
-  <strong>59 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
-  <sub>An offline linter for Claude Code, portable Agent Skills, nested AGENTS.md, and the MCP / hooks / rules surfaces that 1.0.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — <code>full</code> only where discovery, spec-required fields, and a conformance fixture (or equivalent tests) all exist.</sub>
+  <strong>72 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <sub>An offline linter for Claude Code, Command Code, portable Agent Skills, nested AGENTS.md, and the MCP / hooks / rules surfaces that 1.1.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — <code>full</code> only where discovery, spec-required fields, and a conformance fixture (or equivalent tests) all exist.</sub>
 </p>
 
 ---
@@ -63,9 +63,9 @@ of the filesystem**, where nothing else in your stack will ever tell you.
 No AI, no network on `check`. Read the config, read the disk, compare:
 
 ```
-1. Discover    .claude/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
+1. Discover    .claude/ .commandcode/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       59 checks, each labeled spec-required, vendor-recommendation,
+3. Check       72 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -116,10 +116,10 @@ too close to an unrelated `agent-scan`. The command you type stays `agentscan`.
 bun add -d @chimix/agentscan     # then: bunx agentscan check
 ```
 
-Point it at a project that actually has agent config — a `.claude/` directory,
-an `.mcp.json`, an `AGENTS.md`. A directory with agent config and no
-`package.json` is still scannable. On a directory with neither it exits with a
-clear error.
+Point it at a project that actually has agent config — a `.claude/` or
+`.commandcode/` directory, an `.mcp.json`, an `AGENTS.md`. A directory with
+agent config and no `package.json` is still scannable. On a directory with
+neither it exits with a clear error.
 
 ```bash
 # what it could possibly report, before you run it
@@ -186,7 +186,7 @@ Flags for `check`:
 | `--verbose` | Show KEEP + info-severity findings, and print each finding's id |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
-| `--global` | Also scan `~/.claude/skills` and `~/.codex/skills` (see below) |
+| `--global` | Also scan `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, and `~/.agents/skills` (see below) |
 | `--config <path>` | Config file path |
 
 **v1 does not write the tree** — no `apply`, no skill delete/install. Findings may *suggest* shell commands; you run them yourself.
@@ -199,7 +199,7 @@ Flags for `check`:
   │  ⌒  │   6 error · 2 warning · 11 info hidden (--verbose)
   └─────┘
 
-agentscan v1.0.0 — touchagency
+agentscan v1.1.0 — touchagency
 
 Scanned: 46 deps · 108 skills · 1 mcp · 2 agents · packageManager=bun
 
@@ -231,7 +231,7 @@ JSON shape (abridged):
 
 ```json
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "root": "/path/to/project",
   "factsSummary": {
     "packageManager": "bun",
@@ -259,10 +259,14 @@ Same tree → same sorted findings, with stable unique `id`s.
 
 ### `--global`
 
-Adds `~/.claude/skills` and `~/.codex/skills` to the structural checks: a
-`SKILL.md` that is malformed is malformed wherever it lives, and those findings
-carry a `source: global` evidence entry so you can tell them apart. Codex skills
-use the Agent Skills contract (`name` and `description` required).
+Adds `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, and
+`~/.agents/skills` to the structural checks: a `SKILL.md` that is malformed is
+malformed wherever it lives, and those findings carry a `source: global`
+evidence entry so you can tell them apart. Codex and Command Code skills use
+the Agent Skills contract (`name` and `description` required). `--global` also
+inventories user Command Code agents (`~/.commandcode/agents`), MCP
+(`~/.commandcode/mcp.json` and user settings `mcp.servers`), and memory
+(`~/.commandcode/AGENTS.md`). It never opens `auth.json` or `mcp-tokens.json`.
 
 Lockfile checks stay project-scoped — a project lockfile cannot pin a skill that
 lives in your home directory, so reporting one as "not in the lockfile" could
@@ -342,8 +346,8 @@ Optional `.agentscanrc.json` (create with `agentscan init`):
 
 ```json
 {
-  "skillPaths": [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills"],
-  "mcpPaths": [".mcp.json", ".claude/mcp.json", "mcp.json", ".vscode/mcp.json", ".cursor/mcp.json", ".agents/mcp_config.json", ".codex/config.toml"],
+  "skillPaths": [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills", ".commandcode/skills"],
+  "mcpPaths": [".mcp.json", ".claude/mcp.json", "mcp.json", ".vscode/mcp.json", ".cursor/mcp.json", ".agents/mcp_config.json", ".codex/config.toml", ".gemini/settings.json", "opencode.json", "opencode.jsonc", ".opencode/opencode.json", ".opencode/opencode.jsonc", ".continue/config.yaml", ".continue/mcpServers"],
   "policyFiles": ["AGENTS.md", "CLAUDE.md"],
   "ignoreSkills": [],
   "ignoreRules": [],
@@ -437,7 +441,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `claude.agent.invalid-name` | warning | Claude agent name is not lowercase letters, numbers, and hyphens |
 | `claude.agent.duplicate-name` | error | Multiple Claude agent files declare the same name |
 | `claude.mcp.no-launch` | error | A Claude MCP server with neither `command` nor `url` |
-| `claude.mcp.url-without-type` | error | A Claude remote MCP server with a `url` but no `type` — read as stdio and skipped |
+| `claude.mcp.url-without-type` | error | A Claude remote MCP server with a `url` but no `type` — read as stdio and skipped. On shared `.mcp.json`, a Command Code `transport` field satisfies the other consumer and this check does not fire |
 | `vscode.mcp.no-launch` | error | A VS Code MCP server (`servers`) with neither `command` nor `url` |
 | `cursor.mcp.no-launch` | error | A Cursor MCP server with neither `command` nor `url` |
 | `antigravity.mcp.no-launch` | error | An Antigravity MCP server with neither `command` nor `serverUrl` |
@@ -449,8 +453,21 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `opencode.mcp.remote-without-url` | error | An OpenCode `type: remote` server with no `url` |
 | `opencode.mcp.invalid-launch-for-type` | error | An OpenCode server whose launch field does not match its `type` |
 | `continue.mcp.no-launch` | error | A Continue MCP server with neither `command`, `url`, nor `uses` |
+| `commandcode.mcp.no-launch` | error | A Command Code settings / user MCP server with neither `command` nor `url` |
+| `commandcode.mcp.invalid-transport` | error | A Command Code MCP `transport` / `type` that is not `http` or `stdio` (Claude `sse` / `ws` on shared `.mcp.json` is skipped) |
+| `commandcode.mcp.http-without-url` | error | A Command Code HTTP MCP server with no `url` |
+| `commandcode.mcp.stdio-without-command` | error | A Command Code stdio MCP server with no `command` |
 | `claude.hook.command-without-command` | error | A Claude `type: command` hook with no `command` |
 | `claude.hook.invalid-group` | error | A Claude hook matcher group with no `hooks` array |
+| `commandcode.hook.unknown-event` | error | A Command Code hook registered under an event that is never dispatched (four events only) |
+| `commandcode.hook.missing-script` | error | A Command Code command hook whose script does not exist |
+| `commandcode.hook.invalid-group` | error | A Command Code hook group missing the required nested `hooks` array (flat Claude-style arrays are invalid here) |
+| `commandcode.hook.command-without-command` | error | A Command Code `type: command` hook with no `command` |
+| `commandcode.hook.unknown-handler-type` | error | A Command Code hook whose handler type is not `command` |
+| `commandcode.hook.timeout-out-of-bounds` | error | A Command Code hook `timeout` outside 0–600 seconds |
+| `commandcode.agent.reserved-name` | error | A Command Code custom agent named `explore`, `plan`, `review`, or `general` — ignored at load |
+| `commandcode.agent.invalid-permission-mode` | error | A Command Code agent `permissionMode` that is not a documented value |
+| `commandcode.agent.invalid-field-type` | error | A Command Code agent field whose type the spec does not accept |
 | `mcp.command-missing` | error | An MCP `command` that is a path-like value whose file does not exist on disk |
 | `security.hardcoded-secret` | error | A token-shaped literal in MCP config (the value is never echoed back) |
 | `mcp.literal-env` | warning | Secret-named `env` values that are literals instead of interpolation |
@@ -477,7 +494,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `codex.budget.instructions` | info | Codex root→cwd `AGENTS.md` chain exceeds the default 32 KiB |
 | `cursor.rule.too-large` | info | A `.cursor/rules/*.mdc` file exceeds the 500-line recommendation |
 
-### Coverage in 1.0.0
+### Coverage in 1.1.0
 
 `full` means documented locations are discovered, spec-required fields are checked, and a conformance fixture (or equivalent tests) is green. `partial` means some locations or some checks. `none` means not implemented. Official pages that could not be captured are `none`, not guessed.
 
@@ -485,7 +502,8 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 |-----------|--------------|--------|--------|-------|-----|
 | Agent Skills | none | full | none | none | none |
 | AGENTS.md | partial (nested + nearest-wins; no required fields) | none | none | none | none |
-| Claude Code | partial (walk-up `CLAUDE.md`; 200-line target) | partial (native; `name` optional) | partial (walk-up `.claude/agents`) | partial (33 events; command handlers only) | full (`claude-json`) |
+| Claude Code | partial (walk-up `CLAUDE.md`; 200-line target) | partial (native; `name` optional) | partial (walk-up `.claude/agents`) | partial (33 events; command handlers only) | full (`claude-json`; shared `.mcp.json` is `mcp-json`) |
+| Command Code | partial (per-dir `AGENTS.md` else `.commandcode/AGENTS.md`; `@path` is not a hard error) | full (Agent Skills; `.commandcode/skills` + `.agents/skills`) | partial (filename name; reserved names; no missing-description) | partial (4 events; command handlers; nested groups) | full (`mcp-json` + `commandcode-json`; `transport` / `type` alias) |
 | Codex | partial (32 KiB chain; no invented agents TOML) | full (Agent Skills; `.codex/skills`) | none | none | full (`codex-toml`) |
 | VS Code | partial (`.github` instruction files; no required fields) | none | partial (filename may be the name) | full (8 events) | full (`servers`) |
 | Cursor | none | full (Agent Skills; nested `SKILL.md`) | none | none | full |
@@ -505,11 +523,13 @@ Cursor project rules (`.cursor/rules/**/*.mdc`) are a separate surface: discover
 
 Old 0.7 rule ids still work in `ignoreRules` and `explain` (for example `hook.missing-script` aliases `claude.hook.missing-script`).
 
-Agent definitions are checked for structure only. An agent's frontmatter `name`
-is not compared to the filename; it must simply be a valid lowercase identifier
-and unique. Model identifiers and tool names
-are likewise not validated: both would need a hardcoded list, which is the shape
-that already shipped a false error. See [plans/003](plans/003-validate-agent-definitions.md).
+Agent definitions are checked for structure only. A Claude agent's frontmatter
+`name` is not compared to the filename; it must simply be a valid lowercase
+identifier and unique. Command Code supplies `name` from the filename when
+frontmatter omits it, and does not emit missing-name or missing-description.
+Model identifiers and tool names are likewise not validated: both would need a
+hardcoded list, which is the shape that already shipped a false error. See
+[plans/003](plans/003-validate-agent-definitions.md).
 
 `skill.broken-reference` reads the body, not just the frontmatter. It looks for
 paths under the conventional bundled directories (`scripts/`, `references/`,
@@ -522,7 +542,8 @@ illustration, not a pointer.
 ### Where it looks for hooks
 
 The Claude hooks reference lists seven places a hook can be registered. agentscan
-reads the four that live inside the scanned project, plus VS Code workspace hooks:
+reads the four that live inside the scanned project, plus VS Code workspace hooks
+and Command Code settings hooks:
 
 | Registered in | Script paths resolve against |
 |---|---|
@@ -531,6 +552,7 @@ reads the four that live inside the scanned project, plus VS Code workspace hook
 | `SKILL.md` frontmatter | the skill's own directory, then the project root |
 | `.claude/agents/*.md` frontmatter | the agent file's directory, then the project root |
 | `.github/hooks/*.json` (VS Code) | project root and the hooks directory |
+| `.commandcode/settings.json` · `.commandcode/settings.local.json` (and user settings under `--global`) | project root, `$COMMANDCODE_PROJECT_DIR`, `$COMMANDCODE_CWD` |
 
 `${CLAUDE_PLUGIN_ROOT}` is expanded **only** for a hook that came from a plugin.
 In a settings file it names nothing, so the path is skipped rather than guessed
@@ -543,9 +565,10 @@ A value is only resolved when it is path-like and the answer is certain; shell
 programs (`a && b`, `$(...)`, pipes), bare PATH binaries (`npx`, `uvx`), and
 unresolved env vars are skipped. A false "broken" on a working `npx` server
 would be worse than silence. `node -e "<code>"` is never treated as a path.
-Only `$CLAUDE_PROJECT_DIR` is expanded — other variables are left alone rather
-than guessed at. Schema checks judge misconfiguration, not whether a correctly
-shaped entry will start at runtime.
+Only `$CLAUDE_PROJECT_DIR`, `$COMMANDCODE_PROJECT_DIR`, and `$COMMANDCODE_CWD`
+are expanded — other variables are left alone rather than guessed at. Schema
+checks judge misconfiguration, not whether a correctly shaped entry will start
+at runtime.
 
 Spec-required checks are written against published pages, not against what
 happens to appear in real projects. Two that were written the other way round
@@ -572,7 +595,13 @@ first.
 - **Runtime split.** Source development and the composite Action use Bun; the
   published `dist/cli.js` runs on Node 20.11+ or Bun. The source entrypoint uses
   Bun's `import.meta.dir` / `import.meta.main` and is not the Node entrypoint.
-- **Three hook locations are unread.** `~/.claude/settings.json`, managed policy
+- **Command Code local MCP is unread.** `~/.commandcode/projects/{project}/mcp.json`
+  is keyed by a working-directory slug that the sessions page does not publish.
+  Until it does, that path is skipped rather than guessed. Bundled Command Code
+  skills and `--skill` launch flags are not project files and are not scanned.
+  `mods.paths` are inventoried; the TypeScript is never executed or imported.
+  `auth.json` and `mcp-tokens.json` are never opened.
+- **Three Claude hook locations are unread.** `~/.claude/settings.json`, managed policy
   settings, and installed marketplace plugins under `~/.claude/plugins` all sit
   outside the scanned project, and the docs say a plugin's install directory
   changes on every update. A hook registered in one of those, pointing at a
@@ -589,6 +618,11 @@ first.
 Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
 GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
+
+**1.1.0** (31 August 2026) adds a native Command Code provider: 72 checks, 365
+tests, still offline on `check`. Shared `.mcp.json` is `mcp-json` (Claude and
+Command Code), not Claude-only — that MCP hotfix is **1.0.1** in the changelog
+and ships inside this package version.
 
 **1.0.0** (30 August 2026) is the first stable release: 59 checks, 345 tests,
 still offline on `check`. It adds portable Agent Skills (including Cursor and

@@ -7,6 +7,86 @@ read-only in every version below.
 GitHub already has release pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
 0.9.0 was planned as a separate train and shipped inside 1.0.0.
+1.0.1 is the shared-MCP hotfix; it is documented below and ships inside 1.1.0
+(the published package version). A separate 1.0.1 npm tag would need an
+intermediate commit that this train does not cut.
+
+## 1.1.0 — 2026-08-31
+
+Native Command Code provider. 72 checks, 365 tests. Includes 1.0.1.
+
+### Added
+
+- Provider `commandcode` from official pages under `docs/spec/commandcode-*.md`
+  (read 2026-08-31). Unknown stays skip: no invented local-project MCP slug,
+  no bundled-skill scan, no `--skill` flags, no model-id list, no mods
+  execution.
+- Skills: `.commandcode/skills` (Agent Skills contract), `.agents/skills`
+  compatibility, extra dirs from the highest-precedence settings `skills`
+  array (replace, not merge). User `~/.commandcode/skills` and
+  `~/.agents/skills` under `--global`.
+- Memory: per directory `AGENTS.md`, else `.commandcode/AGENTS.md` — at most
+  one. User `~/.commandcode/AGENTS.md` under `--global`. Unresolved `@path`
+  is not a hard error. Codex's instruction chain excludes
+  `.commandcode/AGENTS.md`.
+- Agents: walk-up `.commandcode/agents/*.md` (one level); filename supplies
+  `name`; no `claude.agent.*` on these files. Checks:
+  `commandcode.agent.reserved-name` (`explore` / `plan` / `review` /
+  `general`), `invalid-permission-mode`, `invalid-field-type`.
+- Hooks: four events (`PreToolUse`, `PostToolUse`, `Stop`, `SessionStart`);
+  nested `hooks` array required; command handlers only; timeout 0–600.
+  `COMMANDCODE_PROJECT_DIR` and `COMMANDCODE_CWD` expand on script paths.
+- Settings: `model` inventoried, not validated. Inline `mcp.servers` (array
+  or object map; unnamed array items are inventory-only). User
+  `~/.commandcode/mcp.json` under `--global`.
+- Slash commands: inventory `.commandcode/commands` (walk-up) and the user
+  dir — no required-field checks.
+- Mods: inventory `mods.paths` — never execute or import TypeScript.
+- Conformance fixture `tests/fixtures/conformance/commandcode/`.
+- `spec:check` tracks 26 captured surfaces and diffs Command Code hook
+  events against https://commandcode.ai/docs/hooks.
+
+### Changed
+
+- Default `skillPaths` includes `.commandcode/skills`.
+- `--global` / `includeGlobal` also scans `~/.commandcode/skills`,
+  `~/.agents/skills`, user Command Code agents, MCP, and memory.
+- Coverage matrix: Command Code row. Shared `.mcp.json` is `mcp-json`, not
+  Claude-only.
+
+## 1.0.1 — 2026-08-31
+
+Shared `.mcp.json` is not Claude-only. Command Code writes it for `--scope
+project` with `transport` (and `type` as an alias). A Claude-keyed
+`url`-without-`type` check on that path is a false positive on valid
+Command Code HTTP config.
+
+### Fixed
+
+- `.mcp.json` uses schema profile `mcp-json`, `consumedBy: ["claude",
+  "commandcode"]`, `sourceProvider: "unknown"`. `.claude/mcp.json` and
+  project `mcp.json` stay `claude-json`.
+- Parse `transport` first; `type` is an alias. Store which field was
+  present.
+- `claude.mcp.url-without-type` on `mcp-json` fires only when `url` is set
+  and transport is unset. On `claude-json` it still fires when the field is
+  `transport` or missing. `{ "transport": "http", "url": "…" }` does not
+  emit this.
+- Command Code transport defects on `mcp-json` and `commandcode-json`:
+  `commandcode.mcp.invalid-transport`, `http-without-url`,
+  `stdio-without-command`. Valid transports are `http` and `stdio`. Claude
+  `sse` / `ws` on shared `.mcp.json` is not a Command Code invalid-transport.
+- Empty launch on `mcp-json` still emits `claude.mcp.no-launch` (both
+  consumers need a launch field). `commandcode-json` empty launch emits
+  `commandcode.mcp.no-launch`.
+- `looksLikeServerEntry` recognises `transport`. Absolute MCP paths under
+  `--global` are not joined as relative.
+
+### Security
+
+- Never open `~/.commandcode/auth.json` or `mcp-tokens.json`.
+- Local `~/.commandcode/projects/{project}/mcp.json` is unread: the slug
+  encoding is unpublished. Prefer skip over inventing it.
 
 ## 1.0.0 — 2026-08-30
 
