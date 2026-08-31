@@ -11,6 +11,27 @@ and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
 (the published package version). A separate 1.0.1 npm tag would need an
 intermediate commit that this train does not cut.
 
+## 1.2.1 — 2026-08-31
+
+Codex user MCP under `--global`. **95 checks**, **441 tests**.
+
+### Added
+
+- `$CODEX_HOME/config.toml` (default `~/.codex/config.toml`) is opened only
+  with `--global`. Same `codex-toml` shape as project `.codex/config.toml`.
+- Same-name user and project servers both stay in the inventory. The
+  published page does not quote a replace-entirely rule, so this scanner
+  does not invent `codexEffective`.
+- Spec recapture `docs/spec/codex-mcp.md` (user path, `CODEX_HOME`, unread
+  system / managed / requirements / profiles / plugins / trust / `auth.json`).
+
+### Unread (intentional)
+
+- System `/etc/codex/config.toml`, managed preferences, `requirements.toml`,
+  profile files, plugin MCP, `trust_level`.
+- User-file `project_doc_*` knobs.
+- Claude global settings; Command Code `projects/{slug}/mcp.json`.
+
 ## 1.2.0 — 2026-08-31
 
 Native Grok Build provider against 2026-08-31 official docs. **95 checks**,

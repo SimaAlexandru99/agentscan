@@ -6,18 +6,18 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/checks-95-111111?style=flat-square" alt="95 checks">
-  <img src="https://img.shields.io/badge/tests-435%20passing-111111?style=flat-square" alt="435 tests">
+  <img src="https://img.shields.io/badge/tests-441%20passing-111111?style=flat-square" alt="441 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
   <img src="https://img.shields.io/npm/v/@chimix/agentscan?style=flat-square&color=111111&label=npm" alt="npm version">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-1.2.0-111111?style=flat-square" alt="Changelog"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-1.2.1-111111?style=flat-square" alt="Changelog"></a>
 </p>
 
 <p align="center">
   <strong>95 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
-  <sub>An offline linter for Claude Code, Command Code, Grok Build, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks, and the MCP / hooks / rules surfaces that 1.2.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
+  <sub>An offline linter for Claude Code, Command Code, Grok Build, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks, and the MCP / hooks / rules surfaces that 1.2.1 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
 ---
@@ -199,7 +199,7 @@ Flags for `check`:
   │  ⌒  │   6 error · 2 warning · 11 info hidden (--verbose)
   └─────┘
 
-agentscan v1.2.0 — touchagency
+agentscan v1.2.1 — touchagency
 
 Scanned: 46 deps · 108 skills · 1 mcp · 2 agents · packageManager=bun
 
@@ -231,7 +231,7 @@ JSON shape (abridged):
 
 ```json
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "root": "/path/to/project",
   "factsSummary": {
     "packageManager": "bun",
@@ -529,7 +529,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `codex.budget.instructions` | info | Codex root→cwd `AGENTS.md` chain exceeds the default 32 KiB |
 | `cursor.rule.too-large` | info | A `.cursor/rules/*.mdc` file exceeds the 500-line recommendation |
 
-### Coverage in 1.2.0
+### Coverage in 1.2.1
 
 Each cell is one coverage dimension. There is no `full` / `partial` label: a
 documented global or static location that is not opened stays **unread**.
@@ -696,6 +696,11 @@ first.
 Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
 GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
+
+**1.2.1** (31 August 2026) opens Codex user MCP (`$CODEX_HOME/config.toml`
+or `~/.codex/config.toml`) under `--global`. Same-name user and project
+servers are both inventoried. System, managed, requirements, profiles,
+plugins, and `trust_level` stay unread. `auth.json` is never opened.
 
 **1.2.0** (31 August 2026) adds a native Grok Build provider: project
 `.grok/*` plus `$GROK_HOME` / `~/.grok/*` under `--global`. Compatibility

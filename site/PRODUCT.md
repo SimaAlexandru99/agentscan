@@ -1,11 +1,11 @@
 # agentscan — Persuade landing
 
-Source of truth for product claims: repo `README.md` (1.2.0). Do not invent
+Source of truth for product claims: repo `README.md` (1.2.1). Do not invent
 metrics. Do not mention NDA projects.
 
 ## Product
 
-**agentscan** 1.2.0 is a Bun-first TypeScript CLI that audits agent
+**agentscan** 1.2.1 is a Bun-first TypeScript CLI that audits agent
 configuration — skills, `skills-lock.json`, hooks, MCP servers, agent
 definitions, and policy files. 95 checks. Linters read the code your agent
 writes. This reads **the agent itself**.
@@ -31,7 +31,7 @@ or in CI.
 
 > Your agent config says the guard is on. The script is gone. Nothing told you.
 
-Version line under the lede: `1.2.0 · 95 checks · offline on check`.
+Version line under the lede: `1.2.1 · 95 checks · offline on check`.
 
 ### Primary CTA
 
@@ -65,7 +65,7 @@ An earlier build reported 37 findings across 17 real projects of which
 **25 were false** — two checks had been written from what real projects looked
 like instead of from the spec. Both were deleted. Spec-required checks cite a
 published line in `docs/spec/`. Heuristics stay at `info` and are labeled.
-1.0.0 was the first stable release. 1.2.0 ships 95 checks, still
+1.0.0 was the first stable release. 1.2.1 ships 95 checks, still
 offline on `check`. Native Command Code and Grok Build support is sourced from
 official pages, not from observed projects. Grok Claude/Cursor compatibility is
 unread as schema identity.
@@ -77,7 +77,7 @@ to a published spec line.
 
 - No fake testimonials, logos, or adoption numbers
 - Do not invent check counts beyond README badges/copy already used for framing
-  (1.2.0: 95 checks)
+  (1.2.1: 95 checks)
 - Do not name internal/NDA projects
 - Do not claim Command Code local-project MCP (`projects/{slug}/mcp.json`) is
   scanned — the slug encoding is unpublished
