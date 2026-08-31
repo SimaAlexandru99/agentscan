@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { mkPinnedRoot } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import { runChecks } from "../../src/checks/index";
 import { defaultConfig } from "../../src/config/schema";
 import { extractFacts } from "../../src/facts/extract";
 
 function tmpProject(prefix: string): string {
-  return mkdtempSync(join(tmpdir(), prefix));
+  return mkPinnedRoot(prefix);
 }
 
 function write(root: string, rel: string, body: string): void {

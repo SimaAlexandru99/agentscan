@@ -11,6 +11,26 @@ and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
 (the published package version). A separate 1.0.1 npm tag would need an
 intermediate commit that this train does not cut.
 
+## Unreleased
+
+- `.agentscan-root` now stops walk-up, so a dirty `/tmp/.git` cannot become the
+  scan root for fixtures or nested checkouts.
+- Fenced `SKILL.md` examples: a bundled path on the second line of a code
+  fence is not `skill.broken-reference`.
+- Unclosed YAML `---` is `config.unreadable`, not `*.skill.missing-frontmatter`.
+- Invalid Windsurf rule YAML is not `windsurf.rule.missing-trigger`.
+- `node .` / `"."` is not a missing hook script or MCP command.
+- Skill-directory symlinks that leave the scan root are not inventoried.
+- `--global` copy names Copilot hooks and Windsurf user files; Action
+  `bun-version` defaults to `1.4.0` (CI pin).
+- Windsurf Cascade hooks: `.windsurf/hooks.json` and `--global`
+  `~/.codeium/windsurf/hooks.json`. 12 snake_case events; `command` /
+  `powershell`; `windsurf.hook.unknown-event`, `missing-script`,
+  `command-without-command`.
+- Windsurf Cascade skills: `.windsurf/skills` and `--global`
+  `~/.codeium/windsurf/skills`. Agent Skills contract (page cites
+  agentskills.io). System skill dirs unread.
+
 ## 1.3.0 — 2026-08-31
 
 Native Windsurf / Cascade coverage against 2026-08-31 official docs.

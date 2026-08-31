@@ -1,15 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { mkPinnedProject } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import { defaultConfig } from "../../src/config/schema";
 import { extractFacts } from "../../src/facts/extract";
 
 function tmpProject(prefix: string): string {
-  const root = mkdtempSync(join(tmpdir(), prefix));
-  writeFileSync(join(root, "package.json"), '{"name":"mcp-uses"}', "utf8");
-  return root;
+  return mkPinnedProject(prefix, "mcp-uses");
 }
 
 function write(root: string, rel: string, body: string): void {

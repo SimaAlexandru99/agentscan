@@ -58,6 +58,8 @@ describe("hookScriptPath — extracts", () => {
 
   test("interpreter plus a bare script filename", () => {
     expect(hookScriptPath("node hook.js")).toBe("hook.js");
+    expect(hookScriptPath("node .")).toBeUndefined();
+    expect(hookScriptPath("python .")).toBeUndefined();
   });
 
   test("${CLAUDE_PLUGIN_ROOT} only where a plugin defines it", () => {

@@ -137,6 +137,9 @@ function missingTriggerFinding(rule: RuleFact): Finding | undefined {
   if (rule.sourceProvider !== "windsurf" || rule.windsurfScope !== "workspace") {
     return undefined;
   }
+  if (rule.windsurfTriggerUnreadable === true) {
+    return undefined;
+  }
   if (rule.windsurfHasTrigger === true) {
     return undefined;
   }

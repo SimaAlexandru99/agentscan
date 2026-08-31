@@ -607,4 +607,22 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
     provenance: "spec-required",
     lastVerified: "2026-08-31",
   },
+  {
+    id: "windsurf.hook.unknown-event",
+    description: "Windsurf hook registered under an event name that is never dispatched",
+    provenance: "spec-required",
+    lastVerified: "2026-08-31",
+  },
+  {
+    id: "windsurf.hook.missing-script",
+    description: "Windsurf hook points at a script that does not exist, so it never runs",
+    provenance: "internal-consistency",
+    lastVerified: "2026-08-31",
+  },
+  {
+    id: "windsurf.hook.command-without-command",
+    description: "Windsurf hook declares neither command nor powershell",
+    provenance: "spec-required",
+    lastVerified: "2026-08-31",
+  },
 ];

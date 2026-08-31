@@ -574,6 +574,8 @@ function hooksFromProfile(item: Record<string, unknown>, ctx: HookContext): Hook
       return [commandcodeHookFromEntry(item, ctx)];
     case "grok":
       return grokHookFromEntry(item, ctx);
+    case "windsurf":
+      return [];
     default: {
       const neverProfile: never = ctx.schemaProfile;
       return neverProfile;

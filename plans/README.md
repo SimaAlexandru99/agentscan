@@ -161,17 +161,12 @@ plan was written:
 
 - **`zod ^3.24.0` resolves to the v3/v4 bridge**, shipping 2.2 MB of unreachable
   v4 alongside the v3 API in use. Migrating is a two-file change.
-- **~90 lines of Next.js config parsing** (`src/facts/extract.ts:92-179`) feed
-  `Facts.configs.next`, which the documented flat-key `hasConfig` matcher cannot
-  reach. Either make `hasConfig` support dotted paths or delete the parsing.
-- **The YAML rule engine's fate.** Still unresolved from the first run, and the
-  deep audit sharpened it: no test fires a builtin rule, no builtin rule uses
-  `dep`/`skillMatches`/`hasConfig`, and a typo'd clause is indistinguishable from
-  a correct non-matching one. Either invest (strict `when` schema, the missing
-  `any`/`hasMcp`/`hasHook` matchers) or shrink it.
-- **No `AGENTS.md` in the repo whose product audits `AGENTS.md`.** Three
-  agent-executable plans are queued here and the context they need is scattered
-  across README, a code comment, and this file.
+
+Settled since this list was written (do not re-plan):
+
+- **Next.js `hasConfig` / `Facts.configs.next`.** Deleted with the YAML engine.
+- **YAML rule engine.** Deleted (plan 010). Budgets are code in `src/checks/budgets.ts`.
+- **No `AGENTS.md` in this repo.** Plan 017 added `AGENTS.md`.
 
 ## 2026-08-10 deep audit follow-up
 
@@ -281,6 +276,16 @@ Shipped as **1.3.0** (99 checks, 457 tests). Workspace `.devin/rules` +
 `.windsurf/rules` + `.windsurfrules`; `--global` Cascade MCP and
 `global_rules.md`. Unread: Devin CLI MCP, auto memories, system rules,
 project MCP (none quoted). Cursor 500-line rule is not applied.
+
+## 2026-08-31 true findings (plan 038)
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 038 | Findings say true things (pin, false positives, honesty, Windsurf hooks) | P0 | M | — | DONE |
+
+`.agentscan-root` stops walk-up. Fence/unclosed YAML/`node .`/Windsurf
+trigger false findings. Skill-dir symlink bound. `--global` copy. Cascade
+`.windsurf/hooks.json`.
 
 ## 2026-08-31 Codex user MCP under `--global`
 

@@ -300,6 +300,22 @@ export const SPEC_SURFACES: SpecSurface[] = [
     stalenessRisk: "high",
     url: "https://docs.windsurf.com/windsurf/cascade/mcp",
   },
+  {
+    provider: "windsurf",
+    surface: "hooks",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://docs.devin.ai/desktop/cascade/hooks",
+  },
+  {
+    provider: "windsurf",
+    surface: "skills",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://docs.devin.ai/desktop/cascade/skills",
+  },
 ];
 
 const STALE_AFTER_DAYS = 90;

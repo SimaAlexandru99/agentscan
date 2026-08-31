@@ -37,7 +37,8 @@ function skillSchema(skill: SkillFact): SkillSchemaProfile {
     skill.sourceProvider === "agent-skills" ||
     skill.sourceProvider === "cursor" ||
     skill.sourceProvider === "codex" ||
-    skill.sourceProvider === "commandcode"
+    skill.sourceProvider === "commandcode" ||
+    skill.sourceProvider === "windsurf"
   ) {
     return "agent-skills";
   }

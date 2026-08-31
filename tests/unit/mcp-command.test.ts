@@ -25,6 +25,8 @@ describe("mcpCommandPath", () => {
     expect(mcpCommandPath("npx")).toBeUndefined();
     expect(mcpCommandPath("uvx")).toBeUndefined();
     expect(mcpCommandPath("node")).toBeUndefined();
+    expect(mcpCommandPath(".")).toBeUndefined();
+    expect(mcpCommandPath("..")).toBeUndefined();
     expect(mcpCommandPath("npx -y pkg")).toBeUndefined();
     expect(mcpCommandPath("${CLAUDE_PLUGIN_ROOT}/servers/db")).toBeUndefined();
     expect(mcpCommandPath("a && b")).toBeUndefined();

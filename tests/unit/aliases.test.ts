@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { mkPinnedProject } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import { ignoreRuleSet } from "../../src/checks/aliases";
 
@@ -13,9 +13,8 @@ describe("rule aliases", () => {
   });
 
   test("a project ignoreRules entry with the old id hides the new finding", () => {
-    const root = mkdtempSync(join(tmpdir(), "agentscan-alias-"));
+    const root = mkPinnedProject("agentscan-alias-", "alias");
     mkdirSync(join(root, ".claude"), { recursive: true });
-    writeFileSync(join(root, "package.json"), '{"name":"alias"}', "utf8");
     writeFileSync(
       join(root, ".claude", "settings.json"),
       JSON.stringify({ hooks: { Nope: [{ hooks: [{ type: "command", command: "true" }] }] } }),

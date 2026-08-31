@@ -27,13 +27,13 @@ inputs:
     required: false
     default: "human"
   global:
-    description: Also scan ~/.claude/skills and ~/.codex/skills. Rarely wanted in CI.
+    description: Also scan user skill dirs (including ~/.codeium/windsurf/skills), Copilot ~/.copilot/hooks, Codex/Grok/Command Code user MCP, and Windsurf ~/.codeium/windsurf MCP, hooks.json, plus global_rules.md. Rarely wanted in CI.
     required: false
     default: "false"
   bun-version:
     description: Bun version to install for the Action's source runtime. The published dist/cli.js bundle also runs on Node 20.11+.
     required: false
-    default: "latest"
+    default: "1.4.0"
 
 outputs:
   exit-code:

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runCheck } from "../../src/commands/check";
+import { mkPinnedRoot } from "../helpers/tmp";
 
 /**
  * Cases found by running the CLI against hostile input. Each one used to be
@@ -16,7 +16,7 @@ type JsonReport = {
 };
 
 function project(files: Record<string, string>): string {
-  const dir = mkdtempSync(join(tmpdir(), "agentscan-robust-"));
+  const dir = mkPinnedRoot("agentscan-robust-");
   for (const [rel, body] of Object.entries(files)) {
     const path = join(dir, rel);
     mkdirSync(join(path, ".."), { recursive: true });
@@ -442,7 +442,7 @@ describe("root resolution is visible", () => {
   });
 
   test("a directory with neither package.json nor agent config fails clearly", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "agentscan-empty-"));
+    const dir = mkPinnedRoot("agentscan-empty-");
     await expect(runCheck({ dir, failOn: "never" })).rejects.toThrow(
       /No package\.json or agent configuration found/,
     );

@@ -108,6 +108,17 @@ describe("skillReferences — refuses to guess", () => {
     expect(skillReferences(body)).toEqual(["references/real.md"]);
   });
 
+  test("a path on the second line of a fenced block is still an example", () => {
+    const body = [
+      "Real: references/real.md",
+      "```bash",
+      "echo hi",
+      "cat references/illustrative.md",
+      "```",
+    ].join("\n");
+    expect(skillReferences(body)).toEqual(["references/real.md"]);
+  });
+
   test("a bare filename with no bundled prefix", () => {
     expect(skillReferences("See README.md and SKILL.md")).toEqual([]);
   });

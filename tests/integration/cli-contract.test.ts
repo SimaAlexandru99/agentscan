@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { mkPinnedRoot } from "../helpers/tmp";
 import { VERSION } from "../../src/version";
 
 const repoRoot = join(import.meta.dir, "../..");
@@ -64,7 +64,7 @@ describe("built CLI contract", () => {
   });
 
   test("an error finding fails --fail-on error", () => {
-    const dir = mkdtempSync(join(tmpdir(), "agentscan-cli-contract-"));
+    const dir = mkPinnedRoot("agentscan-cli-contract-");
     writeFileSync(join(dir, "package.json"), "{not json", "utf8");
 
     const result = runCli("check", dir, "--json", "--fail-on", "error");

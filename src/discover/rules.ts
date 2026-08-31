@@ -18,28 +18,30 @@ function lineCount(text: string): number {
  * Workspace Windsurf rules declare `trigger` in frontmatter.
  * See docs/spec/windsurf-rules.md.
  */
-function windsurfWorkspaceHasTrigger(text: string): boolean {
+function windsurfWorkspaceTrigger(
+  text: string,
+): "yes" | "no" | "unreadable" {
   let body = text;
   if (body.charCodeAt(0) === 0xfeff) {
     body = body.slice(1);
   }
   body = body.replace(/\r\n/g, "\n");
   if (!body.startsWith("---")) {
-    return false;
+    return "no";
   }
   const fence = /\n(?:---|\.\.\.)[ \t]*(?:\n|$)/.exec(body.slice(3));
   if (fence === null) {
-    return false;
+    return "unreadable";
   }
   try {
     const block = parseYaml(body.slice(3, 3 + fence.index)) as unknown;
     if (block === null || typeof block !== "object" || Array.isArray(block)) {
-      return false;
+      return "unreadable";
     }
     const trigger = (block as Record<string, unknown>).trigger;
-    return typeof trigger === "string" && trigger.trim().length > 0;
+    return typeof trigger === "string" && trigger.trim().length > 0 ? "yes" : "no";
   } catch {
-    return false;
+    return "unreadable";
   }
 }
 
@@ -62,6 +64,15 @@ export function readRuleFile(
       });
     }
     const windsurfScope = extras?.windsurfScope;
+    const trigger =
+      windsurfScope === "workspace" ? windsurfWorkspaceTrigger(text) : undefined;
+    if (trigger === "unreadable") {
+      errors.push({
+        path,
+        kind: "unexpected-shape",
+        detail: "Windsurf rule frontmatter is not valid YAML",
+      });
+    }
     return {
       path,
       sourceProvider,
@@ -69,9 +80,9 @@ export function readRuleFile(
       byteLength: result.buf.length,
       charCount: text.length,
       ...(windsurfScope === undefined ? {} : { windsurfScope }),
-      ...(windsurfScope === "workspace"
-        ? { windsurfHasTrigger: windsurfWorkspaceHasTrigger(text) }
-        : {}),
+      ...(trigger === "yes" ? { windsurfHasTrigger: true } : {}),
+      ...(trigger === "no" ? { windsurfHasTrigger: false } : {}),
+      ...(trigger === "unreadable" ? { windsurfTriggerUnreadable: true } : {}),
     };
   } catch (err) {
     errors.push({

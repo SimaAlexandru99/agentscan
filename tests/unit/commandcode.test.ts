@@ -2,6 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import * as os from "node:os";
 import { join } from "node:path";
+import { mkPinnedProject } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import { runChecks } from "../../src/checks/index";
 import { defaultConfig } from "../../src/config/schema";
@@ -9,9 +10,7 @@ import { mcpCommandPath } from "../../src/discover/mcp";
 import { extractFacts } from "../../src/facts/extract";
 
 function tmpProject(prefix: string): string {
-  const root = mkdtempSync(join(os.tmpdir(), prefix));
-  writeFileSync(join(root, "package.json"), '{"name":"cc"}', "utf8");
-  return root;
+  return mkPinnedProject(prefix, "cc");
 }
 
 function write(root: string, rel: string, body: string): void {
