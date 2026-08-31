@@ -5,19 +5,19 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-87-111111?style=flat-square" alt="87 checks">
-  <img src="https://img.shields.io/badge/tests-420%20passing-111111?style=flat-square" alt="420 tests">
+  <img src="https://img.shields.io/badge/checks-95-111111?style=flat-square" alt="95 checks">
+  <img src="https://img.shields.io/badge/tests-435%20passing-111111?style=flat-square" alt="435 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
   <img src="https://img.shields.io/npm/v/@chimix/agentscan?style=flat-square&color=111111&label=npm" alt="npm version">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-1.1.0-111111?style=flat-square" alt="Changelog"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-1.2.0-111111?style=flat-square" alt="Changelog"></a>
 </p>
 
 <p align="center">
-  <strong>87 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
-  <sub>An offline linter for Claude Code, Command Code, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks, and the MCP / hooks / rules surfaces that 1.1.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
+  <strong>95 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <sub>An offline linter for Claude Code, Command Code, Grok Build, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks, and the MCP / hooks / rules surfaces that 1.2.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
 ---
@@ -63,9 +63,9 @@ of the filesystem**, where nothing else in your stack will ever tell you.
 No AI, no network on `check`. Read the config, read the disk, compare:
 
 ```
-1. Discover    .claude/ .commandcode/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
+1. Discover    .claude/ .commandcode/ .grok/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       87 checks, each labeled spec-required, vendor-recommendation,
+3. Check       95 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -116,8 +116,8 @@ too close to an unrelated `agent-scan`. The command you type stays `agentscan`.
 bun add -d @chimix/agentscan     # then: bunx agentscan check
 ```
 
-Point it at a project that actually has agent config — a `.claude/` or
-`.commandcode/` directory, an `.mcp.json`, an `AGENTS.md`. A directory with
+Point it at a project that actually has agent config — a `.claude/`,
+`.commandcode/`, or `.grok/` directory, an `.mcp.json`, an `AGENTS.md`. A directory with
 agent config and no `package.json` is still scannable. On a directory with
 neither it exits with a clear error.
 
@@ -186,7 +186,7 @@ Flags for `check`:
 | `--verbose` | Show KEEP + info-severity findings, and print each finding's id |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
-| `--global` | Also scan `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, and `~/.agents/skills` (see below) |
+| `--global` | Also scan `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, and `$GROK_HOME` / `~/.grok` (see below) |
 | `--config <path>` | Config file path |
 
 **v1 does not write the tree** — no `apply`, no skill delete/install. Findings may *suggest* shell commands; you run them yourself.
@@ -199,7 +199,7 @@ Flags for `check`:
   │  ⌒  │   6 error · 2 warning · 11 info hidden (--verbose)
   └─────┘
 
-agentscan v1.1.0 — touchagency
+agentscan v1.2.0 — touchagency
 
 Scanned: 46 deps · 108 skills · 1 mcp · 2 agents · packageManager=bun
 
@@ -231,7 +231,7 @@ JSON shape (abridged):
 
 ```json
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "root": "/path/to/project",
   "factsSummary": {
     "packageManager": "bun",
@@ -259,14 +259,17 @@ Same tree → same sorted findings, with stable unique `id`s.
 
 ### `--global`
 
-Adds `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, and
-`~/.agents/skills` to the structural checks: a `SKILL.md` that is malformed is
-malformed wherever it lives, and those findings carry a `source: global`
-evidence entry so you can tell them apart. Codex and Command Code skills use
-the Agent Skills contract (`name` and `description` required). `--global` also
-inventories user Command Code agents (`~/.commandcode/agents`), MCP
-(`~/.commandcode/mcp.json` and user settings `mcp.servers`), and memory
-(`~/.commandcode/AGENTS.md`). It never opens `auth.json` or `mcp-tokens.json`.
+Adds `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`,
+`~/.agents/skills`, and `$GROK_HOME` / `~/.grok` (skills, hooks, `config.toml`)
+to the structural checks: a `SKILL.md` that is malformed is malformed wherever
+it lives, and those findings carry a `source: global` evidence entry so you can
+tell them apart. Codex and Command Code skills use the Agent Skills contract
+(`name` and `description` required). Grok skills do not — `name` and
+`description` are optional. `--global` also inventories user Command Code
+agents (`~/.commandcode/agents`), MCP (`~/.commandcode/mcp.json` and user
+settings `mcp.servers`), and memory (`~/.commandcode/AGENTS.md`). It never
+opens `auth.json`, `mcp-tokens.json`, or Grok `auth.json` /
+`mcp_credentials.json`.
 
 Lockfile checks stay project-scoped — a project lockfile cannot pin a skill that
 lives in your home directory, so reporting one as "not in the lockfile" could
@@ -487,6 +490,14 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `commandcode.agent.reserved-name` | error | A Command Code custom agent named `explore`, `plan`, `review`, or `general` — ignored at load |
 | `commandcode.agent.invalid-permission-mode` | error | A Command Code agent `permissionMode` that is not a documented value |
 | `commandcode.agent.invalid-field-type` | error | A Command Code agent field whose type the spec does not accept |
+| `grok.mcp.no-launch` | error | A Grok `[mcp_servers.*]` entry with neither `command` nor `url` |
+| `grok.hook.unknown-event` | error | A Grok hook registered under an event that is never dispatched (14 events) |
+| `grok.hook.missing-script` | error | A Grok command hook whose script does not exist |
+| `grok.hook.invalid-group` | error | A Grok hook group missing the required nested `hooks` array, or a non-string `matcher` |
+| `grok.hook.command-without-command` | error | A Grok `type: command` hook with no `command` |
+| `grok.hook.http-without-url` | error | A Grok `type: http` hook with no `url` |
+| `grok.hook.unknown-handler-type` | error | A Grok hook whose `type` is missing or not `command` / `http` |
+| `grok.skill.missing-frontmatter` | warning | Grok `SKILL.md` with no `---` block |
 | `mcp.command-missing` | error | An MCP `command` that is a path-like value whose file does not exist on disk |
 | `security.hardcoded-secret` | error | A token-shaped literal in MCP config (the value is never echoed back) |
 | `mcp.literal-env` | warning | Secret-named `env` values that are literals instead of interpolation |
@@ -517,7 +528,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `codex.budget.instructions` | info | Codex root→cwd `AGENTS.md` chain exceeds the default 32 KiB |
 | `cursor.rule.too-large` | info | A `.cursor/rules/*.mdc` file exceeds the 500-line recommendation |
 
-### Coverage in 1.1.0
+### Coverage in 1.2.0
 
 Each cell is one coverage dimension. There is no `full` / `partial` label: a
 documented global or static location that is not opened stays **unread**.
@@ -540,7 +551,7 @@ Dimensions:
 | VS Code | `.github/hooks` without `version: 1`, instruction files, `.github/agents`, `.vscode/mcp.json` | `--global` `~/.copilot/hooks` without `version: 1`; unread policy dirs | 8 events; command-only | workspace over user | `vscode-hooks`, `vscode-json` |
 | Copilot CLI | `.github/hooks` with `version: 1` | `--global` `~/.copilot/hooks` with `version: 1`; unread `/etc/github-copilot/policy.d` | camelCase + PascalCase map; `bash` / `powershell` / `command`; `cwd`; `timeoutSec`; prompt on `sessionStart` | documented sources coexist; policy unread | `copilot-hooks` fixture |
 | Cursor | nested `.cursor/skills`, `.cursor/mcp.json`, `.cursor/rules` | unread documented Cursor user/global paths | Agent Skills; MCP launch; 500-line rules | n/a | `cursor-json` fixture |
-| Grok | none | none | none | n/a | none |
+| Grok | `.grok/config.toml` walk-up; `.grok/hooks/*.json`; `.grok/skills`; `.grok/rules/*.md`; `Agents.md` / `AGENT.md` | `--global` `$GROK_HOME` or `~/.grok` config/hooks/skills; unread managed, requirements, plugins, `[skills] paths`, agents, credentials | `command` / `url` MCP (no `type`); 14 events; command/http; frontmatter required, name/description optional; no rules cap | closer project wins; project same-name replaces user | `grok-toml` fixture |
 | Antigravity | `.agents/mcp_config.json` | none | `serverUrl` launch | n/a | `antigravity-json` fixture |
 | Gemini | `.gemini/settings.json` | unread `~/.gemini/settings.json` unless `--global` is wired for it (it is not) | `command` / `url` / `httpUrl`; underscore-alias warning | n/a | `gemini-json` fixture |
 | Windsurf | none | unread (official page is global-only) | none | n/a | none |
@@ -588,6 +599,8 @@ and Command Code settings hooks:
 | `.github/hooks/*.json` with `version: 1` (Copilot CLI) | project root, `cwd`, host `bash` / `powershell` / `command` |
 | `~/.copilot/hooks` under `--global` | same split on `version: 1` |
 | `.commandcode/settings.json` · `.commandcode/settings.local.json` (and user settings under `--global`) | Command Code project root (git root, or cwd outside a git repo), `$COMMANDCODE_PROJECT_DIR`, `$COMMANDCODE_CWD` |
+| `.grok/hooks/*.json` | project root and the hooks directory |
+| `$GROK_HOME/hooks` or `~/.grok/hooks` under `--global` | same Grok 14-event / command-or-http split |
 
 `${CLAUDE_PLUGIN_ROOT}` is expanded **only** for a hook that came from a plugin.
 In a settings file it names nothing, so the path is skipped rather than guessed
@@ -630,6 +643,17 @@ first.
 - **Runtime split.** Source development and the composite Action use Bun; the
   published `dist/cli.js` runs on Node 20.11+ or Bun. The source entrypoint uses
   Bun's `import.meta.dir` / `import.meta.main` and is not the Node entrypoint.
+- **Grok compatibility and unpublished surfaces are unread.** Managed
+  (`~/.grok/managed_config.toml`, `/etc/grok/managed_config.toml`) and
+  requirements TOML are not opened. Plugins, marketplaces, personas, and
+  `[skills] paths` (no quoted resolution base) stay unread. `.grok/agents/`
+  is unread because the page names the directory but not a filename pattern
+  or required fields. Claude / Cursor / `.mcp.json` files keep their own
+  schemas — this scanner does not add `consumedBy: grok` to them. Grok’s
+  “skip gitignored instruction files” is unread: agentscan does not honor
+  `.gitignore`. `auth.json` and `mcp_credentials.json` are never opened.
+  Spec/runtime Grok MCP checks skip shadowed same-name servers; secrets
+  still inspect every readable MCP file.
 - **Command Code local MCP is unread.** `~/.commandcode/projects/{project}/mcp.json`
   is keyed by a working-directory slug that the sessions page does not publish.
   Until it does, that path is skipped rather than guessed. Bundled Command Code
@@ -664,6 +688,11 @@ first.
 Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
 GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
+
+**1.2.0** (31 August 2026) adds a native Grok Build provider: project
+`.grok/*` plus `$GROK_HOME` / `~/.grok/*` under `--global`. Compatibility
+with Claude or Cursor is not schema identity. Agents, managed/requirements
+TOML, plugins, `[skills] paths`, and `.gitignore` skip stay unread.
 
 **1.1.0** (31 August 2026) adds a native Command Code provider and finishes the
 correctness pass across registered checks: hook schema profiles, Agent Skills

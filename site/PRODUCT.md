@@ -1,13 +1,13 @@
 # agentscan — Persuade landing
 
-Source of truth for product claims: repo `README.md` (1.1.0). Do not invent
+Source of truth for product claims: repo `README.md` (1.2.0). Do not invent
 metrics. Do not mention NDA projects.
 
 ## Product
 
-**agentscan** 1.1.0 is a Bun-first TypeScript CLI that audits agent
+**agentscan** 1.2.0 is a Bun-first TypeScript CLI that audits agent
 configuration — skills, `skills-lock.json`, hooks, MCP servers, agent
-definitions, and policy files. 87 checks. Linters read the code your agent
+definitions, and policy files. 95 checks. Linters read the code your agent
 writes. This reads **the agent itself**.
 
 Published as `@chimix/agentscan` on npm (bare name rejected as too close to an
@@ -21,8 +21,9 @@ the stack will tell you.
 
 ## Audience
 
-Developers and teams shipping Claude Code, Command Code, and agent-skill setups
-who want a deterministic, offline check they can run locally or in CI.
+Developers and teams shipping Claude Code, Command Code, Grok Build, and
+agent-skill setups who want a deterministic, offline check they can run locally
+or in CI.
 
 ## Persuade mode (`/`)
 
@@ -30,7 +31,7 @@ who want a deterministic, offline check they can run locally or in CI.
 
 > Your agent config says the guard is on. The script is gone. Nothing told you.
 
-Version line under the lede: `1.1.0 · 87 checks · offline on check`.
+Version line under the lede: `1.2.0 · 95 checks · offline on check`.
 
 ### Primary CTA
 
@@ -53,7 +54,7 @@ project names beyond the README sample. Do not use the 0.7 id
 
 - No AI, no network on `check`
 - Writes nothing to the scanned tree
-- 87 checks, each labeled spec-required, vendor-recommendation, security,
+- 95 checks, each labeled spec-required, vendor-recommendation, security,
   internal-consistency, or heuristic
 - Spec-required checks cite a published line (`docs/spec/`). Heuristics stay at
   `info` and are labeled.
@@ -64,9 +65,10 @@ An earlier build reported 37 findings across 17 real projects of which
 **25 were false** — two checks had been written from what real projects looked
 like instead of from the spec. Both were deleted. Spec-required checks cite a
 published line in `docs/spec/`. Heuristics stay at `info` and are labeled.
-1.0.0 was the first stable release. 1.1.0 ships 87 checks, still
-offline on `check`. Native Command Code support is sourced from official
-commandcode.ai pages, not from observed projects.
+1.0.0 was the first stable release. 1.2.0 ships 95 checks, still
+offline on `check`. Native Command Code and Grok Build support is sourced from
+official pages, not from observed projects. Grok Claude/Cursor compatibility is
+unread as schema identity.
 
 Do not say Alpha. Do not say “no heuristics”. Do not say every check is sourced
 to a published spec line.
@@ -75,10 +77,12 @@ to a published spec line.
 
 - No fake testimonials, logos, or adoption numbers
 - Do not invent check counts beyond README badges/copy already used for framing
-  (1.1.0: 87 checks)
+  (1.2.0: 95 checks)
 - Do not name internal/NDA projects
 - Do not claim Command Code local-project MCP (`projects/{slug}/mcp.json`) is
   scanned — the slug encoding is unpublished
+- Do not claim Grok managed/requirements TOML, plugins, `[skills] paths`,
+  `.grok/agents/`, or Claude/Cursor files as Grok-consumed are scanned
 
 ## Read mode (`/docs`)
 

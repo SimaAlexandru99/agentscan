@@ -91,9 +91,9 @@ like a check that read all of it.
 bun run spec:check
 ```
 
-Diffs the hardcoded Claude, VS Code, Copilot CLI, and Command Code hook-event
-sets against the live docs pages, checks `scripts/spec-surfaces.ts` lastVerified
-dates, and warns when the newest capture here is over 90 days old. It makes
+Diffs the hardcoded Claude, VS Code, Copilot CLI, Command Code, and Grok
+hook-event sets against the live docs pages, checks `scripts/spec-surfaces.ts`
+lastVerified dates, and warns when the newest capture here is over 90 days old. It makes
 network calls, so it is a release-time script and is never reached from
 `agentscan check` — the scan path touches no network and that is worth more than
 automatic freshness. It over-reports by design; adjudicated false alarms go in
