@@ -1,5 +1,5 @@
 import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type {
   AgentFact,
@@ -7,9 +7,11 @@ import type {
   HookFact,
   LockedSkillFact,
   McpFact,
+  ModFact,
   PolicyFileFact,
   RuleFact,
   SkillFact,
+  SlashCommandFact,
 } from "../facts/types";
 
 export const POLICY_CAP = 100_000;
@@ -58,6 +60,14 @@ export type AgentSurface = {
   skillLockRoots?: string[];
   configErrors: ConfigErrorFact[];
   codexProjectDocMaxBytes?: number;
+  codexProjectDocFallbackFilenames?: string[];
+  codexProjectRootMarkers?: string[];
+  codexProjectRoot?: string;
+  slashCommands?: SlashCommandFact[];
+  mods?: ModFact[];
+  commandcodeModel?: string;
+  commandcodeModelSource?: string;
+  commandcodeProjectRoot?: string;
 };
 
 /**
@@ -87,6 +97,7 @@ const AGENT_CONFIG_SIGNALS = [
   ".opencode",
   ".continue",
   ".junie",
+  ".commandcode",
   "opencode.json",
   "opencode.jsonc",
 ] as const;
@@ -119,6 +130,13 @@ export type ScanContext = {
   scanBoundary: string;
   /** Display / package root. A nearer provider signal may win over a parent package.json. */
   projectRoot: string;
+  /**
+   * Command Code project root: git root when that git directory is inside the
+   * scan boundary, otherwise the working directory. A child `.cursor` / `.claude`
+   * must not hide `<git-root>/.commandcode/settings.json`. A `.agentscan-root`
+   * pin still stops the scan from escaping into a parent checkout.
+   */
+  commandcodeProjectRoot: string;
 };
 
 /**
@@ -162,12 +180,19 @@ export function resolveScanContext(startDir: string): ScanContext {
       `No package.json or agent configuration found walking up from ${requestedDir}`,
     );
   }
+  const scanBoundary = nearestPin ?? nearestGit ?? nearestWorkspace ?? nearestSignal ?? requestedDir;
+  const commandcodeProjectRoot =
+    nearestGit !== undefined &&
+    (nearestGit === scanBoundary || nearestGit.startsWith(`${scanBoundary}${sep}`))
+      ? nearestGit
+      : requestedDir;
   return {
     requestedDir,
     workspaceBoundary: nearestWorkspace,
     repositoryBoundary: nearestGit,
-    scanBoundary: nearestPin ?? nearestGit ?? nearestWorkspace ?? nearestSignal ?? requestedDir,
+    scanBoundary,
     projectRoot,
+    commandcodeProjectRoot,
   };
 }
 
@@ -324,6 +349,12 @@ export type Frontmatter = {
    * See docs/spec/hook-sources.md.
    */
   hooks?: unknown;
+  /** Full YAML mapping, for provider-specific field validation. */
+  fields?: Record<string, unknown>;
+  /** Whole-file line count, including frontmatter. */
+  lineCount?: number;
+  /** Frontmatter `when_to_use` when present as a string. */
+  whenToUse?: string;
 };
 
 function yamlScalarKind(value: unknown): YamlScalarKind | undefined {
@@ -396,7 +427,7 @@ export function readFrontmatter(
     return { hasFrontmatter: false, unreadable: true };
   }
   if (!text.startsWith("---")) {
-    return { hasFrontmatter: false };
+    return { hasFrontmatter: false, body: text, lineCount: lineCountOf(text) };
   }
   // The closing fence is a line that is exactly `---` (YAML also allows `...`).
   // Matching a bare "\n---" prefix took a key named `---metadata` for the fence
@@ -411,9 +442,9 @@ export function readFrontmatter(
         kind: "unexpected-shape",
         detail: `frontmatter not closed within the first ${SKILL_MD_CAP} bytes`,
       });
-      return { hasFrontmatter: true, unparseable: true };
+      return { hasFrontmatter: true, unparseable: true, lineCount: lineCountOf(text) };
     }
-    return { hasFrontmatter: false };
+    return { hasFrontmatter: false, body: text, lineCount: lineCountOf(text) };
   }
   const end = 3 + fence.index;
 
@@ -432,7 +463,7 @@ export function readFrontmatter(
         err instanceof Error ? err.message.split("\n")[0] : String(err)
       }`,
     });
-    return { hasFrontmatter: true, unparseable: true };
+    return { hasFrontmatter: true, unparseable: true, lineCount: lineCountOf(text) };
   }
   if (block === null || typeof block !== "object" || Array.isArray(block)) {
     errors.push({
@@ -440,11 +471,15 @@ export function readFrontmatter(
       kind: "unexpected-shape",
       detail: "frontmatter is not a YAML mapping",
     });
-    return { hasFrontmatter: true, unparseable: true };
+    return { hasFrontmatter: true, unparseable: true, lineCount: lineCountOf(text) };
   }
 
   const record = block as Record<string, unknown>;
-  const out: Frontmatter = { hasFrontmatter: true, body: text.slice(end + 4) };
+  const out: Frontmatter = {
+    hasFrontmatter: true,
+    body: text.slice(end + 4),
+    lineCount: lineCountOf(text),
+  };
   const nameKind = yamlScalarKind(record.name);
   if (nameKind !== undefined) {
     out.nameKind = nameKind;
@@ -464,5 +499,14 @@ export function readFrontmatter(
   if (record.hooks !== undefined) {
     out.hooks = record.hooks;
   }
+  const whenToUse = scalarString(record.when_to_use);
+  if (whenToUse !== undefined) {
+    out.whenToUse = whenToUse;
+  }
+  out.fields = record;
   return out;
+}
+
+function lineCountOf(text: string): number {
+  return text.length === 0 ? 0 : text.replace(/\r?\n$/, "").split(/\r?\n/).length;
 }

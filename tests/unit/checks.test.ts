@@ -663,7 +663,7 @@ describe("skill description budget", () => {
   test("under the ceiling produces nothing", () => {
     const findings = runChecks(
       baseFacts({ skills: [withDesc("a", 100)] }),
-      { skillDescriptionBytes: 1000 },
+      { skillListingChars: 1000 },
     );
     expect(findings).toEqual([]);
   });
@@ -671,7 +671,7 @@ describe("skill description budget", () => {
   test("over the ceiling is one info finding naming the totals", () => {
     const findings = runChecks(
       baseFacts({ skills: [withDesc("a", 600), withDesc("b", 601)] }),
-      { skillDescriptionBytes: 1000 },
+      { skillListingChars: 1000 },
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.description-budget"]);
     expect(findings[0]!.severity).toBe("info");
@@ -688,7 +688,7 @@ describe("skill description budget", () => {
           skill({ id: "b", path: "app-b/.claude/skills/b", description: "x".repeat(601) }),
         ],
       }),
-      { skillDescriptionBytes: 1000 },
+      { skillListingChars: 1000 },
     );
     expect(split).toEqual([]);
   });
@@ -702,7 +702,7 @@ describe("skill description budget", () => {
           skill({ id: "c", path: "app-b/.claude/skills/c", description: "x".repeat(10) }),
         ],
       }),
-      { skillDescriptionBytes: 1000 },
+      { skillListingChars: 1000 },
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.description-budget"]);
     expect(findings[0]!.subject).toBe(
@@ -718,7 +718,7 @@ describe("skill description budget", () => {
       path: "/home/u/.claude/skills/g",
     };
     expect(
-      runChecks(baseFacts({ skills: [g] }), { skillDescriptionBytes: 1000 }),
+      runChecks(baseFacts({ skills: [g] }), { skillListingChars: 1000 }),
     ).toEqual([]);
   });
 
@@ -818,20 +818,52 @@ describe("review regressions", () => {
           }),
         ],
       }),
-      { skillDescriptionBytes: 40 },
+      { skillListingChars: 40 },
     );
     expect(f.map((x) => x.ruleId)).toEqual(["skill.missing-skill-md"]);
   });
 
-  test("the budget counts bytes, not UTF-16 units", () => {
-    const f = runChecks(
+  test("a 20000-character description is capped at 1536 and does not trip the 8000 fallback", () => {
+    const findings = runChecks(
+      baseFacts({
+        skills: [skill({ id: "s", frontmatterName: "s", description: "x".repeat(20_000) })],
+      }),
+      { skillListingChars: 8_000, skillListingMaxDescChars: 1_536 },
+    );
+    expect(findings.map((f) => f.ruleId)).not.toContain("skill.description-budget");
+  });
+
+  test("the listing budget is characters, not a 16000-byte ceiling", () => {
+    const skills = Array.from({ length: 6 }, (_, i) =>
+      skill({
+        id: `s${i}`,
+        frontmatterName: `s${i}`,
+        description: `${String(i).padStart(2, "0")}${"x".repeat(1_534)}`,
+      }),
+    );
+    const findings = runChecks(baseFacts({ skills }), {
+      skillListingChars: 8_000,
+      skillListingMaxDescChars: 1_536,
+    });
+    expect(findings.map((f) => f.ruleId)).toEqual(["skill.description-budget"]);
+    expect(findings[0]!.message).toContain("per-entry cap 1536");
+  });
+
+  test("the listing budget counts characters, including non-ASCII", () => {
+    const over = runChecks(
       baseFacts({
         skills: [skill({ id: "s", frontmatterName: "s", description: "é".repeat(30) })],
       }),
-      { skillDescriptionBytes: 40 },
+      { skillListingChars: 20 },
     );
-    // 30 x 2 bytes + 1 = 61 > 40; `.length` would have said 31
-    expect(f.map((x) => x.ruleId)).toEqual(["skill.description-budget"]);
+    expect(over.map((x) => x.ruleId)).toEqual(["skill.description-budget"]);
+    const under = runChecks(
+      baseFacts({
+        skills: [skill({ id: "s", frontmatterName: "s", description: "é".repeat(30) })],
+      }),
+      { skillListingChars: 40 },
+    );
+    expect(under.map((x) => x.ruleId)).toEqual([]);
   });
 });
 
@@ -993,6 +1025,32 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
         { name: "dup-a", path: ".claude/agents/dup-a.md", hasFrontmatter: true, frontmatterName: "duplicate", description: "d" },
         { name: "dup-b", path: ".claude/agents/dup-b.md", hasFrontmatter: true, frontmatterName: "duplicate", description: "d" },
         { name: "bad", path: ".claude/agents/bad.md", hasFrontmatter: true, frontmatterName: "Bad Name", description: "d" },
+        {
+          name: "explore",
+          path: ".commandcode/agents/explore.md",
+          sourceProvider: "commandcode",
+          schemaProfile: "commandcode-md",
+          hasFrontmatter: true,
+          commandcodeDefects: ["reserved-name"],
+        },
+        {
+          name: "researcher",
+          path: ".commandcode/agents/researcher.md",
+          sourceProvider: "commandcode",
+          schemaProfile: "commandcode-md",
+          hasFrontmatter: true,
+          permissionMode: "yolo",
+          commandcodeDefects: ["invalid-permission-mode"],
+        },
+        {
+          name: "typed",
+          path: ".commandcode/agents/typed.md",
+          sourceProvider: "commandcode",
+          schemaProfile: "commandcode-md",
+          hasFrontmatter: true,
+          invalidField: "background",
+          commandcodeDefects: ["invalid-field-type"],
+        },
       ],
       hooks: [
         {
@@ -1051,7 +1109,21 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           path: "/tmp/proj/.claude/settings.json",
           event: "PreToolUse",
           handlerType: "mcp_tool",
-          defect: "mcp-tool-without-name",
+          defect: "mcp-tool-without-server-or-tool",
+        },
+        {
+          name: "PreToolUse",
+          path: "/tmp/proj/.claude/settings.json",
+          event: "PreToolUse",
+          handlerType: "prompt",
+          defect: "prompt-without-prompt",
+        },
+        {
+          name: "SessionStart",
+          path: "/tmp/proj/.claude/settings.json",
+          event: "SessionStart",
+          handlerType: "http",
+          defect: "incompatible-handler",
         },
         {
           name: "PreToolUse",
@@ -1074,6 +1146,7 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           event: "PreToolUse",
           source: "vscode-hooks",
           sourceProvider: "vscode",
+          schemaProfile: "vscode-native",
           handlerType: "command",
           defect: "command-without-command",
         },
@@ -1083,26 +1156,128 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           event: "PreToolUse",
           source: "vscode-hooks",
           sourceProvider: "vscode",
+          schemaProfile: "vscode-native",
+          defect: "unknown-handler-type",
+          unknownHandlerType: "widget",
+        },
+        {
+          name: "notAnEvent",
+          path: "/tmp/proj/.github/hooks/copilot.json",
+          event: "notAnEvent",
+          source: "vscode-hooks",
+          sourceProvider: "vscode",
+          schemaProfile: "copilot-cli",
+        },
+        {
+          name: "sessionStart",
+          path: "/tmp/proj/.github/hooks/copilot.json",
+          event: "sessionStart",
+          source: "vscode-hooks",
+          sourceProvider: "vscode",
+          schemaProfile: "copilot-cli",
+          handlerType: "command",
+          command: "node gone.js",
+          scriptPath: "./gone-copilot.js",
+          scriptExists: false,
+        },
+        {
+          name: "sessionStart",
+          path: "/tmp/proj/.github/hooks/copilot.json",
+          event: "sessionStart",
+          source: "vscode-hooks",
+          sourceProvider: "vscode",
+          schemaProfile: "copilot-cli",
+          handlerType: "command",
+          defect: "command-without-command",
+        },
+        {
+          name: "sessionStart",
+          path: "/tmp/proj/.github/hooks/copilot.json",
+          event: "sessionStart",
+          source: "vscode-hooks",
+          sourceProvider: "vscode",
+          schemaProfile: "copilot-cli",
           handlerType: "http",
           defect: "http-without-url",
         },
         {
-          name: "PreToolUse",
-          path: "/tmp/proj/.github/hooks/x.json",
-          event: "PreToolUse",
+          name: "sessionStart",
+          path: "/tmp/proj/.github/hooks/copilot.json",
+          event: "sessionStart",
           source: "vscode-hooks",
           sourceProvider: "vscode",
-          handlerType: "mcp_tool",
-          defect: "mcp-tool-without-name",
+          schemaProfile: "copilot-cli",
+          handlerType: "prompt",
+          defect: "prompt-without-prompt",
+        },
+        {
+          name: "sessionStart",
+          path: "/tmp/proj/.github/hooks/copilot.json",
+          event: "sessionStart",
+          source: "vscode-hooks",
+          sourceProvider: "vscode",
+          schemaProfile: "copilot-cli",
+          defect: "unknown-handler-type",
+          unknownHandlerType: "widget",
+        },
+        {
+          name: "preToolUse",
+          path: "/tmp/proj/.github/hooks/copilot.json",
+          event: "preToolUse",
+          source: "vscode-hooks",
+          sourceProvider: "vscode",
+          schemaProfile: "copilot-cli",
+          handlerType: "prompt",
+          defect: "incompatible-handler",
+        },
+        {
+          name: "NopeCc",
+          path: "/tmp/proj/.commandcode/settings.json",
+          event: "NopeCc",
+          sourceProvider: "commandcode",
         },
         {
           name: "PreToolUse",
-          path: "/tmp/proj/.github/hooks/x.json",
+          path: "/tmp/proj/.commandcode/settings.json",
           event: "PreToolUse",
-          source: "vscode-hooks",
-          sourceProvider: "vscode",
+          sourceProvider: "commandcode",
+          handlerType: "command",
+          command: "node gone.js",
+          scriptPath: "./gone-cc.js",
+          scriptExists: false,
+        },
+        {
+          name: "PreToolUse",
+          path: "/tmp/proj/.commandcode/settings.json",
+          event: "PreToolUse",
+          sourceProvider: "commandcode",
+          defect: "invalid-group",
+        },
+        {
+          name: "PreToolUse",
+          path: "/tmp/proj/.commandcode/settings.json",
+          event: "PreToolUse",
+          sourceProvider: "commandcode",
+          handlerType: "command",
+          defect: "command-without-command",
+        },
+        {
+          name: "PreToolUse",
+          path: "/tmp/proj/.commandcode/settings.json",
+          event: "PreToolUse",
+          sourceProvider: "commandcode",
           defect: "unknown-handler-type",
-          unknownHandlerType: "widget",
+          unknownHandlerType: "http",
+        },
+        {
+          name: "Stop",
+          path: "/tmp/proj/.commandcode/settings.json",
+          event: "Stop",
+          sourceProvider: "commandcode",
+          handlerType: "command",
+          command: "true",
+          timeout: 601,
+          timeoutOutOfBounds: true,
         },
       ],
       rules: [
@@ -1167,6 +1342,38 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           frontmatterName: "as-long-desc",
           description: "d".repeat(1025),
         }),
+        skill({
+          id: "as-compat",
+          path: ".agents/skills/as-compat",
+          sourceProvider: "agent-skills",
+          frontmatterName: "as-compat",
+          description: "Has invalid compatibility.",
+          compatibilityInvalid: true,
+        }),
+        skill({
+          id: "as-meta",
+          path: ".agents/skills/as-meta",
+          sourceProvider: "agent-skills",
+          frontmatterName: "as-meta",
+          description: "Has invalid metadata.",
+          metadataInvalid: true,
+        }),
+        skill({
+          id: "as-tools",
+          path: ".agents/skills/as-tools",
+          sourceProvider: "agent-skills",
+          frontmatterName: "as-tools",
+          description: "Has invalid allowed-tools.",
+          allowedToolsInvalid: true,
+        }),
+        skill({
+          id: "as-big",
+          path: ".agents/skills/as-big",
+          sourceProvider: "agent-skills",
+          frontmatterName: "as-big",
+          description: "Body is too large.",
+          bodyLines: 501,
+        }),
       ],
       mcp: [
         {
@@ -1224,6 +1431,15 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           raw: "{}",
         },
         {
+          name: "my_server",
+          path: "/tmp/proj/.gemini/settings.json",
+          schemaProfile: "gemini-json",
+          hasCommand: true,
+          hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
           name: "dead-opencode",
           path: "/tmp/proj/opencode.jsonc",
           schemaProfile: "opencode-json",
@@ -1276,11 +1492,74 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           raw: "{}",
         },
         {
+          name: "oc-string-cmd",
+          path: "/tmp/proj/opencode.jsonc",
+          schemaProfile: "opencode-json",
+          hasCommand: true,
+          hasUrl: false,
+          opencodeSchema: "v2",
+          opencodeDefect: "command-not-array",
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
           name: "dead-continue",
           path: "/tmp/proj/.continue/config.yaml",
           schemaProfile: "continue-yaml",
           hasCommand: false,
           hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "block-yaml",
+          path: "/tmp/proj/.continue/mcpServers/docs.yaml",
+          schemaProfile: "continue-yaml",
+          hasCommand: true,
+          hasUrl: false,
+          continueMissingMetadataKeys: ["name", "version", "schema"],
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "dead-cc",
+          path: "/tmp/proj/.commandcode/mcp.json",
+          schemaProfile: "commandcode-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "cc-bad-transport",
+          path: "/tmp/proj/.mcp.json",
+          schemaProfile: "mcp-json",
+          hasCommand: false,
+          hasUrl: false,
+          transport: "ftp",
+          commandcodeDefect: "invalid-transport",
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "cc-http",
+          path: "/tmp/proj/.mcp.json",
+          schemaProfile: "mcp-json",
+          hasCommand: false,
+          hasUrl: false,
+          transport: "http",
+          commandcodeDefect: "http-without-url",
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "cc-stdio",
+          path: "/tmp/proj/.mcp.json",
+          schemaProfile: "mcp-json",
+          hasCommand: false,
+          hasUrl: true,
+          transport: "stdio",
+          commandcodeDefect: "stdio-without-command",
           literalEnvKeys: [],
           raw: "{}",
         },
@@ -1299,6 +1578,16 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           path: "/tmp/proj/.mcp.json",
           hasCommand: false,
           hasUrl: true,
+          literalEnvKeys: [],
+          raw: "{}",
+        },
+        {
+          name: "workspace",
+          path: "/tmp/proj/.mcp.json",
+          schemaProfile: "mcp-json",
+          consumedBy: ["claude", "commandcode"],
+          hasCommand: true,
+          hasUrl: false,
           literalEnvKeys: [],
           raw: "{}",
         },
@@ -1362,7 +1651,7 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
     });
 
     const emitted = new Set([
-      ...runChecks(withLock, { skillDescriptionBytes: 16_000 }).map(
+      ...runChecks(withLock, { skillListingChars: 1_000 }).map(
         (f) => f.ruleId,
       ),
       ...runChecks(noLock, { requireLock: true }).map((f) => f.ruleId),

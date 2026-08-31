@@ -1,3 +1,4 @@
+import type { HookSchemaProfile } from "./hook-schema";
 import type {
   McpLaunchKind,
   McpSchemaProfile,
@@ -8,6 +9,7 @@ import type {
 export type Action = "keep" | "delete" | "add" | "refresh" | "warn" | "drift";
 export type Severity = "error" | "warning" | "info";
 
+export type { HookHandlerType, HookSchemaProfile } from "./hook-schema";
 export type {
   McpLaunchKind,
   McpSchemaProfile,
@@ -20,8 +22,10 @@ export type HookDefect =
   | "invalid-group"
   | "command-without-command"
   | "http-without-url"
-  | "mcp-tool-without-name"
-  | "unknown-handler-type";
+  | "mcp-tool-without-server-or-tool"
+  | "prompt-without-prompt"
+  | "unknown-handler-type"
+  | "incompatible-handler";
 export type OsPlatform = "windows" | "linux" | "osx";
 
 export type SkillFact = {
@@ -51,12 +55,36 @@ export type SkillFact = {
   nameKind?: YamlScalarKind;
   /** YAML type of `description:` before any string coercion. */
   descriptionKind?: YamlScalarKind;
+  /** Frontmatter `when_to_use`, when present as a string. */
+  whenToUse?: string;
+  /** First markdown paragraph after frontmatter, used when Claude omits description. */
+  firstMarkdownParagraph?: string;
+  /** Whole-file line count of SKILL.md, when the file was readable. */
+  bodyLines?: number;
+  /** Optional Agent Skills `compatibility` string, when present. */
+  compatibility?: string;
+  compatibilityKind?: YamlScalarKind;
+  /** True when `compatibility` is present but not a 1..500 character string. */
+  compatibilityInvalid?: boolean;
+  /** True when `metadata` is present but is not map<string, string>. */
+  metadataInvalid?: boolean;
+  /** Optional Agent Skills `allowed-tools` string, when present. */
+  allowedTools?: string;
+  allowedToolsKind?: YamlScalarKind;
+  /** True when `allowed-tools` is present but is not a string. */
+  allowedToolsInvalid?: boolean;
   /**
    * Hooks declared in this file's own frontmatter, one of the seven documented
    * registration sites. Kept on the item because that is where the base for a
    * relative script path lives. See docs/spec/hook-sources.md.
    */
   frontmatterHooks?: HookFact[];
+  /**
+   * Command Code load rank. `true` is currently loaded; `false` is readable but
+   * shadowed by a higher-precedence source. Unset means this is not a Command
+   * Code-ranked skill.
+   */
+  commandcodeEffective?: boolean;
 };
 
 export type McpFact = {
@@ -64,6 +92,13 @@ export type McpFact = {
   path: string;
   schemaProfile?: McpSchemaProfile;
   sourceProvider?: Provider;
+  /** Providers that honestly consume this path's schema. Shared `.mcp.json` lists both. */
+  consumedBy?: Provider[];
+  /** Which JSON key supplied `transport`, when either is present. */
+  transportField?: "transport" | "type";
+  commandcodeDefect?: CommandcodeMcpDefect;
+  /** Array item from `mcp.servers` with no `name` — inventoried, not schema-checked. */
+  inventoryOnly?: boolean;
   launchKind?: McpLaunchKind;
   /** Continue registry block, e.g. `continuedev/continue-docs-mcp`. */
   uses?: string;
@@ -81,7 +116,14 @@ export type McpFact = {
     | "missing-type"
     | "local-without-command"
     | "remote-without-url"
-    | "invalid-launch-for-type";
+    | "invalid-launch-for-type"
+    | "command-not-array";
+  /**
+   * Standalone Continue YAML block under `.continue/mcpServers/` is missing
+   * required `name`, `version`, or `schema` on the document. Copied JSON MCP
+   * configs in the same directory must not set this.
+   */
+  continueMissingMetadataKeys?: string[];
   hasCommand: boolean;
   hasUrl: boolean;
   hasServerUrl?: boolean;
@@ -100,6 +142,12 @@ export type McpFact = {
   literalEnvKeys: string[];
   /** Raw entry text, for secret pattern matching. */
   raw: string;
+  /**
+   * Command Code MCP load rank among settings / user mcp.json / project
+   * `.mcp.json`. Unset means this is not a Command Code-ranked MCP source
+   * (nested `.mcp.json` is Claude's file, not Command Code project MCP).
+   */
+  commandcodeEffective?: boolean;
 };
 
 export type HookFact = {
@@ -116,8 +164,12 @@ export type HookFact = {
    */
   source?: "settings" | "plugin" | "skill" | "agent" | "vscode-hooks";
   sourceProvider?: Provider;
+  schemaProfile?: HookSchemaProfile;
   handlerType?: "command" | "http" | "mcp_tool" | "prompt" | "agent";
   defect?: HookDefect;
+  /** Declared timeout in seconds, when present and numeric. */
+  timeout?: number;
+  timeoutOutOfBounds?: boolean;
   unknownHandlerType?: string;
   platform?: OsPlatform;
   /** Declared working directory when present. */
@@ -126,9 +178,24 @@ export type HookFact = {
   scriptPath?: string;
   /** false only when scriptPath was extracted and does not exist on disk. */
   scriptExists?: boolean;
+  /** Settings layer that declared this Command Code hook. */
+  commandcodeSettingsLayer?: "local" | "project" | "user";
+  commandcodeEffective?: boolean;
+  /** `matcher` was present but was not a string. */
+  commandcodeInvalidMatcher?: boolean;
 };
 
-export type AgentSchemaProfile = "claude-md" | "vscode-agent-md";
+export type AgentSchemaProfile = "claude-md" | "vscode-agent-md" | "commandcode-md";
+
+export type CommandcodeAgentDefect =
+  | "reserved-name"
+  | "invalid-permission-mode"
+  | "invalid-field-type";
+
+export type CommandcodeMcpDefect =
+  | "invalid-transport"
+  | "http-without-url"
+  | "stdio-without-command";
 
 export type AgentFact = {
   name: string;
@@ -153,6 +220,25 @@ export type AgentFact = {
   description?: string;
   /** Hooks declared in this agent's frontmatter. See docs/spec/hook-sources.md. */
   frontmatterHooks?: HookFact[];
+  permissionMode?: string;
+  commandcodeDefects?: CommandcodeAgentDefect[];
+  invalidField?: string;
+  commandcodeEffective?: boolean;
+};
+
+/** Custom slash command markdown. Inventory only for Command Code. */
+export type SlashCommandFact = {
+  name: string;
+  path: string;
+  source: "project" | "global";
+  sourceProvider: Provider;
+};
+
+/** Declared mod path. Experimental inventory — never executed. */
+export type ModFact = {
+  path: string;
+  declaredFrom: string;
+  sourceProvider: Provider;
 };
 
 /** A config file agentscan could not read — itself a finding, never swallowed. */
@@ -200,8 +286,24 @@ export type Facts = {
   startDir?: string;
   /** Farthest ancestor this scan may walk. A child `.cursor` does not shrink it. */
   scanBoundary?: string;
+  /**
+   * Command Code project root (git root, or the working directory outside a
+   * git repo). Settings, hooks path bases, inline MCP, extra skills, and
+   * model/mod settings resolve against this, not the generic `projectRoot`.
+   */
+  commandcodeProjectRoot?: string;
   /** Codex `project_doc_max_bytes` when declared in `.codex/config.toml`. */
   codexProjectDocMaxBytes?: number;
+  /** Codex `project_doc_fallback_filenames` from `.codex/config.toml`. */
+  codexProjectDocFallbackFilenames?: string[];
+  /**
+   * Codex `project_root_markers` from `.codex/config.toml`. `undefined` means
+   * the documented default (`.git`). An empty array means cwd is the project
+   * root. See docs/spec/codex-agents-md.md.
+   */
+  codexProjectRootMarkers?: string[];
+  /** Resolved Codex project root for the root→cwd instruction chain. */
+  codexProjectRoot?: string;
   packageManager: "bun" | "npm" | "pnpm" | "yarn" | "unknown";
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
@@ -211,6 +313,11 @@ export type Facts = {
   mcp: McpFact[];
   policyFiles: PolicyFileFact[];
   rules?: RuleFact[];
+  slashCommands?: SlashCommandFact[];
+  mods?: ModFact[];
+  /** Winning Command Code settings `model`, when a settings file declares one. */
+  commandcodeModel?: string;
+  commandcodeModelSource?: string;
   /** skills-lock.json entries; empty when the project has no lockfile. */
   lockedSkills: LockedSkillFact[];
   hasSkillsLock: boolean;

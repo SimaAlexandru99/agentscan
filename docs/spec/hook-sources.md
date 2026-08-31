@@ -1,8 +1,10 @@
 # Where a hook can be registered
 
 **Sources:** https://code.claude.com/docs/en/hooks ·
-https://code.claude.com/docs/en/plugins
-**Read:** 2026-08-24
+https://code.claude.com/docs/en/plugins ·
+https://code.visualstudio.com/docs/agent-customization/hooks ·
+https://docs.github.com/en/copilot/reference/hooks-reference
+**Read:** 2026-08-31
 **Depends on it:** `hook.missing-script` and `hook.unknown-event` for every
 source below (`src/discover/hooks.ts`)
 
@@ -162,3 +164,12 @@ The seven-location list grew to include skills and subagents; it can grow again.
 The failure mode is silence — a new location this tool does not read — which is
 less damaging than a false positive but is exactly the gap this file exists to
 close. Re-read the hooks reference at release time.
+
+## VS Code and Copilot CLI
+
+Workspace `.github/hooks/*.json` is always scanned. Native VS Code files have
+no `version` and are command-only ([vscode-hooks.md](vscode-hooks.md)).
+Copilot CLI files declare `version: 1` ([copilot-hooks.md](copilot-hooks.md)).
+User `~/.copilot/hooks` is scanned only under `--global`.
+`/etc/github-copilot/policy.d` is unread.
+

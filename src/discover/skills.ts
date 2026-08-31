@@ -53,28 +53,49 @@ export function skillReferences(body: string): string[] {
 }
 
 /**
- * A reference resolves against the skill's own directory or, failing that, the
- * repo root. Both bases are needed: across 1674 references measured in real
- * projects, 1645 resolved skill-relative and 12 only at the root — checking one
- * base alone would report those 12 as broken.
+ * First prose paragraph after frontmatter. Headings and blank lines are skipped.
+ * Used when Claude omits `description`. See docs/spec/skills.md.
+ */
+export function firstMarkdownParagraph(body: string): string | undefined {
+  const blocks = body.replace(/\r\n/g, "\n").trim().split(/\n\s*\n/);
+  for (const block of blocks) {
+    const lines = block.split("\n").filter((line) => !/^#{1,6}\s/.test(line.trim()));
+    const text = lines.map((line) => line.trim()).filter((line) => line.length > 0).join(" ");
+    if (text.length > 0) {
+      return text;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * A reference resolves against the skill's own directory. Agent Skills require
+ * relative paths from the skill root. Claude native skills also try the repo
+ * root — that two-base rule is empirical for Claude only; see docs/spec/skills.md
+ * and docs/spec/agent-skills.md.
  */
 function brokenReferences(
   body: string,
   skillDir: string,
   root: string,
+  skillRootOnly: boolean,
 ): string[] {
-  // A directory named like a file satisfies existsSync but cannot be read, so
-  // the reference is still dead.
-  const isFile = (p: string): boolean => {
+  const isFilePath = (p: string): boolean => {
     try {
       return statSync(p).isFile();
     } catch {
       return false;
     }
   };
-  return skillReferences(body).filter(
-    (rel) => !isFile(join(skillDir, rel)) && !isFile(join(root, rel)),
-  );
+  return skillReferences(body).filter((rel) => {
+    if (isFilePath(join(skillDir, rel))) {
+      return false;
+    }
+    if (skillRootOnly) {
+      return true;
+    }
+    return !isFilePath(join(root, rel));
+  });
 }
 
 function readDirNames(dir: string, errors: ConfigErrorFact[]): string[] | undefined {
@@ -139,6 +160,58 @@ function findSkillMdDirs(
   return out;
 }
 
+function applyAgentSkillsOptionalFields(
+  fact: SkillFact,
+  fields: Record<string, unknown>,
+): void {
+  if ("compatibility" in fields) {
+    const value = fields.compatibility;
+    if (typeof value === "string") {
+      fact.compatibility = value;
+      fact.compatibilityKind = "string";
+      if (value.length < 1 || value.length > 500) {
+        fact.compatibilityInvalid = true;
+      }
+    } else {
+      fact.compatibilityInvalid = true;
+      if (typeof value === "number") {
+        fact.compatibilityKind = "number";
+      } else if (typeof value === "boolean") {
+        fact.compatibilityKind = "boolean";
+      } else {
+        fact.compatibilityKind = "other";
+      }
+    }
+  }
+  if ("metadata" in fields) {
+    const value = fields.metadata;
+    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+      fact.metadataInvalid = true;
+    } else {
+      const entries = Object.values(value as Record<string, unknown>);
+      if (entries.some((entry) => typeof entry !== "string")) {
+        fact.metadataInvalid = true;
+      }
+    }
+  }
+  if ("allowed-tools" in fields) {
+    const value = fields["allowed-tools"];
+    if (typeof value === "string") {
+      fact.allowedTools = value;
+      fact.allowedToolsKind = "string";
+    } else {
+      fact.allowedToolsInvalid = true;
+      if (typeof value === "number") {
+        fact.allowedToolsKind = "number";
+      } else if (typeof value === "boolean") {
+        fact.allowedToolsKind = "boolean";
+      } else {
+        fact.allowedToolsKind = "other";
+      }
+    }
+  }
+}
+
 function skillFactFromDir(
   skillDir: string,
   source: "project" | "global",
@@ -170,10 +243,22 @@ function skillFactFromDir(
     fact.unparseableFrontmatter = true;
   }
   if (fm.body !== undefined) {
-    const broken = brokenReferences(fm.body, skillDir, root);
+    const broken = brokenReferences(
+      fm.body,
+      skillDir,
+      root,
+      schemaProfile === "agent-skills",
+    );
     if (broken.length > 0) {
       fact.brokenReferences = broken;
     }
+    const paragraph = firstMarkdownParagraph(fm.body);
+    if (paragraph !== undefined) {
+      fact.firstMarkdownParagraph = paragraph;
+    }
+  }
+  if (fm.lineCount !== undefined) {
+    fact.bodyLines = fm.lineCount;
   }
   if (fm.description !== undefined) {
     fact.description = fm.description;
@@ -181,11 +266,17 @@ function skillFactFromDir(
   if (fm.descriptionKind !== undefined) {
     fact.descriptionKind = fm.descriptionKind;
   }
+  if (fm.whenToUse !== undefined) {
+    fact.whenToUse = fm.whenToUse;
+  }
   if (fm.name !== undefined) {
     fact.frontmatterName = fm.name;
   }
   if (fm.nameKind !== undefined) {
     fact.nameKind = fm.nameKind;
+  }
+  if (schemaProfile === "agent-skills" && fm.fields !== undefined) {
+    applyAgentSkillsOptionalFields(fact, fm.fields);
   }
   if (fm.hooks !== undefined) {
     const hooks = hooksFromObject(fm.hooks, skillMd, "skill", {

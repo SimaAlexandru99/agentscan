@@ -23,6 +23,7 @@ function lineLimitFor(provider: Provider): number | undefined {
     case "opencode":
     case "junie":
     case "continue":
+    case "commandcode":
     case "unknown":
       return undefined;
     default: {
@@ -50,6 +51,7 @@ function tooLargeRuleId(provider: Provider): string | undefined {
     case "opencode":
     case "junie":
     case "continue":
+    case "commandcode":
     case "unknown":
       return undefined;
     default: {

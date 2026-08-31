@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SiteFooter } from "@/components/site-footer";
+import { PRODUCT_CHECKS, PRODUCT_VERSION } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: { absolute: "agentscan docs — 1.0.0, 59 checks" },
+  title: { absolute: `agentscan docs — ${PRODUCT_VERSION}, ${PRODUCT_CHECKS} checks` },
   description:
-    "Quickstart, check flags, and CI for agentscan 1.0.0 (59 checks).",
+    `Quickstart, check flags, and CI for agentscan ${PRODUCT_VERSION} (${PRODUCT_CHECKS} checks).`,
   alternates: {
     canonical: "/docs",
     types: { "text/markdown": "/docs.md" },
@@ -53,7 +54,7 @@ const flags = [
   },
   {
     flag: "--global",
-    meaning: "Also scan ~/.claude/skills and ~/.codex/skills",
+    meaning: "Also scan ~/.claude/skills, ~/.codex/skills, ~/.commandcode/skills, and ~/.agents/skills",
   },
   {
     flag: "--config <path>",
@@ -69,7 +70,8 @@ export default function DocsPage() {
           agentscan docs
         </h1>
         <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-          agentscan 1.0.0 audits agent configuration on disk — 59 checks.
+          agentscan {PRODUCT_VERSION} audits agent configuration on disk —{" "}
+          {PRODUCT_CHECKS} checks.
           Scans are read-only and never open a network connection. Spec-required
           checks cite a published spec line; heuristics stay at info and are
           labeled. Full behavior lives in the{" "}

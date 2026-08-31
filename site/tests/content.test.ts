@@ -12,13 +12,19 @@ import {
   markdownForPath,
 } from "../lib/markdown";
 import { AGENTSCAN_SKILL_DIGEST, AGENTSCAN_SKILL_MD } from "../lib/skill";
-import { INDEXABLE_PATHS, RUN_COMMAND, SITE_LASTMOD } from "../lib/site";
+import {
+  INDEXABLE_PATHS,
+  PRODUCT_CHECKS,
+  PRODUCT_VERSION,
+  RUN_COMMAND,
+  SITE_LASTMOD,
+} from "../lib/site";
 
 describe("1.0 public copy", () => {
-  test("homepage and docs markdown keep 1.0 facts", () => {
+  test("homepage and docs markdown keep current version facts", () => {
     for (const body of [HOME_MARKDOWN, DOCS_MARKDOWN]) {
-      expect(body).toContain("1.0.0");
-      expect(body).toContain("59 checks");
+      expect(body).toContain(PRODUCT_VERSION);
+      expect(body).toContain(`${PRODUCT_CHECKS} checks`);
       expect(body).toContain("claude.hook.missing-script");
       expect(body.toLowerCase()).toContain("error");
       expect(body.toLowerCase()).toContain("heuristic");
@@ -32,8 +38,8 @@ describe("1.0 public copy", () => {
       new URL("../app/docs/page.tsx", import.meta.url),
     ).text();
     for (const source of [home, docs]) {
-      expect(source).toContain("1.0.0");
-      expect(source).toContain("59 checks");
+      expect(source).toContain("PRODUCT_VERSION");
+      expect(source).toContain("PRODUCT_CHECKS");
       expect(source).toContain("claude.hook.missing-script");
       expect(source).not.toContain("Alpha");
     }

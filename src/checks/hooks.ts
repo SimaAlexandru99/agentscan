@@ -1,150 +1,70 @@
+import { COMMANDCODE_HOOK_EVENTS, isShadowedCommandcode } from "../facts/commandcode";
+import {
+  COPILOT_HOOK_EVENTS,
+  inferHookSchemaProfile,
+  isKnownCopilotEvent,
+  KNOWN_HOOK_EVENTS,
+  VSCODE_HOOK_EVENTS,
+  type HookSchemaProfile,
+} from "../facts/hook-schema";
 import { assertNever, type Provider } from "../facts/provider";
 import type { Facts, Finding, HookDefect, HookFact } from "../facts/types";
 import { make } from "./make";
 
-/**
- * Every hook event Claude Code dispatches, from the official hooks reference.
- *
- * This list started at nine names guessed from what appeared in real projects,
- * which made `hook.unknown-event` report `PostToolBatch` — a real event — as a
- * dead hook, at severity error. Twenty-two valid names were missing. If this
- * lags upstream again the escape hatch is
- * `ignoreRules: ["hook.unknown-event"]`, but the right fix is to update it.
- *
- * Source: docs/spec/hook-events.md (read 2026-08-30)
- */
-export const KNOWN_HOOK_EVENTS = new Set([
-  "SessionStart",
-  "Setup",
-  "UserPromptSubmit",
-  "UserPromptExpansion",
-  "PreToolUse",
-  "PermissionRequest",
-  "PermissionDenied",
-  "PostToolUse",
-  "PostToolUseFailure",
-  "PostToolBatch",
-  "Notification",
-  "MessageDisplay",
-  "SubagentStart",
-  "SubagentStop",
-  "TaskCreated",
-  "TaskCompleted",
-  "Stop",
-  "StopFailure",
-  "TeammateIdle",
-  "InstructionsLoaded",
-  "ConfigChange",
-  "CwdChanged",
-  "DirectoryAdded",
-  "FileChanged",
-  "WorktreeCreate",
-  "WorktreeRemove",
-  "PreCompact",
-  "PostCompact",
-  "Elicitation",
-  "ElicitationResult",
-  "SessionEnd",
-  "PreModelSwitch",
-  "PostModelSwitch",
-]);
-
-/** Source: docs/spec/vscode-hooks.md (read 2026-08-30) */
-export const VSCODE_HOOK_EVENTS = new Set([
-  "SessionStart",
-  "UserPromptSubmit",
-  "PreToolUse",
-  "PostToolUse",
-  "PreCompact",
-  "SubagentStart",
-  "SubagentStop",
-  "Stop",
-]);
+export { COPILOT_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS };
 
 function hookProvider(hook: HookFact): Provider {
   return hook.sourceProvider ?? "claude";
 }
 
-function eventsFor(provider: Provider): Set<string> | undefined {
-  switch (provider) {
+function hookProfile(hook: HookFact): HookSchemaProfile {
+  return inferHookSchemaProfile(hookProvider(hook), hook.schemaProfile);
+}
+
+function eventsFor(profile: HookSchemaProfile): Set<string> {
+  switch (profile) {
     case "claude":
       return KNOWN_HOOK_EVENTS;
-    case "vscode":
+    case "vscode-native":
       return VSCODE_HOOK_EVENTS;
-    case "agent-skills":
-    case "codex":
-    case "cursor":
-    case "grok":
-    case "antigravity":
-    case "gemini":
-    case "windsurf":
-    case "kiro":
-    case "cline":
-    case "roo":
-    case "kilo":
-    case "opencode":
-    case "junie":
-    case "continue":
-    case "unknown":
-      return undefined;
+    case "copilot-cli":
+      return COPILOT_HOOK_EVENTS;
+    case "commandcode":
+      return COMMANDCODE_HOOK_EVENTS;
     default: {
-      return assertNever(provider, `unhandled hook provider: ${provider}`);
+      return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
   }
 }
 
-function unknownEventRuleId(provider: Provider): string | undefined {
-  switch (provider) {
+function unknownEventRuleId(profile: HookSchemaProfile): string {
+  switch (profile) {
     case "claude":
       return "claude.hook.unknown-event";
-    case "vscode":
+    case "vscode-native":
       return "vscode.hook.unknown-event";
-    case "agent-skills":
-    case "codex":
-    case "cursor":
-    case "grok":
-    case "antigravity":
-    case "gemini":
-    case "windsurf":
-    case "kiro":
-    case "cline":
-    case "roo":
-    case "kilo":
-    case "opencode":
-    case "junie":
-    case "continue":
-    case "unknown":
-      return undefined;
+    case "copilot-cli":
+      return "copilot.hook.unknown-event";
+    case "commandcode":
+      return "commandcode.hook.unknown-event";
     default: {
-      return assertNever(provider, `unhandled hook provider: ${provider}`);
+      return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
   }
 }
 
-function missingScriptRuleId(provider: Provider): string | undefined {
-  switch (provider) {
+function missingScriptRuleId(profile: HookSchemaProfile): string {
+  switch (profile) {
     case "claude":
       return "claude.hook.missing-script";
-    case "vscode":
+    case "vscode-native":
       return "vscode.hook.missing-script";
-    case "agent-skills":
-    case "codex":
-    case "cursor":
-    case "grok":
-    case "antigravity":
-    case "gemini":
-    case "windsurf":
-    case "kiro":
-    case "cline":
-    case "roo":
-    case "kilo":
-    case "opencode":
-    case "junie":
-    case "continue":
-    case "unknown":
-      return undefined;
+    case "copilot-cli":
+      return "copilot.hook.missing-script";
+    case "commandcode":
+      return "commandcode.hook.missing-script";
     default: {
-      return assertNever(provider, `unhandled hook provider: ${provider}`);
+      return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
   }
 }
@@ -168,29 +88,36 @@ function isCommandHandler(hook: HookFact): boolean {
   }
 }
 
+function eventIsKnown(profile: HookSchemaProfile, event: string): boolean {
+  if (profile === "copilot-cli") {
+    return isKnownCopilotEvent(event);
+  }
+  return eventsFor(profile).has(event);
+}
+
 export function checkHookEvents(facts: Facts): Finding[] {
   const out: Finding[] = [];
   const reported = new Set<string>();
   for (const hook of facts.hooks) {
-    const provider = hookProvider(hook);
-    const known = eventsFor(provider);
-    const ruleId = unknownEventRuleId(provider);
-    if (known === undefined || ruleId === undefined) {
+    if (isShadowedCommandcode(hook.commandcodeEffective)) {
       continue;
     }
+    const profile = hookProfile(hook);
+    const ruleId = unknownEventRuleId(profile);
     const event = hook.event ?? hook.name;
-    const key = `${provider}:${event}`;
-    if (known.has(event) || reported.has(key)) {
+    const key = `${profile}:${event}`;
+    if (eventIsKnown(profile, event) || reported.has(key)) {
       continue;
     }
     reported.add(key);
+    const known = eventsFor(profile);
     out.push(
       make(ruleId, `hook:${event}`, {
         action: "warn",
         severity: "error",
         message: `"${event}" is not a hook event that gets dispatched`,
         reason:
-          "Hook events are matched by exact name. An unrecognised name never matches, so everything registered under it silently never runs — a typo here looks identical to a working hook. Event sets are per provider; a VS Code name is not validated against Claude's list.",
+          "Hook events are matched by exact name. An unrecognised name never matches, so everything registered under it silently never runs — a typo here looks identical to a working hook. Event sets are per schema profile; a VS Code name is not validated against Claude's list, and Copilot CLI camelCase names map onto VS Code events where the Copilot hooks reference documents that mapping.",
         evidence: [
           { kind: "hook", value: `${event} @ ${hook.path}` },
           {
@@ -205,26 +132,95 @@ export function checkHookEvents(facts: Facts): Finding[] {
   return out;
 }
 
-function defectRuleId(provider: Provider, defect: HookDefect): string | undefined {
-  if (provider !== "claude" && provider !== "vscode") {
-    return undefined;
+function defectRuleId(profile: HookSchemaProfile, defect: HookDefect): string | undefined {
+  switch (profile) {
+    case "claude":
+      switch (defect) {
+        case "invalid-group":
+        case "command-without-command":
+        case "http-without-url":
+        case "mcp-tool-without-server-or-tool":
+        case "prompt-without-prompt":
+        case "unknown-handler-type":
+        case "incompatible-handler":
+          return `claude.hook.${defect}`;
+        default: {
+          return assertNever(defect, `unhandled hook defect: ${defect}`);
+        }
+      }
+    case "vscode-native":
+      switch (defect) {
+        case "invalid-group":
+        case "command-without-command":
+        case "unknown-handler-type":
+          return `vscode.hook.${defect}`;
+        case "http-without-url":
+        case "mcp-tool-without-server-or-tool":
+        case "prompt-without-prompt":
+        case "incompatible-handler":
+          return undefined;
+        default: {
+          return assertNever(defect, `unhandled hook defect: ${defect}`);
+        }
+      }
+    case "copilot-cli":
+      switch (defect) {
+        case "command-without-command":
+        case "http-without-url":
+        case "prompt-without-prompt":
+        case "unknown-handler-type":
+        case "incompatible-handler":
+          return `copilot.hook.${defect}`;
+        case "invalid-group":
+        case "mcp-tool-without-server-or-tool":
+          return undefined;
+        default: {
+          return assertNever(defect, `unhandled hook defect: ${defect}`);
+        }
+      }
+    case "commandcode":
+      switch (defect) {
+        case "invalid-group":
+        case "command-without-command":
+        case "unknown-handler-type":
+          return `commandcode.hook.${defect}`;
+        case "http-without-url":
+        case "mcp-tool-without-server-or-tool":
+        case "prompt-without-prompt":
+        case "incompatible-handler":
+          return undefined;
+        default: {
+          return assertNever(defect, `unhandled hook defect: ${defect}`);
+        }
+      }
+    default: {
+      return assertNever(profile, `unhandled hook schema profile: ${profile}`);
+    }
   }
-  return `${provider}.hook.${defect}`;
 }
 
 function defectMessage(hook: HookFact, defect: HookDefect): string {
   const event = hook.event ?? hook.name;
   switch (defect) {
     case "invalid-group":
+      if (hook.commandcodeInvalidMatcher === true) {
+        return `${event} hook matcher is not a string`;
+      }
       return `${event} hook group is missing a \`hooks\` array`;
     case "command-without-command":
-      return `${event} command hook declares no command`;
+      return hookProfile(hook) === "copilot-cli"
+        ? `${event} command hook declares none of bash, powershell, or command`
+        : `${event} command hook declares no command`;
     case "http-without-url":
       return `${event} http hook declares no url`;
-    case "mcp-tool-without-name":
-      return `${event} MCP tool hook declares no tool name`;
+    case "mcp-tool-without-server-or-tool":
+      return `${event} MCP tool hook declares no server and tool`;
+    case "prompt-without-prompt":
+      return `${event} ${hook.handlerType ?? "prompt"} hook declares no prompt`;
     case "unknown-handler-type":
       return `${event} hook has unknown handler type "${hook.unknownHandlerType ?? "unknown"}"`;
+    case "incompatible-handler":
+      return `${event} does not accept handler type "${hook.handlerType ?? "unknown"}"`;
     default: {
       return assertNever(defect, `unhandled hook defect: ${defect}`);
     }
@@ -235,11 +231,14 @@ export function checkHookShape(facts: Facts): Finding[] {
   const out: Finding[] = [];
   const reported = new Set<string>();
   for (const hook of facts.hooks) {
+    if (isShadowedCommandcode(hook.commandcodeEffective)) {
+      continue;
+    }
     const defect = hook.defect;
     if (defect === undefined) {
       continue;
     }
-    const ruleId = defectRuleId(hookProvider(hook), defect);
+    const ruleId = defectRuleId(hookProfile(hook), defect);
     if (ruleId === undefined) {
       continue;
     }
@@ -257,7 +256,7 @@ export function checkHookShape(facts: Facts): Finding[] {
         severity: "error",
         message: defectMessage(hook, defect),
         reason:
-          "A hook entry that is missing its required fields never runs. The previous scanner rejected these shapes; accepting them silently hid dead configuration.",
+          "A hook entry that is missing its required fields, or that uses a handler type the event does not dispatch, never runs. The previous scanner rejected these shapes; accepting them silently hid dead configuration.",
         evidence: [
           { kind: "hook", value: `${hook.event ?? hook.name} @ ${hook.path}` },
           { kind: "shape", value: defect },
@@ -280,17 +279,40 @@ export function checkHooks(facts: Facts): Finding[] {
   // could reach only the first.
   const reported = new Set<string>();
   for (const hook of facts.hooks) {
+    if (isShadowedCommandcode(hook.commandcodeEffective)) {
+      continue;
+    }
+    if (hookProfile(hook) === "commandcode" && hook.timeoutOutOfBounds === true) {
+      const subject = `hook:${hook.event ?? hook.name}:timeout`;
+      const key = `commandcode.hook.timeout-out-of-bounds:${subject}:${hook.path}`;
+      if (!reported.has(key)) {
+        reported.add(key);
+        const bound =
+          hook.timeout === undefined ? "not a number in 0–600" : String(hook.timeout);
+        out.push(
+          make("commandcode.hook.timeout-out-of-bounds", subject, {
+            action: "warn",
+            severity: "error",
+            message: `${hook.event ?? hook.name} hook timeout is out of bounds (${bound}; want 0–600 seconds)`,
+            reason:
+              "Command Code hook timeouts are seconds in the closed range 0–600. A value outside that range is not a valid timeout. See docs/spec/commandcode-hooks.md.",
+            evidence: [
+              { kind: "hook", value: `${hook.event ?? hook.name} @ ${hook.path}` },
+              { kind: "timeout", value: bound },
+            ],
+            suggest: `Set timeout to an integer from 0 to 600 in ${hook.path}`,
+          }),
+        );
+      }
+    }
     if (!isCommandHandler(hook)) {
       continue;
     }
     if (hook.scriptPath === undefined || hook.scriptExists !== false) {
       continue;
     }
-    const provider = hookProvider(hook);
-    const ruleId = missingScriptRuleId(provider);
-    if (ruleId === undefined) {
-      continue;
-    }
+    const profile = hookProfile(hook);
+    const ruleId = missingScriptRuleId(profile);
     const subject = `hook:${hook.event ?? hook.name}:${hook.scriptPath}`;
     if (reported.has(`${ruleId}:${subject}`)) {
       continue;
@@ -306,8 +328,6 @@ export function checkHooks(facts: Facts): Finding[] {
         evidence: [
           { kind: "hook", value: `${hook.event ?? hook.name} @ ${hook.path}` },
           { kind: "script", value: hook.scriptPath },
-          // Only when it is not a settings file, so the common finding renders
-          // exactly as before. Same idiom as `source: global` on skills.
           ...(hook.source === undefined || hook.source === "settings"
             ? []
             : [{ kind: "source", value: hook.source }]),

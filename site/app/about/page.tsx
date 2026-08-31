@@ -68,8 +68,8 @@ export default function AboutPage() {
         >
           docs/spec/
         </a>
-        . Heuristics stay at info and are labeled. {PRODUCT_VERSION} is the
-        first stable release.
+        . Heuristics stay at info and are labeled. 1.0.0 was the
+        first stable release. {PRODUCT_VERSION} ships {PRODUCT_CHECKS} checks.
       </p>
       <p>
         This website is the public marketing and docs surface for that CLI. It

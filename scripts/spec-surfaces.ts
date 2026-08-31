@@ -15,7 +15,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "agent-skills",
     surface: "skills",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "medium",
     url: "https://agentskills.io/specification",
@@ -23,7 +23,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "AGENTS.md",
     surface: "instructions",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "medium",
     url: "https://agents.md/",
@@ -31,7 +31,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "claude",
     surface: "instructions",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "medium",
     url: "https://code.claude.com/docs/en/memory",
@@ -39,7 +39,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "claude",
     surface: "skills",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "medium",
     url: "https://code.claude.com/docs/en/skills",
@@ -47,7 +47,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "claude",
     surface: "agents",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "medium",
     url: "https://code.claude.com/docs/en/sub-agents",
@@ -55,7 +55,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "claude",
     surface: "hooks",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://code.claude.com/docs/en/hooks",
@@ -63,7 +63,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "claude",
     surface: "mcp",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://code.claude.com/docs/en/mcp",
@@ -71,7 +71,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "codex",
     surface: "instructions",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
@@ -79,7 +79,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "codex",
     surface: "mcp",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://learn.chatgpt.com/docs/extend/mcp",
@@ -87,7 +87,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "codex",
     surface: "skills",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://agentskills.io/specification",
@@ -95,7 +95,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "vscode",
     surface: "instructions",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
@@ -103,7 +103,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "vscode",
     surface: "agents",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://code.visualstudio.com/docs/agent-customization/custom-agents",
@@ -111,7 +111,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "vscode",
     surface: "hooks",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://code.visualstudio.com/docs/agent-customization/hooks",
@@ -119,7 +119,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "vscode",
     surface: "mcp",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://code.visualstudio.com/docs/copilot/customization/mcp-servers",
@@ -127,7 +127,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "cursor",
     surface: "skills",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://cursor.com/docs/skills",
@@ -135,7 +135,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "cursor",
     surface: "rules",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://cursor.com/docs/rules",
@@ -143,7 +143,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "cursor",
     surface: "mcp",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://cursor.com/docs/context/mcp",
@@ -151,7 +151,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "antigravity",
     surface: "mcp",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://antigravity.google/docs/mcp",
@@ -159,7 +159,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "gemini",
     surface: "mcp",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md",
@@ -167,7 +167,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "opencode",
     surface: "mcp",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://opencode.ai/v2/docs/mcp-servers",
@@ -175,10 +175,58 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "continue",
     surface: "mcp",
-    lastVerified: "2026-08-30",
+    lastVerified: "2026-08-31",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://docs.continue.dev/customize/deep-dives/mcp",
+  },
+  {
+    provider: "commandcode",
+    surface: "mcp",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://commandcode.ai/docs/mcp",
+  },
+  {
+    provider: "commandcode",
+    surface: "hooks",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://commandcode.ai/docs/hooks",
+  },
+  {
+    provider: "commandcode",
+    surface: "skills",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://commandcode.ai/docs/skills",
+  },
+  {
+    provider: "commandcode",
+    surface: "agents",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://commandcode.ai/docs/agents",
+  },
+  {
+    provider: "commandcode",
+    surface: "instructions",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://commandcode.ai/docs/memory",
+  },
+  {
+    provider: "copilot",
+    surface: "hooks",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://docs.github.com/en/copilot/reference/hooks-reference",
   },
 ];
 

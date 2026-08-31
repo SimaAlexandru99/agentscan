@@ -1,8 +1,13 @@
 # Agent Skills — portable SKILL.md contract
 
 **Source:** https://agentskills.io/specification
-**Read:** 2026-08-30
-**Depends on it:** `agent-skills.skill.missing-frontmatter`, `agent-skills.skill.missing-name`, `agent-skills.skill.missing-description`, `agent-skills.skill.invalid-name`, `agent-skills.skill.name-does-not-match-directory`, `agent-skills.skill.name-too-long`, `agent-skills.skill.description-too-long`, `skill.missing-skill-md`, `skill.broken-reference`
+**Read:** 2026-08-31
+**Depends on it:** `agent-skills.skill.missing-frontmatter`, `agent-skills.skill.missing-name`,
+`agent-skills.skill.missing-description`, `agent-skills.skill.invalid-name`,
+`agent-skills.skill.name-does-not-match-directory`, `agent-skills.skill.name-too-long`,
+`agent-skills.skill.description-too-long`, `agent-skills.skill.invalid-compatibility`,
+`agent-skills.skill.invalid-metadata`, `agent-skills.skill.invalid-allowed-tools`,
+`agent-skills.skill.body-too-large`, `skill.missing-skill-md`, `skill.broken-reference`
 
 This is **not** the Claude Code skills page. Claude native `name` is optional and
 defaults to the directory; see [skills.md](skills.md). Applying this file's
@@ -23,6 +28,10 @@ A skill is a directory containing, at minimum, a `SKILL.md` file.
 |-------|----------|-------------|
 | `name` | **Yes** | Max 64 characters. Lowercase letters, numbers, and hyphens only. Must not start or end with a hyphen. Must not contain consecutive hyphens. **Must match the parent directory name.** |
 | `description` | **Yes** | Max 1024 characters. Non-empty. |
+| `license` | No | License name or bundled license file. |
+| `compatibility` | No | **1–500 characters** when present. |
+| `metadata` | No | `map<string, string>` when present. |
+| `allowed-tools` | No | **string** (space-separated tools) when present. Experimental. |
 
 Quoted name rules:
 
@@ -31,18 +40,40 @@ Quoted name rules:
 > hyphen. Must not contain consecutive hyphens. Must match the parent
 > directory name.
 
-Quoted description rules:
+Quoted optional fields (2026-08-31):
 
-> Must be 1-1024 characters.
+> `compatibility` — Must be 1-500 characters if provided.
+> `metadata` — A map from string keys to string values.
+> `allowed-tools` — A space-separated string of tools that are pre-approved to run.
 
-## Recommendations (not shipped as errors)
+When an optional field is absent, do not invent a requirement. When it is
+present and off-contract, emit the matching `agent-skills.skill.invalid-*` check.
+
+## Recommendations
+
+Quoted:
 
 > Keep your main `SKILL.md` under 500 lines.
 
+`agent-skills.skill.body-too-large` reports this at **info**
+(vendor-recommendation). It is not a load failure.
+
+Quoted:
+
 > Keep file references one level deep from `SKILL.md`.
 
-These are recommendations. 0.8.0 does not emit `skill.body-too-large` or
-`skill.reference-too-deep`.
+That depth recommendation is not shipped as an error.
+
+## File references
+
+Quoted:
+
+> When referencing other files in your skill, use relative paths from the skill
+> root.
+
+Agent Skills broken-reference checks resolve **only** against the skill
+directory. Repo-root fallback is Claude-native empirical behaviour and must
+not apply here.
 
 ## Staleness risk: MEDIUM
 

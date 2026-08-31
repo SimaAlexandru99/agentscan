@@ -79,6 +79,19 @@ describe("resolveRoot", () => {
     const ctx = resolveScanContext(child);
     expect(ctx.projectRoot).toBe(child);
     expect(ctx.scanBoundary).toBe(parent);
+    expect(ctx.commandcodeProjectRoot).toBe(parent);
+    expect(ctx.repositoryBoundary).toBe(parent);
+  });
+
+  test("Command Code project root is cwd when there is no git repo", () => {
+    const parent = mkdtempSync(join(tmpdir(), "agentscan-cc-root-cwd-"));
+    writeFileSync(join(parent, "package.json"), '{"name":"mono"}', "utf8");
+    const child = join(parent, "apps", "web");
+    mkdirSync(join(child, ".cursor"), { recursive: true });
+    const ctx = resolveScanContext(child);
+    expect(ctx.projectRoot).toBe(child);
+    expect(ctx.commandcodeProjectRoot).toBe(child);
+    expect(ctx.repositoryBoundary).toBeUndefined();
   });
 
   test("a nearer package.json wins over a parent provider signal", () => {

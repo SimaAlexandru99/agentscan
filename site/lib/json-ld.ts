@@ -2,6 +2,7 @@ import {
   GITHUB_REPO,
   NPM_PACKAGE,
   NPM_URL,
+  PRODUCT_CHECKS,
   PRODUCT_NAME,
   PRODUCT_VERSION,
   SITE_ORIGIN,
@@ -12,7 +13,7 @@ export const softwareApplicationJsonLd = {
   "@type": "SoftwareApplication",
   name: PRODUCT_NAME,
   description:
-    "Offline linter for agent configuration — hooks, skills, MCP configs, AGENTS.md, and skills-lock.json. 1.0.0, 59 checks. No AI, no network on check, writes nothing.",
+    `Offline linter for agent configuration — hooks, skills, MCP configs, AGENTS.md, and skills-lock.json. ${PRODUCT_VERSION}, ${PRODUCT_CHECKS} checks. No AI, no network on check, writes nothing.`,
   url: SITE_ORIGIN,
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Linux, macOS, Windows",

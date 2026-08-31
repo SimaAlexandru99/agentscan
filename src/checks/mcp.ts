@@ -1,3 +1,4 @@
+import { isShadowedCommandcode } from "../facts/commandcode";
 import { assertNever, type McpSchemaProfile } from "../facts/provider";
 import type { Facts, Finding, McpFact } from "../facts/types";
 import { make } from "./make";
@@ -38,6 +39,8 @@ function isLaunchable(server: McpFact): boolean {
     case "antigravity-json":
       return server.hasCommand || server.hasServerUrl === true;
     case "claude-json":
+    case "mcp-json":
+    case "commandcode-json":
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
@@ -55,7 +58,12 @@ function isLaunchable(server: McpFact): boolean {
 function noLaunchId(profile: McpSchemaProfile): string {
   switch (profile) {
     case "claude-json":
+    case "mcp-json":
+      // Shared `.mcp.json` still needs a launch field for Claude. Command Code
+      // transport defects fire first when `transport`/`type` is present.
       return "claude.mcp.no-launch";
+    case "commandcode-json":
+      return "commandcode.mcp.no-launch";
     case "vscode-json":
       return "vscode.mcp.no-launch";
     case "cursor-json":
@@ -86,6 +94,8 @@ function noLaunchMessage(server: McpFact): string {
     case "continue-yaml":
       return `MCP server "${server.name}" declares neither command, url, nor uses`;
     case "claude-json":
+    case "mcp-json":
+    case "commandcode-json":
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
@@ -107,6 +117,8 @@ function noLaunchSuggest(server: McpFact): string {
     case "continue-yaml":
       return `Add a command, url, or uses: block for "${server.name}", or remove it`;
     case "claude-json":
+    case "mcp-json":
+    case "commandcode-json":
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
@@ -134,6 +146,8 @@ function openCodeDefectRule(
       return "opencode.mcp.remote-without-url";
     case "invalid-launch-for-type":
       return "opencode.mcp.invalid-launch-for-type";
+    case "command-not-array":
+      return "opencode.mcp.command-not-array";
     default: {
       return assertNever(defect, `unhandled OpenCode MCP defect: ${defect}`);
     }
@@ -150,6 +164,8 @@ function openCodeDefectMessage(server: McpFact, defect: NonNullable<McpFact["ope
       return `OpenCode MCP server "${server.name}" is type remote but declares no url`;
     case "invalid-launch-for-type":
       return `OpenCode MCP server "${server.name}" declares a launch field that does not match type "${server.transport ?? "unknown"}"`;
+    case "command-not-array":
+      return `OpenCode MCP server "${server.name}" is type local but command is not an argv array`;
     default: {
       return assertNever(defect, `unhandled OpenCode MCP defect: ${defect}`);
     }
@@ -166,16 +182,108 @@ function openCodeDefectSuggest(server: McpFact, defect: NonNullable<McpFact["ope
       return `Add a url for "${server.name}", or change type to local`;
     case "invalid-launch-for-type":
       return `Keep only the launch field that matches type on "${server.name}"`;
+    case "command-not-array":
+      return `Set "command" to an argv array on "${server.name}"`;
     default: {
       return assertNever(defect, `unhandled OpenCode MCP defect: ${defect}`);
     }
   }
 }
 
+function commandcodeDefectRule(
+  defect: NonNullable<McpFact["commandcodeDefect"]>,
+): string {
+  switch (defect) {
+    case "invalid-transport":
+      return "commandcode.mcp.invalid-transport";
+    case "http-without-url":
+      return "commandcode.mcp.http-without-url";
+    case "stdio-without-command":
+      return "commandcode.mcp.stdio-without-command";
+    default: {
+      return assertNever(defect, `unhandled Command Code MCP defect: ${defect}`);
+    }
+  }
+}
+
+function commandcodeDefectMessage(
+  server: McpFact,
+  defect: NonNullable<McpFact["commandcodeDefect"]>,
+): string {
+  switch (defect) {
+    case "invalid-transport":
+      return `MCP server "${server.name}" has invalid transport "${server.transport ?? "unknown"}" (want "http" or "stdio")`;
+    case "http-without-url":
+      return `MCP server "${server.name}" is HTTP transport but declares no url`;
+    case "stdio-without-command":
+      return `MCP server "${server.name}" is stdio transport but declares no command`;
+    default: {
+      return assertNever(defect, `unhandled Command Code MCP defect: ${defect}`);
+    }
+  }
+}
+
+function commandcodeDefectSuggest(
+  server: McpFact,
+  defect: NonNullable<McpFact["commandcodeDefect"]>,
+): string {
+  switch (defect) {
+    case "invalid-transport":
+      return `Set "transport": "http" with url, or "transport": "stdio" with command, on "${server.name}"`;
+    case "http-without-url":
+      return `Add a url for "${server.name}", or change transport to stdio`;
+    case "stdio-without-command":
+      return `Add a command for "${server.name}", or change transport to http`;
+    default: {
+      return assertNever(defect, `unhandled Command Code MCP defect: ${defect}`);
+    }
+  }
+}
+
+const CLAUDE_RESERVED_MCP_NAMES = new Set([
+  "workspace",
+  "claude-in-chrome",
+  "computer-use",
+  "Claude Preview",
+  "Claude Browser",
+]);
+
+function claudeConsumes(server: McpFact): boolean {
+  if (server.consumedBy !== undefined) {
+    return server.consumedBy.includes("claude");
+  }
+  const profile = profileOf(server);
+  return profile === "claude-json" || profile === "mcp-json";
+}
+
+function claudeUrlNeedsType(server: McpFact): boolean {
+  if (server.inventoryOnly === true || !server.hasUrl) {
+    return false;
+  }
+  const profile = profileOf(server);
+  if (profile === "claude-json") {
+    if (server.transportField === "transport") {
+      return true;
+    }
+    return server.transport === undefined;
+  }
+  if (profile === "mcp-json") {
+    return server.transport === undefined;
+  }
+  return false;
+}
+
 export function checkMcp(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const server of facts.mcp) {
-    if (server.opencodeInherit === true) {
+    const shadowed = isShadowedCommandcode(server.commandcodeEffective);
+    if (shadowed) {
+      // Inventoried but not currently loaded. Schema/runtime errors would
+      // claim a shadowed definition is breaking the runtime. Secrets still
+      // apply to every readable file.
+    } else if (server.inventoryOnly === true) {
+      // Unnamed inline mcp.servers item — present in the inventory only.
+    } else if (server.opencodeInherit === true) {
       // V1 enabled-only override — launch data may live in an external file.
     } else if (server.opencodeDefect !== undefined) {
       const defect = server.opencodeDefect;
@@ -185,9 +293,22 @@ export function checkMcp(facts: Facts): Finding[] {
           severity: "error",
           message: openCodeDefectMessage(server, defect),
           reason:
-            "OpenCode V2 requires type local+command or remote+url. V1 uses the same pair on servers listed directly under mcp. See docs/spec/opencode-mcp.md.",
+            "OpenCode V2 requires type local+command array or remote+url. V1 uses the same pair on servers listed directly under mcp. See docs/spec/opencode-mcp.md.",
           evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
           suggest: openCodeDefectSuggest(server, defect),
+        }),
+      );
+    } else if (server.commandcodeDefect !== undefined) {
+      const defect = server.commandcodeDefect;
+      out.push(
+        make(commandcodeDefectRule(defect), `mcp:${server.name}@${server.path}`, {
+          action: "warn",
+          severity: "error",
+          message: commandcodeDefectMessage(server, defect),
+          reason:
+            "Command Code MCP transports are http (url) or stdio (command). `type` is an alias for `transport`. On shared `.mcp.json`, Claude's sse/ws types are left alone. See docs/spec/commandcode-mcp.md.",
+          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
+          suggest: commandcodeDefectSuggest(server, defect),
         }),
       );
     } else if (!isLaunchable(server)) {
@@ -204,7 +325,7 @@ export function checkMcp(facts: Facts): Finding[] {
       );
     }
 
-    if (server.command !== undefined && server.commandExists === false) {
+    if (!shadowed && server.command !== undefined && server.commandExists === false) {
       out.push(
         make("mcp.command-missing", `mcp:${server.name}@${server.path}${
           server.platform === undefined ? "" : `:${server.platform}`
@@ -223,20 +344,65 @@ export function checkMcp(facts: Facts): Finding[] {
       );
     }
 
-    if (
-      profileOf(server) === "claude-json" &&
-      server.hasUrl &&
-      server.transport === undefined
-    ) {
+    if (!shadowed && claudeUrlNeedsType(server)) {
       out.push(
         make("claude.mcp.url-without-type", `mcp:${server.name}@${server.path}`, {
           action: "warn",
           severity: "error",
           message: `MCP server "${server.name}" has a url but no transport type`,
           reason:
-            "An entry with no `type` is read as a stdio server, so a remote server declared this way is misconfigured by schema and is skipped — its tools never appear. See docs/spec/mcp.md.",
+            "An entry with no `type` is read as a stdio server, so a remote server declared this way is misconfigured by schema and is skipped — its tools never appear. On shared `.mcp.json`, a Command Code `transport` field satisfies the other consumer and this check does not fire. See docs/spec/mcp.md and docs/spec/commandcode-mcp.md.",
           evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
           suggest: `Add "type": "http" (or "sse" / "ws") to "${server.name}"`,
+        }),
+      );
+    }
+
+    if (
+      !shadowed &&
+      server.continueMissingMetadataKeys !== undefined &&
+      server.continueMissingMetadataKeys.length > 0
+    ) {
+      out.push(
+        make("continue.mcp.missing-block-metadata", `mcp:${server.name}@${server.path}`, {
+          action: "warn",
+          severity: "error",
+          message: `Continue YAML MCP block is missing ${server.continueMissingMetadataKeys.join(", ")}`,
+          reason:
+            "Standalone YAML files under `.continue/mcpServers/` require block metadata `name`, `version`, and `schema`. Copied JSON MCP configs in that directory are not subject to these fields. See docs/spec/continue-mcp.md.",
+          evidence: [
+            { kind: "mcp", value: `${server.name} @ ${server.path}` },
+            { kind: "missing", value: server.continueMissingMetadataKeys.join(",") },
+          ],
+          suggest: `Add name, version, and schema to ${server.path}`,
+        }),
+      );
+    }
+
+    if (!shadowed && claudeConsumes(server) && CLAUDE_RESERVED_MCP_NAMES.has(server.name)) {
+      out.push(
+        make("claude.mcp.reserved-name", `mcp:${server.name}@${server.path}`, {
+          action: "warn",
+          severity: "error",
+          message: `MCP server "${server.name}" uses a reserved name that Claude skips`,
+          reason:
+            "Claude Code skips MCP servers named with reserved identifiers, including `workspace`. The server never loads. See docs/spec/mcp.md.",
+          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
+          suggest: `Rename "${server.name}" — reserved names include workspace, claude-in-chrome, computer-use, Claude Preview, and Claude Browser`,
+        }),
+      );
+    }
+
+    if (!shadowed && profileOf(server) === "gemini-json" && server.name.includes("_")) {
+      out.push(
+        make("gemini.mcp.underscore-alias", `mcp:${server.name}@${server.path}`, {
+          action: "warn",
+          severity: "warning",
+          message: `Gemini MCP server alias "${server.name}" contains an underscore`,
+          reason:
+            "Official Gemini CLI docs warn that underscores in MCP server names can make policies fail silently, because fully-qualified tool names split on the first underscore after `mcp_`. See docs/spec/gemini-mcp.md.",
+          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
+          suggest: `Rename "${server.name}" to use hyphens instead of underscores`,
         }),
       );
     }

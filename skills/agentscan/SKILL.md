@@ -11,7 +11,7 @@ Read-only linter for agent config. Findings are facts.
 
 - Hook, skill, MCP, or `AGENTS.md` work
 - Someone says a guard is on and you have not verified the script
-- A PR touches `.claude/`, `.agents/`, `.mcp.json`, or `skills-lock.json`
+- A PR touches `.claude/`, `.commandcode/`, `.agents/`, `.mcp.json`, or `skills-lock.json`
 
 ## Do
 

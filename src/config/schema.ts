@@ -1,10 +1,14 @@
 import { z } from "zod";
 
 export const defaultThresholds = {
-  /** Bytes of skill name+description loaded at startup. The constraint is a
-   *  character budget (~1-2% of the context window) shared across all skills;
-   *  past it, descriptions are truncated and matching keywords are lost. */
-  skillDescriptionBytes: 16_000,
+  /**
+   * Characters of Claude skill listing text (description or first markdown
+   * paragraph, plus when_to_use) loaded at startup. Official runtime is 1% of
+   * the model context window; this fallback is 8000 characters when the window
+   * is unknown. Each entry is truncated at skillListingMaxDescChars (1536).
+   */
+  skillListingChars: 8_000,
+  skillListingMaxDescChars: 1_536,
   mcp: 5,
   agentsMdLines: 150,
   claudeMdLines: 200,
@@ -12,7 +16,7 @@ export const defaultThresholds = {
 };
 
 export const defaultConfig = {
-  skillPaths: [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills"],
+  skillPaths: [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills", ".commandcode/skills"],
   mcpPaths: [
     ".mcp.json",
     ".claude/mcp.json",
@@ -40,11 +44,18 @@ export const defaultConfig = {
 };
 
 const thresholdsSchema = z.object({
-  skillDescriptionBytes: z
+  skillListingChars: z
     .number()
     .int()
     .positive()
-    .default(defaultThresholds.skillDescriptionBytes),
+    .default(defaultThresholds.skillListingChars),
+  skillListingMaxDescChars: z
+    .number()
+    .int()
+    .positive()
+    .default(defaultThresholds.skillListingMaxDescChars),
+  /** @deprecated accepted for one release as an alias of skillListingChars. */
+  skillDescriptionBytes: z.number().int().positive().optional(),
   /** @deprecated accepted for one release; no check consumes it. */
   skills: z.number().int().positive().optional(),
   mcp: z.number().int().positive().default(defaultThresholds.mcp),

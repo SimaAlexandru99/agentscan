@@ -51,7 +51,7 @@ const INTERPRETERS = new Set([
 
 const INLINE_CODE_FLAGS = /^-(?:e|p|c)$/;
 const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&/;
-const PROJECT_DIR = /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\})/;
+const PROJECT_DIR = /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\}|COMMANDCODE_PROJECT_DIR\b|\{COMMANDCODE_PROJECT_DIR\}|COMMANDCODE_CWD\b|\{COMMANDCODE_CWD\})/;
 const PLUGIN_ROOT = /^\$(?:CLAUDE_PLUGIN_ROOT\b|\{CLAUDE_PLUGIN_ROOT\})/;
 const SCRIPT_EXT = /\.(?:js|mjs|cjs|ts|tsx|jsx|py|sh|bash|zsh|rb|pl|php|ps1|cmd|bat)$/i;
 const OS_KEYS = ["windows", "linux", "osx"] as const;

@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { AgentFact, ConfigErrorFact } from "../facts/types";
+import { discoverCommandcodeAgents } from "./commandcode";
 import { ancestorDirsInclusive } from "./shared";
 import { hooksFromObject } from "./hooks";
 import { readFrontmatter } from "./shared";
@@ -181,11 +182,16 @@ function discoverVscodeAgents(root: string, errors: ConfigErrorFact[]): AgentFac
 /**
  * Claude: every `.claude/agents` from startDir up to root (docs/spec/claude-subagents.md).
  * VS Code: `.github/agents` (docs/spec/vscode-agents.md).
+ * Command Code: `<commandcodeProjectRoot>/.commandcode/agents/*.md` only;
+ * user dir under `--global`. Nested package `.commandcode/agents` is not
+ * Command Code project config.
  */
 export function discoverAgents(
   root: string,
   errors: ConfigErrorFact[],
   startDir = root,
+  includeGlobal = false,
+  commandcodeProjectRoot = root,
 ): AgentFact[] {
   const facts: AgentFact[] = [];
   const seenDirs = new Set<string>();
@@ -198,5 +204,6 @@ export function discoverAgents(
     facts.push(...discoverClaudeAgentsDir(agentsDir, root, errors));
     facts.push(...discoverVscodeAgents(dir, errors));
   }
+  facts.push(...discoverCommandcodeAgents(commandcodeProjectRoot, includeGlobal, errors));
   return facts;
 }

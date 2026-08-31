@@ -1,8 +1,10 @@
 # OpenCode MCP (V1 and V2)
 
 **Source:** https://opencode.ai/v2/docs/mcp-servers
-**Read:** 2026-08-30
-**Depends on it:** `opencode.mcp.no-launch`, `opencode.mcp.missing-type`, `opencode.mcp.local-without-command`, `opencode.mcp.remote-without-url`, `opencode.mcp.invalid-launch-for-type`
+**Read:** 2026-08-31
+**Depends on it:** `opencode.mcp.no-launch`, `opencode.mcp.missing-type`,
+`opencode.mcp.local-without-command`, `opencode.mcp.remote-without-url`,
+`opencode.mcp.invalid-launch-for-type`, `opencode.mcp.command-not-array`
 
 Also consulted for V1 shape: https://opencode.ai/docs/mcp-servers/
 
@@ -16,7 +18,12 @@ V2 groups servers under `mcp.servers`. Quoted:
 
 > V2 does not place server names directly under `mcp`.
 
-V2 local: `type` must be `"local"`; `command` is a required argv array.
+V2 local: `type` must be `"local"`; `command` is a required **argv array**.
+Quoted field table: `command` — "Executable followed by its arguments."
+Official examples are arrays: `["npx", "-y", "example-mcp-server"]`.
+A nonempty string `command` is still `opencode.mcp.command-not-array`, not a
+valid launch.
+
 V2 remote: `type` must be `"remote"`; `url` is required.
 A V2 entry with no type, an unknown type, a local without command, a remote
 without url, or a launch field that contradicts the declared type is a hard
@@ -32,6 +39,11 @@ Never apply V1 required fields to a V2 `mcp.servers` map.
 A V1 object that declares neither `command` nor `url` (including
 `{ "enabled": true }`) may inherit a server defined outside this file. Do not
 emit a hard launch or type error when the launch data is not locally available.
+
+`opencode.mcp.no-launch` is the check-layer fallback if discovery produces an
+OpenCode server with neither a typed defect nor V1 inherit. Empty V2 objects
+are `opencode.mcp.missing-type`. Empty V1 objects inherit and must not emit
+`opencode.mcp.no-launch`.
 
 Do not apply Claude's `url`-without-`type` rule. `uses:` is not a launch field
 here.

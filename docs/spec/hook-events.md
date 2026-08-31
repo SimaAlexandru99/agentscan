@@ -1,8 +1,12 @@
 # Hook events
 
 **Source:** https://code.claude.com/docs/en/hooks
-**Read:** 2026-08-30
-**Depends on it:** `claude.hook.unknown-event` (`src/checks/hooks.ts`, `KNOWN_HOOK_EVENTS`)
+**Read:** 2026-08-31
+**Depends on it:** `claude.hook.unknown-event`, `claude.hook.unknown-handler-type`,
+`claude.hook.command-without-command`, `claude.hook.http-without-url`,
+`claude.hook.mcp-tool-without-server-or-tool`, `claude.hook.prompt-without-prompt`,
+`claude.hook.incompatible-handler`
+(`src/facts/hook-schema.ts`, `src/discover/hooks.ts`, `src/checks/hooks.ts`)
 
 ## The complete set — 33 names
 
@@ -25,8 +29,46 @@ turn (`UserPromptSubmit`, `Stop`, `StopFailure`, `PostToolBatch`), and per tool
 call inside the agentic loop (`PreToolUse`, `PostToolUse`). The rest fire on
 specific conditions — config changes, compaction, subagents, MCP interactions.
 
-`PostToolBatch`: "After a full batch of parallel tool calls resolves, before the
-next model call."
+## Handler schema (2026-08-31)
+
+Quoted common field: `type` is **required** and is `"command"`, `"http"`,
+`"mcp_tool"`, `"prompt"`, or `"agent"`. Do **not** infer `type` from the
+presence of `command` or `url`. Omitting `type`, or using any other value, is
+`claude.hook.unknown-handler-type`.
+
+Quoted command field: when `type` is `"command"`, `command` is required
+(`claude.hook.command-without-command`).
+
+Quoted HTTP field: when `type` is `"http"`, `url` is required
+(`claude.hook.http-without-url`).
+
+Quoted MCP tool fields: `server` and `tool` are required. Do not accept
+`name` / `toolName` as substitutes.
+
+Quoted prompt and agent fields: `prompt` is required.
+
+Official examples nest matcher groups: `{ "matcher": "...", "hooks": [ ... ] }`.
+The 2026-08-31 page does not document a flat handler array. Flat arrays are
+`claude.hook.invalid-group`.
+
+## Event / handler compatibility
+
+Quoted:
+
+> Events that support all five hook types (`command`, `http`, `mcp_tool`,
+> `prompt`, and `agent`): PermissionDenied, PermissionRequest, PostToolBatch,
+> PostToolUse, PostToolUseFailure, PreToolUse, Stop, SubagentStop,
+> TaskCompleted, TaskCreated, TeammateIdle, UserPromptExpansion,
+> UserPromptSubmit.
+
+> Events that support `command`, `http`, and `mcp_tool` hooks but not `prompt`
+> or `agent`: ConfigChange, CwdChanged, DirectoryAdded, Elicitation,
+> ElicitationResult, FileChanged, InstructionsLoaded, MessageDisplay,
+> Notification, PostCompact, PostModelSwitch, PreCompact, PreModelSwitch,
+> SessionEnd, StopFailure, SubagentStart, WorktreeCreate, WorktreeRemove.
+
+> `SessionStart` and `Setup` support `command` and `mcp_tool` hooks. They don't
+> support `http`, `prompt`, or `agent` hooks.
 
 ## Why this file exists
 
