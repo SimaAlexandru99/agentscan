@@ -86,6 +86,14 @@ export const SPEC_SURFACES: SpecSurface[] = [
   },
   {
     provider: "codex",
+    surface: "mcp",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://developers.openai.com/codex/config-advanced",
+  },
+  {
+    provider: "codex",
     surface: "skills",
     lastVerified: "2026-08-31",
     sourceType: "official",

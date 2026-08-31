@@ -186,7 +186,7 @@ Flags for `check`:
 | `--verbose` | Show KEEP + info-severity findings, and print each finding's id |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
-| `--global` | Also scan `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, and `$GROK_HOME` / `~/.grok` (see below) |
+| `--global` | Also scan `~/.claude/skills`, `~/.codex/skills`, `$CODEX_HOME` / `~/.codex/config.toml`, `~/.commandcode/skills`, `~/.agents/skills`, and `$GROK_HOME` / `~/.grok` (see below) |
 | `--config <path>` | Config file path |
 
 **v1 does not write the tree** — no `apply`, no skill delete/install. Findings may *suggest* shell commands; you run them yourself.
@@ -260,16 +260,17 @@ Same tree → same sorted findings, with stable unique `id`s.
 ### `--global`
 
 Adds `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`,
-`~/.agents/skills`, and `$GROK_HOME` / `~/.grok` (skills, hooks, `config.toml`)
-to the structural checks: a `SKILL.md` that is malformed is malformed wherever
-it lives, and those findings carry a `source: global` evidence entry so you can
-tell them apart. Codex and Command Code skills use the Agent Skills contract
-(`name` and `description` required). Grok skills do not — `name` and
-`description` are optional. `--global` also inventories user Command Code
-agents (`~/.commandcode/agents`), MCP (`~/.commandcode/mcp.json` and user
-settings `mcp.servers`), and memory (`~/.commandcode/AGENTS.md`). It never
-opens `auth.json`, `mcp-tokens.json`, or Grok `auth.json` /
-`mcp_credentials.json`.
+`~/.agents/skills`, `$CODEX_HOME` / `~/.codex` (`config.toml` MCP plus
+`AGENTS.override.md` / `AGENTS.md`), and `$GROK_HOME` / `~/.grok` (skills,
+hooks, `config.toml`) to the structural checks: a `SKILL.md` that is malformed
+is malformed wherever it lives, and those findings carry a `source: global`
+evidence entry so you can tell them apart. Codex and Command Code skills use
+the Agent Skills contract (`name` and `description` required). Grok skills do
+not — `name` and `description` are optional. `--global` also inventories user
+Command Code agents (`~/.commandcode/agents`), MCP (`~/.commandcode/mcp.json`
+and user settings `mcp.servers`), and memory (`~/.commandcode/AGENTS.md`). It
+never opens `auth.json`, `mcp-tokens.json`, Codex `auth.json`, or Grok
+`auth.json` / `mcp_credentials.json`.
 
 Lockfile checks stay project-scoped — a project lockfile cannot pin a skill that
 lives in your home directory, so reporting one as "not in the lockfile" could
@@ -547,7 +548,7 @@ Dimensions:
 | AGENTS.md | nested walk-up | n/a | no required fields | nearest-wins | tests |
 | Claude Code | project settings, skills, agents, `CLAUDE.md`, `.mcp.json` / `.claude/mcp.json` | unread `~/.claude/settings.json`, managed policy, marketplace plugins | 33 events; required handler `type`; MCP reserved names; first-paragraph skill description; listing budget | walk-up `CLAUDE.md` / `.claude/agents` | `claude-json` fixture |
 | Command Code | git-root project files; per-directory `AGENTS.md` else `.commandcode/AGENTS.md` | `--global` `~/.commandcode/*`; unread `projects/{slug}/mcp.json` | 4 events; command handlers; Agent Skills; MCP `transport` / `type` | settings merge; project+user hooks coexist; skill/MCP shadow | `commandcode` fixture |
-| Codex | `.codex/config.toml`, `.codex/skills`, AGENTS chain | `--global` `~/.codex/AGENTS.override.md` then `AGENTS.md` | TOML MCP; `project_doc_max_bytes`; Agent Skills | override > `AGENTS.md` > fallbacks; one file per dir; root→cwd; `project_root_markers` | `codex-toml` fixture |
+| Codex | `.codex/config.toml`, `.codex/skills`, AGENTS chain | `--global` `$CODEX_HOME` / `~/.codex/config.toml` MCP; `AGENTS.override.md` then `AGENTS.md`; unread system, managed, requirements, profiles, plugins, trust | TOML MCP; `project_doc_max_bytes`; Agent Skills | override > `AGENTS.md` > fallbacks; one file per dir; root→cwd; `project_root_markers`; MCP user+project both inventoried | `codex-toml` fixture |
 | VS Code | `.github/hooks` without `version: 1`, instruction files, `.github/agents`, `.vscode/mcp.json` | `--global` `~/.copilot/hooks` without `version: 1`; unread policy dirs | 8 events; command-only | workspace over user | `vscode-hooks`, `vscode-json` |
 | Copilot CLI | `.github/hooks` with `version: 1` | `--global` `~/.copilot/hooks` with `version: 1`; unread `/etc/github-copilot/policy.d` | camelCase + PascalCase map; `bash` / `powershell` / `command`; `cwd`; `timeoutSec`; prompt on `sessionStart` | documented sources coexist; policy unread | `copilot-hooks` fixture |
 | Cursor | nested `.cursor/skills`, `.cursor/mcp.json`, `.cursor/rules` | unread documented Cursor user/global paths | Agent Skills; MCP launch; 500-line rules | n/a | `cursor-json` fixture |
@@ -654,6 +655,13 @@ first.
   `.gitignore`. `auth.json` and `mcp_credentials.json` are never opened.
   Spec/runtime Grok MCP checks skip shadowed same-name servers; secrets
   still inspect every readable MCP file.
+- **Codex admin and profile layers are unread.** System `/etc/codex/config.toml`,
+  managed preferences, `requirements.toml`, `$CODEX_HOME/<name>.config.toml`
+  profiles, plugin MCP, and `trust_level` are not opened. User
+  `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) MCP is scanned only
+  under `--global`. `auth.json` is never opened. Same-name user and project
+  MCP servers are both inventoried — the published page does not quote a
+  replace-entirely rule. User-file `project_doc_*` knobs are not applied.
 - **Command Code local MCP is unread.** `~/.commandcode/projects/{project}/mcp.json`
   is keyed by a working-directory slug that the sessions page does not publish.
   Until it does, that path is skipped rather than guessed. Bundled Command Code
