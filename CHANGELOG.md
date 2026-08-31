@@ -13,9 +13,58 @@ intermediate commit that this train does not cut.
 
 ## 1.1.0 — 2026-08-31
 
-Native Command Code provider. 72 checks, 381 tests. Includes 1.0.1.
+Native Command Code provider, then a correctness pass over every registered
+check against 2026-08-31 official docs. Includes 1.0.1. **87 checks**, **411
+tests**.
 
 ### Added
+
+- Hook schema profiles: `claude` | `vscode-native` | `copilot-cli` |
+  `commandcode`. `.github/hooks` with `version: 1` is Copilot CLI.
+- Claude hook schema: required `type` (not inferred from `command`/`url`);
+  `mcp_tool` needs `server` + `tool`; `prompt`/`agent` need `prompt`;
+  documented event/handler compatibility; nested matcher groups only.
+- Copilot CLI: camelCase events mapped onto VS Code names; `bash` /
+  `powershell` / `command`; `cwd`; `timeoutSec` then `timeout`. Prompt
+  hooks only on `sessionStart`. User `~/.copilot/hooks` under `--global`.
+- Agent Skills optional constrained fields: `compatibility` 1..500,
+  `metadata` map<string,string>, `allowed-tools` string. Info for
+  `SKILL.md` >500 lines. File references resolve from the skill root only.
+- Claude skill listing budget: 1% context window, 8000-character fallback,
+  per-entry cap 1536, listing text is description (or first markdown
+  paragraph) plus `when_to_use`. First paragraph satisfies missing
+  description.
+- OpenCode V2: local `command` must be an argv array
+  (`opencode.mcp.command-not-array`).
+- Continue standalone YAML blocks require `name` / `version` / `schema`
+  (`continue.mcp.missing-block-metadata`). Copied JSON is not checked.
+- Gemini underscore alias warning (`gemini.mcp.underscore-alias`).
+- Claude reserved MCP names including `workspace`
+  (`claude.mcp.reserved-name`).
+- Codex chain knobs: `AGENTS.override.md` > `AGENTS.md` >
+  `project_doc_fallback_filenames`; one file per directory; root→cwd;
+  `project_doc_max_bytes`; `project_root_markers`.
+- Coverage matrix uses five dimensions (project discovery, global
+  discovery, schema, precedence, conformance) instead of `full` /
+  `partial`.
+- Conformance fixture `tests/fixtures/conformance/copilot-hooks/`.
+- Spec capture `docs/spec/copilot-hooks.md`. Alias
+  `claude.hook.mcp-tool-without-name` →
+  `claude.hook.mcp-tool-without-server-or-tool`.
+
+### Changed
+
+- Nested `<dir>/.commandcode/AGENTS.md` is Command Code memory when that
+  directory has no `AGENTS.md` (official memory table).
+- Native VS Code remains command-only with its documented eight events.
+  `vscode.hook.http-without-url` and `vscode.hook.mcp-tool-without-name`
+  are removed.
+- Claude agent names: lowercase letters and hyphens (no digits); filename
+  is not compared to `name`.
+- `skill.description-budget` provenance is vendor-recommendation, not a
+  16000-byte heuristic.
+
+### Added (Command Code provider)
 
 - Provider `commandcode` from official pages under `docs/spec/commandcode-*.md`
   (read 2026-08-31). Unknown stays skip: no invented local-project MCP slug,
@@ -27,11 +76,10 @@ Native Command Code provider. 72 checks, 381 tests. Includes 1.0.1.
   `skills` array (replace, not merge; relative paths resolve against the git
   root). User `~/.commandcode/skills` and `~/.agents/skills` under
   `--global`.
-- Memory: project `AGENTS.md`, else `.commandcode/AGENTS.md`. Subdirectory
-  walk-up is `AGENTS.md` only. Nested `<dir>/.commandcode/AGENTS.md` is not
-  Command Code memory. User `~/.commandcode/AGENTS.md` under `--global`.
-  Unresolved `@path` is not a hard error. Codex's instruction chain excludes
-  `.commandcode/AGENTS.md`.
+- Memory: per directory, first existing of `AGENTS.md` or
+  `.commandcode/AGENTS.md` (project and nested). User
+  `~/.commandcode/AGENTS.md` under `--global`. Unresolved `@path` is not a
+  hard error. Codex's instruction chain excludes `.commandcode/AGENTS.md`.
 - Agents: `<project>/.commandcode/agents/*.md` at the Command Code project
   root only (git root, or cwd outside a git repo); filename supplies
   `name`; no `claude.agent.*` on these files. Checks:
@@ -58,17 +106,16 @@ Native Command Code provider. 72 checks, 381 tests. Includes 1.0.1.
   the user dir — no required-field checks.
 - Mods: inventory `mods.paths` — never execute or import TypeScript.
 - Conformance fixture `tests/fixtures/conformance/commandcode/`.
-- `spec:check` tracks 26 captured surfaces and diffs Command Code hook
-  events against https://commandcode.ai/docs/hooks.
+- `spec:check` tracks captured surfaces and diffs Claude, VS Code, Copilot
+  CLI, and Command Code hook events against live pages.
 
-### Changed
+### Also changed
 
 - Default `skillPaths` includes `.commandcode/skills`.
 - `--global` / `includeGlobal` also scans `~/.commandcode/skills`,
-  `~/.agents/skills`, user Command Code agents, MCP, and memory.
-- Coverage matrix: Command Code row. Skills are `full`. MCP is `partial`
-  because documented local `projects/{project}/mcp.json` is unread. Shared
-  `.mcp.json` is `mcp-json`, not Claude-only.
+  `~/.agents/skills`, user Command Code agents, MCP, memory, Copilot user
+  hooks, and Codex global AGENTS files.
+- Shared `.mcp.json` is `mcp-json`, not Claude-only.
 
 ## 1.0.1 — 2026-08-31
 

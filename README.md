@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-72-111111?style=flat-square" alt="72 checks">
-  <img src="https://img.shields.io/badge/tests-381%20passing-111111?style=flat-square" alt="381 tests">
+  <img src="https://img.shields.io/badge/checks-87-111111?style=flat-square" alt="87 checks">
+  <img src="https://img.shields.io/badge/tests-411%20passing-111111?style=flat-square" alt="411 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -16,8 +16,8 @@
 </p>
 
 <p align="center">
-  <strong>72 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
-  <sub>An offline linter for Claude Code, Command Code, portable Agent Skills, nested AGENTS.md, and the MCP / hooks / rules surfaces that 1.1.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — <code>full</code> only where discovery, spec-required fields, and a conformance fixture (or equivalent tests) all exist.</sub>
+  <strong>87 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <sub>An offline linter for Claude Code, Command Code, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks, and the MCP / hooks / rules surfaces that 1.1.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
 ---
@@ -65,7 +65,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .commandcode/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       72 checks, each labeled spec-required, vendor-recommendation,
+3. Check       87 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -356,8 +356,8 @@ Optional `.agentscanrc.json` (create with `agentscan init`):
   "includeGlobal": false,
   "requireLock": false,
   "thresholds": {
-    "skillDescriptionBytes": 16000,
-    "skills": 30,
+    "skillListingChars": 8000,
+    "skillListingMaxDescChars": 1536,
     "mcp": 5,
     "agentsMdLines": 150,
     "claudeMdLines": 200,
@@ -438,27 +438,46 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `claude.agent.missing-frontmatter` | error | A Claude agent definition with no `---` block |
 | `claude.agent.missing-description` | error | Claude agent frontmatter has no `description` |
 | `claude.agent.missing-name` | error | Claude agent frontmatter has no `name` |
-| `claude.agent.invalid-name` | warning | Claude agent name is not lowercase letters, numbers, and hyphens |
+| `claude.agent.invalid-name` | warning | Claude agent name is not lowercase letters and hyphens (error if it starts with `-` or contains `:`; filename is not compared) |
 | `claude.agent.duplicate-name` | error | Multiple Claude agent files declare the same name |
 | `claude.mcp.no-launch` | error | A Claude MCP server with neither `command` nor `url` |
 | `claude.mcp.url-without-type` | error | A Claude remote MCP server with a `url` but no `type` — read as stdio and skipped. On shared `.mcp.json`, a Command Code `transport` field satisfies the other consumer and this check does not fire |
+| `claude.mcp.reserved-name` | error | A Claude-consumed MCP server named with a reserved identifier (`workspace`, `claude-in-chrome`, `computer-use`, `Claude Preview`, `Claude Browser`) — skipped at load |
 | `vscode.mcp.no-launch` | error | A VS Code MCP server (`servers`) with neither `command` nor `url` |
 | `cursor.mcp.no-launch` | error | A Cursor MCP server with neither `command` nor `url` |
 | `antigravity.mcp.no-launch` | error | An Antigravity MCP server with neither `command` nor `serverUrl` |
 | `codex.mcp.no-launch` | error | A Codex `[mcp_servers.*]` entry with neither `command` nor `url` |
 | `gemini.mcp.no-launch` | error | A Gemini MCP server with neither `command`, `url`, nor `httpUrl` |
+| `gemini.mcp.underscore-alias` | warning | A Gemini MCP server alias contains `_`, which can make policies fail silently |
 | `opencode.mcp.no-launch` | error | An OpenCode MCP server with neither `command` nor `url` |
 | `opencode.mcp.missing-type` | error | An OpenCode MCP server missing `type: local` or `type: remote` |
 | `opencode.mcp.local-without-command` | error | An OpenCode `type: local` server with no `command` |
 | `opencode.mcp.remote-without-url` | error | An OpenCode `type: remote` server with no `url` |
 | `opencode.mcp.invalid-launch-for-type` | error | An OpenCode server whose launch field does not match its `type` |
+| `opencode.mcp.command-not-array` | error | An OpenCode V2 local `command` that is not an argv array |
 | `continue.mcp.no-launch` | error | A Continue MCP server with neither `command`, `url`, nor `uses` |
+| `continue.mcp.missing-block-metadata` | error | A standalone `.continue/mcpServers/*.yaml` block missing `name`, `version`, or `schema` (not applied to copied JSON) |
 | `commandcode.mcp.no-launch` | error | A Command Code settings / user MCP server with neither `command` nor `url` |
 | `commandcode.mcp.invalid-transport` | error | A Command Code MCP `transport` / `type` that is not `http` or `stdio` (Claude `sse` / `ws` on shared `.mcp.json` is skipped) |
 | `commandcode.mcp.http-without-url` | error | A Command Code HTTP MCP server with no `url` |
 | `commandcode.mcp.stdio-without-command` | error | A Command Code stdio MCP server with no `command` |
 | `claude.hook.command-without-command` | error | A Claude `type: command` hook with no `command` |
-| `claude.hook.invalid-group` | error | A Claude hook matcher group with no `hooks` array |
+| `claude.hook.http-without-url` | error | A Claude `type: http` hook with no `url` |
+| `claude.hook.mcp-tool-without-server-or-tool` | error | A Claude `type: mcp_tool` hook missing `server` or `tool` |
+| `claude.hook.unknown-handler-type` | error | A Claude hook whose required `type` is missing or not one of command, http, mcp_tool, prompt, agent |
+| `claude.hook.prompt-without-prompt` | error | A Claude `type: prompt` or `type: agent` hook with no `prompt` |
+| `claude.hook.incompatible-handler` | error | A Claude handler type that the event does not support |
+| `claude.hook.invalid-group` | error | A Claude hook matcher group with no nested `hooks` array (flat handler arrays are invalid) |
+| `vscode.hook.invalid-group` | error | A VS Code hook group that is not a command handler array |
+| `vscode.hook.command-without-command` | error | A native VS Code `type: command` hook with no `command` |
+| `vscode.hook.unknown-handler-type` | error | A native VS Code hook whose `type` is not `command` |
+| `copilot.hook.unknown-event` | error | A Copilot CLI hook registered under an event that is never dispatched |
+| `copilot.hook.missing-script` | error | A Copilot CLI command hook whose script does not exist |
+| `copilot.hook.command-without-command` | error | A Copilot CLI command hook with none of `bash`, `powershell`, or `command` |
+| `copilot.hook.http-without-url` | error | A Copilot CLI `type: http` hook with no `url` |
+| `copilot.hook.prompt-without-prompt` | error | A Copilot CLI `type: prompt` hook with no `prompt` |
+| `copilot.hook.unknown-handler-type` | error | A Copilot CLI hook whose `type` is not command, http, or prompt |
+| `copilot.hook.incompatible-handler` | error | A Copilot CLI prompt hook registered on an event other than `sessionStart` |
 | `commandcode.hook.unknown-event` | error | A Command Code hook registered under an event that is never dispatched (four events only) |
 | `commandcode.hook.missing-script` | error | A Command Code command hook whose script does not exist |
 | `commandcode.hook.invalid-group` | error | A Command Code hook group missing the required nested `hooks` array, or a non-string `matcher` |
@@ -473,7 +492,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `mcp.literal-env` | warning | Secret-named `env` values that are literals instead of interpolation |
 | `skill.missing-skill-md` | warning | A directory under a skill path with no `SKILL.md` |
 | `claude.skill.missing-frontmatter` | warning | Claude `SKILL.md` with no `---` block |
-| `claude.skill.missing-description` | info | Claude frontmatter has no `description` (Recommended) |
+| `claude.skill.missing-description` | info | Claude frontmatter has no `description` and no first markdown paragraph |
 | `agent-skills.skill.missing-frontmatter` | error | Portable skill `SKILL.md` has no YAML frontmatter |
 | `agent-skills.skill.missing-name` | error | Portable skill frontmatter has no required `name` |
 | `agent-skills.skill.missing-description` | error | Portable skill frontmatter has no required `description` |
@@ -481,11 +500,15 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `agent-skills.skill.name-does-not-match-directory` | error | Portable skill `name` does not match its directory |
 | `agent-skills.skill.name-too-long` | error | Portable skill name exceeds 64 characters |
 | `agent-skills.skill.description-too-long` | error | Portable skill description exceeds 1024 characters |
+| `agent-skills.skill.invalid-compatibility` | error | Portable skill `compatibility` is present but is not a 1–500 character string |
+| `agent-skills.skill.invalid-metadata` | error | Portable skill `metadata` is present but is not `map<string, string>` |
+| `agent-skills.skill.invalid-allowed-tools` | error | Portable skill `allowed-tools` is present but is not a string |
+| `agent-skills.skill.body-too-large` | info | Portable skill `SKILL.md` exceeds the 500-line recommendation |
 | `skill.broken-reference` | warning | The body points at a bundled file that does not exist |
 | `skill.duplicate-description` | info | Two or more skills carry an identical description (heuristic) |
 | `skill.locked-not-installed` | warning | `skills-lock.json` pins a skill that is not on disk |
 | `skill.not-in-lock` | info | A skill on disk that the lockfile does not track (installer policy) |
-| `skill.description-budget` | info | Claude skill names + descriptions exceed the startup character budget (heuristic) |
+| `skill.description-budget` | info | Claude skill listing text (description or first paragraph, plus `when_to_use`) exceeds the 1% context-window budget, with an 8000-character fallback and a 1536-character per-entry cap |
 | `skill.no-lockfile` | info | Skills present with no lockfile at all (only with `requireLock`) |
 | `budget.agents-md` | info | `AGENTS.md` past a secondary 150-line hint (heuristic; not an AGENTS.md requirement) |
 | `budget.claude-md` | info | `CLAUDE.md` past the official “target under 200 lines” recommendation |
@@ -496,36 +519,46 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 
 ### Coverage in 1.1.0
 
-`full` means documented locations are discovered, spec-required fields are checked, and a conformance fixture (or equivalent tests) is green. `partial` means some locations or some checks. `none` means not implemented. Official pages that could not be captured are `none`, not guessed.
+Each cell is one coverage dimension. There is no `full` / `partial` label: a
+documented global or static location that is not opened stays **unread**.
 
-| Ecosystem | instructions | skills | agents | hooks | MCP |
-|-----------|--------------|--------|--------|-------|-----|
-| Agent Skills | none | full | none | none | none |
-| AGENTS.md | partial (nested + nearest-wins; no required fields) | none | none | none | none |
-| Claude Code | partial (walk-up `CLAUDE.md`; 200-line target) | partial (native; `name` optional) | partial (walk-up `.claude/agents`) | partial (33 events; command handlers only) | full (`claude-json`; shared `.mcp.json` is `mcp-json`) |
-| Command Code | partial (project `AGENTS.md` else `.commandcode/AGENTS.md`; walk-up `AGENTS.md`; `@path` is not a hard error) | full (Agent Skills; git-root `.commandcode/skills` + 10-hop `.agents/skills`) | partial (filename name; reserved names; no missing-description) | partial (4 events; command handlers; nested groups; git-root settings; project+user coexist) | partial (`mcp-json` + `commandcode-json`; git-root project file; `transport` / `type` alias; local `projects/{project}/mcp.json` unread) |
-| Codex | partial (32 KiB chain; no invented agents TOML) | full (Agent Skills; `.codex/skills`) | none | none | full (`codex-toml`) |
-| VS Code | partial (`.github` instruction files; no required fields) | none | partial (filename may be the name) | full (8 events) | full (`servers`) |
-| Cursor | none | full (Agent Skills; nested `SKILL.md`) | none | none | full |
-| Grok | none | none | none | none | none |
-| Antigravity | none | via Agent Skills | none | none | full (`serverUrl`) |
-| Gemini | none | none | none | none | full (`command` / `url` / `httpUrl`) |
-| Windsurf | none | none | none | none | none (official page is global-only) |
-| Kiro | none | none | none | none | none |
-| Cline | none | none | none | none | none |
-| Roo | none | none | none | none | none |
-| Kilo | none | none | none | none | none |
-| OpenCode | none | none | none | none | full (V1 and V2) |
-| Junie | none | none | none | none | none |
-| Continue | none | none | none | none | full (`config.yaml` + `.continue/mcpServers/*` + `uses`) |
+Dimensions:
+
+- **project discovery** — documented in-repo files the scanner opens
+- **global discovery** — documented user / machine locations; `--global` is named when that is the only path that opens them
+- **schema** — spec-required (and labeled vendor-recommendation) field checks
+- **precedence** — documented merge / override / shadowing
+- **conformance** — official-shaped fixture or equivalent negative tests
+
+| Ecosystem | project discovery | global discovery | schema | precedence | conformance |
+|-----------|-------------------|------------------|--------|------------|-------------|
+| Agent Skills | `.agents/skills` (and Cursor / Codex / Command Code skill trees) | `--global` `~/.agents/skills`, `~/.codex/skills` | required `name` / `description` plus optional `compatibility` / `metadata` / `allowed-tools`; 500-line info | n/a | `agent-skills` fixture |
+| AGENTS.md | nested walk-up | n/a | no required fields | nearest-wins | tests |
+| Claude Code | project settings, skills, agents, `CLAUDE.md`, `.mcp.json` / `.claude/mcp.json` | unread `~/.claude/settings.json`, managed policy, marketplace plugins | 33 events; required handler `type`; MCP reserved names; first-paragraph skill description; listing budget | walk-up `CLAUDE.md` / `.claude/agents` | `claude-json` fixture |
+| Command Code | git-root project files; per-directory `AGENTS.md` else `.commandcode/AGENTS.md` | `--global` `~/.commandcode/*`; unread `projects/{slug}/mcp.json` | 4 events; command handlers; Agent Skills; MCP `transport` / `type` | settings merge; project+user hooks coexist; skill/MCP shadow | `commandcode` fixture |
+| Codex | `.codex/config.toml`, `.codex/skills`, AGENTS chain | `--global` `~/.codex/AGENTS.override.md` then `AGENTS.md` | TOML MCP; `project_doc_max_bytes`; Agent Skills | override > `AGENTS.md` > fallbacks; one file per dir; root→cwd; `project_root_markers` | `codex-toml` fixture |
+| VS Code | `.github/hooks` without `version: 1`, instruction files, `.github/agents`, `.vscode/mcp.json` | `--global` `~/.copilot/hooks` without `version: 1`; unread policy dirs | 8 events; command-only | workspace over user | `vscode-hooks`, `vscode-json` |
+| Copilot CLI | `.github/hooks` with `version: 1` | `--global` `~/.copilot/hooks` with `version: 1`; unread `/etc/github-copilot/policy.d` | camelCase + PascalCase map; `bash` / `powershell` / `command`; `cwd`; `timeoutSec`; prompt on `sessionStart` | documented sources coexist; policy unread | `copilot-hooks` fixture |
+| Cursor | nested `.cursor/skills`, `.cursor/mcp.json`, `.cursor/rules` | unread documented Cursor user/global paths | Agent Skills; MCP launch; 500-line rules | n/a | `cursor-json` fixture |
+| Grok | none | none | none | n/a | none |
+| Antigravity | `.agents/mcp_config.json` | none | `serverUrl` launch | n/a | `antigravity-json` fixture |
+| Gemini | `.gemini/settings.json` | unread `~/.gemini/settings.json` unless `--global` is wired for it (it is not) | `command` / `url` / `httpUrl`; underscore-alias warning | n/a | `gemini-json` fixture |
+| Windsurf | none | unread (official page is global-only) | none | n/a | none |
+| Kiro | none | none | none | n/a | none |
+| Cline | none | none | none | n/a | none |
+| Roo | none | none | none | n/a | none |
+| Kilo | none | none | none | n/a | none |
+| OpenCode | `opencode.json(c)` V1 and V2 | none | V2 local `command` must be an argv array | n/a | `opencode-json` fixture |
+| Junie | none | none | none | n/a | none |
+| Continue | `.continue/config.yaml`, `.continue/mcpServers/*` | none | launch `command` / `url` / `uses`; standalone YAML `name` / `version` / `schema` | n/a | `continue-yaml`, `continue-mcpservers` |
 
 Cursor project rules (`.cursor/rules/**/*.mdc`) are a separate surface: discovery plus `cursor.rule.too-large` at info. Claude `.claude/rules/**/*.md` is inventoried and has no published line budget.
 
 Old 0.7 rule ids still work in `ignoreRules` and `explain` (for example `hook.missing-script` aliases `claude.hook.missing-script`).
 
 Agent definitions are checked for structure only. A Claude agent's frontmatter
-`name` is not compared to the filename; it must simply be a valid lowercase
-identifier and unique. Command Code supplies `name` from the filename when
+`name` is not compared to the filename; it must be lowercase letters and
+hyphens and unique. Command Code supplies `name` from the filename when
 frontmatter omits it, and does not emit missing-name or missing-description.
 Model identifiers and tool names are likewise not validated: both would need a
 hardcoded list, which is the shape that already shipped a false error. See
@@ -533,8 +566,8 @@ hardcoded list, which is the shape that already shipped a false error. See
 
 `skill.broken-reference` reads the body, not just the frontmatter. It looks for
 paths under the conventional bundled directories (`scripts/`, `references/`,
-`assets/`, `templates/`, `examples/`) and resolves each against the skill's own
-directory first, then the repo root — both bases are needed, because of 1674
+`assets/`, `templates/`, `examples/`). Agent Skills references resolve from the
+skill root only. Claude native skills also try the repo root — of 1674
 references measured across 17 projects, 1645 resolved skill-relative and 12 only
 at the root. Fenced code blocks are stripped first: a path in an example is
 illustration, not a pointer.
@@ -551,7 +584,9 @@ and Command Code settings hooks:
 | A plugin's `hooks/hooks.json` (a directory with `.claude-plugin/plugin.json`, or the scan root itself) | the plugin root, `${CLAUDE_PLUGIN_ROOT}` |
 | `SKILL.md` frontmatter | the skill's own directory, then the project root |
 | `.claude/agents/*.md` frontmatter | the agent file's directory, then the project root |
-| `.github/hooks/*.json` (VS Code) | project root and the hooks directory |
+| `.github/hooks/*.json` without `version: 1` (native VS Code) | project root and the hooks directory |
+| `.github/hooks/*.json` with `version: 1` (Copilot CLI) | project root, `cwd`, host `bash` / `powershell` / `command` |
+| `~/.copilot/hooks` under `--global` | same split on `version: 1` |
 | `.commandcode/settings.json` · `.commandcode/settings.local.json` (and user settings under `--global`) | Command Code project root (git root, or cwd outside a git repo), `$COMMANDCODE_PROJECT_DIR`, `$COMMANDCODE_CWD` |
 
 `${CLAUDE_PLUGIN_ROOT}` is expanded **only** for a hook that came from a plugin.
@@ -575,8 +610,8 @@ happens to appear in real projects. Two that were written the other way round
 shipped as false positives — a nine-name hook-event list where the spec has 31,
 and a `name` must equal the directory rule that Claude's spec explicitly
 contradicts. Both are gone. Heuristics that remain (`skill.duplicate-description`,
-the installer lock checks, and the size budgets other than `budget.claude-md`)
-are labeled in the registry and stay at `info`.
+the installer lock checks, and the size budgets other than `budget.claude-md`
+and `skill.description-budget`) are labeled in the registry and stay at `info`.
 
 Assumptions are recorded in **[docs/spec/](docs/spec/)** with source URL, read
 date, and provenance. When adding a spec-required check, add its spec line there
@@ -597,8 +632,7 @@ first.
   Bun's `import.meta.dir` / `import.meta.main` and is not the Node entrypoint.
 - **Command Code local MCP is unread.** `~/.commandcode/projects/{project}/mcp.json`
   is keyed by a working-directory slug that the sessions page does not publish.
-  Until it does, that path is skipped rather than guessed, so Command Code MCP
-  coverage is `partial`. Bundled Command Code
+  Until it does, that path is skipped rather than guessed. Bundled Command Code
   skills and `--skill` launch flags are not project files and are not scanned.
   `mods.paths` are inventoried; the TypeScript is never executed or imported.
   `auth.json` and `mcp-tokens.json` are never opened. Command Code project
@@ -611,6 +645,13 @@ first.
   outside the scanned project, and the docs say a plugin's install directory
   changes on every update. A hook registered in one of those, pointing at a
   missing script, is not reported.
+- **Copilot CLI policy hooks are unread.** `/etc/github-copilot/policy.d` and the
+  Windows policy directory are machine-wide admin files. User
+  `~/.copilot/hooks` is scanned only under `--global`. Inline Copilot
+  `.github/copilot/settings.json` hooks are unread.
+- **Gemini user settings are unread.** `~/.gemini/settings.json` is outside a
+  normal project scan. Windsurf's official MCP page is global-only and is not
+  scanned.
 - **Bounded reads.** A `SKILL.md` is read to 64 KB and a policy file to 100 KB,
   so `skill.broken-reference` and `policyLines` see only that much of a larger
   file. This is reported — `scan.truncated`, at `info` — rather than left
@@ -624,10 +665,12 @@ Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
 GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
 
-**1.1.0** (31 August 2026) adds a native Command Code provider: 72 checks, 381
-tests, still offline on `check`. Shared `.mcp.json` is `mcp-json` (Claude and
-Command Code), not Claude-only — that MCP hotfix is **1.0.1** in the changelog
-and ships inside this package version.
+**1.1.0** (31 August 2026) adds a native Command Code provider and finishes the
+correctness pass across registered checks: hook schema profiles, Agent Skills
+optional fields, Claude listing budget, Codex chain knobs, and Copilot CLI
+`version: 1` files. Still offline on `check`. Shared `.mcp.json` is `mcp-json`
+(Claude and Command Code), not Claude-only — that MCP hotfix is **1.0.1** in
+the changelog and ships inside this package version.
 
 **1.0.0** (30 August 2026) is the first stable release: 59 checks, 345 tests,
 still offline on `check`. It adds portable Agent Skills (including Cursor and

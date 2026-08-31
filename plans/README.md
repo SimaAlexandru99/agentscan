@@ -273,12 +273,14 @@ is tagged and each plan's spec captures still match live pages.
 
 ## 2026-08-31 Command Code native provider
 
-No numbered plan file. Shipped as **1.1.0** (72 checks), including the **1.0.1**
+No numbered plan file. Shipped as **1.1.0** (87 checks), including the **1.0.1**
 shared `.mcp.json` hotfix (`mcp-json` profile, `transport` / `type` alias). Spec
-captures: `docs/spec/commandcode-*.md`. Local `projects/{slug}/mcp.json` is
-unread because the slug encoding is unpublished, so Command Code MCP coverage
-is `partial`. Follow-up on this branch
-fixes git-root project semantics, provider-specific discovery, strict
+captures: `docs/spec/commandcode-*.md` and the 2026-08-31 correctness recapture
+(`docs/spec/copilot-hooks.md`, hook schema profiles, Agent Skills optional
+fields, Codex chain knobs). Local `projects/{slug}/mcp.json` is unread because
+the slug encoding is unpublished. Follow-up on this branch
+fixed git-root project semantics, provider-specific discovery, strict
 HookEntry shape, custom-agent field types without undocumented
 `reasoningEffort`, hook project/user coexistence, nested memory walk-up, and
-effective-vs-shadowed runtime checks.
+effective-vs-shadowed runtime checks. Coverage cells use five dimensions
+instead of `full` / `partial`.
