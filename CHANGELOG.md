@@ -13,7 +13,7 @@ intermediate commit that this train does not cut.
 
 ## 1.1.0 — 2026-08-31
 
-Native Command Code provider. 72 checks, 377 tests. Includes 1.0.1.
+Native Command Code provider. 72 checks, 381 tests. Includes 1.0.1.
 
 ### Added
 

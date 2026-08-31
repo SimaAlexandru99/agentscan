@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/checks-72-111111?style=flat-square" alt="72 checks">
-  <img src="https://img.shields.io/badge/tests-377%20passing-111111?style=flat-square" alt="377 tests">
+  <img src="https://img.shields.io/badge/tests-381%20passing-111111?style=flat-square" alt="381 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -624,7 +624,7 @@ Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
 GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
 
-**1.1.0** (31 August 2026) adds a native Command Code provider: 72 checks, 377
+**1.1.0** (31 August 2026) adds a native Command Code provider: 72 checks, 381
 tests, still offline on `check`. Shared `.mcp.json` is `mcp-json` (Claude and
 Command Code), not Claude-only — that MCP hotfix is **1.0.1** in the changelog
 and ships inside this package version.

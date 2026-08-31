@@ -64,7 +64,7 @@ An earlier build reported 37 findings across 17 real projects of which
 **25 were false** — two checks had been written from what real projects looked
 like instead of from the spec. Both were deleted. Spec-required checks cite a
 published line in `docs/spec/`. Heuristics stay at `info` and are labeled.
-1.0.0 was the first stable release. 1.1.0 ships 72 checks, 377 tests, still
+1.0.0 was the first stable release. 1.1.0 ships 72 checks, 381 tests, still
 offline on `check`. Native Command Code support is sourced from official
 commandcode.ai pages, not from observed projects.
 
@@ -75,7 +75,7 @@ to a published spec line.
 
 - No fake testimonials, logos, or adoption numbers
 - Do not invent check counts beyond README badges/copy already used for framing
-  (1.1.0: 72 checks, 377 tests)
+  (1.1.0: 72 checks, 381 tests)
 - Do not name internal/NDA projects
 - Do not claim Command Code local-project MCP (`projects/{slug}/mcp.json`) is
   scanned — the slug encoding is unpublished
