@@ -91,6 +91,7 @@ const AGENT_CONFIG_SIGNALS = [
   ".gemini",
   ".kiro",
   ".windsurf",
+  ".devin",
   ".cline",
   ".roo",
   ".kilo",

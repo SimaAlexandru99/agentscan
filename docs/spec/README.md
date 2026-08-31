@@ -61,6 +61,9 @@ to appear in real projects.** When adding a check:
 | [grok-skills.md](grok-skills.md) | `.grok/skills`; optional name/description; frontmatter required | `grok.skill.missing-frontmatter` |
 | [grok-rules.md](grok-rules.md) | `.grok/rules/*.md`; `Agents.md` / `AGENT.md`; no size cap | discovery |
 | [grok-agents.md](grok-agents.md) | `.grok/agents/` location only; no filename pattern | unread |
+| [windsurf-rules.md](windsurf-rules.md) | `.devin/rules` + `.windsurf/rules` + `global_rules.md`; 12k / 6k characters | `windsurf.rule.*` |
+| [windsurf-agents-md.md](windsurf-agents-md.md) | `AGENTS.md` / `agents.md`; root always-on, subdirectory auto-glob | discovery |
+| [windsurf-mcp.md](windsurf-mcp.md) | `~/.codeium/windsurf/mcp_config.json` under `--global`; `command` / `serverUrl` / `url` | `windsurf.mcp.no-launch` |
 
 Each `STRUCTURAL_CHECKS` entry also carries `provenance` (`spec-required`,
 `vendor-recommendation`, `security`, `internal-consistency`, or `heuristic`)

@@ -5,19 +5,19 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-95-111111?style=flat-square" alt="95 checks">
-  <img src="https://img.shields.io/badge/tests-441%20passing-111111?style=flat-square" alt="441 tests">
+  <img src="https://img.shields.io/badge/checks-99-111111?style=flat-square" alt="99 checks">
+  <img src="https://img.shields.io/badge/tests-457%20passing-111111?style=flat-square" alt="457 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
   <img src="https://img.shields.io/npm/v/@chimix/agentscan?style=flat-square&color=111111&label=npm" alt="npm version">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-1.2.1-111111?style=flat-square" alt="Changelog"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-1.3.0-111111?style=flat-square" alt="Changelog"></a>
 </p>
 
 <p align="center">
-  <strong>95 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
-  <sub>An offline linter for Claude Code, Command Code, Grok Build, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks, and the MCP / hooks / rules surfaces that 1.2.1 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
+  <strong>99 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <sub>An offline linter for Claude Code, Command Code, Grok Build, Windsurf, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks, and the MCP / hooks / rules surfaces that 1.3.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
 ---
@@ -65,7 +65,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .commandcode/ .grok/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       95 checks, each labeled spec-required, vendor-recommendation,
+3. Check       99 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -199,7 +199,7 @@ Flags for `check`:
   │  ⌒  │   6 error · 2 warning · 11 info hidden (--verbose)
   └─────┘
 
-agentscan v1.2.1 — touchagency
+agentscan v1.3.0 — touchagency
 
 Scanned: 46 deps · 108 skills · 1 mcp · 2 agents · packageManager=bun
 
@@ -231,7 +231,7 @@ JSON shape (abridged):
 
 ```json
 {
-  "version": "1.2.1",
+  "version": "1.3.0",
   "root": "/path/to/project",
   "factsSummary": {
     "packageManager": "bun",
@@ -528,8 +528,12 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `budget.mcp` | info | More MCP servers than a tool-selection hint (>5) — heuristic proxy |
 | `codex.budget.instructions` | info | Codex root→cwd `AGENTS.md` chain exceeds the default 32 KiB |
 | `cursor.rule.too-large` | info | A `.cursor/rules/*.mdc` file exceeds the 500-line recommendation |
+| `windsurf.rule.too-large` | info | A Windsurf workspace rule exceeds 12,000 characters |
+| `windsurf.rule.global-too-large` | info | `~/.codeium/windsurf/memories/global_rules.md` exceeds 6,000 characters |
+| `windsurf.rule.missing-trigger` | warning | A `.devin/rules` / `.windsurf/rules` file omits frontmatter `trigger` |
+| `windsurf.mcp.no-launch` | error | Windsurf MCP server declares neither `command`, `serverUrl`, nor `url` |
 
-### Coverage in 1.2.1
+### Coverage in 1.3.0
 
 Each cell is one coverage dimension. There is no `full` / `partial` label: a
 documented global or static location that is not opened stays **unread**.
@@ -555,7 +559,7 @@ Dimensions:
 | Grok | `.grok/config.toml` walk-up; `.grok/hooks/*.json`; `.grok/skills`; `.grok/rules/*.md`; `Agents.md` / `AGENT.md` | `--global` `$GROK_HOME` or `~/.grok` config/hooks/skills; unread managed, requirements, plugins, `[skills] paths`, agents, credentials | `command` / `url` MCP (no `type`); 14 events; command/http; frontmatter required, name/description optional; no rules cap | closer project wins; project same-name replaces user | `grok-toml` fixture |
 | Antigravity | `.agents/mcp_config.json` | none | `serverUrl` launch | n/a | `antigravity-json` fixture |
 | Gemini | `.gemini/settings.json` | unread `~/.gemini/settings.json` unless `--global` is wired for it (it is not) | `command` / `url` / `httpUrl`; underscore-alias warning | n/a | `gemini-json` fixture |
-| Windsurf | none | unread (official page is global-only) | none | n/a | none |
+| Windsurf | `.devin/rules/*.md` (preferred), `.windsurf/rules/*.md` (fallback), `.windsurfrules`; portable `AGENTS.md` / `agents.md` | `--global` `~/.codeium/windsurf/mcp_config.json` and `~/.codeium/windsurf/memories/global_rules.md`; unread auto memories, Devin CLI MCP, system `/etc/devin/rules` | 12k / 6k character rules; workspace `trigger`; MCP `command` / `serverUrl` / `url` (no `type`) | n/a (no project MCP; both rule trees inventoried) | `windsurf-rules` fixture |
 | Kiro | none | none | none | n/a | none |
 | Cline | none | none | none | n/a | none |
 | Roo | none | none | none | n/a | none |
@@ -564,7 +568,7 @@ Dimensions:
 | Junie | none | none | none | n/a | none |
 | Continue | `.continue/config.yaml`, `.continue/mcpServers/*` | none | launch `command` / `url` / `uses`; standalone YAML `name` / `version` / `schema` | n/a | `continue-yaml`, `continue-mcpservers` |
 
-Cursor project rules (`.cursor/rules/**/*.mdc`) are a separate surface: discovery plus `cursor.rule.too-large` at info. Claude `.claude/rules/**/*.md` is inventoried and has no published line budget.
+Cursor project rules (`.cursor/rules/**/*.mdc`) are a separate surface: discovery plus `cursor.rule.too-large` at info. Claude `.claude/rules/**/*.md` is inventoried and has no published line budget. Windsurf workspace rules use a 12,000-character budget (`windsurf.rule.too-large`); do not apply the Cursor 500-line check. Portable `AGENTS.md` / `agents.md` stay `sourceProvider: unknown` — this scanner does not claim exclusive Windsurf ownership.
 
 Old 0.7 rule ids still work in `ignoreRules` and `explain` (for example `hook.missing-script` aliases `claude.hook.missing-script`).
 
@@ -682,8 +686,14 @@ first.
   `~/.copilot/hooks` is scanned only under `--global`. Inline Copilot
   `.github/copilot/settings.json` hooks are unread.
 - **Gemini user settings are unread.** `~/.gemini/settings.json` is outside a
-  normal project scan. Windsurf's official MCP page is global-only and is not
-  scanned.
+  normal project scan.
+- **Windsurf Devin CLI MCP and auto memories are unread.** Cascade MCP is
+  global-only (`~/.codeium/windsurf/mcp_config.json`, `--global`). The Devin
+  Local agent uses unpublished CLI config files — that path is not guessed.
+  Auto-generated files under `~/.codeium/windsurf/memories/` other than
+  `global_rules.md` are not opened. System / enterprise rule directories
+  (`/etc/devin/rules`, `/etc/windsurf/rules`) stay unread. There is no
+  quoted project MCP path.
 - **Bounded reads.** A `SKILL.md` is read to 64 KB and a policy file to 100 KB,
   so `skill.broken-reference` and `policyLines` see only that much of a larger
   file. This is reported — `scan.truncated`, at `info` — rather than left
@@ -696,6 +706,11 @@ first.
 Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
 GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
+
+**1.3.0** (31 August 2026) adds native Windsurf / Cascade coverage: workspace
+`.devin/rules` and `.windsurf/rules`, portable `agents.md`, and `--global`
+`mcp_config.json` plus `global_rules.md`. Devin CLI MCP, auto memories,
+system rules, and a project MCP path stay unread.
 
 **1.2.1** (31 August 2026) opens Codex user MCP (`$CODEX_HOME/config.toml`
 or `~/.codex/config.toml`) under `--global`. Same-name user and project

@@ -583,4 +583,28 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
     provenance: "vendor-recommendation",
     lastVerified: "2026-08-31",
   },
+  {
+    id: "windsurf.rule.too-large",
+    description: "Windsurf workspace rule exceeds the 12,000-character limit",
+    provenance: "vendor-recommendation",
+    lastVerified: "2026-08-31",
+  },
+  {
+    id: "windsurf.rule.global-too-large",
+    description: "Windsurf global_rules.md exceeds the 6,000-character limit",
+    provenance: "vendor-recommendation",
+    lastVerified: "2026-08-31",
+  },
+  {
+    id: "windsurf.rule.missing-trigger",
+    description: "Windsurf workspace rule is missing frontmatter trigger",
+    provenance: "spec-required",
+    lastVerified: "2026-08-31",
+  },
+  {
+    id: "windsurf.mcp.no-launch",
+    description: "Windsurf MCP server declares neither command, serverUrl, nor url",
+    provenance: "spec-required",
+    lastVerified: "2026-08-31",
+  },
 ];

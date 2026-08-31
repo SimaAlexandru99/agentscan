@@ -276,6 +276,30 @@ export const SPEC_SURFACES: SpecSurface[] = [
     stalenessRisk: "high",
     url: "https://docs.x.ai/build/features/subagents",
   },
+  {
+    provider: "windsurf",
+    surface: "rules",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://docs.windsurf.com/windsurf/cascade/memories",
+  },
+  {
+    provider: "windsurf",
+    surface: "instructions",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://docs.windsurf.com/windsurf/cascade/agents-md",
+  },
+  {
+    provider: "windsurf",
+    surface: "mcp",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://docs.windsurf.com/windsurf/cascade/mcp",
+  },
 ];
 
 const STALE_AFTER_DAYS = 90;

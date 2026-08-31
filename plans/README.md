@@ -271,6 +271,17 @@ is tagged and each plan's spec captures still match live pages.
 | 033 | Add remaining MCP and config providers | P2 | L | 025, 032 | DONE — [plan](033-remaining-providers.md) |
 | 034 | Publish the coverage matrix and release 1.0.0 | P2 | M | 033 | DONE — [plan](034-coverage-matrix-and-1-0-0.md) |
 
+## 2026-08-31 Windsurf native coverage
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 037 | Windsurf native coverage | P1 | M | — | DONE |
+
+Shipped as **1.3.0** (99 checks, 457 tests). Workspace `.devin/rules` +
+`.windsurf/rules` + `.windsurfrules`; `--global` Cascade MCP and
+`global_rules.md`. Unread: Devin CLI MCP, auto memories, system rules,
+project MCP (none quoted). Cursor 500-line rule is not applied.
+
 ## 2026-08-31 Codex user MCP under `--global`
 
 | Plan | Title | Priority | Effort | Depends on | Status |

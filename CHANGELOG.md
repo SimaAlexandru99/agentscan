@@ -11,6 +11,40 @@ and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
 (the published package version). A separate 1.0.1 npm tag would need an
 intermediate commit that this train does not cut.
 
+## 1.3.0 — 2026-08-31
+
+Native Windsurf / Cascade coverage against 2026-08-31 official docs.
+**99 checks**, **457 tests**.
+
+### Added
+
+- Spec captures `docs/spec/windsurf-rules.md`, `windsurf-agents-md.md`,
+  `windsurf-mcp.md`.
+- Workspace rules: `.devin/rules/*.md` (preferred), `.windsurf/rules/*.md`
+  (fallback), subdirectory-scoped trees, legacy `.windsurfrules`.
+  `.devin` is a scan-root signal.
+- Character budgets: `windsurf.rule.too-large` (12,000) and
+  `windsurf.rule.global-too-large` (6,000). Never `cursor.rule.too-large`.
+- `windsurf.rule.missing-trigger` on workspace `.devin` / `.windsurf` rules
+  that omit frontmatter `trigger`. Not on `.windsurfrules`,
+  `global_rules.md`, or `AGENTS.md`.
+- Portable lowercase `agents.md` (same `sourceProvider: unknown` as
+  `AGENTS.md`).
+- `--global` Cascade MCP at `~/.codeium/windsurf/mcp_config.json`
+  (`windsurf-json`). Launch is `command` or `serverUrl` or `url`.
+  `windsurf.mcp.no-launch` when none are set. Never
+  `claude.mcp.url-without-type`.
+- `--global` `~/.codeium/windsurf/memories/global_rules.md` only. Other
+  files in that memories directory stay unread.
+
+### Unread (intentional)
+
+- Devin Local CLI MCP (no published path).
+- Auto-generated memories other than `global_rules.md`.
+- System / enterprise rule directories.
+- Project MCP (none quoted).
+- Marketplace, admin allowlists, OAuth stores.
+
 ## 1.2.1 — 2026-08-31
 
 Codex user MCP under `--global`. **95 checks**, **441 tests**.
