@@ -40,6 +40,11 @@ A V1 object that declares neither `command` nor `url` (including
 `{ "enabled": true }`) may inherit a server defined outside this file. Do not
 emit a hard launch or type error when the launch data is not locally available.
 
+`opencode.mcp.no-launch` is the check-layer fallback if discovery produces an
+OpenCode server with neither a typed defect nor V1 inherit. Empty V2 objects
+are `opencode.mcp.missing-type`. Empty V1 objects inherit and must not emit
+`opencode.mcp.no-launch`.
+
 Do not apply Claude's `url`-without-`type` rule. `uses:` is not a launch field
 here.
 

@@ -2,7 +2,7 @@
 
 **Source:** https://commandcode.ai/docs/mcp
 **Read:** 2026-08-31
-**Depends on it:** `commandcode.mcp.invalid-transport`, `commandcode.mcp.http-without-url`, `commandcode.mcp.stdio-without-command`
+**Depends on it:** `commandcode.mcp.no-launch`, `commandcode.mcp.invalid-transport`, `commandcode.mcp.http-without-url`, `commandcode.mcp.stdio-without-command`
 
 Also consulted: https://commandcode.ai/docs/settings (scopes, inline `mcp.servers`, files this scanner must not open)
 
@@ -54,7 +54,7 @@ positive. An unknown value such as `"ftp"` is invalid for both consumers.
 | project | `.mcp.json` | always (shared MCP JSON profile) |
 | user | `~/.commandcode/mcp.json` | `--global` / `includeGlobal` |
 | settings inline | `mcp.servers` in the settings.json family | always for project files; user settings under `--global` |
-| local | `~/.commandcode/projects/{project}/mcp.json` | unread — slug encoding is unpublished (coverage: **partial**) |
+| local | `~/.commandcode/projects/{project}/mcp.json` | unread — slug encoding is unpublished |
 
 The sessions page says local state is "keyed by a slug of the working
 directory" but does not publish the encoding. Until it does, do **not**
@@ -85,8 +85,8 @@ in `mcp-tokens.json`. Scanning those files would copy secrets into facts.
 It does not spawn servers, complete OAuth, or prove a correctly shaped entry
 will connect. `${VAR}` in config values is resolved at Command Code runtime.
 
-Coverage is **partial**: the documented local file
-`~/.commandcode/projects/{project}/mcp.json` is unread because the slug
-encoding is unpublished. Command Code skills remain `full`.
+The documented local file `~/.commandcode/projects/{project}/mcp.json` is
+unread because the slug encoding is unpublished. Do not describe that unread
+location as schema or project-discovery coverage.
 
 ## Staleness risk: HIGH

@@ -2,8 +2,10 @@
 
 **Source:** https://code.claude.com/docs/en/hooks
 **Read:** 2026-08-31
-**Depends on it:** `claude.hook.unknown-event`, `claude.hook.incompatible-handler`,
-`claude.hook.prompt-without-prompt`, `claude.hook.mcp-tool-without-server-or-tool`
+**Depends on it:** `claude.hook.unknown-event`, `claude.hook.unknown-handler-type`,
+`claude.hook.command-without-command`, `claude.hook.http-without-url`,
+`claude.hook.mcp-tool-without-server-or-tool`, `claude.hook.prompt-without-prompt`,
+`claude.hook.incompatible-handler`
 (`src/facts/hook-schema.ts`, `src/discover/hooks.ts`, `src/checks/hooks.ts`)
 
 ## The complete set — 33 names
@@ -31,7 +33,14 @@ specific conditions — config changes, compaction, subagents, MCP interactions.
 
 Quoted common field: `type` is **required** and is `"command"`, `"http"`,
 `"mcp_tool"`, `"prompt"`, or `"agent"`. Do **not** infer `type` from the
-presence of `command` or `url`.
+presence of `command` or `url`. Omitting `type`, or using any other value, is
+`claude.hook.unknown-handler-type`.
+
+Quoted command field: when `type` is `"command"`, `command` is required
+(`claude.hook.command-without-command`).
+
+Quoted HTTP field: when `type` is `"http"`, `url` is required
+(`claude.hook.http-without-url`).
 
 Quoted MCP tool fields: `server` and `tool` are required. Do not accept
 `name` / `toolName` as substitutes.

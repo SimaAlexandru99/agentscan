@@ -23,7 +23,7 @@ to appear in real projects.** When adding a check:
 
 | File | Covers | Checks that depend on it |
 |------|--------|--------------------------|
-| [hook-events.md](hook-events.md) | The 33 dispatched Claude hook event names; required `type`; event/handler compatibility | `claude.hook.unknown-event`, `claude.hook.incompatible-handler`, `claude.hook.prompt-without-prompt`, `claude.hook.mcp-tool-without-server-or-tool` |
+| [hook-events.md](hook-events.md) | The 33 dispatched Claude hook event names; required `type`; command/http/mcp_tool/prompt fields; event/handler compatibility | `claude.hook.unknown-event`, `claude.hook.unknown-handler-type`, `claude.hook.command-without-command`, `claude.hook.http-without-url`, `claude.hook.mcp-tool-without-server-or-tool`, `claude.hook.prompt-without-prompt`, `claude.hook.incompatible-handler` |
 | [hook-sources.md](hook-sources.md) | Where a hook can be registered and how script paths resolve | `claude.hook.missing-script`, `claude.hook.unknown-event` |
 | [skills.md](skills.md) | Claude Code SKILL.md frontmatter; first-paragraph fallback; listing budget | `claude.skill.missing-frontmatter`, `claude.skill.missing-description`, `skill.description-budget` |
 | [agent-skills.md](agent-skills.md) | Portable Agent Skills required and optional constrained fields | `agent-skills.skill.*` |
