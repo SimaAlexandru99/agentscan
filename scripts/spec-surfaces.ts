@@ -228,6 +228,46 @@ export const SPEC_SURFACES: SpecSurface[] = [
     stalenessRisk: "high",
     url: "https://docs.github.com/en/copilot/reference/hooks-reference",
   },
+  {
+    provider: "grok",
+    surface: "mcp",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://docs.x.ai/build/features/mcp-servers",
+  },
+  {
+    provider: "grok",
+    surface: "hooks",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://docs.x.ai/build/features/hooks",
+  },
+  {
+    provider: "grok",
+    surface: "skills",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://docs.x.ai/build/features/skills-plugins-marketplaces",
+  },
+  {
+    provider: "grok",
+    surface: "rules",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://docs.x.ai/build/features/project-rules",
+  },
+  {
+    provider: "grok",
+    surface: "agents",
+    lastVerified: "2026-08-31",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://docs.x.ai/build/features/subagents",
+  },
 ];
 
 const STALE_AFTER_DAYS = 90;

@@ -7,6 +7,7 @@ import {
   COMMANDCODE_HOOK_TIMEOUT_MIN,
   COMMANDCODE_PROJECT_DIR,
 } from "../facts/commandcode";
+import { GROK_HOOK_HANDLER_TYPES } from "../facts/grok";
 import {
   claudeHandlerCompatible,
   copilotCanonicalEvent,
@@ -513,6 +514,54 @@ function copilotHookFromEntry(item: Record<string, unknown>, ctx: HookContext): 
   return [attachLaunch(fact, launch, ctx, choice.skipExists)];
 }
 
+function timeoutFromGrokEntry(item: Record<string, unknown>): Pick<HookFact, "timeout"> {
+  if (!("timeout" in item)) {
+    return {};
+  }
+  const value = item.timeout;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return { timeout: value };
+  }
+  return {};
+}
+
+function grokHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
+  const timeoutFacts = timeoutFromGrokEntry(item);
+  const typeRaw = typeof item.type === "string" ? item.type : undefined;
+  if (typeRaw === undefined) {
+    return [
+      baseFact(ctx, {
+        defect: "unknown-handler-type",
+        unknownHandlerType: "(missing)",
+        ...timeoutFacts,
+      }),
+    ];
+  }
+  if (!GROK_HOOK_HANDLER_TYPES.has(typeRaw)) {
+    return [
+      baseFact(ctx, {
+        defect: "unknown-handler-type",
+        unknownHandlerType: typeRaw,
+        ...timeoutFacts,
+      }),
+    ];
+  }
+  if (typeRaw === "http") {
+    const url = nonemptyString(item.url);
+    return [
+      baseFact(ctx, {
+        handlerType: "http",
+        ...timeoutFacts,
+        ...(url === undefined ? { defect: "http-without-url" as const } : {}),
+      }),
+    ];
+  }
+  return commandFactsFromLaunches(ctx, item, "command-without-command").map((fact) => ({
+    ...fact,
+    ...timeoutFacts,
+  }));
+}
+
 function hooksFromProfile(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
   switch (ctx.schemaProfile) {
     case "claude":
@@ -523,6 +572,8 @@ function hooksFromProfile(item: Record<string, unknown>, ctx: HookContext): Hook
       return copilotHookFromEntry(item, ctx);
     case "commandcode":
       return [commandcodeHookFromEntry(item, ctx)];
+    case "grok":
+      return grokHookFromEntry(item, ctx);
     default: {
       const neverProfile: never = ctx.schemaProfile;
       return neverProfile;
@@ -559,7 +610,7 @@ export function hooksFromObject(
   }
 
   const profile = inferHookSchemaProfile(sourceProvider, schemaProfile);
-  const nestedOnly = profile === "claude" || profile === "commandcode";
+  const nestedOnly = profile === "claude" || profile === "commandcode" || profile === "grok";
   const facts: HookFact[] = [];
   for (const [event, groups] of Object.entries(hooks as Record<string, unknown>)) {
     if (!Array.isArray(groups)) {
@@ -736,4 +787,65 @@ export function discoverVscodeHooks(root: string, errors: ConfigErrorFact[]): Ho
 export function discoverCopilotUserHooks(errors: ConfigErrorFact[]): HookFact[] {
   const dir = join(homedir(), ".copilot", "hooks");
   return discoverHookDir(dir, dir, errors, "vscode-native");
+}
+
+/**
+ * Grok native hooks. Never remaps `version: 1` to Copilot CLI.
+ * See docs/spec/grok-hooks.md.
+ */
+export function discoverGrokHooks(
+  dir: string,
+  projectRoot: string,
+  errors: ConfigErrorFact[],
+): HookFact[] {
+  if (!existsSync(dir)) {
+    return [];
+  }
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch (err) {
+    errors.push({
+      path: dir,
+      kind: "unreadable",
+      detail: err instanceof Error ? err.message : String(err),
+    });
+    return [];
+  }
+  const facts: HookFact[] = [];
+  for (const name of names) {
+    if (!name.endsWith(".json") || name.startsWith(".")) {
+      continue;
+    }
+    const filePath = join(dir, name);
+    const raw = readJsonConfig(filePath, errors);
+    if (raw === undefined) {
+      continue;
+    }
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      errors.push({
+        path: filePath,
+        kind: "unexpected-shape",
+        detail: "hook file is not a JSON object",
+      });
+      continue;
+    }
+    const hooks = (raw as Record<string, unknown>).hooks;
+    if (hooks === undefined) {
+      continue;
+    }
+    facts.push(
+      ...hooksFromObject(
+        hooks,
+        filePath,
+        "grok-hooks",
+        { project: projectRoot, own: dir },
+        errors,
+        "grok",
+        process.platform,
+        "grok",
+      ),
+    );
+  }
+  return facts;
 }

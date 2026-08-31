@@ -16,7 +16,7 @@ export const defaultThresholds = {
 };
 
 export const defaultConfig = {
-  skillPaths: [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills", ".commandcode/skills"],
+  skillPaths: [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills", ".commandcode/skills", ".grok/skills"],
   mcpPaths: [
     ".mcp.json",
     ".claude/mcp.json",
@@ -32,6 +32,7 @@ export const defaultConfig = {
     ".opencode/opencode.jsonc",
     ".continue/config.yaml",
     ".continue/mcpServers",
+    ".grok/config.toml",
   ],
   policyFiles: ["AGENTS.md", "CLAUDE.md"],
   ignoreSkills: [] as string[],

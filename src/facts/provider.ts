@@ -24,7 +24,7 @@ export type Compatibility = {
   schemaProfile?: string;
 };
 
-export type SkillSchemaProfile = "claude" | "agent-skills";
+export type SkillSchemaProfile = "claude" | "agent-skills" | "grok";
 
 export type McpLaunchKind = "command" | "url" | "registry-reference" | "no-launch";
 
@@ -38,7 +38,8 @@ export type McpSchemaProfile =
   | "codex-toml"
   | "gemini-json"
   | "opencode-json"
-  | "continue-yaml";
+  | "continue-yaml"
+  | "grok-toml";
 
 export function schemaProfileFromSkillsDir(dir: string): SkillSchemaProfile {
   const normalized = dir.replaceAll("\\", "/");
@@ -53,6 +54,12 @@ export function schemaProfileFromSkillsDir(dir: string): SkillSchemaProfile {
     normalized.endsWith("/.commandcode/skills")
   ) {
     return "agent-skills";
+  }
+  if (
+    normalized.includes("/.grok/skills") ||
+    normalized.endsWith("/.grok/skills")
+  ) {
+    return "grok";
   }
   return "claude";
 }
@@ -92,6 +99,12 @@ export function providerFromSkillsDir(dir: string): Provider {
     normalized.endsWith("/.commandcode/skills")
   ) {
     return "commandcode";
+  }
+  if (
+    normalized.includes("/.grok/skills") ||
+    normalized.endsWith("/.grok/skills")
+  ) {
+    return "grok";
   }
   return "unknown";
 }
@@ -154,6 +167,12 @@ export function mcpProfileFromPath(filePath: string): McpSchemaProfile {
   ) {
     return "opencode-json";
   }
+  if (
+    normalized.endsWith("/.grok/config.toml") ||
+    normalized.endsWith(".grok/config.toml")
+  ) {
+    return "grok-toml";
+  }
   return "claude-json";
 }
 
@@ -181,6 +200,8 @@ export function sourceProviderForMcpProfile(
       return "opencode";
     case "continue-yaml":
       return "continue";
+    case "grok-toml":
+      return "grok";
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }
@@ -209,6 +230,8 @@ export function consumedByForMcpProfile(profile: McpSchemaProfile): Provider[] {
       return ["opencode"];
     case "continue-yaml":
       return ["continue"];
+    case "grok-toml":
+      return ["grok"];
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }

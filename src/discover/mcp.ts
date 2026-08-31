@@ -465,17 +465,19 @@ function readVscodeConfig(
   }
 }
 
-function parseCodexToml(
+function parseTomlMcpServers(
   raw: unknown,
   filePath: string,
   root: string,
   errors: ConfigErrorFact[],
+  profile: Extract<McpSchemaProfile, "codex-toml" | "grok-toml">,
 ): McpFact[] {
+  const owner = profile === "codex-toml" ? "Codex" : "Grok";
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     errors.push({
       path: filePath,
       kind: "unexpected-shape",
-      detail: "Codex config root is not a TOML table",
+      detail: `${owner} config root is not a TOML table`,
     });
     return [];
   }
@@ -497,8 +499,29 @@ function parseCodexToml(
     filePath,
     root,
     errors,
-    "codex-toml",
+    profile,
   );
+}
+
+function parseCodexToml(
+  raw: unknown,
+  filePath: string,
+  root: string,
+  errors: ConfigErrorFact[],
+): McpFact[] {
+  return parseTomlMcpServers(raw, filePath, root, errors, "codex-toml");
+}
+
+export function parseGrokTomlFile(
+  filePath: string,
+  root: string,
+  errors: ConfigErrorFact[],
+): McpFact[] {
+  const raw = readTomlConfig(filePath, errors);
+  if (raw === undefined) {
+    return [];
+  }
+  return parseTomlMcpServers(raw, filePath, root, errors, "grok-toml");
 }
 
 function parseOpenCode(
@@ -805,6 +828,9 @@ function parseMcpFile(
       facts: parseCodexToml(raw, filePath, root, errors),
       ...knobs,
     };
+  }
+  if (profile === "grok-toml") {
+    return { facts: parseGrokTomlFile(filePath, root, errors) };
   }
   if (profile === "continue-yaml") {
     const raw = filePath.endsWith(".json") || filePath.endsWith(".jsonc")

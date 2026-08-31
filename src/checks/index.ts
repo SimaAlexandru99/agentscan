@@ -16,6 +16,7 @@ import {
 export type { CheckOptions } from "./options";
 export { COPILOT_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "./hooks";
 export { COMMANDCODE_HOOK_EVENTS } from "../facts/commandcode";
+export { GROK_HOOK_EVENTS } from "../facts/grok";
 export { STRUCTURAL_CHECKS } from "./registry";
 export type { RuleProvenance, StructuralCheck } from "./provenance";
 export { canonicalRuleId, canonicalizeFindingId, ignoreRuleSet, RULE_ALIASES } from "./aliases";

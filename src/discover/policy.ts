@@ -140,6 +140,24 @@ export function discoverPolicyFiles(
         startDir: start,
       }),
     );
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(dir, "Agents.md"), errors, {
+        sourceProvider: "grok",
+        kind: "agents-md",
+        startDir: start,
+      }),
+    );
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(dir, "AGENT.md"), errors, {
+        sourceProvider: "grok",
+        kind: "agents-md",
+        startDir: start,
+      }),
+    );
     if (!existsSync(join(dir, "AGENTS.md"))) {
       addUnique(
         out,
@@ -207,7 +225,7 @@ export function discoverPolicyFiles(
   for (const abs of walkFiles(root, {
     maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
     match: (abs, name) => {
-      if (name === "AGENTS.override.md") {
+      if (name === "AGENTS.override.md" || name === "Agents.md" || name === "AGENT.md") {
         return true;
       }
       if (name !== "AGENTS.md") {
@@ -229,7 +247,9 @@ export function discoverPolicyFiles(
           ? "commandcode"
           : basename(abs) === "AGENTS.override.md"
             ? "codex"
-            : "unknown",
+            : basename(abs) === "Agents.md" || basename(abs) === "AGENT.md"
+              ? "grok"
+              : "unknown",
         kind: "agents-md",
         startDir: start,
         ...(commandcodeMemory ? { hopsDir: dirname(dirname(abs)) } : {}),

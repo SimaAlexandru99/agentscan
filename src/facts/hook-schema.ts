@@ -6,7 +6,7 @@ import type { Provider } from "./provider";
  *
  * See docs/spec/hook-events.md, docs/spec/vscode-hooks.md, docs/spec/copilot-hooks.md.
  */
-export type HookSchemaProfile = "claude" | "vscode-native" | "copilot-cli" | "commandcode";
+export type HookSchemaProfile = "claude" | "vscode-native" | "copilot-cli" | "commandcode" | "grok";
 
 export type HookHandlerType = "command" | "http" | "mcp_tool" | "prompt" | "agent";
 
@@ -145,13 +145,14 @@ export function inferHookSchemaProfile(
   switch (sourceProvider) {
     case "commandcode":
       return "commandcode";
+    case "grok":
+      return "grok";
     case "vscode":
       return "vscode-native";
     case "claude":
     case "agent-skills":
     case "codex":
     case "cursor":
-    case "grok":
     case "antigravity":
     case "gemini":
     case "windsurf":

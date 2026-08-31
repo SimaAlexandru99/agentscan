@@ -41,12 +41,15 @@ function skillSchema(skill: SkillFact): SkillSchemaProfile {
   ) {
     return "agent-skills";
   }
+  if (skill.sourceProvider === "grok") {
+    return "grok";
+  }
   return "claude";
 }
 
 function skillRoot(skill: SkillFact): string {
   const path = skill.path.replaceAll("\\", "/");
-  for (const marker of ["/.claude/skills", "/.agents/skills", "/.cursor/skills", "/.codex/skills", "/.commandcode/skills"]) {
+  for (const marker of ["/.claude/skills", "/.agents/skills", "/.cursor/skills", "/.codex/skills", "/.commandcode/skills", "/.grok/skills"]) {
     const index = path.lastIndexOf(marker);
     if (index !== -1) {
       return path.slice(0, index + marker.length);
@@ -104,6 +107,18 @@ export function checkSkillStructure(facts: Facts): Finding[] {
             suggest: "Add a --- delimited block with name and description",
           }),
         );
+      } else if (schema === "grok") {
+        out.push(
+          make("grok.skill.missing-frontmatter", skillSubject(skill), {
+            action: "warn",
+            severity: "error",
+            message: "SKILL.md has no YAML frontmatter block",
+            reason:
+              "Grok Build says SKILL.md starts with YAML frontmatter. Extra keys are ignored; name and description are optional. See docs/spec/grok-skills.md.",
+            evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+            suggest: "Add a --- delimited frontmatter block",
+          }),
+        );
       } else {
         out.push(
           make("claude.skill.missing-frontmatter", skillSubject(skill), {
@@ -142,6 +157,8 @@ export function checkSkillStructure(facts: Facts): Finding[] {
 
     if (schema === "agent-skills") {
       out.push(...checkAgentSkillsFrontmatter(skill));
+    } else if (schema === "grok") {
+      // name / description optional (directory / first-paragraph fallback).
     } else if (skill.description === undefined && skill.firstMarkdownParagraph === undefined) {
       out.push(
         make("claude.skill.missing-description", skillSubject(skill), {
@@ -544,6 +561,7 @@ export function checkDescriptionBudget(
       s.source === "project" &&
       s.hasSkillMd &&
       skillSchema(s) !== "agent-skills" &&
+      skillSchema(s) !== "grok" &&
       listingText(s).length > 0,
   );
   const byRoot = new Map<string, SkillFact[]>();

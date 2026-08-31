@@ -56,6 +56,11 @@ to appear in real projects.** When adding a check:
 | [continue-mcp.md](continue-mcp.md) | `.continue/config.yaml` and standalone YAML block metadata | `continue.mcp.no-launch`, `continue.mcp.missing-block-metadata` |
 | [cursor-skills.md](cursor-skills.md) | Nested `.cursor/skills` / `.agents/skills` Agent Skills contract | `agent-skills.skill.*` |
 | [codex-skills.md](codex-skills.md) | Codex `.codex/skills` Agent Skills contract | `agent-skills.skill.*` |
+| [grok-mcp.md](grok-mcp.md) | Grok `[mcp_servers.*]` TOML; project walk-up; user under `--global` | `grok.mcp.no-launch` |
+| [grok-hooks.md](grok-hooks.md) | 14 events; command/http; `.grok/hooks/*.json` | `grok.hook.*` |
+| [grok-skills.md](grok-skills.md) | `.grok/skills`; optional name/description; frontmatter required | `grok.skill.missing-frontmatter` |
+| [grok-rules.md](grok-rules.md) | `.grok/rules/*.md`; `Agents.md` / `AGENT.md`; no size cap | discovery |
+| [grok-agents.md](grok-agents.md) | `.grok/agents/` location only; no filename pattern | unread |
 
 Each `STRUCTURAL_CHECKS` entry also carries `provenance` (`spec-required`,
 `vendor-recommendation`, `security`, `internal-consistency`, or `heuristic`)
