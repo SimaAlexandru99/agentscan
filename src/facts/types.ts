@@ -57,6 +57,12 @@ export type SkillFact = {
    * relative script path lives. See docs/spec/hook-sources.md.
    */
   frontmatterHooks?: HookFact[];
+  /**
+   * Command Code load rank. `true` is currently loaded; `false` is readable but
+   * shadowed by a higher-precedence source. Unset means this is not a Command
+   * Code-ranked skill.
+   */
+  commandcodeEffective?: boolean;
 };
 
 export type McpFact = {
@@ -107,6 +113,12 @@ export type McpFact = {
   literalEnvKeys: string[];
   /** Raw entry text, for secret pattern matching. */
   raw: string;
+  /**
+   * Command Code MCP load rank among settings / user mcp.json / project
+   * `.mcp.json`. Unset means this is not a Command Code-ranked MCP source
+   * (nested `.mcp.json` is Claude's file, not Command Code project MCP).
+   */
+  commandcodeEffective?: boolean;
 };
 
 export type HookFact = {
@@ -136,6 +148,11 @@ export type HookFact = {
   scriptPath?: string;
   /** false only when scriptPath was extracted and does not exist on disk. */
   scriptExists?: boolean;
+  /** Settings layer that declared this Command Code hook. */
+  commandcodeSettingsLayer?: "local" | "project" | "user";
+  commandcodeEffective?: boolean;
+  /** `matcher` was present but was not a string. */
+  commandcodeInvalidMatcher?: boolean;
 };
 
 export type AgentSchemaProfile = "claude-md" | "vscode-agent-md" | "commandcode-md";
@@ -176,6 +193,7 @@ export type AgentFact = {
   permissionMode?: string;
   commandcodeDefects?: CommandcodeAgentDefect[];
   invalidField?: string;
+  commandcodeEffective?: boolean;
 };
 
 /** Custom slash command markdown. Inventory only for Command Code. */
@@ -238,6 +256,12 @@ export type Facts = {
   startDir?: string;
   /** Farthest ancestor this scan may walk. A child `.cursor` does not shrink it. */
   scanBoundary?: string;
+  /**
+   * Command Code project root (git root, or the working directory outside a
+   * git repo). Settings, hooks path bases, inline MCP, extra skills, and
+   * model/mod settings resolve against this, not the generic `projectRoot`.
+   */
+  commandcodeProjectRoot?: string;
   /** Codex `project_doc_max_bytes` when declared in `.codex/config.toml`. */
   codexProjectDocMaxBytes?: number;
   packageManager: "bun" | "npm" | "pnpm" | "yarn" | "unknown";

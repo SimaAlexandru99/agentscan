@@ -163,11 +163,17 @@ function inferPackageManager(
 export function extractFacts(
   root: string,
   config: AgentscanConfig,
-  opts?: { includeGlobal?: boolean; startDir?: string; scanBoundary?: string },
+  opts?: {
+    includeGlobal?: boolean;
+    startDir?: string;
+    scanBoundary?: string;
+    commandcodeProjectRoot?: string;
+  },
 ): Facts {
   const includeGlobal = opts?.includeGlobal ?? config.includeGlobal;
   const startDir = opts?.startDir ?? root;
   const scanBoundary = opts?.scanBoundary ?? root;
+  const commandcodeProjectRoot = opts?.commandcodeProjectRoot ?? root;
   const packageErrors: ConfigErrorFact[] = [];
   const pkg = readPackageJson(root, packageErrors);
   const dependencies = { ...(pkg.dependencies ?? {}) };
@@ -177,12 +183,14 @@ export function extractFacts(
     includeGlobal,
     startDir,
     scanBoundary,
+    commandcodeProjectRoot,
   });
 
   return {
     root,
     startDir,
     scanBoundary,
+    commandcodeProjectRoot,
     packageManager: inferPackageManager(root, pkg),
     dependencies,
     devDependencies,

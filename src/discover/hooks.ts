@@ -11,6 +11,7 @@ import type { Provider } from "../facts/provider";
 import type { ConfigErrorFact, HookFact } from "../facts/types";
 import {
   formatLaunch,
+  launchFromCommandArgs,
   launchesFromEntry,
   resolveLaunchCwd,
   scriptCandidateFromLaunch,
@@ -194,6 +195,90 @@ function handlersFromGroups(
   return out;
 }
 
+function commandcodeUnknownType(item: Record<string, unknown>): string {
+  if (!("type" in item) || item.type === undefined) {
+    return "(missing)";
+  }
+  if (typeof item.type === "string") {
+    return item.type;
+  }
+  return JSON.stringify(item.type);
+}
+
+function commandcodeHookFromEntry(
+  item: Record<string, unknown>,
+  event: string,
+  filePath: string,
+  source: NonNullable<HookFact["source"]>,
+  bases: HookBases,
+  hostPlatform: NodeJS.Platform,
+): HookFact {
+  const timeoutFacts = timeoutFromEntry(item);
+  if (item.type !== "command") {
+    return {
+      name: event,
+      path: filePath,
+      event,
+      source,
+      sourceProvider: "commandcode",
+      defect: "unknown-handler-type",
+      unknownHandlerType: commandcodeUnknownType(item),
+      ...timeoutFacts,
+    };
+  }
+  if (typeof item.command !== "string" || item.command.length === 0) {
+    return {
+      name: event,
+      path: filePath,
+      event,
+      source,
+      sourceProvider: "commandcode",
+      handlerType: "command",
+      defect: "command-without-command",
+      ...timeoutFacts,
+    };
+  }
+  const launch = launchFromCommandArgs(item.command);
+  if (launch === undefined) {
+    return {
+      name: event,
+      path: filePath,
+      event,
+      source,
+      sourceProvider: "commandcode",
+      handlerType: "command",
+      defect: "command-without-command",
+      ...timeoutFacts,
+    };
+  }
+  const command = formatLaunch(launch);
+  const fact: HookFact = {
+    name: event,
+    path: filePath,
+    event,
+    source,
+    sourceProvider: "commandcode",
+    handlerType: "command",
+    command,
+    ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
+    ...timeoutFacts,
+  };
+  const cwd = resolveLaunchCwd(launch.cwd, bases.project, hostPlatform);
+  const candidate = scriptCandidateFromLaunch(launch, bases);
+  if (candidate !== undefined && !skipLaunchExistenceCheck(launch, cwd, candidate, hostPlatform)) {
+    const resolved = resolveHookScript(
+      bases,
+      candidate,
+      cwd.status === "ok" ? cwd.abs : undefined,
+    );
+    if (resolved !== undefined) {
+      fact.scriptPath = resolved.scriptPath;
+      fact.scriptExists = resolved.exists;
+    }
+  }
+  return fact;
+}
+
 function timeoutFromEntry(item: Record<string, unknown>): Pick<HookFact, "timeout" | "timeoutOutOfBounds"> {
   if (!("timeout" in item)) {
     return {};
@@ -241,6 +326,22 @@ export function hooksFromObject(
       if (!isHandlerEntry(group)) {
         continue;
       }
+      if (
+        requireNested &&
+        group.matcher !== undefined &&
+        typeof group.matcher !== "string"
+      ) {
+        invalidGroup = true;
+        facts.push({
+          name: event,
+          path: filePath,
+          event,
+          source,
+          sourceProvider,
+          defect: "invalid-group",
+          commandcodeInvalidMatcher: true,
+        });
+      }
       const missingHooks = !Array.isArray(group.hooks);
       if (
         (isMatcherOnlyGroup(group) && missingHooks) ||
@@ -278,9 +379,14 @@ export function hooksFromObject(
       continue;
     }
     for (const item of handlers) {
+      if (sourceProvider === "commandcode") {
+        facts.push(
+          commandcodeHookFromEntry(item, event, filePath, source, bases, hostPlatform),
+        );
+        continue;
+      }
       const typeRaw = typeof item.type === "string" ? item.type : undefined;
       const allowed = allowedHandlerTypes(sourceProvider);
-      const timeoutFacts = sourceProvider === "commandcode" ? timeoutFromEntry(item) : {};
       if (typeRaw !== undefined && !allowed.has(typeRaw)) {
         facts.push({
           name: event,
@@ -290,45 +396,10 @@ export function hooksFromObject(
           sourceProvider,
           defect: "unknown-handler-type",
           unknownHandlerType: typeRaw,
-          ...timeoutFacts,
         });
         continue;
       }
       const handlerType = handlerTypeOf(item);
-      if (
-        sourceProvider === "commandcode" &&
-        handlerType !== undefined &&
-        handlerType !== "command"
-      ) {
-        facts.push({
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-          defect: "unknown-handler-type",
-          unknownHandlerType: typeRaw ?? handlerType,
-          ...timeoutFacts,
-        });
-        continue;
-      }
-      if (
-        sourceProvider === "commandcode" &&
-        typeRaw === undefined &&
-        handlerType !== "command"
-      ) {
-        facts.push({
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-          handlerType: "command",
-          defect: "command-without-command",
-          ...timeoutFacts,
-        });
-        continue;
-      }
       if (handlerType === "http") {
         const url = typeof item.url === "string" ? item.url : undefined;
         facts.push({
@@ -383,7 +454,6 @@ export function hooksFromObject(
           sourceProvider,
           handlerType: "command",
           defect: "command-without-command",
-          ...timeoutFacts,
         });
         continue;
       }
@@ -394,7 +464,6 @@ export function hooksFromObject(
           event,
           source,
           sourceProvider,
-          ...timeoutFacts,
         });
         continue;
       }
@@ -410,7 +479,6 @@ export function hooksFromObject(
           command,
           ...(launch.platform === undefined ? {} : { platform: launch.platform }),
           ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
-          ...timeoutFacts,
         };
         const cwd = resolveLaunchCwd(launch.cwd, bases.project, hostPlatform);
         const candidate = scriptCandidateFromLaunch(launch, bases);

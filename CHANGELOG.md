@@ -13,7 +13,7 @@ intermediate commit that this train does not cut.
 
 ## 1.1.0 — 2026-08-31
 
-Native Command Code provider. 72 checks, 365 tests. Includes 1.0.1.
+Native Command Code provider. 72 checks, 377 tests. Includes 1.0.1.
 
 ### Added
 
@@ -21,26 +21,36 @@ Native Command Code provider. 72 checks, 365 tests. Includes 1.0.1.
   (read 2026-08-31). Unknown stays skip: no invented local-project MCP slug,
   no bundled-skill scan, no `--skill` flags, no model-id list, no mods
   execution.
-- Skills: `.commandcode/skills` (Agent Skills contract), `.agents/skills`
-  compatibility, extra dirs from the highest-precedence settings `skills`
-  array (replace, not merge). User `~/.commandcode/skills` and
-  `~/.agents/skills` under `--global`.
+- Skills: `.commandcode/skills` only at the Command Code project root
+  (Agent Skills contract), `.agents/skills` walk-up (max 10 hops from cwd,
+  stopping at home), extra dirs from the highest-precedence settings
+  `skills` array (replace, not merge; relative paths resolve against the git
+  root). User `~/.commandcode/skills` and `~/.agents/skills` under
+  `--global`.
 - Memory: per directory `AGENTS.md`, else `.commandcode/AGENTS.md` — at most
   one. User `~/.commandcode/AGENTS.md` under `--global`. Unresolved `@path`
   is not a hard error. Codex's instruction chain excludes
   `.commandcode/AGENTS.md`.
-- Agents: walk-up `.commandcode/agents/*.md` (one level); filename supplies
+- Agents: `<project>/.commandcode/agents/*.md` at the Command Code project
+  root only (git root, or cwd outside a git repo); filename supplies
   `name`; no `claude.agent.*` on these files. Checks:
   `commandcode.agent.reserved-name` (`explore` / `plan` / `review` /
-  `general`), `invalid-permission-mode`, `invalid-field-type`.
+  `general`), `invalid-permission-mode`, `invalid-field-type` covering every
+  documented typed field. `maxTurns` must be a positive integer.
 - Hooks: four events (`PreToolUse`, `PostToolUse`, `Stop`, `SessionStart`);
-  nested `hooks` array required; command handlers only; timeout 0–600.
-  `COMMANDCODE_PROJECT_DIR` and `COMMANDCODE_CWD` expand on script paths.
-- Settings: `model` inventoried, not validated. Inline `mcp.servers` (array
-  or object map; unnamed array items are inventory-only). User
-  `~/.commandcode/mcp.json` under `--global`.
-- Slash commands: inventory `.commandcode/commands` (walk-up) and the user
-  dir — no required-field checks.
+  nested `hooks` array required; `type` must be the string `"command"`;
+  `command` must be a string (not an argv array); `matcher` must be a string
+  when present. Timeout 0–600. A matcher on `Stop` / `SessionStart` is
+  runtime-dead, not a schema error. `COMMANDCODE_PROJECT_DIR` and
+  `COMMANDCODE_CWD` expand against the Command Code project root.
+- Settings: Command Code project root is the git root (a child `.cursor`
+  does not hide `<git-root>/.commandcode/`). `model` inventoried, not
+  validated. Inline `mcp.servers` (array or object map; unnamed array items
+  are inventory-only). User `~/.commandcode/mcp.json` under `--global`.
+  Spec/runtime checks skip shadowed lower-precedence definitions; security
+  checks still inspect every readable MCP file.
+- Slash commands: inventory `.commandcode/commands` at the project root and
+  the user dir — no required-field checks.
 - Mods: inventory `mods.paths` — never execute or import TypeScript.
 - Conformance fixture `tests/fixtures/conformance/commandcode/`.
 - `spec:check` tracks 26 captured surfaces and diffs Command Code hook

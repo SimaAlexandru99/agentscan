@@ -1,4 +1,5 @@
 import type { CommandcodeAgentDefect, Facts, Finding } from "../facts/types";
+import { isShadowedCommandcode } from "../facts/commandcode";
 import { assertNever } from "../facts/provider";
 import { make } from "./make";
 
@@ -62,6 +63,9 @@ function checkCommandcodeAgents(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const agent of facts.agents) {
     if (!isCommandcodeAgent(agent.sourceProvider)) {
+      continue;
+    }
+    if (isShadowedCommandcode(agent.commandcodeEffective)) {
       continue;
     }
     if (agent.unreadable === true || agent.unparseableFrontmatter === true) {

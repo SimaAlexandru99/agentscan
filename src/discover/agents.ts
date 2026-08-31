@@ -182,13 +182,16 @@ function discoverVscodeAgents(root: string, errors: ConfigErrorFact[]): AgentFac
 /**
  * Claude: every `.claude/agents` from startDir up to root (docs/spec/claude-subagents.md).
  * VS Code: `.github/agents` (docs/spec/vscode-agents.md).
- * Command Code: `.commandcode/agents/*.md` one level; user dir under `--global`.
+ * Command Code: `<commandcodeProjectRoot>/.commandcode/agents/*.md` only;
+ * user dir under `--global`. Nested package `.commandcode/agents` is not
+ * Command Code project config.
  */
 export function discoverAgents(
   root: string,
   errors: ConfigErrorFact[],
   startDir = root,
   includeGlobal = false,
+  commandcodeProjectRoot = root,
 ): AgentFact[] {
   const facts: AgentFact[] = [];
   const seenDirs = new Set<string>();
@@ -201,6 +204,6 @@ export function discoverAgents(
     facts.push(...discoverClaudeAgentsDir(agentsDir, root, errors));
     facts.push(...discoverVscodeAgents(dir, errors));
   }
-  facts.push(...discoverCommandcodeAgents(root, includeGlobal, errors, startDir));
+  facts.push(...discoverCommandcodeAgents(commandcodeProjectRoot, includeGlobal, errors));
   return facts;
 }

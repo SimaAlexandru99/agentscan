@@ -1,5 +1,5 @@
 import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { parse as parseYaml } from "yaml";
 import type {
   AgentFact,
@@ -64,6 +64,7 @@ export type AgentSurface = {
   mods?: ModFact[];
   commandcodeModel?: string;
   commandcodeModelSource?: string;
+  commandcodeProjectRoot?: string;
 };
 
 /**
@@ -126,6 +127,13 @@ export type ScanContext = {
   scanBoundary: string;
   /** Display / package root. A nearer provider signal may win over a parent package.json. */
   projectRoot: string;
+  /**
+   * Command Code project root: git root when that git directory is inside the
+   * scan boundary, otherwise the working directory. A child `.cursor` / `.claude`
+   * must not hide `<git-root>/.commandcode/settings.json`. A `.agentscan-root`
+   * pin still stops the scan from escaping into a parent checkout.
+   */
+  commandcodeProjectRoot: string;
 };
 
 /**
@@ -169,12 +177,19 @@ export function resolveScanContext(startDir: string): ScanContext {
       `No package.json or agent configuration found walking up from ${requestedDir}`,
     );
   }
+  const scanBoundary = nearestPin ?? nearestGit ?? nearestWorkspace ?? nearestSignal ?? requestedDir;
+  const commandcodeProjectRoot =
+    nearestGit !== undefined &&
+    (nearestGit === scanBoundary || nearestGit.startsWith(`${scanBoundary}${sep}`))
+      ? nearestGit
+      : requestedDir;
   return {
     requestedDir,
     workspaceBoundary: nearestWorkspace,
     repositoryBoundary: nearestGit,
-    scanBoundary: nearestPin ?? nearestGit ?? nearestWorkspace ?? nearestSignal ?? requestedDir,
+    scanBoundary,
     projectRoot,
+    commandcodeProjectRoot,
   };
 }
 

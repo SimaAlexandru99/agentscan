@@ -340,7 +340,7 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
   },
   {
     id: "commandcode.hook.invalid-group",
-    description: "Command Code hook group is missing the required nested hooks array",
+    description: "Command Code hook group is missing the required nested hooks array, or matcher is not a string",
     provenance: "spec-required",
     lastVerified: "2026-08-31",
   },
@@ -352,7 +352,7 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
   },
   {
     id: "commandcode.hook.unknown-handler-type",
-    description: "Command Code hook uses a handler type other than command",
+    description: "Command Code hook uses a handler type other than the required string \"command\"",
     provenance: "spec-required",
     lastVerified: "2026-08-31",
   },

@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/checks-72-111111?style=flat-square" alt="72 checks">
-  <img src="https://img.shields.io/badge/tests-365%20passing-111111?style=flat-square" alt="365 tests">
+  <img src="https://img.shields.io/badge/tests-377%20passing-111111?style=flat-square" alt="377 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -461,9 +461,9 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `claude.hook.invalid-group` | error | A Claude hook matcher group with no `hooks` array |
 | `commandcode.hook.unknown-event` | error | A Command Code hook registered under an event that is never dispatched (four events only) |
 | `commandcode.hook.missing-script` | error | A Command Code command hook whose script does not exist |
-| `commandcode.hook.invalid-group` | error | A Command Code hook group missing the required nested `hooks` array (flat Claude-style arrays are invalid here) |
-| `commandcode.hook.command-without-command` | error | A Command Code `type: command` hook with no `command` |
-| `commandcode.hook.unknown-handler-type` | error | A Command Code hook whose handler type is not `command` |
+| `commandcode.hook.invalid-group` | error | A Command Code hook group missing the required nested `hooks` array, or a non-string `matcher` |
+| `commandcode.hook.command-without-command` | error | A Command Code `type: command` hook whose `command` is missing, empty, or not a string |
+| `commandcode.hook.unknown-handler-type` | error | A Command Code hook whose `type` is missing, not a string, or not `"command"` |
 | `commandcode.hook.timeout-out-of-bounds` | error | A Command Code hook `timeout` outside 0–600 seconds |
 | `commandcode.agent.reserved-name` | error | A Command Code custom agent named `explore`, `plan`, `review`, or `general` — ignored at load |
 | `commandcode.agent.invalid-permission-mode` | error | A Command Code agent `permissionMode` that is not a documented value |
@@ -503,7 +503,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | Agent Skills | none | full | none | none | none |
 | AGENTS.md | partial (nested + nearest-wins; no required fields) | none | none | none | none |
 | Claude Code | partial (walk-up `CLAUDE.md`; 200-line target) | partial (native; `name` optional) | partial (walk-up `.claude/agents`) | partial (33 events; command handlers only) | full (`claude-json`; shared `.mcp.json` is `mcp-json`) |
-| Command Code | partial (per-dir `AGENTS.md` else `.commandcode/AGENTS.md`; `@path` is not a hard error) | full (Agent Skills; `.commandcode/skills` + `.agents/skills`) | partial (filename name; reserved names; no missing-description) | partial (4 events; command handlers; nested groups) | full (`mcp-json` + `commandcode-json`; `transport` / `type` alias) |
+| Command Code | partial (per-dir `AGENTS.md` else `.commandcode/AGENTS.md`; `@path` is not a hard error) | full (Agent Skills; git-root `.commandcode/skills` + 10-hop `.agents/skills`) | partial (filename name; reserved names; no missing-description) | partial (4 events; command handlers; nested groups; git-root settings) | full (`mcp-json` + `commandcode-json`; git-root project file; `transport` / `type` alias) |
 | Codex | partial (32 KiB chain; no invented agents TOML) | full (Agent Skills; `.codex/skills`) | none | none | full (`codex-toml`) |
 | VS Code | partial (`.github` instruction files; no required fields) | none | partial (filename may be the name) | full (8 events) | full (`servers`) |
 | Cursor | none | full (Agent Skills; nested `SKILL.md`) | none | none | full |
@@ -552,7 +552,7 @@ and Command Code settings hooks:
 | `SKILL.md` frontmatter | the skill's own directory, then the project root |
 | `.claude/agents/*.md` frontmatter | the agent file's directory, then the project root |
 | `.github/hooks/*.json` (VS Code) | project root and the hooks directory |
-| `.commandcode/settings.json` · `.commandcode/settings.local.json` (and user settings under `--global`) | project root, `$COMMANDCODE_PROJECT_DIR`, `$COMMANDCODE_CWD` |
+| `.commandcode/settings.json` · `.commandcode/settings.local.json` (and user settings under `--global`) | Command Code project root (git root, or cwd outside a git repo), `$COMMANDCODE_PROJECT_DIR`, `$COMMANDCODE_CWD` |
 
 `${CLAUDE_PLUGIN_ROOT}` is expanded **only** for a hook that came from a plugin.
 In a settings file it names nothing, so the path is skipped rather than guessed
@@ -600,7 +600,11 @@ first.
   Until it does, that path is skipped rather than guessed. Bundled Command Code
   skills and `--skill` launch flags are not project files and are not scanned.
   `mods.paths` are inventoried; the TypeScript is never executed or imported.
-  `auth.json` and `mcp-tokens.json` are never opened.
+  `auth.json` and `mcp-tokens.json` are never opened. Command Code project
+  root is the git root (or cwd outside a git repo); a child `.cursor` does
+  not hide `<git-root>/.commandcode/`. Spec/runtime Command Code checks skip
+  shadowed lower-precedence definitions; secrets still inspect every readable
+  MCP file.
 - **Three Claude hook locations are unread.** `~/.claude/settings.json`, managed policy
   settings, and installed marketplace plugins under `~/.claude/plugins` all sit
   outside the scanned project, and the docs say a plugin's install directory
@@ -619,7 +623,7 @@ Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
 GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
 
-**1.1.0** (31 August 2026) adds a native Command Code provider: 72 checks, 365
+**1.1.0** (31 August 2026) adds a native Command Code provider: 72 checks, 377
 tests, still offline on `check`. Shared `.mcp.json` is `mcp-json` (Claude and
 Command Code), not Claude-only — that MCP hotfix is **1.0.1** in the changelog
 and ships inside this package version.

@@ -9,7 +9,7 @@
 
 | Type | Path |
 |------|------|
-| Project | `.commandcode/commands/` |
+| Project | `<project>/.commandcode/commands/` at the Command Code project root only |
 | User | `~/.commandcode/commands/` (`--global`) |
 
 The command name is the markdown filename without `.md`. Subdirectories

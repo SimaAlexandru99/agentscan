@@ -47,6 +47,7 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
     includeGlobal,
     startDir: requested,
     scanBoundary: ctx.scanBoundary,
+    commandcodeProjectRoot: ctx.commandcodeProjectRoot,
   });
 
   const ignoredSkills = new Set(config.ignoreSkills);

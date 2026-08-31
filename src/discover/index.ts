@@ -10,11 +10,17 @@ import type {
 } from "../facts/types";
 import { discoverAgents } from "./agents";
 import {
+  applyCommandcodeAgentPrecedence,
+  applyCommandcodeHookPrecedence,
+  applyCommandcodeMcpPrecedence,
+  applyCommandcodeSkillPrecedence,
+  commandcodeAgentsSkillsRoots,
   discoverCommandcodeCommands,
   discoverCommandcodeHooks,
   discoverCommandcodeInlineMcp,
   discoverCommandcodeMods,
   discoverCommandcodeUserMcp,
+  isCommandcodeSkillsRel,
   readCommandcodeSettingsLayers,
   resolveSkillLocation,
   winningCommandcodeModel,
@@ -49,6 +55,8 @@ function mcpKey(fact: McpFact): string {
  *
  * `root` is the display / package root. `scanBoundary` is the farthest ancestor
  * discovery may walk — a child `.cursor` must not hide parent Claude or Codex.
+ * Command Code settings, skills, agents, commands, and path bases use
+ * `commandcodeProjectRoot` (git root, or the working directory outside a git repo).
  */
 export function discoverAgentSurface(
   root: string,
@@ -58,20 +66,30 @@ export function discoverAgentSurface(
     onNestedDirectoryRead?: () => void;
     startDir?: string;
     scanBoundary?: string;
+    commandcodeProjectRoot?: string;
   },
 ): AgentSurface {
   const startDir = opts.startDir ?? root;
   const scanBoundary = opts.scanBoundary ?? root;
+  const commandcodeProjectRoot = opts.commandcodeProjectRoot ?? root;
   const dirs = ancestorDirsInclusive(startDir, scanBoundary);
   const configErrors: ConfigErrorFact[] = [];
   const skills: SkillFact[] = [];
   const configuredRoots = new Set<string>();
   for (const dir of dirs) {
     for (const rel of config.skillPaths) {
+      if (isCommandcodeSkillsRel(rel)) {
+        continue;
+      }
       const abs = resolve(dir, rel);
       configuredRoots.add(abs);
       skills.push(...discoverSkillsInDir(abs, "project", configErrors, root));
     }
+  }
+  const commandcodeSkills = resolve(commandcodeProjectRoot, ".commandcode", "skills");
+  if (!configuredRoots.has(commandcodeSkills)) {
+    configuredRoots.add(commandcodeSkills);
+    skills.push(...discoverSkillsInDir(commandcodeSkills, "project", configErrors, root));
   }
   skills.push(
     ...discoverNestedClaudeSkills(scanBoundary, configuredRoots, configErrors, {
@@ -79,9 +97,15 @@ export function discoverAgentSurface(
     }),
   );
 
-  const ccLayers = readCommandcodeSettingsLayers(root, configErrors, opts.includeGlobal);
+  const ccLayers = readCommandcodeSettingsLayers(
+    commandcodeProjectRoot,
+    configErrors,
+    opts.includeGlobal,
+  );
+  const extraDirs: string[] = [];
   for (const declared of winningSkillsExtraDirs(ccLayers)) {
-    const abs = resolve(resolveSkillLocation(root, declared));
+    const abs = resolve(resolveSkillLocation(commandcodeProjectRoot, declared));
+    extraDirs.push(abs);
     if (configuredRoots.has(abs)) {
       continue;
     }
@@ -116,8 +140,27 @@ export function discoverAgentSurface(
     }
   }
 
+  const agentsSkillsRoots = commandcodeAgentsSkillsRoots(
+    startDir,
+    scanBoundary,
+    homedir(),
+  );
+  applyCommandcodeSkillPrecedence(skills, {
+    commandcodeProjectRoot,
+    extraDirs,
+    agentsSkillsRoots,
+    includeGlobal: opts.includeGlobal,
+  });
+
   const lock = discoverSkillsLocks(scanBoundary, root, configErrors);
-  const agents = discoverAgents(scanBoundary, configErrors, startDir, opts.includeGlobal);
+  const agents = discoverAgents(
+    scanBoundary,
+    configErrors,
+    startDir,
+    opts.includeGlobal,
+    commandcodeProjectRoot,
+  );
+  applyCommandcodeAgentPrecedence(agents, commandcodeProjectRoot);
 
   const hooks: HookFact[] = [];
   const mcp: McpFact[] = [];
@@ -143,8 +186,8 @@ export function discoverAgentSurface(
   }
   mcp.push(...discoverNestedContinueMcp(scanBoundary, configErrors, mcpSeen));
   hooks.push(...discoverPluginHooks(scanBoundary, configErrors));
-  hooks.push(...discoverCommandcodeHooks(root, ccLayers, configErrors));
-  for (const fact of discoverCommandcodeInlineMcp(root, ccLayers, configErrors)) {
+  hooks.push(...discoverCommandcodeHooks(commandcodeProjectRoot, ccLayers, configErrors));
+  for (const fact of discoverCommandcodeInlineMcp(commandcodeProjectRoot, ccLayers, configErrors)) {
     const key = mcpKey(fact);
     if (mcpSeen.has(key)) {
       continue;
@@ -153,7 +196,7 @@ export function discoverAgentSurface(
     mcp.push(fact);
   }
   if (opts.includeGlobal) {
-    for (const fact of discoverCommandcodeUserMcp(root, configErrors)) {
+    for (const fact of discoverCommandcodeUserMcp(commandcodeProjectRoot, configErrors)) {
       const key = mcpKey(fact);
       if (mcpSeen.has(key)) {
         continue;
@@ -162,23 +205,25 @@ export function discoverAgentSurface(
       mcp.push(fact);
     }
   }
+  applyCommandcodeMcpPrecedence(mcp, commandcodeProjectRoot);
   const slashCommands = discoverCommandcodeCommands(
-    scanBoundary,
+    commandcodeProjectRoot,
     opts.includeGlobal,
     configErrors,
-    startDir,
   );
   const mods = discoverCommandcodeMods(ccLayers);
   const winningModel = winningCommandcodeModel(ccLayers);
+  const allHooks = [
+    ...hooks,
+    ...skills.flatMap((s) => s.frontmatterHooks ?? []),
+    ...agents.flatMap((a) => a.frontmatterHooks ?? []),
+  ];
+  applyCommandcodeHookPrecedence(allHooks);
 
   return {
     skills: disambiguateSkills(skills, root),
     agents,
-    hooks: [
-      ...hooks,
-      ...skills.flatMap((s) => s.frontmatterHooks ?? []),
-      ...agents.flatMap((a) => a.frontmatterHooks ?? []),
-    ],
+    hooks: allHooks,
     mcp,
     policyFiles: discoverPolicyFiles(
       scanBoundary,
@@ -199,5 +244,6 @@ export function discoverAgentSurface(
     ...(winningModel === undefined
       ? {}
       : { commandcodeModel: winningModel.model, commandcodeModelSource: winningModel.source }),
+    commandcodeProjectRoot,
   };
 }

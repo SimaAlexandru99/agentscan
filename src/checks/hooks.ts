@@ -1,4 +1,4 @@
-import { COMMANDCODE_HOOK_EVENTS } from "../facts/commandcode";
+import { COMMANDCODE_HOOK_EVENTS, isShadowedCommandcode } from "../facts/commandcode";
 import { assertNever, type Provider } from "../facts/provider";
 import type { Facts, Finding, HookDefect, HookFact } from "../facts/types";
 import { make } from "./make";
@@ -179,6 +179,9 @@ export function checkHookEvents(facts: Facts): Finding[] {
   const out: Finding[] = [];
   const reported = new Set<string>();
   for (const hook of facts.hooks) {
+    if (isShadowedCommandcode(hook.commandcodeEffective)) {
+      continue;
+    }
     const provider = hookProvider(hook);
     const known = eventsFor(provider);
     const ruleId = unknownEventRuleId(provider);
@@ -256,6 +259,9 @@ function defectMessage(hook: HookFact, defect: HookDefect): string {
   const event = hook.event ?? hook.name;
   switch (defect) {
     case "invalid-group":
+      if (hook.commandcodeInvalidMatcher === true) {
+        return `${event} hook matcher is not a string`;
+      }
       return `${event} hook group is missing a \`hooks\` array`;
     case "command-without-command":
       return `${event} command hook declares no command`;
@@ -275,6 +281,9 @@ export function checkHookShape(facts: Facts): Finding[] {
   const out: Finding[] = [];
   const reported = new Set<string>();
   for (const hook of facts.hooks) {
+    if (isShadowedCommandcode(hook.commandcodeEffective)) {
+      continue;
+    }
     const defect = hook.defect;
     if (defect === undefined) {
       continue;
@@ -320,6 +329,9 @@ export function checkHooks(facts: Facts): Finding[] {
   // could reach only the first.
   const reported = new Set<string>();
   for (const hook of facts.hooks) {
+    if (isShadowedCommandcode(hook.commandcodeEffective)) {
+      continue;
+    }
     if (hookProvider(hook) === "commandcode" && hook.timeoutOutOfBounds === true) {
       const subject = `hook:${hook.event ?? hook.name}:timeout`;
       const key = `commandcode.hook.timeout-out-of-bounds:${subject}:${hook.path}`;

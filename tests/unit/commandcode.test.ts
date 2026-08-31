@@ -360,3 +360,266 @@ describe("Command Code placeholders on MCP commands", () => {
     expect(mcpCommandPath("$COMMANDCODE_CWD/bin/server")).toBe("$COMMANDCODE_CWD/bin/server");
   });
 });
+
+describe("Command Code project root is the git root", () => {
+  test("child .cursor does not hide git-root .commandcode settings", () => {
+    const repo = tmpProject("agentscan-cc-gitroot-settings-");
+    mkdirSync(join(repo, ".git"));
+    write(repo, ".commandcode/settings.json", JSON.stringify({ model: "from-git-root" }));
+    write(repo, "apps/web/.commandcode/settings.json", JSON.stringify({ model: "from-child" }));
+    mkdirSync(join(repo, "apps", "web", ".cursor"), { recursive: true });
+    const result = analyze({ dir: join(repo, "apps", "web") });
+    expect(result.facts.commandcodeProjectRoot).toBe(repo);
+    expect(result.facts.root).toBe(join(repo, "apps", "web"));
+    expect(result.facts.commandcodeModel).toBe("from-git-root");
+    expect(result.facts.commandcodeModelSource).toBe(join(repo, ".commandcode", "settings.json"));
+  });
+
+  test("nested package .commandcode/agents and skills are not project config", () => {
+    const repo = tmpProject("agentscan-cc-nested-pkg-");
+    mkdirSync(join(repo, ".git"));
+    write(repo, ".commandcode/agents/root-agent.md", "---\nname: root-agent\n---\n");
+    write(
+      repo,
+      ".commandcode/skills/root-skill/SKILL.md",
+      "---\nname: root-skill\ndescription: From git root.\n---\n",
+    );
+    write(repo, "packages/pkg/package.json", '{"name":"pkg"}');
+    write(repo, "packages/pkg/.commandcode/agents/nested-agent.md", "---\nname: nested-agent\n---\n");
+    write(
+      repo,
+      "packages/pkg/.commandcode/skills/nested-skill/SKILL.md",
+      "---\nname: nested-skill\ndescription: Must not load as Command Code project config.\n---\n",
+    );
+    const fromRoot = analyze({ dir: repo });
+    const fromPkg = analyze({ dir: join(repo, "packages", "pkg") });
+    for (const result of [fromRoot, fromPkg]) {
+      expect(result.facts.commandcodeProjectRoot).toBe(repo);
+      expect(result.facts.agents.map((a) => a.name)).toEqual(["root-agent"]);
+      expect(result.facts.skills.map((s) => s.id).sort()).toEqual(["root-skill"]);
+    }
+  });
+
+  test(".agents/skills more than 10 hops from cwd is not Command Code project config", () => {
+    const repo = tmpProject("agentscan-cc-agents-hops-");
+    mkdirSync(join(repo, ".git"));
+    write(
+      repo,
+      ".agents/skills/deep/SKILL.md",
+      "---\nname: deep\ndescription: At the git root, 11 hops up.\n---\n",
+    );
+    let dir = repo;
+    for (let i = 0; i < 11; i++) {
+      dir = join(dir, `d${i}`);
+      mkdirSync(dir);
+    }
+    mkdirSync(join(dir, ".cursor"));
+    write(
+      dir,
+      ".agents/skills/near/SKILL.md",
+      "---\nname: near\ndescription: At cwd, hop 0.\n---\n",
+    );
+    const result = analyze({ dir });
+    const deep = result.facts.skills.find((s) => s.id === "deep");
+    const near = result.facts.skills.find((s) => s.id === "near");
+    expect(deep).toBeDefined();
+    expect(deep?.commandcodeEffective).toBeUndefined();
+    expect(near?.commandcodeEffective).toBe(true);
+  });
+});
+
+describe("Command Code strict HookEntry schema", () => {
+  test("missing type, command array, numeric type, and non-string matcher fail", () => {
+    const root = tmpProject("agentscan-cc-hook-shape-");
+    write(root, "scripts/ok.sh", "#!/bin/sh\nexit 0\n");
+    write(
+      root,
+      ".commandcode/settings.json",
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [{ hooks: [{ command: "./scripts/ok.sh" }] }],
+          PostToolUse: [
+            { hooks: [{ type: "command", command: ["node", "./scripts/ok.sh"] }] },
+          ],
+          Stop: [{ hooks: [{ type: 123, command: "./scripts/ok.sh" }] }],
+          SessionStart: [
+            { matcher: ["Bash"], hooks: [{ type: "command", command: "./scripts/ok.sh" }] },
+          ],
+        },
+      }),
+    );
+    const { facts, findings } = findingsFor(root);
+    const ids = findings.map((f) => f.ruleId);
+    expect(ids).toContain("commandcode.hook.unknown-handler-type");
+    expect(ids).toContain("commandcode.hook.command-without-command");
+    expect(ids).toContain("commandcode.hook.invalid-group");
+    const missing = facts.hooks.find((h) => h.event === "PreToolUse");
+    expect(missing?.unknownHandlerType).toBe("(missing)");
+    const arrayCmd = facts.hooks.find((h) => h.event === "PostToolUse");
+    expect(arrayCmd?.defect).toBe("command-without-command");
+    const numeric = facts.hooks.find((h) => h.event === "Stop");
+    expect(numeric?.defect).toBe("unknown-handler-type");
+    const matcher = facts.hooks.find((h) => h.commandcodeInvalidMatcher === true);
+    expect(matcher?.event).toBe("SessionStart");
+  });
+
+  test("Stop and SessionStart with a string matcher are not a schema error", () => {
+    const root = tmpProject("agentscan-cc-hook-matcher-runtime-");
+    write(root, "scripts/ok.sh", "#!/bin/sh\nexit 0\n");
+    write(
+      root,
+      ".commandcode/settings.json",
+      JSON.stringify({
+        hooks: {
+          Stop: [
+            { matcher: "*", hooks: [{ type: "command", command: "./scripts/ok.sh" }] },
+          ],
+          SessionStart: [
+            { matcher: "startup", hooks: [{ type: "command", command: "./scripts/ok.sh" }] },
+          ],
+        },
+      }),
+    );
+    expect(ruleIds(root)).toEqual([]);
+  });
+});
+
+describe("Command Code agent field types", () => {
+  test("covers every documented typed field", () => {
+    const root = tmpProject("agentscan-cc-agent-types-");
+    write(root, ".commandcode/agents/desc.md", "---\nname: desc\ndescription: 123\n---\n");
+    write(root, ".commandcode/agents/model.md", "---\nname: model\nmodel: 123\n---\n");
+    write(
+      root,
+      ".commandcode/agents/effort.md",
+      "---\nname: effort\nreasoningEffort: false\n---\n",
+    );
+    write(root, ".commandcode/agents/zero.md", "---\nname: zero\nmaxTurns: 0\n---\n");
+    write(root, ".commandcode/agents/neg.md", "---\nname: neg\nmaxTurns: -1\n---\n");
+    write(
+      root,
+      ".commandcode/agents/bg.md",
+      '---\nname: bg\nbackground: "yes"\n---\n',
+    );
+    const { facts, findings } = findingsFor(root);
+    const byName = Object.fromEntries(facts.agents.map((a) => [a.name, a]));
+    expect(byName.desc?.invalidField).toBe("description");
+    expect(byName.model?.invalidField).toBe("model");
+    expect(byName.effort?.invalidField).toBe("reasoningEffort");
+    expect(byName.zero?.invalidField).toBe("maxTurns");
+    expect(byName.neg?.invalidField).toBe("maxTurns");
+    expect(byName.bg?.invalidField).toBe("background");
+    expect(findings.filter((f) => f.ruleId === "commandcode.agent.invalid-field-type")).toHaveLength(
+      6,
+    );
+  });
+
+  test("filename fallback for missing name remains valid", () => {
+    const root = tmpProject("agentscan-cc-agent-name-fallback-");
+    write(root, ".commandcode/agents/ok.md", "---\ndescription: still valid\n---\n");
+    const { facts, findings } = findingsFor(root);
+    expect(facts.agents[0]!.name).toBe("ok");
+    expect(facts.agents[0]!.nameSource).toBe("filename");
+    expect(findings.map((f) => f.ruleId)).not.toContain("commandcode.agent.invalid-field-type");
+  });
+});
+
+describe("Command Code effective vs shadowed config", () => {
+  test("valid project .mcp.json shadows a broken settings mcp.servers entry", () => {
+    const root = tmpProject("agentscan-cc-mcp-shadow-");
+    write(
+      root,
+      ".commandcode/settings.json",
+      JSON.stringify({
+        mcp: {
+          servers: [
+            {
+              name: "shared",
+              transport: "stdio",
+              env: { TOKEN: "ghp_abcdefghij0123456789abcd" },
+            },
+          ],
+        },
+      }),
+    );
+    write(
+      root,
+      ".mcp.json",
+      JSON.stringify({ mcpServers: { shared: { transport: "stdio", command: "npx" } } }),
+    );
+    const { facts, findings } = findingsFor(root);
+    const ids = findings.map((f) => f.ruleId);
+    expect(ids).not.toContain("commandcode.mcp.stdio-without-command");
+    expect(ids).toContain("security.hardcoded-secret");
+    const settings = facts.mcp.find((s) => s.path.includes("settings.json"));
+    const project = facts.mcp.find((s) => s.path.endsWith(".mcp.json"));
+    expect(settings?.commandcodeEffective).toBe(false);
+    expect(project?.commandcodeEffective).toBe(true);
+  });
+
+  test("valid settings.local hooks shadow a broken project settings event", () => {
+    const root = tmpProject("agentscan-cc-hook-shadow-");
+    write(root, "scripts/ok.sh", "#!/bin/sh\nexit 0\n");
+    write(
+      root,
+      ".commandcode/settings.json",
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [{ hooks: [{ command: "./scripts/ok.sh" }] }],
+        },
+      }),
+    );
+    write(
+      root,
+      ".commandcode/settings.local.json",
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [{ hooks: [{ type: "command", command: "./scripts/ok.sh" }] }],
+        },
+      }),
+    );
+    const { facts, findings } = findingsFor(root);
+    expect(findings.map((f) => f.ruleId)).not.toContain("commandcode.hook.unknown-handler-type");
+    const local = facts.hooks.filter((h) => h.path.endsWith("settings.local.json"));
+    const project = facts.hooks.filter(
+      (h) => h.path.endsWith("settings.json") && !h.path.endsWith("settings.local.json"),
+    );
+    expect(local.every((h) => h.commandcodeEffective === true)).toBe(true);
+    expect(project.every((h) => h.commandcodeEffective === false)).toBe(true);
+  });
+
+  test("personal agent shadows a broken project agent of the same name", () => {
+    const tmpHome = mkdtempSync(join(os.tmpdir(), "agentscan-cc-agent-shadow-home-"));
+    const root = tmpProject("agentscan-cc-agent-shadow-");
+    write(tmpHome, ".commandcode/agents/dup.md", "---\nname: dup\ndescription: personal\n---\n");
+    write(root, ".commandcode/agents/dup.md", "---\nname: dup\nmaxTurns: 0\n---\n");
+    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
+    try {
+      const { facts, findings } = findingsFor(root, true);
+      expect(findings.map((f) => f.ruleId)).not.toContain("commandcode.agent.invalid-field-type");
+      const personal = facts.agents.find((a) => a.path.startsWith(tmpHome));
+      const project = facts.agents.find((a) => a.path.startsWith(root));
+      expect(personal?.commandcodeEffective).toBe(true);
+      expect(project?.commandcodeEffective).toBe(false);
+    } finally {
+      homedirSpy.mockRestore();
+    }
+  });
+
+  test("project .commandcode skill shadows a broken extra of the same id", () => {
+    const root = tmpProject("agentscan-cc-skill-shadow-");
+    write(
+      root,
+      ".commandcode/skills/dup/SKILL.md",
+      "---\nname: dup\ndescription: Project copy wins.\n---\n",
+    );
+    write(root, "extra/dup/SKILL.md", "---\nname: dup\n---\n");
+    write(root, ".commandcode/settings.json", JSON.stringify({ skills: ["extra"] }));
+    const { facts, findings } = findingsFor(root);
+    expect(findings.map((f) => f.ruleId)).not.toContain("agent-skills.skill.missing-description");
+    const project = facts.skills.find((s) => s.path.includes(`${join(".commandcode", "skills")}`));
+    const extra = facts.skills.find((s) => s.path.includes(`${join("extra", "dup")}`));
+    expect(project?.commandcodeEffective).toBe(true);
+    expect(extra?.commandcodeEffective).toBe(false);
+  });
+});

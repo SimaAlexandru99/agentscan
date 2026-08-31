@@ -12,11 +12,14 @@ Do not emit `claude.agent.*` on these files.
 
 | Source | Path |
 |--------|------|
-| Project | `.commandcode/agents/*.md` |
+| Project | `<project>/.commandcode/agents/*.md` at the Command Code project root only |
 | Personal | `~/.commandcode/agents/*.md` (`--global`) |
 
 They load bundled → personal → project; first definition of a name wins.
-agentscan inventories each readable file.
+Personal therefore shadows project on a name collision. Nested package
+`.commandcode/agents` is not Command Code project config. agentscan
+inventories each readable file and sets `commandcodeEffective`. Spec/runtime
+`commandcode.agent.*` checks skip shadowed files.
 
 ## Name
 
@@ -41,13 +44,17 @@ Reserved names: `explore`, `plan`, `review`, `general`. Quoted:
 | `disallowedTools` | string or string[] | no | same format |
 | `model` | string | no | any `/model` id — **do not enumerate** |
 | `reasoningEffort` | string | no | model-specific; unknown levels are dropped at load with a warning. No closed list on this page — do not invent one |
-| `maxTurns` | integer | no | default 100 |
+| `maxTurns` | positive integer | no | default 100; `0` and `-1` are invalid |
 | `permissionMode` | string | no | `default`, `auto-accept`, `bypass`, `plan`, `dont-ask` |
 | `background` | boolean | no | |
 | `showOutput` | boolean | no | |
 
 Validate documented types and the `permissionMode` enum. Do not invent
 unknown-model or unknown-tool checks (same failure class as the 9-of-31 hook
-list).
+list). Do not enumerate model ids or reasoning-effort values.
+
+`commandcode.agent.invalid-field-type` covers every documented typed field
+when the value is present and the type is wrong. Filename fallback for a
+missing `name` remains valid; a non-string `name` is a type error.
 
 ## Staleness risk: HIGH

@@ -1,5 +1,7 @@
 /** Official Command Code values. See docs/spec/commandcode-*.md (read 2026-08-31). */
 
+import type { Provider } from "./provider";
+
 export const COMMANDCODE_HOOK_EVENTS = new Set([
   "PreToolUse",
   "PostToolUse",
@@ -34,3 +36,32 @@ export const COMMANDCODE_HOOK_TIMEOUT_MAX = 600;
 
 export const COMMANDCODE_PROJECT_DIR =
   /^\$(?:COMMANDCODE_PROJECT_DIR\b|\{COMMANDCODE_PROJECT_DIR\}|COMMANDCODE_CWD\b|\{COMMANDCODE_CWD\})/;
+
+/**
+ * Official `.agents/skills` walk-up: from cwd, at most this many parent hops,
+ * stopping before home so `~/.agents/skills` is never a project source.
+ */
+export const COMMANDCODE_AGENTS_SKILLS_MAX_HOPS = 10;
+
+/** Shadowed Command Code config is inventoried but is not currently loaded. */
+export function isShadowedCommandcode(effective: boolean | undefined): boolean {
+  return effective === false;
+}
+
+/**
+ * Spec/runtime skill checks. Shadowed Command Code sources (`.commandcode` and
+ * extras) are skipped. Portable `.agents` / Cursor / Codex skills still check.
+ */
+export function shouldCheckSkillRuntime(skill: {
+  commandcodeEffective?: boolean;
+  sourceProvider?: Provider;
+}): boolean {
+  if (skill.commandcodeEffective !== false) {
+    return true;
+  }
+  return (
+    skill.sourceProvider === "agent-skills" ||
+    skill.sourceProvider === "cursor" ||
+    skill.sourceProvider === "codex"
+  );
+}

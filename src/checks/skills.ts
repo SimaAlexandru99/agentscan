@@ -1,4 +1,5 @@
 import { basename, dirname, isAbsolute, resolve, sep } from "node:path";
+import { shouldCheckSkillRuntime } from "../facts/commandcode";
 import type { Facts, Finding, LockedSkillFact, SkillFact, SkillSchemaProfile } from "../facts/types";
 import type { CheckOptions } from "./options";
 import { make } from "./make";
@@ -57,6 +58,9 @@ function skillRoot(skill: SkillFact): string {
 export function checkSkillStructure(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const skill of facts.skills) {
+    if (!shouldCheckSkillRuntime(skill)) {
+      continue;
+    }
     if (skill.unreadable === true) {
       // Covers an unreadable SKILL.md and an unreadable skill directory alike.
       // config.unreadable names it; every check below would otherwise make a

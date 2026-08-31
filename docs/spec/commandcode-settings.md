@@ -6,6 +6,17 @@
 
 ## Files
 
+Command Code **project root** is the git root when that git directory is
+inside the scan, or the working directory outside a git repo (or when a
+`.agentscan-root` pin stops the walk before a parent checkout). It is
+**not** agentscan's generic nearest-provider `projectRoot`. A child
+`.cursor` / `.claude` / `.agents` directory must not hide:
+
+```
+<git-root>/.commandcode/settings.json
+<git-root>/.commandcode/settings.local.json
+```
+
 ```
 USER ~/.commandcode/
 ├── settings.json
@@ -13,7 +24,7 @@ USER ~/.commandcode/
 ├── auth.json          ← never read
 └── projects/{project}/mcp.json   ← only with an honest slug
 
-PROJECT /
+PROJECT <commandcodeProjectRoot>/
 ├── .commandcode/settings.json
 ├── .commandcode/settings.local.json
 └── .mcp.json
@@ -21,6 +32,10 @@ PROJECT /
 
 Quoted: "Never commit `~/.commandcode` files. They're user-level by design;
 `auth.json` holds credentials."
+
+`COMMANDCODE_PROJECT_DIR` / `COMMANDCODE_CWD`, extra skill directories, inline
+MCP command paths, hooks path bases, and the winning `model` all resolve
+against this Command Code project root.
 
 ## Settings layers (high → low)
 

@@ -1,3 +1,4 @@
+import { isShadowedCommandcode } from "../facts/commandcode";
 import { assertNever, type McpSchemaProfile } from "../facts/provider";
 import type { Facts, Finding, McpFact } from "../facts/types";
 import { make } from "./make";
@@ -253,7 +254,12 @@ function claudeUrlNeedsType(server: McpFact): boolean {
 export function checkMcp(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const server of facts.mcp) {
-    if (server.inventoryOnly === true) {
+    const shadowed = isShadowedCommandcode(server.commandcodeEffective);
+    if (shadowed) {
+      // Inventoried but not currently loaded. Schema/runtime errors would
+      // claim a shadowed definition is breaking the runtime. Secrets still
+      // apply to every readable file.
+    } else if (server.inventoryOnly === true) {
       // Unnamed inline mcp.servers item — present in the inventory only.
     } else if (server.opencodeInherit === true) {
       // V1 enabled-only override — launch data may live in an external file.
@@ -297,7 +303,7 @@ export function checkMcp(facts: Facts): Finding[] {
       );
     }
 
-    if (server.command !== undefined && server.commandExists === false) {
+    if (!shadowed && server.command !== undefined && server.commandExists === false) {
       out.push(
         make("mcp.command-missing", `mcp:${server.name}@${server.path}${
           server.platform === undefined ? "" : `:${server.platform}`
@@ -316,7 +322,7 @@ export function checkMcp(facts: Facts): Finding[] {
       );
     }
 
-    if (claudeUrlNeedsType(server)) {
+    if (!shadowed && claudeUrlNeedsType(server)) {
       out.push(
         make("claude.mcp.url-without-type", `mcp:${server.name}@${server.path}`, {
           action: "warn",

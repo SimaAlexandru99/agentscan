@@ -37,17 +37,29 @@ settings.json → hooks → <event> → [ HookDefinition ]
                                     hooks (required array of HookEntry)
 ```
 
-`hooks` on a HookDefinition is required. `matcher` is optional; on `Stop` and
-`SessionStart` a matcher prevents the hook from firing — that is runtime, not
-a schema error this scanner invents.
+`hooks` on a HookDefinition is required. `matcher` is optional and must be a
+string when present. A non-string matcher is `commandcode.hook.invalid-group`.
+
+On `Stop` and `SessionStart` a matcher prevents the hook from firing — that
+is Command Code runtime behaviour, not a schema error. This scanner does not
+emit a finding for a string matcher on those events.
 
 ## HookEntry
 
 | Field | Required | Type |
 |-------|----------|------|
-| `type` | yes | `"command"` only |
-| `command` | when `type: "command"` | string |
+| `type` | yes | the string `"command"` only |
+| `command` | when `type: "command"` | string (not an argv array) |
 | `timeout` | no | seconds, default 30, maximum 600 |
+
+Missing `type`, a non-string `type`, or a `type` other than `"command"` is
+`commandcode.hook.unknown-handler-type`. A `command` that is missing, empty,
+or a non-string (including a command array) is
+`commandcode.hook.command-without-command`.
+
+Command Code hook parsing is provider-specific and runs before generic
+launch normalization. MCP's permissive `command` array support must not leak
+into Command Code hooks.
 
 Settings page: timeout is `0`–`600`. Values outside that closed range are
 out of bounds. `async` and `failClosed` are mentioned on the settings page
@@ -57,7 +69,7 @@ and are not required-field checks.
 
 | Variable | Value |
 |----------|--------|
-| `COMMANDCODE_PROJECT_DIR` | project root (same as `cwd`) |
+| `COMMANDCODE_PROJECT_DIR` | Command Code project root (git root, or cwd outside a git repo) |
 | `COMMANDCODE_CWD` | alias of `COMMANDCODE_PROJECT_DIR`, identical value |
 
 Path-check local scripts conservatively: skip shell compounds, PATH binaries,

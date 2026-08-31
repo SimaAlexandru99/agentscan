@@ -8,7 +8,9 @@ Also consulted: https://commandcode.ai/docs/settings (scopes, inline `mcp.server
 
 ## Shared project file
 
-Project-scope MCP is `.mcp.json` at the project root, wrapper `mcpServers`.
+Project-scope MCP is `.mcp.json` at the Command Code project root (git root,
+or cwd outside a git repo), wrapper `mcpServers`. Nested package `.mcp.json`
+is not Command Code project MCP; Claude may still consume it.
 This path is **not Claude-only**. Command Code writes it for `--scope project`.
 Claude Code also uses `.mcp.json`. A check keyed only to Claude on this path
 is a false positive on valid Command Code config.
@@ -62,8 +64,15 @@ MCP precedence (low → high), quoted from settings:
 
 > settings.json `mcp.servers` < user `mcp.json` < project `.mcp.json` < local `projects/{project}/mcp.json`
 
-agentscan inventories each readable source. It does not hide a lower-precedence
-entry.
+Settings layers among themselves: `settings.local.json` > project
+`settings.json` > user `settings.json`.
+
+agentscan inventories each readable source and sets `commandcodeEffective`.
+Spec/runtime error checks (`commandcode.mcp.*`, `commandcode.mcp.no-launch`,
+`mcp.command-missing`, `claude.mcp.no-launch` / `claude.mcp.url-without-type`
+on a Command Code-ranked entry) do not claim a shadowed definition is
+currently breaking the runtime. Security checks (`security.hardcoded-secret`,
+`mcp.literal-env`) may still inspect all readable config.
 
 ## Do not read
 
