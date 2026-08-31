@@ -29,7 +29,7 @@ import { NESTED_DISCOVERY_MAX_DEPTH, readJsonConfig, walkFiles } from "./shared"
 const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&|\s/;
 
 const INTERPOLATED =
-  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{input:[A-Za-z0-9_-]+\}|\$\{(?:userHome|workspaceFolder|workspaceFolderBasename|pathSeparator|\/)\}|\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{\{\s*secrets\.[A-Za-z0-9_.]+\s*\}\}|\$[A-Za-z_][A-Za-z0-9_]*/;
+  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$\{(?:userHome|workspaceFolder|workspaceFolderBasename|pathSeparator|\/)\}|\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{\{\s*secrets\.[A-Za-z0-9_.]+\s*\}\}|\$[A-Za-z_][A-Za-z0-9_]*/;
 
 /**
  * Decide whether an MCP `command` value is a filesystem path we can check.
@@ -535,6 +535,18 @@ export function parseGrokTomlFile(
     return [];
   }
   return parseTomlMcpServers(raw, filePath, root, errors, "grok-toml");
+}
+
+export function parseWindsurfJsonFile(
+  filePath: string,
+  root: string,
+  errors: ConfigErrorFact[],
+): McpFact[] {
+  const raw = readJsonConfig(filePath, errors);
+  if (raw === undefined) {
+    return [];
+  }
+  return parseMcpServers(raw, filePath, root, errors, "windsurf-json");
 }
 
 function parseOpenCode(

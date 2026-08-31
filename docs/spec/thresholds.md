@@ -109,3 +109,25 @@ Configurable from `.codex/config.toml`. Cumulative across the effective chain
 Quoted (read 2026-08-30):
 
 > Keep rules under 500 lines
+
+## Windsurf workspace rules > 12,000 characters — `windsurf.rule.too-large` (vendor-recommendation)
+
+**Source:** https://docs.windsurf.com/windsurf/cascade/memories
+**Read:** 2026-08-31
+
+Quoted:
+
+> Workspace rule files are limited to 12,000 characters each.
+
+Character count, not lines. Do not apply `cursor.rule.too-large`.
+
+## Windsurf global rules > 6,000 characters — `windsurf.rule.global-too-large` (vendor-recommendation)
+
+**Source:** https://docs.windsurf.com/windsurf/cascade/memories
+**Read:** 2026-08-31
+
+Quoted:
+
+> The global rules file is limited to 6,000 characters.
+
+Only `~/.codeium/windsurf/memories/global_rules.md`, and only with `--global`.

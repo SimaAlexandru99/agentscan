@@ -39,7 +39,8 @@ export type McpSchemaProfile =
   | "gemini-json"
   | "opencode-json"
   | "continue-yaml"
-  | "grok-toml";
+  | "grok-toml"
+  | "windsurf-json";
 
 export function schemaProfileFromSkillsDir(dir: string): SkillSchemaProfile {
   const normalized = dir.replaceAll("\\", "/");
@@ -173,6 +174,11 @@ export function mcpProfileFromPath(filePath: string): McpSchemaProfile {
   ) {
     return "grok-toml";
   }
+  if (
+    /(?:^|\/)\.codeium\/windsurf\/mcp_config\.json$/.test(normalized)
+  ) {
+    return "windsurf-json";
+  }
   return "claude-json";
 }
 
@@ -202,6 +208,8 @@ export function sourceProviderForMcpProfile(
       return "continue";
     case "grok-toml":
       return "grok";
+    case "windsurf-json":
+      return "windsurf";
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }
@@ -232,6 +240,8 @@ export function consumedByForMcpProfile(profile: McpSchemaProfile): Provider[] {
       return ["continue"];
     case "grok-toml":
       return ["grok"];
+    case "windsurf-json":
+      return ["windsurf"];
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }

@@ -25,7 +25,7 @@ const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
 ];
 
 const INTERPOLATED =
-  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{input:[A-Za-z0-9_-]+\}|\$[A-Za-z_][A-Za-z0-9_]*/;
+  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$[A-Za-z_][A-Za-z0-9_]*/;
 
 function profileOf(server: McpFact): McpSchemaProfile {
   return server.schemaProfile ?? "claude-json";
@@ -39,6 +39,8 @@ function isLaunchable(server: McpFact): boolean {
   switch (profile) {
     case "antigravity-json":
       return server.hasCommand || server.hasServerUrl === true;
+    case "windsurf-json":
+      return server.hasCommand || server.hasUrl || server.hasServerUrl === true;
     case "claude-json":
     case "mcp-json":
     case "commandcode-json":
@@ -82,6 +84,8 @@ function noLaunchId(profile: McpSchemaProfile): string {
       return "opencode.mcp.no-launch";
     case "continue-yaml":
       return "continue.mcp.no-launch";
+    case "windsurf-json":
+      return "windsurf.mcp.no-launch";
     default: {
       return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
     }
@@ -93,6 +97,8 @@ function noLaunchMessage(server: McpFact): string {
   switch (profile) {
     case "antigravity-json":
       return `MCP server "${server.name}" declares neither command nor serverUrl`;
+    case "windsurf-json":
+      return `MCP server "${server.name}" declares neither command, serverUrl, nor url`;
     case "gemini-json":
       return `MCP server "${server.name}" declares neither command, url, nor httpUrl`;
     case "continue-yaml":
@@ -117,6 +123,8 @@ function noLaunchSuggest(server: McpFact): string {
   switch (profile) {
     case "antigravity-json":
       return `Add a command (or serverUrl) for "${server.name}", or remove it`;
+    case "windsurf-json":
+      return `Add a command, serverUrl, or url for "${server.name}", or remove it`;
     case "gemini-json":
       return `Add a command, url, or httpUrl for "${server.name}", or remove it`;
     case "continue-yaml":

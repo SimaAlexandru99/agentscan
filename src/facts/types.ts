@@ -278,11 +278,19 @@ export type PolicyFileFact = {
   nearest?: boolean;
 };
 
+/** Windsurf rule scope. See docs/spec/windsurf-rules.md. */
+export type WindsurfRuleScope = "workspace" | "global" | "legacy";
+
 export type RuleFact = {
   path: string;
   sourceProvider: Provider;
   lineCount: number;
   byteLength: number;
+  /** UTF-16 code units of the scanned prefix. Windsurf budgets are character counts. */
+  charCount: number;
+  windsurfScope?: WindsurfRuleScope;
+  /** Workspace `.devin` / `.windsurf` rules only. True when frontmatter `trigger` is set. */
+  windsurfHasTrigger?: boolean;
 };
 
 export type Facts = {

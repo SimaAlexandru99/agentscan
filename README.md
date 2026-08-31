@@ -528,6 +528,10 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `budget.mcp` | info | More MCP servers than a tool-selection hint (>5) — heuristic proxy |
 | `codex.budget.instructions` | info | Codex root→cwd `AGENTS.md` chain exceeds the default 32 KiB |
 | `cursor.rule.too-large` | info | A `.cursor/rules/*.mdc` file exceeds the 500-line recommendation |
+| `windsurf.rule.too-large` | info | A Windsurf workspace rule exceeds 12,000 characters |
+| `windsurf.rule.global-too-large` | info | `~/.codeium/windsurf/memories/global_rules.md` exceeds 6,000 characters |
+| `windsurf.rule.missing-trigger` | warning | A `.devin/rules` / `.windsurf/rules` file omits frontmatter `trigger` |
+| `windsurf.mcp.no-launch` | error | Windsurf MCP server declares neither `command`, `serverUrl`, nor `url` |
 
 ### Coverage in 1.2.1
 
@@ -555,7 +559,7 @@ Dimensions:
 | Grok | `.grok/config.toml` walk-up; `.grok/hooks/*.json`; `.grok/skills`; `.grok/rules/*.md`; `Agents.md` / `AGENT.md` | `--global` `$GROK_HOME` or `~/.grok` config/hooks/skills; unread managed, requirements, plugins, `[skills] paths`, agents, credentials | `command` / `url` MCP (no `type`); 14 events; command/http; frontmatter required, name/description optional; no rules cap | closer project wins; project same-name replaces user | `grok-toml` fixture |
 | Antigravity | `.agents/mcp_config.json` | none | `serverUrl` launch | n/a | `antigravity-json` fixture |
 | Gemini | `.gemini/settings.json` | unread `~/.gemini/settings.json` unless `--global` is wired for it (it is not) | `command` / `url` / `httpUrl`; underscore-alias warning | n/a | `gemini-json` fixture |
-| Windsurf | none | unread (official page is global-only) | none | n/a | none |
+| Windsurf | `.devin/rules/*.md` (preferred), `.windsurf/rules/*.md` (fallback), `.windsurfrules`; portable `AGENTS.md` / `agents.md` | `--global` `~/.codeium/windsurf/mcp_config.json` and `~/.codeium/windsurf/memories/global_rules.md`; unread auto memories, Devin CLI MCP, system `/etc/devin/rules` | 12k / 6k character rules; workspace `trigger`; MCP `command` / `serverUrl` / `url` (no `type`) | n/a (no project MCP; both rule trees inventoried) | `windsurf-rules` fixture |
 | Kiro | none | none | none | n/a | none |
 | Cline | none | none | none | n/a | none |
 | Roo | none | none | none | n/a | none |
@@ -564,7 +568,7 @@ Dimensions:
 | Junie | none | none | none | n/a | none |
 | Continue | `.continue/config.yaml`, `.continue/mcpServers/*` | none | launch `command` / `url` / `uses`; standalone YAML `name` / `version` / `schema` | n/a | `continue-yaml`, `continue-mcpservers` |
 
-Cursor project rules (`.cursor/rules/**/*.mdc`) are a separate surface: discovery plus `cursor.rule.too-large` at info. Claude `.claude/rules/**/*.md` is inventoried and has no published line budget.
+Cursor project rules (`.cursor/rules/**/*.mdc`) are a separate surface: discovery plus `cursor.rule.too-large` at info. Claude `.claude/rules/**/*.md` is inventoried and has no published line budget. Windsurf workspace rules use a 12,000-character budget (`windsurf.rule.too-large`); do not apply the Cursor 500-line check. Portable `AGENTS.md` / `agents.md` stay `sourceProvider: unknown` — this scanner does not claim exclusive Windsurf ownership.
 
 Old 0.7 rule ids still work in `ignoreRules` and `explain` (for example `hook.missing-script` aliases `claude.hook.missing-script`).
 
@@ -682,8 +686,14 @@ first.
   `~/.copilot/hooks` is scanned only under `--global`. Inline Copilot
   `.github/copilot/settings.json` hooks are unread.
 - **Gemini user settings are unread.** `~/.gemini/settings.json` is outside a
-  normal project scan. Windsurf's official MCP page is global-only and is not
-  scanned.
+  normal project scan.
+- **Windsurf Devin CLI MCP and auto memories are unread.** Cascade MCP is
+  global-only (`~/.codeium/windsurf/mcp_config.json`, `--global`). The Devin
+  Local agent uses unpublished CLI config files — that path is not guessed.
+  Auto-generated files under `~/.codeium/windsurf/memories/` other than
+  `global_rules.md` are not opened. System / enterprise rule directories
+  (`/etc/devin/rules`, `/etc/windsurf/rules`) stay unread. There is no
+  quoted project MCP path.
 - **Bounded reads.** A `SKILL.md` is read to 64 KB and a policy file to 100 KB,
   so `skill.broken-reference` and `policyLines` see only that much of a larger
   file. This is reported — `scan.truncated`, at `info` — rather than left

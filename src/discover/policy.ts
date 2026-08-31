@@ -143,6 +143,15 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
+      readPolicyFile(join(dir, "agents.md"), errors, {
+        sourceProvider: "unknown",
+        kind: "agents-md",
+        startDir: start,
+      }),
+    );
+    addUnique(
+      out,
+      seen,
       readPolicyFile(join(dir, "Agents.md"), errors, {
         sourceProvider: "grok",
         kind: "agents-md",
@@ -225,7 +234,12 @@ export function discoverPolicyFiles(
   for (const abs of walkFiles(root, {
     maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
     match: (abs, name) => {
-      if (name === "AGENTS.override.md" || name === "Agents.md" || name === "AGENT.md") {
+      if (
+        name === "AGENTS.override.md" ||
+        name === "Agents.md" ||
+        name === "AGENT.md" ||
+        name === "agents.md"
+      ) {
         return true;
       }
       if (name !== "AGENTS.md") {

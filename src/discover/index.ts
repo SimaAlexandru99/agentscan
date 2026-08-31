@@ -33,7 +33,8 @@ import { discoverCopilotUserHooks, discoverGrokHooks, discoverHooks, discoverVsc
 import { discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
 import { discoverPluginHooks } from "./plugins";
 import { discoverPolicyFiles, discoverSkillsLocks, resolveCodexProjectRoot } from "./policy";
-import { discoverRules } from "./rules";
+import { discoverNestedWindsurfRules, discoverRules } from "./rules";
+import { discoverWindsurfUserMcp, discoverWindsurfUserRules } from "./windsurf";
 import {
   disambiguateSkills,
   discoverNestedClaudeSkills,
@@ -49,6 +50,20 @@ export { skillReferences } from "./skills";
 
 function mcpKey(fact: McpFact): string {
   return `${fact.name}@${fact.path}${fact.platform === undefined ? "" : `:${fact.platform}`}`;
+}
+
+function uniqueRules(facts: RuleFact[]): RuleFact[] {
+  const seen = new Set<string>();
+  const out: RuleFact[] = [];
+  for (const fact of facts) {
+    const key = resolve(fact.path);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(fact);
+  }
+  return out;
 }
 
 /**
@@ -200,6 +215,7 @@ export function discoverAgentSurface(
     }
     rules.push(...discoverRules(dir, configErrors));
   }
+  rules.push(...discoverNestedWindsurfRules(scanBoundary, configErrors));
   mcp.push(...discoverNestedContinueMcp(scanBoundary, configErrors, mcpSeen));
   hooks.push(...discoverPluginHooks(scanBoundary, configErrors));
   hooks.push(...discoverCommandcodeHooks(commandcodeProjectRoot, ccLayers, configErrors));
@@ -238,6 +254,15 @@ export function discoverAgentSurface(
       mcpSeen.add(key);
       mcp.push(fact);
     }
+    for (const fact of discoverWindsurfUserMcp(configErrors)) {
+      const key = mcpKey(fact);
+      if (mcpSeen.has(key)) {
+        continue;
+      }
+      mcpSeen.add(key);
+      mcp.push(fact);
+    }
+    rules.push(...discoverWindsurfUserRules(configErrors));
   }
   applyCommandcodeMcpPrecedence(mcp, commandcodeProjectRoot);
   applyGrokMcpPrecedence(mcp, startDir);
@@ -274,7 +299,7 @@ export function discoverAgentSurface(
       commandcodeProjectRoot,
       codexProjectDocFallbackFilenames ?? [],
     ),
-    rules,
+    rules: uniqueRules(rules),
     lockedSkills: lock.locked,
     hasSkillsLock: lock.present,
     skillsLockInvalid: lock.invalid,
