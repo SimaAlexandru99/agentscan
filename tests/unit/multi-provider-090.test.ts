@@ -112,10 +112,14 @@ describe("provider hooks", () => {
       JSON.stringify({
         hooks: {
           PreToolUse: [
-            { type: "http", url: "https://example.com/hook" },
-            { type: "prompt", prompt: "Review this" },
-            { type: "agent", agent: "reviewer" },
-            { type: "mcp_tool", mcp_tool: "other:ping" },
+            {
+              hooks: [
+                { type: "http", url: "https://example.com/hook" },
+                { type: "prompt", prompt: "Review this" },
+                { type: "agent", prompt: "Review as the reviewer agent" },
+                { type: "mcp_tool", server: "other", tool: "ping" },
+              ],
+            },
           ],
         },
       }),
@@ -133,7 +137,7 @@ describe("provider hooks", () => {
       ".claude/settings.json",
       JSON.stringify({
         hooks: {
-          PreToolUse: [{ type: "command", command: ["node", "hook.js"] }],
+          PreToolUse: [{ hooks: [{ type: "command", command: ["node", "hook.js"] }] }],
         },
       }),
     );

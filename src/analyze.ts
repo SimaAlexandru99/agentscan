@@ -55,7 +55,9 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
 
   const structural = runChecks(facts, {
     requireLock: config.requireLock,
-    skillDescriptionBytes: config.thresholds.skillDescriptionBytes,
+    skillListingChars:
+      config.thresholds.skillListingChars ?? config.thresholds.skillDescriptionBytes,
+    skillListingMaxDescChars: config.thresholds.skillListingMaxDescChars,
     budgets: {
       agentsMdLines: config.thresholds.agentsMdLines,
       claudeMdLines: config.thresholds.claudeMdLines,

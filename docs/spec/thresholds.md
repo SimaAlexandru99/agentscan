@@ -1,6 +1,6 @@
 # Numeric thresholds and their evidence
 
-**Read:** 2026-08-30. Every number a check asserts is listed here with what
+**Read:** 2026-08-31. Every number a check asserts is listed here with what
 backs it. A threshold with no entry is a bug in this file or in the check.
 
 Provenance on these rules is also on `STRUCTURAL_CHECKS`: heuristic rows stay
@@ -33,20 +33,38 @@ line — it is not on the memory page.
 
 Confidence: **high as a vendor recommendation.**
 
-## Skill descriptions > 16,000 bytes — `skill.description-budget` (heuristic)
+## Claude skill listing budget — `skill.description-budget` (vendor-recommendation)
 
-**Source:** https://medium.com/@dan.avila7/claude-code-skills-progressive-disclosure-step-by-step-3ca02a4a9f60
+**Source:** https://code.claude.com/docs/en/skills
+**Read:** 2026-08-31
 
-At startup Claude Code loads only each skill's name and description. Those
-descriptions share a character budget of roughly **1–2% of the context window**.
-16,000 bytes ≈ 4,000 tokens ≈ 2% of a 200k window. Configurable via
-`thresholds.skillDescriptionBytes`.
+Quoted:
 
-This is **not** applied to Agent Skills schema profiles (`.agents/skills` and
-`.cursor/skills`). The Agent Skills spec caps a single description at 1024
-characters; that is a different check.
+> The budget scales at 1% of the model's context window. […] To raise the
+> budget, set the `skillListingBudgetFraction` setting (e.g. `0.02` = 2%) or
+> the `SLASH_COMMAND_TOOL_CHAR_BUDGET` environment variable to a fixed character
+> count. […] each entry's combined text is capped at 1,536 characters
+> regardless of budget. The cap is configurable with `skillListingMaxDescChars`.
 
-Confidence: **medium**. Mechanism is attested; the exact 1–2% figure is secondary.
+Listing text is `description` (or the first markdown paragraph) plus
+`when_to_use`. agentscan cannot observe the model context window, so the
+fallback ceiling is `thresholds.skillListingChars` (default **8000
+characters**). Per-entry cap is `thresholds.skillListingMaxDescChars` (default
+**1536**). Do **not** use a fixed 16000-byte value as the runtime budget.
+`thresholds.skillDescriptionBytes` is a deprecated alias of `skillListingChars`.
+
+This is **not** applied to Agent Skills schema profiles. The Agent Skills spec
+caps a single description at 1024 characters; that is a different check.
+
+Confidence: **high as a vendor recommendation** for the 1% / 1536 figures;
+the 8000-character fallback is ours because the window is unknown.
+
+## Agent Skills `SKILL.md` > 500 lines — `agent-skills.skill.body-too-large` (vendor-recommendation)
+
+**Source:** https://agentskills.io/specification
+**Read:** 2026-08-31
+
+Quoted: "Keep your main `SKILL.md` under 500 lines." Info only.
 
 ## `MCP servers > 5` — `budget.mcp` (heuristic)
 
@@ -72,13 +90,16 @@ Confidence: **low-medium**. Proxy only.
 ## Codex instruction files > 32 KiB — `codex.budget.instructions` (vendor-recommendation)
 
 **Source:** https://learn.chatgpt.com/docs/agent-configuration/agents-md
+**Also:** https://learn.chatgpt.com/docs/config-file/config-advanced
+**Read:** 2026-08-31
 
-Quoted (read 2026-08-30):
+Quoted:
 
 > Codex skips empty files and stops adding files once the combined size reaches
 > the limit defined by `project_doc_max_bytes` (32 KiB by default).
 
-Cumulative across the root→cwd `AGENTS.md` chain. Not applied to Claude
+Configurable from `.codex/config.toml`. Cumulative across the effective chain
+(see [codex-agents-md.md](codex-agents-md.md)). Not applied to Claude
 `CLAUDE.md`.
 
 ## Cursor project rules > 500 lines — `cursor.rule.too-large` (vendor-recommendation)

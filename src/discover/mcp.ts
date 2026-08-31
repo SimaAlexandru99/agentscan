@@ -573,6 +573,7 @@ function classifyOpenCodeEntry(
   const type = typeof entry.type === "string" ? entry.type : undefined;
   const hasCommand = entryHasCommand(entry);
   const hasUrl = typeof entry.url === "string" && entry.url.length > 0;
+  const commandIsArray = Array.isArray(entry.command);
 
   if (schema === "v1" && !hasCommand && !hasUrl) {
     return { opencodeSchema: "v1", opencodeInherit: true };
@@ -584,6 +585,9 @@ function classifyOpenCodeEntry(
   if (type === "local") {
     if (hasUrl) {
       return { opencodeSchema: schema, opencodeDefect: "invalid-launch-for-type" };
+    }
+    if (schema === "v2" && "command" in entry && !commandIsArray) {
+      return { opencodeSchema: schema, opencodeDefect: "command-not-array" };
     }
     if (!hasCommand) {
       return { opencodeSchema: schema, opencodeDefect: "local-without-command" };
@@ -646,12 +650,37 @@ function continueServersFromList(list: unknown[]): Record<string, unknown> {
   return mapped;
 }
 
+function continueMissingMetadataKeys(obj: Record<string, unknown>): string[] {
+  const missing: string[] = [];
+  if (typeof obj.name !== "string" || obj.name.length === 0) {
+    missing.push("name");
+  }
+  if (obj.version === undefined || (typeof obj.version !== "string" && typeof obj.version !== "number")) {
+    missing.push("version");
+  }
+  if (typeof obj.schema !== "string" || obj.schema.length === 0) {
+    missing.push("schema");
+  }
+  return missing;
+}
+
 function parseContinueDocument(
   raw: unknown,
   filePath: string,
   root: string,
   errors: ConfigErrorFact[],
 ): McpFact[] {
+  const standaloneYaml = isContinueStandaloneYaml(filePath);
+  const annotate = (facts: McpFact[], doc: Record<string, unknown> | undefined): McpFact[] => {
+    if (!standaloneYaml || doc === undefined) {
+      return facts;
+    }
+    const missing = continueMissingMetadataKeys(doc);
+    if (missing.length === 0) {
+      return facts;
+    }
+    return facts.map((fact) => ({ ...fact, continueMissingMetadataKeys: missing }));
+  };
   if (Array.isArray(raw)) {
     return parseMcpServers(
       { mcpServers: continueServersFromList(raw) },
@@ -672,12 +701,15 @@ function parseContinueDocument(
   const obj = raw as Record<string, unknown>;
   const list = obj.mcpServers;
   if (Array.isArray(list)) {
-    return parseMcpServers(
-      { mcpServers: continueServersFromList(list) },
-      filePath,
-      root,
-      errors,
-      "continue-yaml",
+    return annotate(
+      parseMcpServers(
+        { mcpServers: continueServersFromList(list) },
+        filePath,
+        root,
+        errors,
+        "continue-yaml",
+      ),
+      obj,
     );
   }
   if (list !== undefined) {
@@ -697,9 +729,20 @@ function parseContinueDocument(
       typeof obj.name === "string" && obj.name.length > 0
         ? obj.name
         : basename(filePath).replace(/\.(ya?ml|jsonc?)$/i, "");
-    return parseMcpServers({ mcpServers: { [name]: obj } }, filePath, root, errors, "continue-yaml");
+    return annotate(
+      parseMcpServers({ mcpServers: { [name]: obj } }, filePath, root, errors, "continue-yaml"),
+      obj,
+    );
   }
   return [];
+}
+
+function isContinueStandaloneYaml(filePath: string): boolean {
+  const normalized = filePath.replaceAll("\\", "/");
+  if (!normalized.includes("/.continue/mcpServers/")) {
+    return false;
+  }
+  return /\.ya?ml$/i.test(normalized);
 }
 
 function readYamlConfig(
@@ -745,18 +788,22 @@ function parseMcpFile(
   filePath: string,
   root: string,
   errors: ConfigErrorFact[],
-): { facts: McpFact[]; projectDocMaxBytes?: number } {
+): {
+  facts: McpFact[];
+  projectDocMaxBytes?: number;
+  projectDocFallbackFilenames?: string[];
+  projectRootMarkers?: string[];
+} {
   const profile = mcpProfileFromPath(filePath);
   if (profile === "codex-toml") {
     const raw = readTomlConfig(filePath, errors);
     if (raw === undefined) {
       return { facts: [] };
     }
+    const knobs = projectDocSettingsFromToml(raw);
     return {
       facts: parseCodexToml(raw, filePath, root, errors),
-      ...(projectDocMaxBytesFromToml(raw) === undefined
-        ? {}
-        : { projectDocMaxBytes: projectDocMaxBytesFromToml(raw) }),
+      ...knobs,
     };
   }
   if (profile === "continue-yaml") {
@@ -785,15 +832,41 @@ function parseMcpFile(
   return { facts: parseMcpServers(raw, filePath, root, errors, profile) };
 }
 
-function projectDocMaxBytesFromToml(raw: unknown): number | undefined {
+function projectDocSettingsFromToml(raw: unknown): {
+  projectDocMaxBytes?: number;
+  projectDocFallbackFilenames?: string[];
+  projectRootMarkers?: string[];
+} {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return {};
+  }
+  const obj = raw as Record<string, unknown>;
+  const out: {
+    projectDocMaxBytes?: number;
+    projectDocFallbackFilenames?: string[];
+    projectRootMarkers?: string[];
+  } = {};
+  const maxBytes = obj.project_doc_max_bytes;
+  if (typeof maxBytes === "number" && Number.isFinite(maxBytes) && maxBytes > 0) {
+    out.projectDocMaxBytes = Math.floor(maxBytes);
+  }
+  const fallbacks = stringArray(obj.project_doc_fallback_filenames);
+  if (fallbacks !== undefined) {
+    out.projectDocFallbackFilenames = fallbacks;
+  }
+  if ("project_root_markers" in obj) {
+    const markers = stringArray(obj.project_root_markers);
+    out.projectRootMarkers = markers ?? [];
+  }
+  return out;
+}
+
+function stringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
     return undefined;
   }
-  const value = (raw as Record<string, unknown>).project_doc_max_bytes;
-  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
-    return Math.floor(value);
-  }
-  return undefined;
+  const out = value.filter((item): item is string => typeof item === "string" && item.length > 0);
+  return out;
 }
 
 function discoverContinueMcpDir(
@@ -838,10 +911,17 @@ export function discoverMcpSurface(
   root: string,
   mcpPaths: string[],
   errors: ConfigErrorFact[],
-): { facts: McpFact[]; codexProjectDocMaxBytes?: number } {
+): {
+  facts: McpFact[];
+  codexProjectDocMaxBytes?: number;
+  codexProjectDocFallbackFilenames?: string[];
+  codexProjectRootMarkers?: string[];
+} {
   const facts: McpFact[] = [];
   const seen = new Set<string>();
   let codexProjectDocMaxBytes: number | undefined;
+  let codexProjectDocFallbackFilenames: string[] | undefined;
+  let codexProjectRootMarkers: string[] | undefined;
   for (const rel of mcpPaths) {
     const filePath = isAbsolute(rel) ? rel : join(root, rel);
     if (!existsSync(filePath)) {
@@ -855,6 +935,12 @@ export function discoverMcpSurface(
     if (parsed.projectDocMaxBytes !== undefined) {
       codexProjectDocMaxBytes = parsed.projectDocMaxBytes;
     }
+    if (parsed.projectDocFallbackFilenames !== undefined) {
+      codexProjectDocFallbackFilenames = parsed.projectDocFallbackFilenames;
+    }
+    if (parsed.projectRootMarkers !== undefined) {
+      codexProjectRootMarkers = parsed.projectRootMarkers;
+    }
     for (const fact of parsed.facts) {
       const key = `${fact.name}@${fact.path}${fact.platform === undefined ? "" : `:${fact.platform}`}`;
       if (seen.has(key)) {
@@ -867,6 +953,10 @@ export function discoverMcpSurface(
   return {
     facts,
     ...(codexProjectDocMaxBytes === undefined ? {} : { codexProjectDocMaxBytes }),
+    ...(codexProjectDocFallbackFilenames === undefined
+      ? {}
+      : { codexProjectDocFallbackFilenames }),
+    ...(codexProjectRootMarkers === undefined ? {} : { codexProjectRootMarkers }),
   };
 }
 

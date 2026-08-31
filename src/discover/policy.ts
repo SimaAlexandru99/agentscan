@@ -69,13 +69,26 @@ function addUnique(
   out.push(fact);
 }
 
-/** Project-root Command Code fallback: `<project>/.commandcode/AGENTS.md`. */
-function isCommandcodeProjectMemoryFallback(abs: string, commandcodeProjectRoot: string): boolean {
-  return (
-    basename(abs) === "AGENTS.md" &&
-    basename(dirname(abs)) === ".commandcode" &&
-    resolve(dirname(dirname(abs))) === resolve(commandcodeProjectRoot)
-  );
+export function resolveCodexProjectRoot(
+  startDir: string,
+  scanBoundary: string,
+  markers: string[] | undefined,
+): string {
+  const start = resolve(startDir);
+  const boundary = resolve(scanBoundary);
+  if (markers !== undefined && markers.length === 0) {
+    return start;
+  }
+  const names = markers ?? [".git"];
+  for (const dir of ancestorDirsInclusive(start, boundary)) {
+    if (names.some((name) => existsSync(join(dir, name)))) {
+      return dir;
+    }
+  }
+  return boundary;
+}
+function isCommandcodeMemoryFallback(abs: string): boolean {
+  return basename(abs) === "AGENTS.md" && basename(dirname(abs)) === ".commandcode";
 }
 
 /**
@@ -84,8 +97,8 @@ function isCommandcodeProjectMemoryFallback(abs: string, commandcodeProjectRoot:
  * docs/spec/claude-memory.md, docs/spec/vscode-instructions.md,
  * docs/spec/commandcode-memory.md.
  *
- * Command Code project-root fallback is `<commandcodeProjectRoot>/.commandcode/AGENTS.md`.
- * Nested `<dir>/.commandcode/AGENTS.md` is not Command Code memory.
+ * Command Code memory per directory is the first existing of `AGENTS.md` or
+ * `.commandcode/AGENTS.md`, including nested `<dir>/.commandcode/AGENTS.md`.
  */
 export function discoverPolicyFiles(
   root: string,
@@ -93,7 +106,8 @@ export function discoverPolicyFiles(
   errors: ConfigErrorFact[],
   startDir = root,
   includeGlobal = false,
-  commandcodeProjectRoot = root,
+  _commandcodeProjectRoot = root,
+  fallbackFilenames: string[] = [],
 ): PolicyFileFact[] {
   const out: PolicyFileFact[] = [];
   const seen = new Set<string>();
@@ -126,10 +140,7 @@ export function discoverPolicyFiles(
         startDir: start,
       }),
     );
-    if (
-      resolve(dir) === resolve(commandcodeProjectRoot) &&
-      !existsSync(join(dir, "AGENTS.md"))
-    ) {
+    if (!existsSync(join(dir, "AGENTS.md"))) {
       addUnique(
         out,
         seen,
@@ -150,6 +161,20 @@ export function discoverPolicyFiles(
         startDir: start,
       }),
     );
+    for (const name of fallbackFilenames) {
+      if (name === "AGENTS.md" || name === "AGENTS.override.md" || basename(name) !== name) {
+        continue;
+      }
+      addUnique(
+        out,
+        seen,
+        readPolicyFile(join(dir, name), errors, {
+          sourceProvider: "codex",
+          kind: "agents-md",
+          startDir: start,
+        }),
+      );
+    }
     addUnique(
       out,
       seen,
@@ -189,16 +214,13 @@ export function discoverPolicyFiles(
         return false;
       }
       if (basename(dirname(abs)) === ".commandcode") {
-        return (
-          isCommandcodeProjectMemoryFallback(abs, commandcodeProjectRoot) &&
-          !existsSync(join(commandcodeProjectRoot, "AGENTS.md"))
-        );
+        return !existsSync(join(dirname(dirname(abs)), "AGENTS.md"));
       }
       return true;
     },
     errors,
   })) {
-    const commandcodeMemory = basename(dirname(abs)) === ".commandcode";
+    const commandcodeMemory = isCommandcodeMemoryFallback(abs);
     addUnique(
       out,
       seen,
@@ -244,6 +266,24 @@ export function discoverPolicyFiles(
   }
 
   if (includeGlobal) {
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(homedir(), ".codex", "AGENTS.override.md"), errors, {
+        sourceProvider: "codex",
+        kind: "agents-md",
+        startDir: start,
+      }),
+    );
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(homedir(), ".codex", "AGENTS.md"), errors, {
+        sourceProvider: "codex",
+        kind: "agents-md",
+        startDir: start,
+      }),
+    );
     addUnique(
       out,
       seen,

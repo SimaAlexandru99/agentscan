@@ -1,8 +1,8 @@
 # MCP configuration
 
 **Source:** https://code.claude.com/docs/en/mcp
-**Read:** 2026-08-09
-**Depends on it:** `mcp.no-launch`, `mcp.url-without-type`, `mcp.hardcoded-secret`, `mcp.literal-env`, `mcp.command-missing`
+**Read:** 2026-08-31
+**Depends on it:** `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.hardcoded-secret`, `mcp.literal-env`, `mcp.command-missing`
 
 ## Shared path `.mcp.json`
 
@@ -40,6 +40,19 @@ lookup.
 ## Transports
 
 `stdio` (the default when `type` is absent), `http`, `sse`, `ws`.
+
+## Reserved server names
+
+Quoted (read 2026-08-31):
+
+> Reserved names: Claude Code reserves the names of its built-in servers,
+> including `workspace`, `claude-in-chrome`, `computer-use`, `Claude Preview`,
+> and `Claude Browser`. If your configuration defines a server with a reserved
+> name, Claude Code skips it at load time and shows a warning asking you to
+> rename it.
+
+`claude.mcp.reserved-name` applies to Claude-consumed MCP (`claude-json` and
+shared `mcp-json` when `consumedBy` includes `claude`). Exact name match.
 
 ## `url` without `type` is a configuration error
 

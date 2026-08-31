@@ -216,5 +216,12 @@ export function extractFacts(
     ...(surface.codexProjectDocMaxBytes === undefined
       ? {}
       : { codexProjectDocMaxBytes: surface.codexProjectDocMaxBytes }),
+    ...(surface.codexProjectDocFallbackFilenames === undefined
+      ? {}
+      : { codexProjectDocFallbackFilenames: surface.codexProjectDocFallbackFilenames }),
+    ...(surface.codexProjectRootMarkers === undefined
+      ? {}
+      : { codexProjectRootMarkers: surface.codexProjectRootMarkers }),
+    ...(surface.codexProjectRoot === undefined ? {} : { codexProjectRoot: surface.codexProjectRoot }),
   };
 }

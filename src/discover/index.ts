@@ -26,10 +26,10 @@ import {
   winningCommandcodeModel,
   winningSkillsExtraDirs,
 } from "./commandcode";
-import { discoverHooks, discoverVscodeHooks } from "./hooks";
+import { discoverCopilotUserHooks, discoverHooks, discoverVscodeHooks } from "./hooks";
 import { discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
 import { discoverPluginHooks } from "./plugins";
-import { discoverPolicyFiles, discoverSkillsLocks } from "./policy";
+import { discoverPolicyFiles, discoverSkillsLocks, resolveCodexProjectRoot } from "./policy";
 import { discoverRules } from "./rules";
 import {
   disambiguateSkills,
@@ -167,12 +167,23 @@ export function discoverAgentSurface(
   const mcpSeen = new Set<string>();
   const rules: RuleFact[] = [];
   let codexProjectDocMaxBytes: number | undefined;
+  let codexProjectDocFallbackFilenames: string[] | undefined;
+  let codexProjectRootMarkers: string[] | undefined;
   for (const dir of dirs) {
     hooks.push(...discoverHooks(dir, configErrors));
     hooks.push(...discoverVscodeHooks(dir, configErrors));
     const discovered = discoverMcpSurface(dir, config.mcpPaths, configErrors);
     if (discovered.codexProjectDocMaxBytes !== undefined && codexProjectDocMaxBytes === undefined) {
       codexProjectDocMaxBytes = discovered.codexProjectDocMaxBytes;
+    }
+    if (
+      discovered.codexProjectDocFallbackFilenames !== undefined &&
+      codexProjectDocFallbackFilenames === undefined
+    ) {
+      codexProjectDocFallbackFilenames = discovered.codexProjectDocFallbackFilenames;
+    }
+    if (discovered.codexProjectRootMarkers !== undefined && codexProjectRootMarkers === undefined) {
+      codexProjectRootMarkers = discovered.codexProjectRootMarkers;
     }
     for (const fact of discovered.facts) {
       const key = mcpKey(fact);
@@ -196,6 +207,7 @@ export function discoverAgentSurface(
     mcp.push(fact);
   }
   if (opts.includeGlobal) {
+    hooks.push(...discoverCopilotUserHooks(configErrors));
     for (const fact of discoverCommandcodeUserMcp(commandcodeProjectRoot, configErrors)) {
       const key = mcpKey(fact);
       if (mcpSeen.has(key)) {
@@ -220,6 +232,11 @@ export function discoverAgentSurface(
   ];
   applyCommandcodeHookPrecedence(allHooks);
 
+  const codexProjectRoot = resolveCodexProjectRoot(
+    startDir,
+    scanBoundary,
+    codexProjectRootMarkers,
+  );
   return {
     skills: disambiguateSkills(skills, root),
     agents,
@@ -232,6 +249,7 @@ export function discoverAgentSurface(
       startDir,
       opts.includeGlobal,
       commandcodeProjectRoot,
+      codexProjectDocFallbackFilenames ?? [],
     ),
     rules,
     lockedSkills: lock.locked,
@@ -240,6 +258,11 @@ export function discoverAgentSurface(
     ...(lock.lockRoots.length === 0 ? {} : { skillLockRoots: lock.lockRoots }),
     configErrors,
     ...(codexProjectDocMaxBytes === undefined ? {} : { codexProjectDocMaxBytes }),
+    ...(codexProjectDocFallbackFilenames === undefined
+      ? {}
+      : { codexProjectDocFallbackFilenames }),
+    ...(codexProjectRootMarkers === undefined ? {} : { codexProjectRootMarkers }),
+    codexProjectRoot,
     ...(slashCommands.length === 0 ? {} : { slashCommands }),
     ...(mods.length === 0 ? {} : { mods }),
     ...(winningModel === undefined

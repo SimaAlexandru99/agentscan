@@ -229,12 +229,12 @@ describe("Command Code hooks", () => {
 });
 
 describe("Command Code memory, skills, commands, mods", () => {
-  test("project-root AGENTS.md wins; nested .commandcode/AGENTS.md is not memory", () => {
+  test("project-root AGENTS.md wins over sibling .commandcode/AGENTS.md", () => {
     const root = tmpProject("agentscan-cc-memory-");
     write(root, "AGENTS.md", "root memory\n");
     write(root, ".commandcode/AGENTS.md", "hidden sibling\n");
     write(root, "packages/app/AGENTS.md", "nested dir memory\n");
-    write(root, "packages/app/.commandcode/AGENTS.md", "not walk-up memory\n");
+    write(root, "packages/app/.commandcode/AGENTS.md", "nested sibling hidden\n");
     const startDir = join(root, "packages", "app");
     const facts = extractFacts(root, defaultConfig, { includeGlobal: false, startDir });
     const paths = facts.policyFiles.filter((f) => f.kind === "agents-md").map((f) => f.path);
@@ -244,15 +244,15 @@ describe("Command Code memory, skills, commands, mods", () => {
     expect(paths).not.toContain(join(root, "packages", "app", ".commandcode", "AGENTS.md"));
   });
 
-  test("project-root .commandcode/AGENTS.md is the documented fallback", () => {
+  test("nested .commandcode/AGENTS.md is memory when that directory has no AGENTS.md", () => {
     const root = tmpProject("agentscan-cc-memory-fallback-");
     write(root, ".commandcode/AGENTS.md", "project fallback\n");
-    write(root, "packages/app/.commandcode/AGENTS.md", "nested ignored\n");
+    write(root, "packages/app/.commandcode/AGENTS.md", "nested fallback\n");
     const startDir = join(root, "packages", "app");
     const facts = extractFacts(root, defaultConfig, { includeGlobal: false, startDir });
     const paths = facts.policyFiles.filter((f) => f.kind === "agents-md").map((f) => f.path);
     expect(paths).toContain(join(root, ".commandcode", "AGENTS.md"));
-    expect(paths).not.toContain(join(root, "packages", "app", ".commandcode", "AGENTS.md"));
+    expect(paths).toContain(join(root, "packages", "app", ".commandcode", "AGENTS.md"));
   });
 
   test("unresolved @path is not a hard error", () => {

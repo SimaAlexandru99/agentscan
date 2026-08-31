@@ -1,5 +1,6 @@
 import { basename, dirname, resolve } from "node:path";
 import type { Facts, Finding } from "../facts/types";
+import { ancestorDirsInclusive } from "../discover/shared";
 import { make } from "./make";
 
 const CODEX_PROJECT_DOC_MAX_BYTES = 32_768;
@@ -193,22 +194,38 @@ function nonempty(text: string): boolean {
 
 /**
  * Per directory Codex loads at most one file: non-empty AGENTS.override.md,
- * otherwise AGENTS.md. Empty files are skipped. See docs/spec/codex-agents-md.md.
+ * otherwise AGENTS.md, otherwise the first non-empty project_doc_fallback_filenames
+ * entry. Empty files are skipped. See docs/spec/codex-agents-md.md.
  */
-export function effectiveCodexInstructionChain(files: PolicyFile[]): PolicyFile[] {
+export function effectiveCodexInstructionChain(
+  files: PolicyFile[],
+  opts?: {
+    startDir?: string;
+    codexRoot?: string;
+    fallbackFilenames?: string[];
+  },
+): PolicyFile[] {
+  const fallbacks = opts?.fallbackFilenames ?? [];
+  const chainDirs =
+    opts?.startDir !== undefined && opts.codexRoot !== undefined
+      ? new Set(ancestorDirsInclusive(opts.startDir, opts.codexRoot).map((dir) => resolve(dir)))
+      : undefined;
   const onChain = files.filter((policy) => {
-    if (!isAgentsMdPolicy(policy)) {
+    if (!isAgentsMdPolicy(policy) && !isFallbackPolicy(policy, fallbacks)) {
       return false;
+    }
+    const dir = resolve(dirname(policy.path));
+    if (basename(dir) === ".commandcode" && basename(policy.path) === "AGENTS.md") {
+      return false;
+    }
+    if (chainDirs !== undefined) {
+      return chainDirs.has(dir);
     }
     return policy.hopsFromStart !== undefined && Number.isFinite(policy.hopsFromStart);
   });
   const byDir = new Map<string, PolicyFile[]>();
   for (const policy of onChain) {
     const dir = resolve(dirname(policy.path));
-    if (basename(dir) === ".commandcode" && basename(policy.path) === "AGENTS.md") {
-      // Command Code memory, not a Codex AGENTS.md. See docs/spec/commandcode-memory.md.
-      continue;
-    }
     const bucket = byDir.get(dir);
     if (bucket === undefined) {
       byDir.set(dir, [policy]);
@@ -218,14 +235,7 @@ export function effectiveCodexInstructionChain(files: PolicyFile[]): PolicyFile[
   }
   const effective: PolicyFile[] = [];
   for (const group of byDir.values()) {
-    const override = group.find((policy) => basename(policy.path) === "AGENTS.override.md");
-    const normal = group.find((policy) => basename(policy.path) === "AGENTS.md");
-    const pick =
-      override !== undefined && nonempty(override.text)
-        ? override
-        : normal !== undefined && nonempty(normal.text)
-          ? normal
-          : undefined;
+    const pick = pickCodexFile(group, fallbacks);
     if (pick !== undefined) {
       effective.push(pick);
     }
@@ -233,8 +243,37 @@ export function effectiveCodexInstructionChain(files: PolicyFile[]): PolicyFile[
   return effective;
 }
 
+function isFallbackPolicy(policy: PolicyFile, fallbacks: string[]): boolean {
+  if (fallbacks.length === 0) {
+    return false;
+  }
+  return fallbacks.includes(basename(policy.path));
+}
+
+function pickCodexFile(group: PolicyFile[], fallbacks: string[]): PolicyFile | undefined {
+  const override = group.find((policy) => basename(policy.path) === "AGENTS.override.md");
+  if (override !== undefined && nonempty(override.text)) {
+    return override;
+  }
+  const normal = group.find((policy) => basename(policy.path) === "AGENTS.md");
+  if (normal !== undefined && nonempty(normal.text)) {
+    return normal;
+  }
+  for (const name of fallbacks) {
+    const fallback = group.find((policy) => basename(policy.path) === name);
+    if (fallback !== undefined && nonempty(fallback.text)) {
+      return fallback;
+    }
+  }
+  return undefined;
+}
+
 function codexInstructionBudget(facts: Facts): Finding[] {
-  const chain = effectiveCodexInstructionChain(facts.policyFiles);
+  const chain = effectiveCodexInstructionChain(facts.policyFiles, {
+    startDir: facts.startDir ?? facts.root,
+    codexRoot: facts.codexProjectRoot ?? facts.root,
+    fallbackFilenames: facts.codexProjectDocFallbackFilenames ?? [],
+  });
   if (chain.length === 0) {
     return [];
   }
@@ -252,14 +291,13 @@ function codexInstructionBudget(facts: Facts): Finding[] {
       severity: "info",
       message: `Codex instruction chain exceeds ${limit} bytes (${bytes})`,
       reason:
-        "Codex stops adding AGENTS.md files once the combined size reaches project_doc_max_bytes (32 KiB by default). At most one file per directory is loaded — AGENTS.override.md if it is non-empty, otherwise AGENTS.md. This is not applied to CLAUDE.md. See docs/spec/codex-agents-md.md.",
+        "Codex stops adding files once the combined size reaches project_doc_max_bytes (32 KiB by default). At most one file per directory is loaded — AGENTS.override.md if it is non-empty, otherwise AGENTS.md, otherwise the first non-empty project_doc_fallback_filenames entry. This is not applied to CLAUDE.md. See docs/spec/codex-agents-md.md.",
       evidence: [
         { kind: "count", value: `bytes=${bytes}` },
         { kind: "threshold", value: String(limit) },
         ...chain.map((policy) => ({ kind: "policy", value: policy.path })),
       ],
-      suggest:
-        "Shorten AGENTS.md files on the path from the project root to the working directory, or raise project_doc_max_bytes in .codex/config.toml",
+      suggest: `Shorten the AGENTS.md chain or raise project_doc_max_bytes (currently ${limit})`,
     }),
   ];
 }

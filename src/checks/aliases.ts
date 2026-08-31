@@ -15,6 +15,7 @@ export const RULE_ALIASES: Record<string, string> = {
   "mcp.no-launch": "claude.mcp.no-launch",
   "mcp.url-without-type": "claude.mcp.url-without-type",
   "mcp.hardcoded-secret": "security.hardcoded-secret",
+  "claude.hook.mcp-tool-without-name": "claude.hook.mcp-tool-without-server-or-tool",
 };
 
 export function canonicalRuleId(id: string): string {

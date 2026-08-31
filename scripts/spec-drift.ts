@@ -16,6 +16,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { COMMANDCODE_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "../src/checks/index";
+import { COPILOT_ONLY_EVENTS, COPILOT_TO_VSCODE_EVENT } from "../src/facts/hook-schema";
 import { SPEC_SURFACES, surfaceStalenessNotes } from "./spec-surfaces";
 
 const SPEC_DIR = join(import.meta.dir, "../docs/spec");
@@ -153,6 +154,22 @@ async function checkVscodeHookEvents(report: Report): Promise<void> {
   }
 }
 
+async function checkCopilotHookEvents(report: Report): Promise<void> {
+  const url = "https://docs.github.com/en/copilot/reference/hooks-reference";
+  const html = await page(url);
+  if (html === null) {
+    report.notes.push(`could not fetch ${url} — Copilot CLI hook events unverified`);
+    return;
+  }
+  const claimed = [...Object.keys(COPILOT_TO_VSCODE_EVENT), ...COPILOT_ONLY_EVENTS];
+  const missingFromPage = claimed.filter((e) => !html.includes(e));
+  if (missingFromPage.length > 0) {
+    report.drift.push(
+      `Copilot CLI hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
+    );
+  }
+}
+
 async function checkCommandcodeHookEvents(report: Report): Promise<void> {
   const url = "https://commandcode.ai/docs/hooks";
   const html = await page(url);
@@ -173,6 +190,7 @@ checkCaptureDates(report);
 checkSurfaceStaleness(report);
 await checkHookEvents(report);
 await checkVscodeHookEvents(report);
+await checkCopilotHookEvents(report);
 await checkCommandcodeHookEvents(report);
 
 for (const note of report.notes) {

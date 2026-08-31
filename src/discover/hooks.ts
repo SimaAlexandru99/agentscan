@@ -7,8 +7,16 @@ import {
   COMMANDCODE_HOOK_TIMEOUT_MIN,
   COMMANDCODE_PROJECT_DIR,
 } from "../facts/commandcode";
+import {
+  claudeHandlerCompatible,
+  copilotCanonicalEvent,
+  inferHookSchemaProfile,
+  isCopilotCliHooksDocument,
+  type HookHandlerType,
+  type HookSchemaProfile,
+} from "../facts/hook-schema";
 import type { Provider } from "../facts/provider";
-import type { ConfigErrorFact, HookFact } from "../facts/types";
+import type { ConfigErrorFact, HookDefect, HookFact } from "../facts/types";
 import {
   formatLaunch,
   launchFromCommandArgs,
@@ -42,6 +50,9 @@ export type HookBases = {
 
 const PROJECT_DIR = /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\})/;
 const PLUGIN_ROOT = /^\$(?:CLAUDE_PLUGIN_ROOT\b|\{CLAUDE_PLUGIN_ROOT\})/;
+
+const CLAUDE_HANDLER_TYPES = new Set(["command", "http", "mcp_tool", "mcp-tool", "prompt", "agent"]);
+const COPILOT_HANDLER_TYPES = new Set(["command", "http", "prompt"]);
 
 /**
  * Pull the script path out of a hook command, so a hook whose script is gone can
@@ -105,44 +116,12 @@ function resolveHookScript(
   return { scriptPath: extracted, exists: candidates.some(isFile) };
 }
 
-/**
- * Turn one `hooks` object into facts, whatever file it came from.
- *
- * Settings files, a plugin's `hooks/hooks.json` and skill / subagent
- * frontmatter all carry the identical structure — "the same configuration
- * format as settings-based hooks" — so they share one reader and differ only in
- * their `source` label and their path bases. See docs/spec/hook-sources.md.
- */
-const HANDLER_TYPES = new Set(["command", "http", "mcp_tool", "mcp-tool", "prompt", "agent"]);
-
-function allowedHandlerTypes(provider: Provider): Set<string> {
-  if (provider === "commandcode") {
-    return COMMANDCODE_HOOK_HANDLER_TYPES;
-  }
-  return HANDLER_TYPES;
+function nonemptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-function normalizeHandlerType(type: string): NonNullable<HookFact["handlerType"]> | undefined {
-  if (type === "mcp-tool" || type === "mcp_tool") {
-    return "mcp_tool";
-  }
-  if (type === "command" || type === "http" || type === "prompt" || type === "agent") {
-    return type;
-  }
-  return undefined;
-}
-
-function handlerTypeOf(item: Record<string, unknown>): HookFact["handlerType"] {
-  if (typeof item.type === "string") {
-    return normalizeHandlerType(item.type);
-  }
-  if (item.command !== undefined || item.args !== undefined) {
-    return "command";
-  }
-  if (typeof item.url === "string") {
-    return "http";
-  }
-  return undefined;
+function isHandlerEntry(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function isMatcherOnlyGroup(group: Record<string, unknown>): boolean {
@@ -150,18 +129,18 @@ function isMatcherOnlyGroup(group: Record<string, unknown>): boolean {
     group.matcher !== undefined &&
     group.type === undefined &&
     group.command === undefined &&
-    group.url === undefined
+    group.url === undefined &&
+    group.bash === undefined &&
+    group.powershell === undefined
   );
 }
 
-function isHandlerEntry(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function handlersFromGroups(
-  groups: unknown,
-  nestedOnly = false,
-): Record<string, unknown>[] {
+/**
+ * Claude and Command Code require nested `{ matcher?, hooks: [...] }` groups.
+ * Official Claude examples are nested; the 2026-08-31 hooks page does not
+ * document a flat handler array. VS Code and Copilot CLI use flat arrays.
+ */
+function handlersFromGroups(groups: unknown, nestedOnly: boolean): Record<string, unknown>[] {
   if (!Array.isArray(groups)) {
     return [];
   }
@@ -172,7 +151,10 @@ function handlersFromGroups(
     (first.type !== undefined ||
       first.command !== undefined ||
       first.url !== undefined ||
-      first.args !== undefined) &&
+      first.args !== undefined ||
+      first.bash !== undefined ||
+      first.powershell !== undefined ||
+      first.prompt !== undefined) &&
     !Array.isArray(first.hooks)
   ) {
     return groups.filter(isHandlerEntry);
@@ -195,7 +177,17 @@ function handlersFromGroups(
   return out;
 }
 
-function commandcodeUnknownType(item: Record<string, unknown>): string {
+function normalizeHandlerType(type: string): HookHandlerType | undefined {
+  if (type === "mcp-tool" || type === "mcp_tool") {
+    return "mcp_tool";
+  }
+  if (type === "command" || type === "http" || type === "prompt" || type === "agent") {
+    return type;
+  }
+  return undefined;
+}
+
+function unknownTypeLabel(item: Record<string, unknown>): string {
   if (!("type" in item) || item.type === undefined) {
     return "(missing)";
   }
@@ -205,81 +197,9 @@ function commandcodeUnknownType(item: Record<string, unknown>): string {
   return JSON.stringify(item.type);
 }
 
-function commandcodeHookFromEntry(
+function timeoutFromCommandcodeEntry(
   item: Record<string, unknown>,
-  event: string,
-  filePath: string,
-  source: NonNullable<HookFact["source"]>,
-  bases: HookBases,
-  hostPlatform: NodeJS.Platform,
-): HookFact {
-  const timeoutFacts = timeoutFromEntry(item);
-  if (item.type !== "command") {
-    return {
-      name: event,
-      path: filePath,
-      event,
-      source,
-      sourceProvider: "commandcode",
-      defect: "unknown-handler-type",
-      unknownHandlerType: commandcodeUnknownType(item),
-      ...timeoutFacts,
-    };
-  }
-  if (typeof item.command !== "string" || item.command.length === 0) {
-    return {
-      name: event,
-      path: filePath,
-      event,
-      source,
-      sourceProvider: "commandcode",
-      handlerType: "command",
-      defect: "command-without-command",
-      ...timeoutFacts,
-    };
-  }
-  const launch = launchFromCommandArgs(item.command);
-  if (launch === undefined) {
-    return {
-      name: event,
-      path: filePath,
-      event,
-      source,
-      sourceProvider: "commandcode",
-      handlerType: "command",
-      defect: "command-without-command",
-      ...timeoutFacts,
-    };
-  }
-  const command = formatLaunch(launch);
-  const fact: HookFact = {
-    name: event,
-    path: filePath,
-    event,
-    source,
-    sourceProvider: "commandcode",
-    handlerType: "command",
-    command,
-    ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
-    ...timeoutFacts,
-  };
-  const cwd = resolveLaunchCwd(launch.cwd, bases.project, hostPlatform);
-  const candidate = scriptCandidateFromLaunch(launch, bases);
-  if (candidate !== undefined && !skipLaunchExistenceCheck(launch, cwd, candidate, hostPlatform)) {
-    const resolved = resolveHookScript(
-      bases,
-      candidate,
-      cwd.status === "ok" ? cwd.abs : undefined,
-    );
-    if (resolved !== undefined) {
-      fact.scriptPath = resolved.scriptPath;
-      fact.scriptExists = resolved.exists;
-    }
-  }
-  return fact;
-}
-
-function timeoutFromEntry(item: Record<string, unknown>): Pick<HookFact, "timeout" | "timeoutOutOfBounds"> {
+): Pick<HookFact, "timeout" | "timeoutOutOfBounds"> {
   if (!("timeout" in item)) {
     return {};
   }
@@ -293,6 +213,332 @@ function timeoutFromEntry(item: Record<string, unknown>): Pick<HookFact, "timeou
   return { timeoutOutOfBounds: true };
 }
 
+function timeoutFromCopilotEntry(item: Record<string, unknown>): Pick<HookFact, "timeout"> {
+  const value = item.timeoutSec !== undefined ? item.timeoutSec : item.timeout;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return { timeout: value };
+  }
+  return {};
+}
+
+type HookContext = {
+  event: string;
+  filePath: string;
+  source: NonNullable<HookFact["source"]>;
+  sourceProvider: Provider;
+  schemaProfile: HookSchemaProfile;
+  bases: HookBases;
+  hostPlatform: NodeJS.Platform;
+};
+
+function baseFact(
+  ctx: HookContext,
+  extra: Partial<HookFact> = {},
+): HookFact {
+  return {
+    name: ctx.event,
+    path: ctx.filePath,
+    event: ctx.event,
+    source: ctx.source,
+    sourceProvider: ctx.sourceProvider,
+    schemaProfile: ctx.schemaProfile,
+    ...extra,
+  };
+}
+
+function attachLaunch(
+  fact: HookFact,
+  launch: ReturnType<typeof launchFromCommandArgs>,
+  ctx: HookContext,
+  skipExists = false,
+): HookFact {
+  if (launch === undefined) {
+    return fact;
+  }
+  const cwd = resolveLaunchCwd(launch.cwd, ctx.bases.project, ctx.hostPlatform);
+  const candidate = scriptCandidateFromLaunch(launch, ctx.bases);
+  if (
+    skipExists ||
+    candidate === undefined ||
+    skipLaunchExistenceCheck(launch, cwd, candidate, ctx.hostPlatform)
+  ) {
+    return fact;
+  }
+  const resolved = resolveHookScript(
+    ctx.bases,
+    candidate,
+    cwd.status === "ok" ? cwd.abs : undefined,
+  );
+  if (resolved === undefined) {
+    return fact;
+  }
+  return { ...fact, scriptPath: resolved.scriptPath, scriptExists: resolved.exists };
+}
+
+function commandFactsFromLaunches(
+  ctx: HookContext,
+  item: Record<string, unknown>,
+  defectIfEmpty: HookDefect,
+): HookFact[] {
+  const launches = launchesFromEntry(item);
+  if (launches.length === 0) {
+    return [baseFact(ctx, { handlerType: "command", defect: defectIfEmpty })];
+  }
+  return launches.map((launch) => {
+    const command = formatLaunch(launch);
+    const fact = baseFact(ctx, {
+      handlerType: "command",
+      command,
+      ...(launch.platform === undefined ? {} : { platform: launch.platform }),
+      ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
+    });
+    return attachLaunch(fact, launch, ctx);
+  });
+}
+
+function commandcodeHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact {
+  const timeoutFacts = timeoutFromCommandcodeEntry(item);
+  if (item.type !== "command") {
+    return baseFact(ctx, {
+      defect: "unknown-handler-type",
+      unknownHandlerType: unknownTypeLabel(item),
+      ...timeoutFacts,
+    });
+  }
+  if (typeof item.command !== "string" || item.command.length === 0) {
+    return baseFact(ctx, {
+      handlerType: "command",
+      defect: "command-without-command",
+      ...timeoutFacts,
+    });
+  }
+  const launch = launchFromCommandArgs(item.command);
+  if (launch === undefined) {
+    return baseFact(ctx, {
+      handlerType: "command",
+      defect: "command-without-command",
+      ...timeoutFacts,
+    });
+  }
+  const command = formatLaunch(launch);
+  const fact = baseFact(ctx, {
+    handlerType: "command",
+    command,
+    ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
+    ...timeoutFacts,
+  });
+  return attachLaunch(fact, launch, ctx);
+}
+
+function claudeHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
+  const typeRaw = typeof item.type === "string" ? item.type : undefined;
+  if (typeRaw === undefined) {
+    return [
+      baseFact(ctx, {
+        defect: "unknown-handler-type",
+        unknownHandlerType: "(missing)",
+      }),
+    ];
+  }
+  if (!CLAUDE_HANDLER_TYPES.has(typeRaw)) {
+    return [
+      baseFact(ctx, {
+        defect: "unknown-handler-type",
+        unknownHandlerType: typeRaw,
+      }),
+    ];
+  }
+  const handlerType = normalizeHandlerType(typeRaw);
+  if (handlerType === undefined) {
+    return [
+      baseFact(ctx, {
+        defect: "unknown-handler-type",
+        unknownHandlerType: typeRaw,
+      }),
+    ];
+  }
+  if (!claudeHandlerCompatible(ctx.event, handlerType)) {
+    return [baseFact(ctx, { handlerType, defect: "incompatible-handler" })];
+  }
+  if (handlerType === "http") {
+    const url = nonemptyString(item.url);
+    return [
+      baseFact(ctx, {
+        handlerType: "http",
+        ...(url === undefined ? { defect: "http-without-url" as const } : {}),
+      }),
+    ];
+  }
+  if (handlerType === "mcp_tool") {
+    const server = nonemptyString(item.server);
+    const tool = nonemptyString(item.tool);
+    return [
+      baseFact(ctx, {
+        handlerType: "mcp_tool",
+        ...(server === undefined || tool === undefined
+          ? { defect: "mcp-tool-without-server-or-tool" as const }
+          : {}),
+      }),
+    ];
+  }
+  if (handlerType === "prompt" || handlerType === "agent") {
+    const prompt = nonemptyString(item.prompt);
+    return [
+      baseFact(ctx, {
+        handlerType,
+        ...(prompt === undefined ? { defect: "prompt-without-prompt" as const } : {}),
+      }),
+    ];
+  }
+  return commandFactsFromLaunches(ctx, item, "command-without-command");
+}
+
+function vscodeNativeHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
+  const typeRaw = typeof item.type === "string" ? item.type : undefined;
+  if (typeRaw !== "command") {
+    return [
+      baseFact(ctx, {
+        defect: "unknown-handler-type",
+        unknownHandlerType: unknownTypeLabel(item),
+      }),
+    ];
+  }
+  return commandFactsFromLaunches(ctx, item, "command-without-command");
+}
+
+function copilotCommandChoice(
+  item: Record<string, unknown>,
+  hostPlatform: NodeJS.Platform,
+): { command: string; skipExists: boolean } | undefined {
+  const bash = nonemptyString(item.bash);
+  const powershell = nonemptyString(item.powershell);
+  const command = nonemptyString(item.command);
+  if (hostPlatform === "win32") {
+    if (powershell !== undefined) {
+      return { command: powershell, skipExists: false };
+    }
+    if (command !== undefined) {
+      return { command, skipExists: false };
+    }
+    if (bash !== undefined) {
+      return { command: bash, skipExists: true };
+    }
+    return undefined;
+  }
+  if (bash !== undefined) {
+    return { command: bash, skipExists: false };
+  }
+  if (command !== undefined) {
+    return { command, skipExists: false };
+  }
+  if (powershell !== undefined) {
+    return { command: powershell, skipExists: true };
+  }
+  return undefined;
+}
+
+function copilotHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
+  const timeoutFacts = timeoutFromCopilotEntry(item);
+  const typeRaw = typeof item.type === "string" ? item.type : undefined;
+  const handlerType =
+    typeRaw === undefined ? "command" : normalizeHandlerType(typeRaw);
+  if (typeRaw !== undefined && (handlerType === undefined || !COPILOT_HANDLER_TYPES.has(typeRaw))) {
+    return [
+      baseFact(ctx, {
+        defect: "unknown-handler-type",
+        unknownHandlerType: typeRaw,
+        ...timeoutFacts,
+      }),
+    ];
+  }
+  const type = handlerType ?? "command";
+  const cwd = nonemptyString(item.cwd);
+  if (type === "http") {
+    const url = nonemptyString(item.url);
+    return [
+      baseFact(ctx, {
+        handlerType: "http",
+        ...(cwd === undefined ? {} : { cwd }),
+        ...timeoutFacts,
+        ...(url === undefined ? { defect: "http-without-url" as const } : {}),
+      }),
+    ];
+  }
+  if (type === "prompt") {
+    const prompt = nonemptyString(item.prompt);
+    const canonical = copilotCanonicalEvent(ctx.event);
+    const defect: HookDefect | undefined =
+      prompt === undefined
+        ? "prompt-without-prompt"
+        : canonical === "SessionStart"
+          ? undefined
+          : "incompatible-handler";
+    return [
+      baseFact(ctx, {
+        handlerType: "prompt",
+        ...(cwd === undefined ? {} : { cwd }),
+        ...timeoutFacts,
+        ...(defect === undefined ? {} : { defect }),
+      }),
+    ];
+  }
+  const choice = copilotCommandChoice(item, ctx.hostPlatform);
+  if (choice === undefined) {
+    return [
+      baseFact(ctx, {
+        handlerType: "command",
+        ...(cwd === undefined ? {} : { cwd }),
+        ...timeoutFacts,
+        defect: "command-without-command",
+      }),
+    ];
+  }
+  const launch = launchFromCommandArgs(choice.command, undefined, undefined, cwd);
+  if (launch === undefined) {
+    return [
+      baseFact(ctx, {
+        handlerType: "command",
+        ...(cwd === undefined ? {} : { cwd }),
+        ...timeoutFacts,
+        defect: "command-without-command",
+      }),
+    ];
+  }
+  const fact = baseFact(ctx, {
+    handlerType: "command",
+    command: formatLaunch(launch),
+    ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
+    ...timeoutFacts,
+  });
+  return [attachLaunch(fact, launch, ctx, choice.skipExists)];
+}
+
+function hooksFromProfile(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
+  switch (ctx.schemaProfile) {
+    case "claude":
+      return claudeHookFromEntry(item, ctx);
+    case "vscode-native":
+      return vscodeNativeHookFromEntry(item, ctx);
+    case "copilot-cli":
+      return copilotHookFromEntry(item, ctx);
+    case "commandcode":
+      return [commandcodeHookFromEntry(item, ctx)];
+    default: {
+      const neverProfile: never = ctx.schemaProfile;
+      return neverProfile;
+    }
+  }
+}
+
+/**
+ * Turn one `hooks` object into facts, whatever file it came from.
+ *
+ * Schema profile selects the contract: Claude nested groups with a required
+ * `type`, native VS Code command-only flat arrays, Copilot CLI `version: 1`,
+ * or Command Code nested command handlers. See docs/spec/hook-events.md,
+ * docs/spec/vscode-hooks.md, docs/spec/copilot-hooks.md,
+ * docs/spec/commandcode-hooks.md.
+ */
 export function hooksFromObject(
   hooks: unknown,
   filePath: string,
@@ -301,6 +547,7 @@ export function hooksFromObject(
   errors: ConfigErrorFact[],
   sourceProvider: Provider = "claude",
   hostPlatform: NodeJS.Platform = process.platform,
+  schemaProfile?: HookSchemaProfile,
 ): HookFact[] {
   if (hooks === null || typeof hooks !== "object" || Array.isArray(hooks)) {
     errors.push({
@@ -311,199 +558,70 @@ export function hooksFromObject(
     return [];
   }
 
+  const profile = inferHookSchemaProfile(sourceProvider, schemaProfile);
+  const nestedOnly = profile === "claude" || profile === "commandcode";
   const facts: HookFact[] = [];
-  for (const [event, groups] of Object.entries(
-    hooks as Record<string, unknown>,
-  )) {
+  for (const [event, groups] of Object.entries(hooks as Record<string, unknown>)) {
     if (!Array.isArray(groups)) {
-      errors.push({ path: filePath, kind: "unexpected-shape", detail: `invalid hook groups for ${event}` });
+      errors.push({
+        path: filePath,
+        kind: "unexpected-shape",
+        detail: `invalid hook groups for ${event}`,
+      });
       continue;
     }
 
+    const ctx: HookContext = {
+      event,
+      filePath,
+      source,
+      sourceProvider,
+      schemaProfile: profile,
+      bases,
+      hostPlatform,
+    };
+
     let invalidGroup = false;
-    const requireNested = sourceProvider === "commandcode";
     for (const group of groups) {
       if (!isHandlerEntry(group)) {
         continue;
       }
-      if (
-        requireNested &&
-        group.matcher !== undefined &&
-        typeof group.matcher !== "string"
-      ) {
+      if (nestedOnly && group.matcher !== undefined && typeof group.matcher !== "string") {
         invalidGroup = true;
-        facts.push({
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-          defect: "invalid-group",
-          commandcodeInvalidMatcher: true,
-        });
+        facts.push(
+          baseFact(ctx, {
+            defect: "invalid-group",
+            commandcodeInvalidMatcher: profile === "commandcode" ? true : undefined,
+          }),
+        );
       }
       const missingHooks = !Array.isArray(group.hooks);
-      if (
-        (isMatcherOnlyGroup(group) && missingHooks) ||
-        (requireNested && missingHooks)
-      ) {
+      if ((isMatcherOnlyGroup(group) && missingHooks) || (nestedOnly && missingHooks)) {
         invalidGroup = true;
-        facts.push({
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-          defect: "invalid-group",
-        });
+        facts.push(baseFact(ctx, { defect: "invalid-group" }));
         continue;
       }
       if (Array.isArray(group.hooks) && group.hooks.length === 0) {
         invalidGroup = true;
-        facts.push({
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-          defect: "invalid-group",
-        });
+        facts.push(baseFact(ctx, { defect: "invalid-group" }));
       }
     }
 
-    const handlers = handlersFromGroups(groups, requireNested);
+    const handlers = handlersFromGroups(groups, nestedOnly);
     if (handlers.length === 0) {
       if (!invalidGroup) {
-        facts.push({ name: event, path: filePath, event, source, sourceProvider });
+        facts.push(baseFact(ctx));
       }
       continue;
     }
     for (const item of handlers) {
-      if (sourceProvider === "commandcode") {
-        facts.push(
-          commandcodeHookFromEntry(item, event, filePath, source, bases, hostPlatform),
-        );
-        continue;
-      }
-      const typeRaw = typeof item.type === "string" ? item.type : undefined;
-      const allowed = allowedHandlerTypes(sourceProvider);
-      if (typeRaw !== undefined && !allowed.has(typeRaw)) {
-        facts.push({
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-          defect: "unknown-handler-type",
-          unknownHandlerType: typeRaw,
-        });
-        continue;
-      }
-      const handlerType = handlerTypeOf(item);
-      if (handlerType === "http") {
-        const url = typeof item.url === "string" ? item.url : undefined;
-        facts.push({
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-          handlerType: "http",
-          ...(url === undefined || url.length === 0
-            ? { defect: "http-without-url" as const }
-            : {}),
-        });
-        continue;
-      }
-      if (handlerType === "mcp_tool") {
-        const toolName =
-          (typeof item.name === "string" && item.name.length > 0 && item.name) ||
-          (typeof item.toolName === "string" && item.toolName.length > 0 && item.toolName) ||
-          (typeof item.mcp_tool === "string" && item.mcp_tool.length > 0 && item.mcp_tool) ||
-          undefined;
-        facts.push({
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-          handlerType: "mcp_tool",
-          ...(toolName === undefined ? { defect: "mcp-tool-without-name" as const } : {}),
-        });
-        continue;
-      }
-      if (handlerType === "prompt" || handlerType === "agent") {
-        facts.push({
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-          handlerType,
-        });
-        continue;
-      }
-
-      const launches = launchesFromEntry(item);
-      if (launches.length === 0 && (handlerType === "command" || typeRaw === "command")) {
-        facts.push({
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-          handlerType: "command",
-          defect: "command-without-command",
-        });
-        continue;
-      }
-      if (launches.length === 0) {
-        facts.push({
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-        });
-        continue;
-      }
-      for (const launch of launches) {
-        const command = formatLaunch(launch);
-        const fact: HookFact = {
-          name: event,
-          path: filePath,
-          event,
-          source,
-          sourceProvider,
-          handlerType: "command",
-          command,
-          ...(launch.platform === undefined ? {} : { platform: launch.platform }),
-          ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
-        };
-        const cwd = resolveLaunchCwd(launch.cwd, bases.project, hostPlatform);
-        const candidate = scriptCandidateFromLaunch(launch, bases);
-        if (candidate !== undefined && !skipLaunchExistenceCheck(launch, cwd, candidate, hostPlatform)) {
-          const resolved = resolveHookScript(
-            bases,
-            candidate,
-            cwd.status === "ok" ? cwd.abs : undefined,
-          );
-          if (resolved !== undefined) {
-            fact.scriptPath = resolved.scriptPath;
-            fact.scriptExists = resolved.exists;
-          }
-        }
-        facts.push(fact);
-      }
+      facts.push(...hooksFromProfile(item, ctx));
     }
   }
   return facts;
 }
 
-export function discoverHooks(
-  root: string,
-  errors: ConfigErrorFact[],
-): HookFact[] {
+export function discoverHooks(root: string, errors: ConfigErrorFact[]): HookFact[] {
   const files = [
     join(root, ".claude", "settings.json"),
     join(root, ".claude", "settings.local.json"),
@@ -529,19 +647,28 @@ export function discoverHooks(
     if (hooks === undefined) {
       continue;
     }
-    // No plugin base: `${CLAUDE_PLUGIN_ROOT}` in a settings file names nothing.
     facts.push(
-      ...hooksFromObject(hooks, filePath, "settings", { project: root }, errors, "claude"),
+      ...hooksFromObject(
+        hooks,
+        filePath,
+        "settings",
+        { project: root },
+        errors,
+        "claude",
+        process.platform,
+        "claude",
+      ),
     );
   }
   return facts;
 }
 
-export function discoverVscodeHooks(
+function discoverHookDir(
+  dir: string,
   root: string,
   errors: ConfigErrorFact[],
+  defaultProfile: HookSchemaProfile,
 ): HookFact[] {
-  const dir = join(root, ".github", "hooks");
   if (!existsSync(dir)) {
     return [];
   }
@@ -574,13 +701,39 @@ export function discoverVscodeHooks(
       });
       continue;
     }
-    const hooks = (raw as Record<string, unknown>).hooks;
+    const doc = raw as Record<string, unknown>;
+    const hooks = doc.hooks;
     if (hooks === undefined) {
       continue;
     }
+    const profile = isCopilotCliHooksDocument(doc) ? "copilot-cli" : defaultProfile;
     facts.push(
-      ...hooksFromObject(hooks, filePath, "vscode-hooks", { project: root, own: dir }, errors, "vscode"),
+      ...hooksFromObject(
+        hooks,
+        filePath,
+        "vscode-hooks",
+        { project: root, own: dir },
+        errors,
+        "vscode",
+        process.platform,
+        profile,
+      ),
     );
   }
   return facts;
+}
+
+export function discoverVscodeHooks(root: string, errors: ConfigErrorFact[]): HookFact[] {
+  return discoverHookDir(join(root, ".github", "hooks"), root, errors, "vscode-native");
+}
+
+/**
+ * User hooks at `~/.copilot/hooks`. VS Code and Copilot CLI share this
+ * directory. `version: 1` is Copilot CLI; otherwise native VS Code command-only.
+ * Only read under `--global`. Policy files under `/etc/github-copilot/policy.d`
+ * stay unread. See docs/spec/copilot-hooks.md and docs/spec/vscode-hooks.md.
+ */
+export function discoverCopilotUserHooks(errors: ConfigErrorFact[]): HookFact[] {
+  const dir = join(homedir(), ".copilot", "hooks");
+  return discoverHookDir(dir, dir, errors, "vscode-native");
 }

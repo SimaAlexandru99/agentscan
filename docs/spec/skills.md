@@ -1,8 +1,9 @@
 # Skills — SKILL.md frontmatter
 
 **Source:** https://code.claude.com/docs/en/skills
-**Read:** 2026-08-09
-**Depends on it:** `skill.missing-frontmatter`, `skill.missing-description`
+**Read:** 2026-08-31
+**Depends on it:** `claude.skill.missing-frontmatter`, `claude.skill.missing-description`,
+`skill.description-budget`
 
 ## Structure
 
@@ -17,11 +18,36 @@ templates, example outputs, scripts, reference documentation.
 
 ## Frontmatter fields
 
+Quoted (2026-08-31): all fields are optional. Only `description` is recommended.
+
 | Field | Required | Notes |
 |-------|----------|-------|
-| `name` | **No** | "Display name shown in skill listings. **Defaults to the directory name.**" |
-| `description` | **Recommended** | "What the skill does and when to use it. Claude uses this to decide when to apply it." |
-| `when_to_use` | No | |
+| `name` | **No** | Display name. Defaults to the directory name. |
+| `description` | **Recommended** | What the skill does and when to use it. **If omitted, uses the first paragraph of markdown content.** Combined `description` and `when_to_use` is truncated at 1,536 characters in the skill listing. |
+| `when_to_use` | No | Appended to `description` in the listing; counts toward the 1,536-character cap. |
+
+`claude.skill.missing-description` fires only when frontmatter has no
+`description` **and** there is no first markdown paragraph.
+
+## Listing budget (not 16,000 bytes)
+
+Quoted:
+
+> The budget scales at 1% of the model's context window. […] To raise the
+> budget, set the `skillListingBudgetFraction` setting […] or the
+> `SLASH_COMMAND_TOOL_CHAR_BUDGET` environment variable to a fixed character
+> count. […] each entry's combined text is capped at 1,536 characters
+> regardless of budget. The cap is configurable with `skillListingMaxDescChars`.
+
+agentscan cannot read the model's context window. The configurable fallback is
+`thresholds.skillListingChars` (default **8000 characters**). Per-entry cap is
+`thresholds.skillListingMaxDescChars` (default **1536**). Listing text is
+`description` (or the first markdown paragraph) plus `when_to_use`.
+`thresholds.skillDescriptionBytes` is accepted for one release as an alias of
+`skillListingChars` — do not treat 16000 bytes as the runtime budget.
+
+This is **not** applied to Agent Skills schema profiles. See
+[thresholds.md](thresholds.md).
 
 ## Where the command name comes from
 
@@ -42,15 +68,17 @@ across 17 projects, every one false.**
 
 `skill.missing-name` enforced an optional field.
 
-`skill.missing-description` survives at **info**, not warning: "Recommended" is
-not "required", and a skill without one still works when invoked directly — it
-just will not be picked up automatically.
-
 ## The same trap, avoided once
 
 Agent definitions under `.claude/agents/` were measured before a matching check
-was written: 16 of 34 real files have a frontmatter `name` that differs from
-the filename (`engineering-api-platform-engineer.md` declares
+was written: 16 of 34 real files have a frontmatter `name` that differs from the
+filename (`engineering-api-platform-engineer.md` declares
 `name: API Platform Engineer`). The check was refused on that evidence. The
 identical evidence sat in front of skills and the check shipped anyway — see
 `plans/003` for the standing prohibition.
+
+## File references
+
+Claude native skills still try the skill directory first, then the repo root
+(empirical two-base rule). Agent Skills references resolve from the skill root
+only; see [agent-skills.md](agent-skills.md).

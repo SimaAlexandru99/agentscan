@@ -142,16 +142,16 @@ export function checkSkillStructure(facts: Facts): Finding[] {
 
     if (schema === "agent-skills") {
       out.push(...checkAgentSkillsFrontmatter(skill));
-    } else if (skill.description === undefined) {
+    } else if (skill.description === undefined && skill.firstMarkdownParagraph === undefined) {
       out.push(
         make("claude.skill.missing-description", skillSubject(skill), {
           action: "warn",
           severity: "info",
-          message: "SKILL.md frontmatter has no `description`",
+          message: "SKILL.md frontmatter has no `description` and no first markdown paragraph",
           reason:
-            "The description is what Claude matches against when deciding to load a skill automatically. Without it the skill still works when invoked directly, but it will not be picked up on its own. The spec marks it Recommended, not required — see docs/spec/skills.md.",
+            "The description is what Claude matches against when deciding to load a skill automatically. If it is omitted, Claude uses the first markdown paragraph. Without either, the skill still works when invoked directly, but it will not be picked up on its own. The spec marks description Recommended, not required — see docs/spec/skills.md.",
           evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
-          suggest: "Add a one-line description to the frontmatter",
+          suggest: "Add a one-line description to the frontmatter, or a first markdown paragraph",
         }),
       );
     }
@@ -244,6 +244,75 @@ function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
         reason: "The Agent Skills spec limits `description` to 1024 characters. See docs/spec/agent-skills.md.",
         evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
         suggest: "Shorten the description",
+      }),
+    );
+  }
+
+  if (skill.compatibilityInvalid === true) {
+    const lengthNote =
+      skill.compatibility !== undefined
+        ? ` (${skill.compatibility.length} characters)`
+        : skill.compatibilityKind !== undefined && skill.compatibilityKind !== "string"
+          ? ` (found ${skill.compatibilityKind}, not a string)`
+          : "";
+    out.push(
+      make("agent-skills.skill.invalid-compatibility", skillSubject(skill), {
+        action: "warn",
+        severity: "error",
+        message: `Skill compatibility is not a 1–500 character string${lengthNote}`,
+        reason:
+          "The Agent Skills spec constrains optional `compatibility` to a string of 1–500 characters when present. See docs/spec/agent-skills.md.",
+        evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+        suggest: "Set compatibility to a 1–500 character string, or omit it",
+      }),
+    );
+  }
+
+  if (skill.metadataInvalid === true) {
+    out.push(
+      make("agent-skills.skill.invalid-metadata", skillSubject(skill), {
+        action: "warn",
+        severity: "error",
+        message: "Skill metadata is not a map of string to string",
+        reason:
+          "The Agent Skills spec constrains optional `metadata` to map<string, string> when present. See docs/spec/agent-skills.md.",
+        evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+        suggest: "Use a YAML mapping whose values are all strings, or omit metadata",
+      }),
+    );
+  }
+
+  if (skill.allowedToolsInvalid === true) {
+    const typeNote =
+      skill.allowedToolsKind !== undefined && skill.allowedToolsKind !== "string"
+        ? ` (found ${skill.allowedToolsKind}, not a string)`
+        : "";
+    out.push(
+      make("agent-skills.skill.invalid-allowed-tools", skillSubject(skill), {
+        action: "warn",
+        severity: "error",
+        message: `Skill allowed-tools is not a string${typeNote}`,
+        reason:
+          "The Agent Skills spec constrains optional `allowed-tools` to a string when present. See docs/spec/agent-skills.md.",
+        evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+        suggest: "Set allowed-tools to a space-separated string, or omit it",
+      }),
+    );
+  }
+
+  if (skill.bodyLines !== undefined && skill.bodyLines > 500) {
+    out.push(
+      make("agent-skills.skill.body-too-large", skillSubject(skill), {
+        action: "warn",
+        severity: "info",
+        message: `SKILL.md is ${skill.bodyLines} lines (recommendation: under 500)`,
+        reason:
+          "The Agent Skills spec recommends keeping the main SKILL.md under 500 lines. This is a recommendation, not a load failure. See docs/spec/agent-skills.md.",
+        evidence: [
+          ...skillEvidence(skill, `${skill.path}/SKILL.md`),
+          { kind: "count", value: `lines=${skill.bodyLines}` },
+        ],
+        suggest: "Move detail into bundled reference files under the skill directory",
       }),
     );
   }
@@ -455,38 +524,28 @@ export function checkDuplicateDescriptions(facts: Facts): Finding[] {
 }
 
 /**
- * Every skill's name and description is loaded at startup so Claude can decide
- * what to reach for. That sits in a character budget of roughly 1-2% of the
- * context window, shared across all of them — past it descriptions are
- * truncated and the keywords Claude matches on are lost.
- *
- * This replaced a plain skill count, which measured the wrong thing: a project
- * with 44 short-description skills sits comfortably under budget while one with
- * 53 verbose ones is over.
- *
- * Evidence and confidence: docs/spec/thresholds.md
+ * Claude loads each skill's description (or first markdown paragraph) plus
+ * `when_to_use` into a listing budget of 1% of the model context window.
+ * When the window is unknown the fallback is 8000 characters. Each entry is
+ * truncated at 1536 characters. Not applied to Agent Skills (those cap a
+ * single description at 1024). See docs/spec/thresholds.md.
  */
 export function checkDescriptionBudget(
   facts: Facts,
   options: CheckOptions,
 ): Finding[] {
-  const ceiling = options.skillDescriptionBytes;
+  const ceiling = options.skillListingChars ?? options.skillDescriptionBytes;
   if (ceiling === undefined) {
     return [];
   }
-  // Only directories that load at startup, and only their descriptions: a
-  // folder with no SKILL.md contributes nothing, and the same report calls it
-  // "not a loadable skill".
+  const perEntryCap = options.skillListingMaxDescChars ?? 1536;
   const project = facts.skills.filter(
     (s) =>
       s.source === "project" &&
       s.hasSkillMd &&
-      s.description !== undefined &&
-      skillSchema(s) !== "agent-skills",
+      skillSchema(s) !== "agent-skills" &&
+      listingText(s).length > 0,
   );
-  // One budget per skills directory. The startup budget is spent by one session,
-  // and a session loads one such directory — summing a monorepo's three apps
-  // into a single total describes a runtime that never exists.
   const byRoot = new Map<string, SkillFact[]>();
   for (const s of project) {
     const root = skillRoot(s);
@@ -497,18 +556,13 @@ export function checkDescriptionBudget(
 
   const out: Finding[] = [];
   for (const [root, skills] of byRoot) {
-    // Bytes, not UTF-16 units — the threshold and docs/spec/thresholds.md are
-    // both stated in bytes, and `.length` half-counts non-ASCII.
-    const bytes = skills.reduce(
-      (sum, s) =>
-        sum + Buffer.byteLength(s.id) + Buffer.byteLength(s.description ?? ""),
+    const chars = skills.reduce(
+      (sum, s) => sum + Math.min(listingText(s).length, perEntryCap),
       0,
     );
-    if (bytes <= ceiling) {
+    if (chars <= ceiling) {
       continue;
     }
-    // A single-directory project keeps the id it has always had, so an existing
-    // `ignoreFindings` entry does not silently stop matching.
     const where = root.startsWith(`${facts.root}/`)
       ? root.slice(facts.root.length + 1)
       : root;
@@ -520,17 +574,23 @@ export function checkDescriptionBudget(
       make("skill.description-budget", subject, {
         action: "warn",
         severity: "info",
-        message: `Skill descriptions total ${bytes} bytes across ${skills.length} skills in ${where} (over ${ceiling})`,
+        message: `Skill listing text totals ${chars} characters across ${skills.length} skills in ${where} (over ${ceiling}; per-entry cap ${perEntryCap})`,
         reason:
-          "Names and descriptions for every skill are loaded at startup, within a budget of roughly 1-2% of the context window. Past it they are truncated, and a skill whose description is cut short stops being matched for the tasks it was written for.",
+          "Claude loads description (or the first markdown paragraph) plus when_to_use for every skill at listing time. That listing is 1% of the model context window, with an 8000-character fallback when the window is unknown, and each entry is truncated at 1536 characters. Past the budget, matching keywords are lost. See docs/spec/thresholds.md.",
         evidence: [
-          { kind: "count", value: `descriptionBytes=${bytes}` },
+          { kind: "count", value: `listingChars=${chars}` },
           { kind: "threshold", value: String(ceiling) },
         ],
         suggest:
-          "Shorten the longest descriptions, or remove skills this project does not use",
+          "Shorten the longest descriptions or when_to_use fields, or remove skills this project does not use",
       }),
     );
   }
   return out;
+}
+
+function listingText(skill: SkillFact): string {
+  const description = skill.description ?? skill.firstMarkdownParagraph ?? "";
+  const when = skill.whenToUse ?? "";
+  return `${description}${when}`;
 }

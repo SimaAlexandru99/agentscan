@@ -157,21 +157,24 @@ export function checkAgents(facts: Facts): Finding[] {
         }),
       );
     } else {
-      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(agent.frontmatterName)) {
+      const name = agent.frontmatterName;
+      const skipped = name.startsWith("-") || name.includes(":");
+      const formatOk = /^[a-z]+(?:-[a-z]+)*$/.test(name);
+      if (!formatOk) {
         out.push(
           make("claude.agent.invalid-name", `agent:${agent.name}`, {
             action: "warn",
-            // Warning, not error. The reference states the format — "Unique
-            // identifier using lowercase letters and hyphens" — but names a
-            // load failure only for `:`. Error means "this does not work", and
-            // the docs do not say that about `name: SEO Specialist`.
-            // See docs/spec/agents.md.
-            severity: "warning",
-            message: `Agent name "${agent.frontmatterName}" is not a valid identifier`,
+            // Error only for the documented load failures (`:` or a leading `-`).
+            // Other off-format names stay warning. Filename is not compared to
+            // name. See docs/spec/agents.md.
+            severity: skipped ? "error" : "warning",
+            message: skipped
+              ? `Agent name "${name}" is skipped (starts with "-" or contains ":")`
+              : `Agent name "${name}" is not a valid identifier`,
             reason:
-              "The subagent reference specifies a unique identifier in lowercase letters and hyphens. A name outside that shape is not documented to load reliably, and a `:` in it is documented not to load at all. See docs/spec/agents.md.",
+              "The subagent reference specifies a unique identifier in lowercase letters and hyphens. The filename does not have to match. A name that starts with `-` or contains `:` is skipped. See docs/spec/agents.md.",
             evidence: [{ kind: "agent", value: agent.path }],
-            suggest: "Use lowercase letters, numbers, and hyphens in the `name` field",
+            suggest: "Use lowercase letters and hyphens in the `name` field; do not start with `-` or include `:`",
           }),
         );
       }

@@ -60,6 +60,9 @@ export type AgentSurface = {
   skillLockRoots?: string[];
   configErrors: ConfigErrorFact[];
   codexProjectDocMaxBytes?: number;
+  codexProjectDocFallbackFilenames?: string[];
+  codexProjectRootMarkers?: string[];
+  codexProjectRoot?: string;
   slashCommands?: SlashCommandFact[];
   mods?: ModFact[];
   commandcodeModel?: string;
@@ -348,6 +351,10 @@ export type Frontmatter = {
   hooks?: unknown;
   /** Full YAML mapping, for provider-specific field validation. */
   fields?: Record<string, unknown>;
+  /** Whole-file line count, including frontmatter. */
+  lineCount?: number;
+  /** Frontmatter `when_to_use` when present as a string. */
+  whenToUse?: string;
 };
 
 function yamlScalarKind(value: unknown): YamlScalarKind | undefined {
@@ -420,7 +427,7 @@ export function readFrontmatter(
     return { hasFrontmatter: false, unreadable: true };
   }
   if (!text.startsWith("---")) {
-    return { hasFrontmatter: false };
+    return { hasFrontmatter: false, body: text, lineCount: lineCountOf(text) };
   }
   // The closing fence is a line that is exactly `---` (YAML also allows `...`).
   // Matching a bare "\n---" prefix took a key named `---metadata` for the fence
@@ -435,9 +442,9 @@ export function readFrontmatter(
         kind: "unexpected-shape",
         detail: `frontmatter not closed within the first ${SKILL_MD_CAP} bytes`,
       });
-      return { hasFrontmatter: true, unparseable: true };
+      return { hasFrontmatter: true, unparseable: true, lineCount: lineCountOf(text) };
     }
-    return { hasFrontmatter: false };
+    return { hasFrontmatter: false, body: text, lineCount: lineCountOf(text) };
   }
   const end = 3 + fence.index;
 
@@ -456,7 +463,7 @@ export function readFrontmatter(
         err instanceof Error ? err.message.split("\n")[0] : String(err)
       }`,
     });
-    return { hasFrontmatter: true, unparseable: true };
+    return { hasFrontmatter: true, unparseable: true, lineCount: lineCountOf(text) };
   }
   if (block === null || typeof block !== "object" || Array.isArray(block)) {
     errors.push({
@@ -464,11 +471,15 @@ export function readFrontmatter(
       kind: "unexpected-shape",
       detail: "frontmatter is not a YAML mapping",
     });
-    return { hasFrontmatter: true, unparseable: true };
+    return { hasFrontmatter: true, unparseable: true, lineCount: lineCountOf(text) };
   }
 
   const record = block as Record<string, unknown>;
-  const out: Frontmatter = { hasFrontmatter: true, body: text.slice(end + 4) };
+  const out: Frontmatter = {
+    hasFrontmatter: true,
+    body: text.slice(end + 4),
+    lineCount: lineCountOf(text),
+  };
   const nameKind = yamlScalarKind(record.name);
   if (nameKind !== undefined) {
     out.nameKind = nameKind;
@@ -488,6 +499,14 @@ export function readFrontmatter(
   if (record.hooks !== undefined) {
     out.hooks = record.hooks;
   }
+  const whenToUse = scalarString(record.when_to_use);
+  if (whenToUse !== undefined) {
+    out.whenToUse = whenToUse;
+  }
   out.fields = record;
   return out;
+}
+
+function lineCountOf(text: string): number {
+  return text.length === 0 ? 0 : text.replace(/\r?\n$/, "").split(/\r?\n/).length;
 }
