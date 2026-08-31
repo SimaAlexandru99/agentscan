@@ -11,6 +11,42 @@ and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
 (the published package version). A separate 1.0.1 npm tag would need an
 intermediate commit that this train does not cut.
 
+## 1.2.0 — 2026-08-31
+
+Native Grok Build provider against 2026-08-31 official docs. **95 checks**,
+**435 tests**. Compatibility with Claude or Cursor is not schema identity.
+
+### Added
+
+- Spec captures `docs/spec/grok-mcp.md`, `grok-hooks.md`, `grok-skills.md`,
+  `grok-rules.md`, `grok-agents.md`.
+- Profiles: `grok-toml` MCP, `grok` hook and skill schemas.
+  `inferHookSchemaProfile("grok")` is `"grok"`, not `"claude"`.
+- Project `.grok/config.toml` walk-up (cwd → scan boundary). User
+  `$GROK_HOME/config.toml` or `~/.grok/config.toml` under `--global`.
+  Same-name project replaces user; closer project file wins.
+  `grok.mcp.no-launch` when neither `command` nor `url` is set. Never
+  `claude.mcp.url-without-type` on `grok-toml`.
+- `.grok/hooks/*.json` and user hooks under `--global`. Fourteen events;
+  handlers `command` / `http`. Copilot `version: 1` remap is not applied.
+- `.grok/skills` (and user skills under `--global`). Frontmatter required;
+  `name` / `description` optional. Agent Skills directory-match and Claude
+  listing-budget checks do not run.
+- `.grok/rules/*.md` with no size cap. `Agents.md` and `AGENT.md` as Grok
+  instruction files beside `AGENTS.md`.
+- Conformance fixture `tests/fixtures/conformance/grok-toml/`.
+- `spec:check` drifts Grok hook event names against the live hooks page.
+
+### Unread (intentional)
+
+- Managed / requirements TOML, plugins, marketplaces, personas, LSP,
+  `sandbox.toml`, `pager.toml`.
+- `[skills] paths` (no quoted resolution base).
+- `.grok/agents/` (directory named, no filename pattern).
+- Claude / Cursor / `.mcp.json` as Grok-consumed.
+- `.gitignore` skip for instruction files.
+- Credential files (`auth.json`, `mcp_credentials.json`).
+
 ## 1.1.0 — 2026-08-31
 
 Native Command Code provider, then a correctness pass over every registered

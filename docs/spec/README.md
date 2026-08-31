@@ -56,6 +56,11 @@ to appear in real projects.** When adding a check:
 | [continue-mcp.md](continue-mcp.md) | `.continue/config.yaml` and standalone YAML block metadata | `continue.mcp.no-launch`, `continue.mcp.missing-block-metadata` |
 | [cursor-skills.md](cursor-skills.md) | Nested `.cursor/skills` / `.agents/skills` Agent Skills contract | `agent-skills.skill.*` |
 | [codex-skills.md](codex-skills.md) | Codex `.codex/skills` Agent Skills contract | `agent-skills.skill.*` |
+| [grok-mcp.md](grok-mcp.md) | Grok `[mcp_servers.*]` TOML; project walk-up; user under `--global` | `grok.mcp.no-launch` |
+| [grok-hooks.md](grok-hooks.md) | 14 events; command/http; `.grok/hooks/*.json` | `grok.hook.*` |
+| [grok-skills.md](grok-skills.md) | `.grok/skills`; optional name/description; frontmatter required | `grok.skill.missing-frontmatter` |
+| [grok-rules.md](grok-rules.md) | `.grok/rules/*.md`; `Agents.md` / `AGENT.md`; no size cap | discovery |
+| [grok-agents.md](grok-agents.md) | `.grok/agents/` location only; no filename pattern | unread |
 
 Each `STRUCTURAL_CHECKS` entry also carries `provenance` (`spec-required`,
 `vendor-recommendation`, `security`, `internal-consistency`, or `heuristic`)
@@ -86,9 +91,9 @@ like a check that read all of it.
 bun run spec:check
 ```
 
-Diffs the hardcoded Claude, VS Code, Copilot CLI, and Command Code hook-event
-sets against the live docs pages, checks `scripts/spec-surfaces.ts` lastVerified
-dates, and warns when the newest capture here is over 90 days old. It makes
+Diffs the hardcoded Claude, VS Code, Copilot CLI, Command Code, and Grok
+hook-event sets against the live docs pages, checks `scripts/spec-surfaces.ts`
+lastVerified dates, and warns when the newest capture here is over 90 days old. It makes
 network calls, so it is a release-time script and is never reached from
 `agentscan check` — the scan path touches no network and that is worth more than
 automatic freshness. It over-reports by design; adjudicated false alarms go in

@@ -1,4 +1,5 @@
 import { COMMANDCODE_HOOK_EVENTS, isShadowedCommandcode } from "../facts/commandcode";
+import { GROK_HOOK_EVENTS } from "../facts/grok";
 import {
   COPILOT_HOOK_EVENTS,
   inferHookSchemaProfile,
@@ -31,6 +32,8 @@ function eventsFor(profile: HookSchemaProfile): Set<string> {
       return COPILOT_HOOK_EVENTS;
     case "commandcode":
       return COMMANDCODE_HOOK_EVENTS;
+    case "grok":
+      return GROK_HOOK_EVENTS;
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -47,6 +50,8 @@ function unknownEventRuleId(profile: HookSchemaProfile): string {
       return "copilot.hook.unknown-event";
     case "commandcode":
       return "commandcode.hook.unknown-event";
+    case "grok":
+      return "grok.hook.unknown-event";
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -63,6 +68,8 @@ function missingScriptRuleId(profile: HookSchemaProfile): string {
       return "copilot.hook.missing-script";
     case "commandcode":
       return "commandcode.hook.missing-script";
+    case "grok":
+      return "grok.hook.missing-script";
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -185,6 +192,21 @@ function defectRuleId(profile: HookSchemaProfile, defect: HookDefect): string | 
         case "unknown-handler-type":
           return `commandcode.hook.${defect}`;
         case "http-without-url":
+        case "mcp-tool-without-server-or-tool":
+        case "prompt-without-prompt":
+        case "incompatible-handler":
+          return undefined;
+        default: {
+          return assertNever(defect, `unhandled hook defect: ${defect}`);
+        }
+      }
+    case "grok":
+      switch (defect) {
+        case "invalid-group":
+        case "command-without-command":
+        case "http-without-url":
+        case "unknown-handler-type":
+          return `grok.hook.${defect}`;
         case "mcp-tool-without-server-or-tool":
         case "prompt-without-prompt":
         case "incompatible-handler":

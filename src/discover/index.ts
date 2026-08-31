@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { AgentscanConfig } from "../config/schema";
+import { grokHomeDir } from "../facts/grok";
 import type {
   ConfigErrorFact,
   HookFact,
@@ -26,7 +27,8 @@ import {
   winningCommandcodeModel,
   winningSkillsExtraDirs,
 } from "./commandcode";
-import { discoverCopilotUserHooks, discoverHooks, discoverVscodeHooks } from "./hooks";
+import { applyGrokMcpPrecedence, discoverGrokUserMcp } from "./grok";
+import { discoverCopilotUserHooks, discoverGrokHooks, discoverHooks, discoverVscodeHooks } from "./hooks";
 import { discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
 import { discoverPluginHooks } from "./plugins";
 import { discoverPolicyFiles, discoverSkillsLocks, resolveCodexProjectRoot } from "./policy";
@@ -129,6 +131,7 @@ export function discoverAgentSurface(
       join(home, ".codex", "skills"),
       join(home, ".commandcode", "skills"),
       join(home, ".agents", "skills"),
+      join(grokHomeDir(), "skills"),
     ];
     for (const abs of globalSkillDirs) {
       const resolved = resolve(abs);
@@ -172,6 +175,7 @@ export function discoverAgentSurface(
   for (const dir of dirs) {
     hooks.push(...discoverHooks(dir, configErrors));
     hooks.push(...discoverVscodeHooks(dir, configErrors));
+    hooks.push(...discoverGrokHooks(join(dir, ".grok", "hooks"), dir, configErrors));
     const discovered = discoverMcpSurface(dir, config.mcpPaths, configErrors);
     if (discovered.codexProjectDocMaxBytes !== undefined && codexProjectDocMaxBytes === undefined) {
       codexProjectDocMaxBytes = discovered.codexProjectDocMaxBytes;
@@ -208,6 +212,15 @@ export function discoverAgentSurface(
   }
   if (opts.includeGlobal) {
     hooks.push(...discoverCopilotUserHooks(configErrors));
+    hooks.push(...discoverGrokHooks(join(grokHomeDir(), "hooks"), grokHomeDir(), configErrors));
+    for (const fact of discoverGrokUserMcp(configErrors)) {
+      const key = mcpKey(fact);
+      if (mcpSeen.has(key)) {
+        continue;
+      }
+      mcpSeen.add(key);
+      mcp.push(fact);
+    }
     for (const fact of discoverCommandcodeUserMcp(commandcodeProjectRoot, configErrors)) {
       const key = mcpKey(fact);
       if (mcpSeen.has(key)) {
@@ -218,6 +231,7 @@ export function discoverAgentSurface(
     }
   }
   applyCommandcodeMcpPrecedence(mcp, commandcodeProjectRoot);
+  applyGrokMcpPrecedence(mcp, startDir);
   const slashCommands = discoverCommandcodeCommands(
     commandcodeProjectRoot,
     opts.includeGlobal,

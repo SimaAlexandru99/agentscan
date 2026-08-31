@@ -1,4 +1,5 @@
 import { isShadowedCommandcode } from "../facts/commandcode";
+import { isShadowedGrok } from "../facts/grok";
 import { assertNever, type McpSchemaProfile } from "../facts/provider";
 import type { Facts, Finding, McpFact } from "../facts/types";
 import { make } from "./make";
@@ -44,6 +45,7 @@ function isLaunchable(server: McpFact): boolean {
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
+    case "grok-toml":
     case "opencode-json":
     case "continue-yaml":
       return server.hasCommand || server.hasUrl;
@@ -72,6 +74,8 @@ function noLaunchId(profile: McpSchemaProfile): string {
       return "antigravity.mcp.no-launch";
     case "codex-toml":
       return "codex.mcp.no-launch";
+    case "grok-toml":
+      return "grok.mcp.no-launch";
     case "gemini-json":
       return "gemini.mcp.no-launch";
     case "opencode-json":
@@ -99,6 +103,7 @@ function noLaunchMessage(server: McpFact): string {
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
+    case "grok-toml":
     case "opencode-json":
       return `MCP server "${server.name}" declares neither command nor url`;
     default: {
@@ -122,6 +127,7 @@ function noLaunchSuggest(server: McpFact): string {
     case "vscode-json":
     case "cursor-json":
     case "codex-toml":
+    case "grok-toml":
     case "opencode-json":
       return `Add a command or url for "${server.name}", or remove it`;
     default: {
@@ -276,7 +282,8 @@ function claudeUrlNeedsType(server: McpFact): boolean {
 export function checkMcp(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const server of facts.mcp) {
-    const shadowed = isShadowedCommandcode(server.commandcodeEffective);
+    const shadowed =
+      isShadowedCommandcode(server.commandcodeEffective) || isShadowedGrok(server.grokEffective);
     if (shadowed) {
       // Inventoried but not currently loaded. Schema/runtime errors would
       // claim a shadowed definition is breaking the runtime. Secrets still

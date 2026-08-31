@@ -15,7 +15,7 @@
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { COMMANDCODE_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "../src/checks/index";
+import { COMMANDCODE_HOOK_EVENTS, GROK_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "../src/checks/index";
 import { COPILOT_ONLY_EVENTS, COPILOT_TO_VSCODE_EVENT } from "../src/facts/hook-schema";
 import { SPEC_SURFACES, surfaceStalenessNotes } from "./spec-surfaces";
 
@@ -185,6 +185,21 @@ async function checkCommandcodeHookEvents(report: Report): Promise<void> {
   }
 }
 
+async function checkGrokHookEvents(report: Report): Promise<void> {
+  const url = "https://docs.x.ai/build/features/hooks";
+  const html = await page(url);
+  if (html === null) {
+    report.notes.push(`could not fetch ${url} — Grok hook events unverified`);
+    return;
+  }
+  const missingFromPage = [...GROK_HOOK_EVENTS].filter((e) => !html.includes(e));
+  if (missingFromPage.length > 0) {
+    report.drift.push(
+      `Grok hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
+    );
+  }
+}
+
 const report: Report = { drift: [], notes: [] };
 checkCaptureDates(report);
 checkSurfaceStaleness(report);
@@ -192,6 +207,7 @@ await checkHookEvents(report);
 await checkVscodeHookEvents(report);
 await checkCopilotHookEvents(report);
 await checkCommandcodeHookEvents(report);
+await checkGrokHookEvents(report);
 
 for (const note of report.notes) {
   process.stdout.write(`note: ${note}\n`);

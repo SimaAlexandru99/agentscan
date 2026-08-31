@@ -63,6 +63,19 @@ export function discoverRules(root: string, errors: ConfigErrorFact[]): RuleFact
       }
     }
   }
+  const grokRules = join(root, ".grok", "rules");
+  if (existsSync(grokRules)) {
+    for (const abs of walkFiles(grokRules, {
+      maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
+      match: (_abs, name) => name.endsWith(".md"),
+      errors,
+    })) {
+      const fact = readRule(abs, "grok", errors);
+      if (fact !== undefined) {
+        out.push(fact);
+      }
+    }
+  }
   const claudeRules = join(root, ".claude", "rules");
   if (existsSync(claudeRules)) {
     for (const abs of walkFiles(claudeRules, {

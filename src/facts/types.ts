@@ -148,6 +148,11 @@ export type McpFact = {
    * (nested `.mcp.json` is Claude's file, not Command Code project MCP).
    */
   commandcodeEffective?: boolean;
+  /**
+   * Grok MCP load rank among walked `.grok/config.toml` files and the user
+   * file. Unset means this is not a Grok-ranked MCP source.
+   */
+  grokEffective?: boolean;
 };
 
 export type HookFact = {
@@ -162,7 +167,7 @@ export type HookFact = {
    *
    * See docs/spec/hook-sources.md.
    */
-  source?: "settings" | "plugin" | "skill" | "agent" | "vscode-hooks";
+  source?: "settings" | "plugin" | "skill" | "agent" | "vscode-hooks" | "grok-hooks";
   sourceProvider?: Provider;
   schemaProfile?: HookSchemaProfile;
   handlerType?: "command" | "http" | "mcp_tool" | "prompt" | "agent";
