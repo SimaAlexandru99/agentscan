@@ -1,7 +1,7 @@
 # Skills — SKILL.md frontmatter
 
 **Source:** https://code.claude.com/docs/en/skills
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `claude.skill.missing-frontmatter`, `claude.skill.missing-description`,
 `skill.description-budget`
 

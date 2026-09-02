@@ -11,6 +11,50 @@ and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
 (the published package version). A separate 1.0.1 npm tag would need an
 intermediate commit that this train does not cut.
 
+## Unreleased
+
+Full re-verification of all 99 checks against the live official pages on
+2026-09-02, recorded in `docs/spec/check-inventory.md`. 93 held. Six had
+drifted into reporting a documented, working configuration as broken, and
+are corrected here. **99 checks**, **476 tests**.
+
+### Fixed
+
+- `commandcode.mcp.invalid-transport` no longer fires on `"type":
+  "streamable-http"` in a shared `.mcp.json` — Claude Code documents it as an
+  alias for `http`. It also no longer fires on `sse` in Command Code-only
+  files, which the Command Code MCP page names as a transport it connects to
+  (skip, not a claim of support).
+- `agent-skills.skill.invalid-name` accepts lowercase letters from any script
+  (`résumé-builder`), matching the spec's "unicode lowercase alphanumeric" and
+  the `skills-ref` reference validator. Uppercase, underscores, spaces, and
+  hyphen placement are still rejected.
+- `copilot.hook.command-without-command` accepts the documented `exec` (+
+  `args`) form as a complete command handler; `exec` paths are existence-
+  checked like any other launch.
+- `copilot.hook.unknown-event` accepts the PascalCase spellings the Copilot
+  reference documents for Copilot-only events in `version: 1` files:
+  `SessionEnd`, `PostToolUseFailure`, `ErrorOccurred`, `PermissionRequest`.
+  Native VS Code files still reject them.
+- `mcp.literal-env` treats Gemini CLI's documented Windows `%VAR_NAME%` form as
+  interpolation, not a literal secret.
+- `commandcode.agent.invalid-permission-mode` accepts `inherit`, the value the
+  agents page lists as the field's default.
+
+### Changed
+
+- All `docs/spec/*.md` captures whose source page was re-read carry
+  `**Read:** 2026-09-02`; `scripts/spec-surfaces.ts` and the registry's
+  `lastVerified` match. Six discovery-only surfaces that were not re-opened
+  keep their earlier date.
+- `bun run spec:check` now also diffs the Copilot PascalCase aliases against
+  the live page.
+- New captured lines: Claude hook `args` exec form and `${CLAUDE_PLUGIN_DATA}`;
+  Claude sub-agent skip list; VS Code agent-scoped and plugin hook locations;
+  Command Code `reasoningEffort` (documented, invalid values fall back and
+  load — no check); Antigravity "legacy fields like `url` or `httpUrl` are not
+  supported"; Continue `uses:` cited from the config reference.
+
 ## 1.3.0 — 2026-08-31
 
 Native Windsurf / Cascade coverage against 2026-08-31 official docs.

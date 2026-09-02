@@ -1,7 +1,8 @@
 # Hook events
 
 **Source:** https://code.claude.com/docs/en/hooks
-**Read:** 2026-08-31
+**Read:** 2026-09-02 (all 33 names, the required `type` enum, per-type required
+fields, and the three compatibility tiers re-read and unchanged)
 **Depends on it:** `claude.hook.unknown-event`, `claude.hook.unknown-handler-type`,
 `claude.hook.command-without-command`, `claude.hook.http-without-url`,
 `claude.hook.mcp-tool-without-server-or-tool`, `claude.hook.prompt-without-prompt`,
@@ -38,6 +39,13 @@ presence of `command` or `url`. Omitting `type`, or using any other value, is
 
 Quoted command field: when `type` is `"command"`, `command` is required
 (`claude.hook.command-without-command`).
+
+Command hooks also accept optional `args` (read 2026-09-02): "When present,
+`command` is resolved as an executable and spawned directly with `args` as the
+argument vector, with no shell involved." The scanner already walks
+`[command, ...args]` for the script operand, so
+`{ "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/format.js"] }`
+path-checks the script in a plugin and `command: "node"` alone is never a path.
 
 Quoted HTTP field: when `type` is `"http"`, `url` is required
 (`claude.hook.http-without-url`).

@@ -1,7 +1,7 @@
 # Command Code MCP
 
 **Source:** https://commandcode.ai/docs/mcp
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `commandcode.mcp.no-launch`, `commandcode.mcp.invalid-transport`, `commandcode.mcp.http-without-url`, `commandcode.mcp.stdio-without-command`
 
 Also consulted: https://commandcode.ai/docs/settings (scopes, inline `mcp.servers`, files this scanner must not open)
@@ -43,9 +43,24 @@ HTTP schema (docs Config Schema tab): `transport: "http"`, `url`, optional
 `enabled`, `headers`, `env`. Stdio is the other documented transport and is
 specified with `command` (CLI stdio add, and the stdio JSON tab).
 
-Do not treat `sse` / `ws` on a shared `.mcp.json` as a Command Code error:
-those are Claude transports on the same path. Prefer skip over a false
-positive. An unknown value such as `"ftp"` is invalid for both consumers.
+Do not treat `sse` / `ws` / `streamable-http` on a shared `.mcp.json` as a
+Command Code error: those are Claude transports on the same path. Prefer skip
+over a false positive. An unknown value such as `"ftp"` is invalid for both
+consumers.
+
+### `sse` on Command Code-only files
+
+The `--transport` table lists only `stdio` and `http`, but the same page also
+says (read 2026-09-02):
+
+> OAuth works with HTTP and SSE transport servers
+
+That sentence names SSE as a transport Command Code connects to, so a
+`transport: "sse"` entry in `~/.commandcode/mcp.json` or inline settings
+`mcp.servers` is **skipped** (`COMMANDCODE_TOLERATED_MCP_TRANSPORTS`), not
+reported as `commandcode.mcp.invalid-transport`. The page does not publish
+`sse` as a JSON value outright, so this is a tolerance, not a claim that it is
+supported. Re-read when the transport table changes.
 
 ## Scopes
 

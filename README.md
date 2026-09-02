@@ -477,7 +477,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `vscode.hook.unknown-handler-type` | error | A native VS Code hook whose `type` is not `command` |
 | `copilot.hook.unknown-event` | error | A Copilot CLI hook registered under an event that is never dispatched |
 | `copilot.hook.missing-script` | error | A Copilot CLI command hook whose script does not exist |
-| `copilot.hook.command-without-command` | error | A Copilot CLI command hook with none of `bash`, `powershell`, or `command` |
+| `copilot.hook.command-without-command` | error | A Copilot CLI command hook with none of `bash`, `powershell`, `command`, or `exec` |
 | `copilot.hook.http-without-url` | error | A Copilot CLI `type: http` hook with no `url` |
 | `copilot.hook.prompt-without-prompt` | error | A Copilot CLI `type: prompt` hook with no `prompt` |
 | `copilot.hook.unknown-handler-type` | error | A Copilot CLI hook whose `type` is not command, http, or prompt |
@@ -508,7 +508,7 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `agent-skills.skill.missing-frontmatter` | error | Portable skill `SKILL.md` has no YAML frontmatter |
 | `agent-skills.skill.missing-name` | error | Portable skill frontmatter has no required `name` |
 | `agent-skills.skill.missing-description` | error | Portable skill frontmatter has no required `description` |
-| `agent-skills.skill.invalid-name` | error | Portable skill name is not `[a-z0-9]` + hyphens |
+| `agent-skills.skill.invalid-name` | error | Portable skill name is not lowercase letters (any script) and digits joined by single hyphens |
 | `agent-skills.skill.name-does-not-match-directory` | error | Portable skill `name` does not match its directory |
 | `agent-skills.skill.name-too-long` | error | Portable skill name exceeds 64 characters |
 | `agent-skills.skill.description-too-long` | error | Portable skill description exceeds 1024 characters |

@@ -1,7 +1,7 @@
 # Windsurf / Devin Desktop memories and rules
 
 **Source:** https://docs.windsurf.com/windsurf/cascade/memories
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `windsurf.rule.too-large`, `windsurf.rule.global-too-large`,
 `windsurf.rule.missing-trigger`
 

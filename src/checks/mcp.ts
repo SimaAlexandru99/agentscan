@@ -25,7 +25,7 @@ const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
 ];
 
 const INTERPOLATED =
-  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$[A-Za-z_][A-Za-z0-9_]*/;
+  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%/;
 
 function profileOf(server: McpFact): McpSchemaProfile {
   return server.schemaProfile ?? "claude-json";

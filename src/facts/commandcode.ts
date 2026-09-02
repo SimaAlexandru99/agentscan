@@ -18,18 +18,34 @@ export const COMMANDCODE_RESERVED_AGENT_NAMES = new Set([
   "general",
 ]);
 
+/**
+ * The five documented override values plus `inherit`, which the agents page
+ * lists as the field's default (the same way `model` documents `inherit`).
+ */
 export const COMMANDCODE_PERMISSION_MODES = new Set([
   "default",
   "auto-accept",
   "bypass",
   "plan",
   "dont-ask",
+  "inherit",
 ]);
 
 export const COMMANDCODE_MCP_TRANSPORTS = new Set(["http", "stdio"]);
 
-/** Claude transports that are valid on the shared `.mcp.json` path. */
-export const CLAUDE_MCP_TRANSPORTS = new Set(["stdio", "http", "sse", "ws"]);
+/**
+ * The Command Code MCP page names SSE only in passing ("OAuth works with HTTP
+ * and SSE transport servers") and never as a `--transport` value. Skip rather
+ * than flag: a false `invalid-transport` on a working server is worse than
+ * silence. See docs/spec/commandcode-mcp.md.
+ */
+export const COMMANDCODE_TOLERATED_MCP_TRANSPORTS = new Set(["sse"]);
+
+/**
+ * Claude transports that are valid on the shared `.mcp.json` path.
+ * `streamable-http` is a documented alias for `http` (docs/spec/mcp.md).
+ */
+export const CLAUDE_MCP_TRANSPORTS = new Set(["stdio", "http", "streamable-http", "sse", "ws"]);
 
 export const COMMANDCODE_HOOK_TIMEOUT_MIN = 0;
 export const COMMANDCODE_HOOK_TIMEOUT_MAX = 600;

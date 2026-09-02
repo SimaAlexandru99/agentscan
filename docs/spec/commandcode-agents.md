@@ -1,7 +1,7 @@
 # Command Code custom agents
 
 **Source:** https://commandcode.ai/docs/agents
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `commandcode.agent.reserved-name`,
 `commandcode.agent.invalid-permission-mode`,
 `commandcode.agent.invalid-field-type`
@@ -26,8 +26,12 @@ inventories each readable file and sets `commandcodeEffective`. Spec/runtime
 Quoted table: `name` is required, default **filename**. Do not invent a
 missing-name error until that fallback is applied. Only these keys are read;
 anything else is ignored. Unknown frontmatter keys are not type-checked.
-`reasoningEffort` is settings/model configuration, not a documented
-custom-agent field — do not invent a type rule for it.
+
+`reasoningEffort` is documented as of 2026-09-02 (string, default "model
+default"). Quoted: "At load time an unknown level (a typo like `meduim`) is
+dropped with a warning, and the agent falls back to the model default - the
+file still loads." A wrong value is therefore not a load failure, and this
+scanner emits nothing for it.
 
 Sanitized to `a-z A-Z 0-9 _ -`. Sanitised names still load — do not treat
 Claude's lowercase-hyphen identifier rule as a Command Code load failure.
@@ -46,9 +50,17 @@ Reserved names: `explore`, `plan`, `review`, `general`. Quoted:
 | `disallowedTools` | string or string[] | no | same format |
 | `model` | string | no | any `/model` id — **do not enumerate** |
 | `maxTurns` | positive integer | no | default 100; `0` and `-1` are invalid |
-| `permissionMode` | string | no | `default`, `auto-accept`, `bypass`, `plan`, `dont-ask` |
+| `permissionMode` | string | no | default `inherit`; overrides: `default`, `auto-accept`, `bypass`, `plan`, `dont-ask` |
+| `reasoningEffort` | string | no | invalid values fall back with a warning; file still loads — no check |
 | `background` | boolean | no | |
 | `showOutput` | boolean | no | |
+
+Quoted row (2026-09-02): "permissionMode | string | No | inherit | Overrides the
+session mode: default, auto-accept, bypass, plan, dont-ask." The Default column
+names `inherit`, the same way `model` documents "Omit or set inherit".
+`COMMANDCODE_PERMISSION_MODES` therefore accepts `inherit` alongside the five
+override values; before 2026-09-02 an explicit `permissionMode: inherit` was
+reported as `commandcode.agent.invalid-permission-mode` at severity error.
 
 Validate documented types and the `permissionMode` enum. Do not invent
 unknown-model or unknown-tool checks (same failure class as the 9-of-31 hook

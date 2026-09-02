@@ -1,7 +1,8 @@
 # Continue MCP (YAML)
 
 **Source:** https://docs.continue.dev/customize/deep-dives/mcp
-**Read:** 2026-08-31
+**Also:** https://docs.continue.dev/reference (block `uses:` syntax)
+**Read:** 2026-09-02
 **Depends on it:** `continue.mcp.no-launch`, `continue.mcp.missing-block-metadata`
 
 ## Project files
@@ -35,10 +36,15 @@ Quoted properties:
 - `args` — optional
 - `type` — `sse`, `stdio`, or `streamable-http`
 - `url` — for remote transports
-- `uses` — registry reference (`continuedev/continue-docs-mcp`)
+- `uses` — hub block reference
 
 Launch is `command`, `url`, or `uses`. A `uses:` block is a
-`registry-reference`, not a missing launch field. Official command examples
+`registry-reference`, not a missing launch field.
+
+As of 2026-09-02 the MCP deep-dive no longer shows a `uses:` MCP example; the
+syntax is documented on the config reference page for every block type
+(`- uses: owner/slug`, `- uses: file://...`). It stays accepted here because
+reporting a hub-referenced server as "no launch" would be a false positive. Official command examples
 use `npx` / `uvx` and `${{ secrets.NAME }}` interpolation (not a literal secret).
 
 Quoted JSON copy-in:

@@ -1,7 +1,7 @@
 # VS Code agent hooks
 
 **Source:** https://code.visualstudio.com/docs/agent-customization/hooks
-**Read:** 2026-08-31
+**Read:** 2026-09-02 (eight events and command-only shape unchanged)
 **Depends on it:** `vscode.hook.unknown-event`, `vscode.hook.missing-script`,
 `vscode.hook.command-without-command`, `vscode.hook.unknown-handler-type`
 
@@ -53,6 +53,26 @@ check rather than inventing a folder under the project.
 Do not validate these files against the Claude 33-event set, and do not
 accept Copilot camelCase names (`sessionStart`) unless the file is Copilot
 CLI (`version: 1`).
+
+## Other locations (read 2026-09-02)
+
+Quoted location table rows beyond `.github/hooks/*.json`:
+
+> Workspace (Claude format) | `.claude/settings.json`, `.claude/settings.local.json`
+> Custom agent | `hooks` field in `.agent.md` frontmatter (see Agent-scoped hooks)
+> Plugin | `hooks.json` or `hooks/hooks.json`, depending on the plugin format
+
+The Claude-format files are read with the Claude profile (VS Code says it
+"parses Claude Code's hook configuration format"). `.github/agents/*.md`
+frontmatter `hooks:` is read as VS Code hooks. Plugin `hooks.json` is unread —
+the page does not say where a VS Code plugin root sits inside a repository.
+
+Quoted Copilot CLI conversion: "VS Code parses Copilot CLI hook configurations
+and converts the lowerCamelCase hook event names (like `preToolUse`) to the
+PascalCase format used by VS Code." The page does not say how it tells a
+Copilot CLI file apart; this scanner keys on `version: 1`, which the Copilot
+reference documents as the file format marker. A camelCase name in a file
+without `version: 1` therefore stays `vscode.hook.unknown-event`.
 
 ## User location
 

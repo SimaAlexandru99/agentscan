@@ -1,7 +1,7 @@
 # Agent definitions — frontmatter
 
 **Source:** https://code.claude.com/docs/en/sub-agents
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `claude.agent.missing-frontmatter`, `claude.agent.missing-description`,
 `claude.agent.missing-name`, `claude.agent.invalid-name`, `claude.agent.duplicate-name`
 (`src/checks/agents.ts`)
@@ -36,9 +36,27 @@ Quoted:
 > as `my-plugin:reviewer`. Claude Code doesn't load a file whose name contains
 > one and logs an error to the debug log.
 
-A leading `-` is also skipped (same check, error severity). Other off-format
-names stay **warning**: the format line does not say they fail to load.
-`name: SEO Specialist` is common in real files (measured 16 of 34).
+A leading `-` is also skipped (same check, error severity). Quoted list of
+"Subagent files Claude Code skips" (read 2026-09-02):
+
+> - No `name`: Claude Code treats the file as documentation kept beside your agents.
+> - An opening `---` that isn't the file's first line: Claude Code reads the
+>   file as having no frontmatter and treats it as documentation.
+> - A `name` that starts with `-` or contains `:`: Claude Code skips the file
+>   and writes an error to the debug log.
+> - A `name` but no `description`: Claude Code skips the file and writes the
+>   reason to the debug log.
+> - YAML that doesn't parse: Claude Code reads no fields from the file, skips it.
+
+Those four are exactly `claude.agent.missing-frontmatter`,
+`claude.agent.missing-name`, `claude.agent.missing-description`, and the error
+tier of `claude.agent.invalid-name`, so their error severity is a quoted load
+failure. Plugin subagents without a `name` still load under their filename;
+this scanner does not run `claude.agent.*` on plugin `agents/` directories.
+
+Other off-format names stay **warning**: the format line does not say they
+fail to load. `name: SEO Specialist` is common in real files (measured 16 of
+34).
 
 ## What is deliberately not checked
 

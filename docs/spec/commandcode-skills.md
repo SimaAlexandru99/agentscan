@@ -1,7 +1,7 @@
 # Command Code skills
 
 **Source:** https://commandcode.ai/docs/skills
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `agent-skills.skill.*` on `.commandcode/skills` and extra
 locations; discovery of `.agents/skills` compatibility paths
 

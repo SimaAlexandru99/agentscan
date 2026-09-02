@@ -1,7 +1,7 @@
 # Command Code settings
 
 **Source:** https://commandcode.ai/docs/settings
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** discovery of hooks, inline MCP, extra skill directories; model-settings precedence. No model-id enumeration.
 
 ## Files

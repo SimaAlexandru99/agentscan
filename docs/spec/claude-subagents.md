@@ -1,7 +1,7 @@
 # Claude Code subagent discovery
 
 **Source:** https://code.claude.com/docs/en/sub-agents
-**Read:** 2026-08-30
+**Read:** 2026-09-02
 **Depends on it:** walk-up `.claude/agents` discovery, `claude.agent.duplicate-name` scope
 
 Quoted (read 2026-08-30):

@@ -1,7 +1,7 @@
 # Cursor project rules
 
 **Source:** https://cursor.com/docs/rules
-**Read:** 2026-08-30
+**Read:** 2026-09-02
 **Depends on it:** `cursor.rule.too-large`, `.cursor/rules/**/*.mdc` discovery
 
 ## Location and extension

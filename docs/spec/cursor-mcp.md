@@ -1,7 +1,7 @@
 # Cursor MCP
 
 **Source:** https://cursor.com/docs/context/mcp
-**Read:** 2026-08-30
+**Read:** 2026-09-02
 **Depends on it:** `cursor.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
 ## Project file

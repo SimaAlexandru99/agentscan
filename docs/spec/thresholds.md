@@ -1,7 +1,10 @@
 # Numeric thresholds and their evidence
 
-**Read:** 2026-08-31. Every number a check asserts is listed here with what
+**Read:** 2026-09-02. Every number a check asserts is listed here with what
 backs it. A threshold with no entry is a bug in this file or in the check.
+Every vendor figure below (200 lines, 1% / 1,536, 500 lines, 32 KiB, 500
+lines, 12,000 / 6,000 characters) was re-read on the source page on
+2026-09-02 and is unchanged.
 
 Provenance on these rules is also on `STRUCTURAL_CHECKS`: heuristic rows stay
 `info` and must not be described as published requirements.

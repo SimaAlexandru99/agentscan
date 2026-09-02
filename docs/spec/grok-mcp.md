@@ -1,7 +1,7 @@
 # Grok Build MCP (config.toml)
 
 **Source:** https://docs.x.ai/build/features/mcp-servers
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `grok.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
 Also consulted: https://docs.x.ai/build/settings (user vs project vs managed
