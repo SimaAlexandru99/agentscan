@@ -543,6 +543,13 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
     lastVerified: "2026-09-02",
   },
   {
+    id: "mcp.literal-credential",
+    description:
+      "MCP headers, http_headers, or auth value is a literal secret instead of interpolation",
+    provenance: "security",
+    lastVerified: "2026-09-02",
+  },
+  {
     id: "budget.agents-md",
     description:
       "AGENTS.md longer than the heuristic line budget (>150 lines)",

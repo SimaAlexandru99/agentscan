@@ -1,13 +1,13 @@
 # agentscan — Persuade landing
 
-Source of truth for product claims: repo `README.md` (1.3.0). Do not invent
+Source of truth for product claims: repo `README.md` (1.4.0). Do not invent
 metrics. Do not mention NDA projects.
 
 ## Product
 
-**agentscan** 1.3.0 is a Bun-first TypeScript CLI that audits agent
+**agentscan** 1.4.0 is a Bun-first TypeScript CLI that audits agent
 configuration — skills, `skills-lock.json`, hooks, MCP servers, agent
-definitions, and policy files. 99 checks. Linters read the code your agent
+definitions, and policy files. 103 checks. Linters read the code your agent
 writes. This reads **the agent itself**.
 
 Published as `@chimix/agentscan` on npm (bare name rejected as too close to an
@@ -31,7 +31,7 @@ locally or in CI.
 
 > Your agent config says the guard is on. The script is gone. Nothing told you.
 
-Version line under the lede: `1.3.0 · 99 checks · offline on check`.
+Version line under the lede: `1.4.0 · 103 checks · offline on check`.
 
 ### Primary CTA
 
@@ -54,7 +54,7 @@ project names beyond the README sample. Do not use the 0.7 id
 
 - No AI, no network on `check`
 - Writes nothing to the scanned tree
-- 99 checks, each labeled spec-required, vendor-recommendation, security,
+- 103 checks, each labeled spec-required, vendor-recommendation, security,
   internal-consistency, or heuristic
 - Spec-required checks cite a published line (`docs/spec/`). Heuristics stay at
   `info` and are labeled.
@@ -65,11 +65,13 @@ An earlier build reported 37 findings across 17 real projects of which
 **25 were false** — two checks had been written from what real projects looked
 like instead of from the spec. Both were deleted. Spec-required checks cite a
 published line in `docs/spec/`. Heuristics stay at `info` and are labeled.
-1.0.0 was the first stable release. 1.3.0 ships 99 checks, still
+1.0.0 was the first stable release. 1.4.0 ships 103 checks, still
 offline on `check`. Native Command Code, Grok Build, and Windsurf support is
 sourced from official pages, not from observed projects. Grok Claude/Cursor
 compatibility is unread as schema identity. Windsurf Devin CLI MCP and
-auto-generated memories stay unread.
+auto-generated memories stay unread. Copilot policy hooks and plugin
+`hooks.json` stay unread. `.claude/settings.json` is Claude, not remapped
+to Copilot.
 
 Do not say Alpha. Do not say “no heuristics”. Do not say every check is sourced
 to a published spec line.
@@ -78,7 +80,7 @@ to a published spec line.
 
 - No fake testimonials, logos, or adoption numbers
 - Do not invent check counts beyond README badges/copy already used for framing
-  (1.3.0: 99 checks)
+  (1.4.0: 103 checks)
 - Do not name internal/NDA projects
 - Do not claim Command Code local-project MCP (`projects/{slug}/mcp.json`) is
   scanned — the slug encoding is unpublished
@@ -86,6 +88,9 @@ to a published spec line.
   `.grok/agents/`, or Claude/Cursor files as Grok-consumed are scanned
 - Do not claim Windsurf Devin CLI MCP, auto-generated memories, system
   `/etc/devin/rules`, or a project MCP path are scanned
+- Do not claim Copilot `/etc/github-copilot/policy.d` or plugin `hooks.json`
+  are scanned
+- Do not claim `.claude/settings.json` is validated as Copilot CLI
 
 ## Read mode (`/docs`)
 

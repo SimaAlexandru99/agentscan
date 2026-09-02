@@ -25,7 +25,7 @@ const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
 ];
 
 const INTERPOLATED =
-  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%/;
+  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%|\{\{[^{}]+\}\}/;
 
 function profileOf(server: McpFact): McpSchemaProfile {
   return server.schemaProfile ?? "claude-json";
@@ -452,6 +452,24 @@ export function checkMcp(facts: Facts): Finding[] {
             { kind: "env", value: server.literalEnvKeys.join(",") },
           ],
           suggest: "Replace the literals with interpolated environment references",
+        }),
+      );
+    }
+
+    const credentialFields = server.literalCredentialFields ?? [];
+    if (credentialFields.length > 0) {
+      out.push(
+        make("mcp.literal-credential", `mcp:${server.name}@${server.path}`, {
+          action: "warn",
+          severity: "warning",
+          message: `MCP server "${server.name}" has literal credential fields: ${credentialFields.join(", ")}`,
+          reason:
+            "Secret-named headers, http_headers, or auth values (TOKEN, SECRET, KEY, PASSWORD, Authorization) that are not interpolated are usually credentials that should be referenced through ${VAR}, ${env:VAR}, ${input:id}, or {{var}} so they are never committed. See docs/spec/mcp.md.",
+          evidence: [
+            { kind: "mcp", value: `${server.name} @ ${server.path}` },
+            { kind: "field", value: credentialFields.join(",") },
+          ],
+          suggest: "Replace the literals with interpolated environment or secret references",
         }),
       );
     }

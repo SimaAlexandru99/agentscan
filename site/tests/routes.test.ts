@@ -123,8 +123,8 @@ describe("public routes", () => {
     expect(res.body).toContain("og:image");
     expect(res.body).toContain('og:type" content="website"');
     expect(res.body).toContain('lang="en"');
-    expect(res.body).toContain("1.3.0");
-    expect(res.body).toContain("102 checks");
+    expect(res.body).toContain("1.4.0");
+    expect(res.body).toContain("103 checks");
     expect(res.body).not.toContain("Alpha");
   });
 

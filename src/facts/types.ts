@@ -140,6 +140,12 @@ export type McpFact = {
   transport?: string;
   /** env values that look like literal secrets rather than ${VAR} refs. */
   literalEnvKeys: string[];
+  /**
+   * `headers` / `http_headers` / `auth` field paths whose values look like
+   * literal secrets rather than interpolation. Paths only — never values.
+   * See docs/spec/mcp.md and `mcp.literal-credential`.
+   */
+  literalCredentialFields?: string[];
   /** Raw entry text, for secret pattern matching. */
   raw: string;
   /**
@@ -174,7 +180,8 @@ export type HookFact = {
     | "agent"
     | "vscode-hooks"
     | "grok-hooks"
-    | "windsurf-hooks";
+    | "windsurf-hooks"
+    | "copilot-settings";
   sourceProvider?: Provider;
   schemaProfile?: HookSchemaProfile;
   handlerType?: "command" | "http" | "mcp_tool" | "prompt" | "agent";

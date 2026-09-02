@@ -2,7 +2,7 @@
 
 **Source:** https://docs.x.ai/build/features/mcp-servers
 **Read:** 2026-09-02
-**Depends on it:** `grok.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
+**Depends on it:** `grok.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`, `mcp.literal-credential`
 
 Also consulted: https://docs.x.ai/build/settings (user vs project vs managed
 scopes; `$GROK_HOME`).
@@ -51,7 +51,10 @@ STDIO: `command` (required for that launch). Streamable HTTP: `url`. No
 Applying Claude's `url`-without-`type` rule to Grok is a false positive.
 
 Grok expands `${VAR}` and `${VAR:-default}` in `url`, `command`, `args`,
-`env`, and `headers`. Interpolated commands are not path-checked.
+`env`, and `headers`, and the official HTTP example interpolates
+`{{session_id}}` in `headers`. Those forms are not `mcp.literal-credential`.
+A secret-named header whose value is a bare literal is. Interpolated
+commands are not path-checked.
 
 Other keys in `config.toml` are not MCP servers and must be ignored.
 

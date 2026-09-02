@@ -37,6 +37,10 @@ both source pages were re-read: the 12 snake_case events match the page, and
 "At least one of `command` or `powershell` must be specified" is quoted
 verbatim. Their content hashes are in `scripts/spec-hashes.json`.
 
+**Added in plan 039:** `mcp.literal-credential` (security; headers / auth
+literals) and Copilot CLI inline settings discovery (existing
+`copilot.hook.*` ids). Registry becomes 103.
+
 ## Inventory
 
 Severity is what the check emits; provenance is the registry label. Source is
@@ -239,9 +243,10 @@ points (or 3 for #6) on a working configuration.
 - **Codex `project_doc_max_bytes` wording.** config-advanced says "how much to
   read from each AGENTS.md file"; the AGENTS.md guide says the cap is on the
   combined size. The guide is the detailed source; combined stays.
-- **Cursor `auth.CLIENT_SECRET` literals.** The Cursor MCP page shows literal
-  OAuth secrets under `auth`, which `mcp.literal-env` does not inspect (it reads
-  `env` only). That is a gap, not a false positive, and is out of scope here.
+- **Cursor `auth.CLIENT_SECRET` literals.** Closed in plan 039 by
+  `mcp.literal-credential`, which inspects `headers`, `http_headers`, and
+  `auth` (field paths only; values never echoed). Grok `{{session_id}}` and
+  Gemini `%VAR%` in those maps are interpolation, not literals.
 
 ## Re-run
 

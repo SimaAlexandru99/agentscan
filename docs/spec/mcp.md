@@ -2,7 +2,7 @@
 
 **Source:** https://code.claude.com/docs/en/mcp
 **Read:** 2026-09-02
-**Depends on it:** `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.hardcoded-secret`, `mcp.literal-env`, `mcp.command-missing`
+**Depends on it:** `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.hardcoded-secret`, `mcp.literal-env`, `mcp.literal-credential`, `mcp.command-missing`
 
 ## Shared path `.mcp.json`
 
@@ -36,6 +36,15 @@ or absolute filesystem paths) are what `mcp.command-missing` compares to disk;
 bare PATH binaries (`npx`, `uvx`, `node`) and unresolved env vars such as
 `${CLAUDE_PLUGIN_ROOT}` are not checked — the tool refuses to invent a PATH
 lookup.
+
+`mcp.literal-credential` is the same judgement on `headers`, `http_headers`,
+and `auth` string maps: a secret-named key (or `Authorization` /
+`Proxy-Authorization`) whose value is not interpolation. Cursor documents
+optional remote `headers` and tells operators not to hardcode secrets;
+Windsurf's remote example puts `API_KEY` under `headers`; Grok interpolates
+`${VAR}` and `{{session_id}}` in `headers`. Field paths are reported; values
+are never echoed. Token-shaped literals still fire `security.hardcoded-secret`
+first.
 
 ## Transports
 
@@ -101,10 +110,10 @@ Only path-like values are eligible (`./server`, `bin/server`, absolute paths,
 ## What this tool does not claim
 
 Schema and secrets checks (`mcp.no-launch`, `mcp.url-without-type`,
-`mcp.hardcoded-secret`, `mcp.literal-env`) judge whether an entry is
-**misconfigured / unlaunchable by schema**. They do not spawn servers or prove
-that a correctly shaped entry will start at runtime. Marketing copy should say
-the same.
+`mcp.hardcoded-secret`, `mcp.literal-env`, `mcp.literal-credential`) judge
+whether an entry is **misconfigured / unlaunchable by schema**. They do not
+spawn servers or prove that a correctly shaped entry will start at runtime.
+Marketing copy should say the same.
 
 ## Not verified
 

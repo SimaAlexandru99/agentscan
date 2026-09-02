@@ -30,8 +30,12 @@ import { NESTED_DISCOVERY_MAX_DEPTH, readJsonConfig, walkFiles } from "./shared"
 const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&|\s/;
 
 // `%VAR%` is Gemini CLI's documented Windows-only env syntax (docs/spec/gemini-mcp.md).
+// `{{var}}` is Grok's documented header / env interpolation (docs/spec/grok-mcp.md).
 const INTERPOLATED =
-  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$\{(?:userHome|workspaceFolder|workspaceFolderBasename|pathSeparator|\/)\}|\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{\{\s*secrets\.[A-Za-z0-9_.]+\s*\}\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%/;
+  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$\{(?:userHome|workspaceFolder|workspaceFolderBasename|pathSeparator|\/)\}|\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{\{\s*secrets\.[A-Za-z0-9_.]+\s*\}\}|\{\{[^{}]+\}\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%/;
+
+const SECRET_NAMED_KEY = /(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|CREDENTIAL)S?$/i;
+const AUTH_HEADER_NAME = /^(authorization|proxy-authorization)$/i;
 
 /**
  * Decide whether an MCP `command` value is a filesystem path we can check.
@@ -136,6 +140,14 @@ function commandFactsFromEntry(
   });
 }
 
+function isSecretNamedKey(key: string): boolean {
+  return SECRET_NAMED_KEY.test(key) || AUTH_HEADER_NAME.test(key);
+}
+
+function isLiteralCredentialValue(val: unknown): boolean {
+  return typeof val === "string" && val.length > 0 && !INTERPOLATED.test(val);
+}
+
 function literalEnvKeysFrom(entry: Record<string, unknown>): string[] {
   const env = entry.env;
   if (env === null || typeof env !== "object" || Array.isArray(env)) {
@@ -143,16 +155,36 @@ function literalEnvKeysFrom(entry: Record<string, unknown>): string[] {
   }
   const keys: string[] = [];
   for (const [key, val] of Object.entries(env as Record<string, unknown>)) {
-    if (
-      typeof val === "string" &&
-      val.length > 0 &&
-      !INTERPOLATED.test(val) &&
-      /(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|CREDENTIAL)S?$/i.test(key)
-    ) {
+    if (isLiteralCredentialValue(val) && SECRET_NAMED_KEY.test(key)) {
       keys.push(key);
     }
   }
   return keys;
+}
+
+function literalFieldsFromMap(obj: unknown, prefix: string): string[] {
+  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
+    return [];
+  }
+  const fields: string[] = [];
+  for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
+    if (isLiteralCredentialValue(val) && isSecretNamedKey(key)) {
+      fields.push(`${prefix}.${key}`);
+    }
+  }
+  return fields;
+}
+
+/**
+ * Secret-named string values under `headers`, `http_headers`, or `auth`.
+ * Paths only — never the values. See docs/spec/mcp.md.
+ */
+function literalCredentialFieldsFrom(entry: Record<string, unknown>): string[] {
+  return [
+    ...literalFieldsFromMap(entry.headers, "headers"),
+    ...literalFieldsFromMap(entry.http_headers, "http_headers"),
+    ...literalFieldsFromMap(entry.auth, "auth"),
+  ];
 }
 
 function looksLikeServerEntry(
@@ -299,6 +331,7 @@ function parseMcpServers(
     let transport: string | undefined;
     let transportField: McpFact["transportField"];
     let literalEnvKeys: string[] = [];
+    let literalCredentialFields: string[] = [];
     let uses: string | undefined;
     let commandVariants: ReturnType<typeof commandFactsFromEntry> = [{ hasCommand: false }];
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
@@ -315,6 +348,7 @@ function parseMcpServers(
         uses = entry.uses;
       }
       literalEnvKeys = literalEnvKeysFrom(entry);
+      literalCredentialFields = literalCredentialFieldsFrom(entry);
     }
     const launchKind: McpLaunchKind =
       profile === "continue-yaml" && uses !== undefined
@@ -351,6 +385,7 @@ function parseMcpServers(
         ...(transportField === undefined ? {} : { transportField }),
         ...(defect === undefined ? {} : { commandcodeDefect: defect }),
         literalEnvKeys,
+        ...(literalCredentialFields.length === 0 ? {} : { literalCredentialFields }),
         raw: JSON.stringify(value),
       });
     }

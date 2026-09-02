@@ -2,7 +2,7 @@
 
 **Source:** https://commandcode.ai/docs/mcp
 **Read:** 2026-09-02
-**Depends on it:** `commandcode.mcp.no-launch`, `commandcode.mcp.invalid-transport`, `commandcode.mcp.http-without-url`, `commandcode.mcp.stdio-without-command`
+**Depends on it:** `commandcode.mcp.no-launch`, `commandcode.mcp.invalid-transport`, `commandcode.mcp.http-without-url`, `commandcode.mcp.stdio-without-command`, `mcp.literal-credential`
 
 Also consulted: https://commandcode.ai/docs/settings (scopes, inline `mcp.servers`, files this scanner must not open)
 
