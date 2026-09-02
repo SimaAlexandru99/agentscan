@@ -30,6 +30,7 @@ import {
 } from "./commandcode";
 import { applyGrokMcpPrecedence, discoverGrokUserMcp } from "./grok";
 import {
+  discoverClaudeUserHooks,
   discoverCopilotSettingsHooks,
   discoverCopilotUserHooks,
   discoverCopilotUserSettingsHooks,
@@ -37,7 +38,7 @@ import {
   discoverHooks,
   discoverVscodeHooks,
 } from "./hooks";
-import { discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
+import { discoverClaudeUserMcp, discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
 import { discoverPluginHooks } from "./plugins";
 import { discoverPolicyFiles, discoverSkillsLocks, resolveCodexProjectRoot } from "./policy";
 import { discoverNestedWindsurfRules, discoverRules } from "./rules";
@@ -246,9 +247,18 @@ export function discoverAgentSurface(
     mcp.push(fact);
   }
   if (opts.includeGlobal) {
+    hooks.push(...discoverClaudeUserHooks(root, configErrors));
     hooks.push(...discoverCopilotUserHooks(configErrors));
     hooks.push(...discoverCopilotUserSettingsHooks(configErrors));
     hooks.push(...discoverGrokHooks(join(grokHomeDir(), "hooks"), grokHomeDir(), configErrors));
+    for (const fact of discoverClaudeUserMcp(configErrors)) {
+      const key = mcpKey(fact);
+      if (mcpSeen.has(key)) {
+        continue;
+      }
+      mcpSeen.add(key);
+      mcp.push(fact);
+    }
     for (const fact of discoverGrokUserMcp(configErrors)) {
       const key = mcpKey(fact);
       if (mcpSeen.has(key)) {

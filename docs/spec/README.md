@@ -25,11 +25,11 @@ to appear in real projects.** When adding a check:
 |------|--------|--------------------------|
 | [check-inventory.md](check-inventory.md) | All 99 checks re-read against their source pages on 2026-09-02; per-check verdict; the 7 false positives corrected | audit record for every id |
 | [hook-events.md](hook-events.md) | The 33 dispatched Claude hook event names; required `type`; command/http/mcp_tool/prompt fields; event/handler compatibility | `claude.hook.unknown-event`, `claude.hook.unknown-handler-type`, `claude.hook.command-without-command`, `claude.hook.http-without-url`, `claude.hook.mcp-tool-without-server-or-tool`, `claude.hook.prompt-without-prompt`, `claude.hook.incompatible-handler` |
-| [hook-sources.md](hook-sources.md) | Where a hook can be registered and how script paths resolve | `claude.hook.missing-script`, `claude.hook.unknown-event` |
+| [hook-sources.md](hook-sources.md) | Where a hook can be registered and how script paths resolve; `--global` `~/.claude/settings.json` | `claude.hook.missing-script`, `claude.hook.unknown-event` |
 | [skills.md](skills.md) | Claude Code SKILL.md frontmatter; first-paragraph fallback; listing budget | `claude.skill.missing-frontmatter`, `claude.skill.missing-description`, `skill.description-budget` |
 | [agent-skills.md](agent-skills.md) | Portable Agent Skills required and optional constrained fields | `agent-skills.skill.*` |
 | [agents.md](agents.md) | Claude subagent frontmatter; letters-and-hyphens names; filename is not compared | every `claude.agent.*` check |
-| [mcp.md](mcp.md) | Claude MCP shape and transports; reserved names; `.mcp.json` is shared; headers/auth literals | `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.command-missing`, `mcp.literal-credential` |
+| [mcp.md](mcp.md) | Claude MCP shape and transports; reserved names; `.mcp.json` is shared; `--global` `~/.claude.json` `mcpServers` only; headers/auth literals | `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.command-missing`, `mcp.literal-credential` |
 | [commandcode-mcp.md](commandcode-mcp.md) | Command Code `transport` / `type` alias; shared `.mcp.json` | `commandcode.mcp.*` |
 | [commandcode-settings.md](commandcode-settings.md) | Settings layers, inline `mcp.servers`, files never to read | discovery |
 | [commandcode-hooks.md](commandcode-hooks.md) | Four events, command handlers, timeout 0–600 | `commandcode.hook.*` |

@@ -59,6 +59,14 @@ Quoted (read 2026-09-02):
 > transport, so configurations copied from server documentation work without
 > modification.
 
+agentscan opens `~/.claude.json` only under `--global` / `includeGlobal`,
+and only its top-level `mcpServers` object. If that key is absent the
+file is ignored — it is a mixed user file, not an MCP-only document, and
+a missing `mcpServers` is not `config.unreadable`. Same-name servers in
+project `.mcp.json` and user `~/.claude.json` are both inventoried; the
+page does not quote a replace rule. Nested `projects.*.mcpServers` is
+unread.
+
 `CLAUDE_MCP_TRANSPORTS` therefore includes `streamable-http`. Before
 2026-09-02 it did not, and a shared `.mcp.json` entry with
 `"type": "streamable-http"` was reported as `commandcode.mcp.invalid-transport`

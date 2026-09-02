@@ -393,6 +393,58 @@ function parseMcpServers(
   return facts;
 }
 
+/**
+ * Top-level `mcpServers` from `~/.claude.json` only. Absent `mcpServers` is
+ * not an error — the file also holds session and per-project state.
+ * Never pass the raw root to `parseMcpServers` / `parseMcpFile`.
+ * See docs/spec/mcp.md.
+ */
+export function parseClaudeUserJsonMcp(
+  raw: unknown,
+  filePath: string,
+  root: string,
+  errors: ConfigErrorFact[],
+): McpFact[] {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "Claude user config is not a JSON object",
+    });
+    return [];
+  }
+  const obj = raw as Record<string, unknown>;
+  if (obj.mcpServers === undefined) {
+    return [];
+  }
+  if (obj.mcpServers === null || typeof obj.mcpServers !== "object" || Array.isArray(obj.mcpServers)) {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "`mcpServers` is not an object",
+    });
+    return [];
+  }
+  return parseMcpServers({ mcpServers: obj.mcpServers }, filePath, root, errors, "claude-json");
+}
+
+/**
+ * User MCP at `~/.claude.json`. Only called under `--global`.
+ * Reads top-level `mcpServers` only. See docs/spec/mcp.md.
+ */
+export function discoverClaudeUserMcp(errors: ConfigErrorFact[]): McpFact[] {
+  const home = homedir();
+  const filePath = join(home, ".claude.json");
+  if (!existsSync(filePath)) {
+    return [];
+  }
+  const raw = readJsonConfig(filePath, errors);
+  if (raw === undefined) {
+    return [];
+  }
+  return parseClaudeUserJsonMcp(raw, filePath, home, errors);
+}
+
 export function parseInlineCommandcodeMcp(
   mcpValue: unknown,
   filePath: string,

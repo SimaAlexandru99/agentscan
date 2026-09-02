@@ -186,7 +186,7 @@ Flags for `check`:
 | `--verbose` | Show KEEP + info-severity findings, and print each finding's id |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
-| `--global` | Also scan user skills (`~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills`, `~/.codeium/windsurf/skills`), Copilot `$COPILOT_HOME` / `~/.copilot/hooks` and `settings.json`, Codex `$CODEX_HOME` / `~/.codex/config.toml`, Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user MCP/agents/memory, and Windsurf `~/.codeium/windsurf` MCP + `global_rules.md` + `hooks.json` (see below) |
+| `--global` | Also scan user skills (`~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills`, `~/.codeium/windsurf/skills`), Claude `~/.claude/settings.json` and `~/.claude.json` (`mcpServers` only), Copilot `$COPILOT_HOME` / `~/.copilot/hooks` and `settings.json`, Codex `$CODEX_HOME` / `~/.codex/config.toml`, Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user MCP/agents/memory, and Windsurf `~/.codeium/windsurf` MCP + `global_rules.md` + `hooks.json` (see below) |
 | `--config <path>` | Config file path |
 
 **v1 does not write the tree** — no `apply`, no skill delete/install. Findings may *suggest* shell commands; you run them yourself.
@@ -261,7 +261,8 @@ Same tree → same sorted findings, with stable unique `id`s.
 
 Adds user skill dirs (`~/.claude/skills`, `~/.codex/skills`,
 `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills` or
-`~/.grok/skills`), Copilot `~/.copilot/hooks`, Codex `$CODEX_HOME` /
+`~/.grok/skills`), Claude `~/.claude/settings.json` (hooks) and
+`~/.claude.json` (top-level `mcpServers` only), Copilot `~/.copilot/hooks`, Codex `$CODEX_HOME` /
 `~/.codex` (`config.toml` MCP plus `AGENTS.override.md` / `AGENTS.md`),
 Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user
 agents / MCP / memory, and Windsurf `~/.codeium/windsurf/mcp_config.json`,
@@ -271,7 +272,8 @@ is malformed is malformed wherever it lives, and those findings carry a
 Command Code skills use the Agent Skills contract (`name` and `description`
 required). Grok skills do not — `name` and `description` are optional. It
 never opens `auth.json`, `mcp-tokens.json`, Codex `auth.json`, or Grok
-`auth.json` / `mcp_credentials.json`.
+`auth.json` / `mcp_credentials.json`. A `~/.claude.json` without
+`mcpServers` is skipped, not reported as unreadable.
 
 Lockfile checks stay project-scoped — a project lockfile cannot pin a skill that
 lives in your home directory, so reporting one as "not in the lockfile" could
@@ -552,7 +554,7 @@ Dimensions:
 |-----------|-------------------|------------------|--------|------------|-------------|
 | Agent Skills | `.agents/skills` (and Cursor / Codex / Command Code skill trees). Default `skills/` uses the Claude schema, not this contract | `--global` `~/.agents/skills`, `~/.codex/skills` | required `name` / `description` plus optional `compatibility` / `metadata` / `allowed-tools`; 500-line info | n/a | `agent-skills` fixture |
 | AGENTS.md | nested walk-up | n/a | no required fields | nearest-wins | tests |
-| Claude Code | project settings, skills, agents, `CLAUDE.md`, `.mcp.json` / `.claude/mcp.json`; in-tree plugin `hooks/hooks.json` (plugin `skills/` unread) | `--global` `~/.claude/skills`; unread `~/.claude/settings.json`, managed policy, marketplace plugins | 33 events; required handler `type`; MCP reserved names; first-paragraph skill description; listing budget | walk-up `CLAUDE.md` / `.claude/agents` | `claude-json` fixture |
+| Claude Code | project settings, skills, agents, `CLAUDE.md`, `.mcp.json` / `.claude/mcp.json`; in-tree plugin `hooks/hooks.json` (plugin `skills/` unread) | `--global` `~/.claude/skills`, `~/.claude/settings.json`, `~/.claude.json` (`mcpServers` only); unread managed policy, marketplace plugins | 33 events; required handler `type`; MCP reserved names; first-paragraph skill description; listing budget | walk-up `CLAUDE.md` / `.claude/agents`; user+project hooks and MCP both inventoried | `claude-json` fixture |
 | Command Code | git-root project files; per-directory `AGENTS.md` else `.commandcode/AGENTS.md` | `--global` `~/.commandcode/*`; unread `projects/{slug}/mcp.json` | 4 events; command handlers; Agent Skills; MCP `transport` / `type` | settings merge; project+user hooks coexist; skill/MCP shadow | `commandcode` fixture |
 | Codex | `.codex/config.toml`, `.codex/skills`, AGENTS chain | `--global` `$CODEX_HOME` / `~/.codex/config.toml` MCP; `AGENTS.override.md` then `AGENTS.md`; unread system, managed, requirements, profiles, plugins, trust | TOML MCP; `project_doc_max_bytes`; Agent Skills | override > `AGENTS.md` > fallbacks; one file per dir; root→cwd; `project_root_markers`; MCP user+project both inventoried | `codex-toml` fixture |
 | VS Code | `.github/hooks` without `version: 1`, instruction files, `.github/agents`, `.vscode/mcp.json` | `--global` `~/.copilot/hooks` without `version: 1`; unread policy dirs | 8 events; command-only | workspace over user | `vscode-hooks`, `vscode-json` |
@@ -593,12 +595,13 @@ illustration, not a pointer.
 ### Where it looks for hooks
 
 The Claude hooks reference lists seven places a hook can be registered. agentscan
-reads the four that live inside the scanned project, plus VS Code workspace hooks
-and Command Code settings hooks:
+reads the four that live inside the scanned project, `~/.claude/settings.json`
+under `--global`, plus VS Code workspace hooks and Command Code settings hooks:
 
 | Registered in | Script paths resolve against |
 |---|---|
 | `.claude/settings.json` · `.claude/settings.local.json` | project root, `${CLAUDE_PROJECT_DIR}` |
+| `~/.claude/settings.json` under `--global` | scanned project root, `${CLAUDE_PROJECT_DIR}` |
 | A plugin's `hooks/hooks.json` (a directory with `.claude-plugin/plugin.json`, or the scan root itself) | the plugin root, `${CLAUDE_PLUGIN_ROOT}` |
 | `SKILL.md` frontmatter | the skill's own directory, then the project root |
 | `.claude/agents/*.md` frontmatter | the agent file's directory, then the project root |
@@ -679,12 +682,16 @@ first.
   not hide `<git-root>/.commandcode/`. Spec/runtime Command Code checks skip
   shadowed lower-precedence definitions; secrets still inspect every readable
   MCP file.
-- **Three Claude hook locations are unread.** `~/.claude/settings.json`, managed policy
-  settings, and installed marketplace plugins under `~/.claude/plugins` all sit
-  outside the scanned project, and the docs say a plugin's install directory
-  changes on every update. A hook registered in one of those, pointing at a
-  missing script, is not reported. In-tree plugin **skills** (`<plugin>/skills/`)
-  are unread; plugin `hooks/hooks.json` is read.
+- **Two Claude hook locations stay unread.** Managed policy settings and
+  installed marketplace plugins under `~/.claude/plugins` sit outside the
+  scanned project, and the docs say a plugin's install directory changes
+  on every update. A hook registered in one of those, pointing at a
+  missing script, is not reported. User `~/.claude/settings.json` is
+  scanned only under `--global`. User `~/.claude.json` MCP is scanned
+  only under `--global`, and only its top-level `mcpServers` object —
+  a file without that key is skipped, not `config.unreadable`. In-tree
+  plugin **skills** (`<plugin>/skills/`) are unread; plugin
+  `hooks/hooks.json` is read.
 - **Default `skills/` is Claude schema.** A repo-root `skills/` directory is
   discovered, but `name` / directory-match from the Agent Skills spec are not
   applied there. `.agents/skills`, `.cursor/skills`, `.codex/skills`, and

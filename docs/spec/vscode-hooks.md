@@ -79,7 +79,7 @@ without `version: 1` therefore stays `vscode.hook.unknown-event`.
 Quoted user scope: `~/.copilot/hooks`, `~/.claude/settings.json`.
 `~/.copilot/hooks` is scanned only under `--global`. Files there with
 `version: 1` are Copilot CLI; files without it stay native VS Code.
-`~/.claude/settings.json` stays unread (Claude user settings).
+`~/.claude/settings.json` is Claude user settings, opened only under `--global`.
 
 Quoted: workspace hooks take precedence over user hooks for the same event.
 

@@ -686,46 +686,63 @@ export function hooksFromObject(
   return facts;
 }
 
-export function discoverHooks(root: string, errors: ConfigErrorFact[]): HookFact[] {
-  const files = [
-    join(root, ".claude", "settings.json"),
-    join(root, ".claude", "settings.local.json"),
-  ];
-  const facts: HookFact[] = [];
-  for (const filePath of files) {
-    if (!existsSync(filePath)) {
-      continue;
-    }
-    const raw = readJsonConfig(filePath, errors);
-    if (raw === undefined) {
-      continue;
-    }
-    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-      errors.push({
-        path: filePath,
-        kind: "unexpected-shape",
-        detail: "settings file is not a JSON object",
-      });
-      continue;
-    }
-    const hooks = (raw as Record<string, unknown>).hooks;
-    if (hooks === undefined) {
-      continue;
-    }
-    facts.push(
-      ...hooksFromObject(
-        hooks,
-        filePath,
-        "settings",
-        { project: root },
-        errors,
-        "claude",
-        process.platform,
-        "claude",
-      ),
-    );
+function claudeSettingsHooksFromFile(
+  filePath: string,
+  projectRoot: string,
+  errors: ConfigErrorFact[],
+): HookFact[] {
+  if (!existsSync(filePath)) {
+    return [];
   }
-  return facts;
+  const raw = readJsonConfig(filePath, errors);
+  if (raw === undefined) {
+    return [];
+  }
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    errors.push({
+      path: filePath,
+      kind: "unexpected-shape",
+      detail: "settings file is not a JSON object",
+    });
+    return [];
+  }
+  const hooks = (raw as Record<string, unknown>).hooks;
+  if (hooks === undefined) {
+    return [];
+  }
+  return hooksFromObject(
+    hooks,
+    filePath,
+    "settings",
+    { project: projectRoot },
+    errors,
+    "claude",
+    process.platform,
+    "claude",
+  );
+}
+
+export function discoverHooks(root: string, errors: ConfigErrorFact[]): HookFact[] {
+  return [
+    ...claudeSettingsHooksFromFile(join(root, ".claude", "settings.json"), root, errors),
+    ...claudeSettingsHooksFromFile(join(root, ".claude", "settings.local.json"), root, errors),
+  ];
+}
+
+/**
+ * User `~/.claude/settings.json`. Only called under `--global`.
+ * `${CLAUDE_PROJECT_DIR}` and bare relative paths resolve against the scanned
+ * project root, not home. See docs/spec/hook-sources.md.
+ */
+export function discoverClaudeUserHooks(
+  projectRoot: string,
+  errors: ConfigErrorFact[],
+): HookFact[] {
+  return claudeSettingsHooksFromFile(
+    join(homedir(), ".claude", "settings.json"),
+    projectRoot,
+    errors,
+  );
 }
 
 function discoverHookDir(

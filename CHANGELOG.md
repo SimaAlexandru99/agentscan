@@ -13,6 +13,16 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+- Claude user `~/.claude/settings.json` hooks under `--global` /
+  `includeGlobal`. Same Claude schema as project settings;
+  `${CLAUDE_PROJECT_DIR}` resolves against the scanned project. Same-event
+  user and project hooks coexist. Managed policy and marketplace plugins
+  stay unread.
+- Claude user `~/.claude.json` MCP under `--global` / `includeGlobal`,
+  top-level `mcpServers` only. Absent `mcpServers` is not
+  `config.unreadable`. Same-name project and user servers are both
+  inventoried.
+
 ## 1.4.0 — 2026-09-02
 
 Closes two coverage gaps left after the 2026-09-02 re-verification, then

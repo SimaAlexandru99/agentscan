@@ -25,9 +25,12 @@ Quoted:
 > - Skill frontmatter - The rest of the session once the skill is invoked
 > - Subagent frontmatter - While that subagent is running
 
-agentscan reads four of them: the two project settings files, in-tree plugin
-`hooks/hooks.json`, and skill / subagent frontmatter. The three it does not read
-are all outside the scanned project — see *Deliberately unread* below.
+agentscan reads the two project settings files, in-tree plugin
+`hooks/hooks.json`, and skill / subagent frontmatter. Under `--global` /
+`includeGlobal` it also reads `~/.claude/settings.json` (same Claude
+schema; `${CLAUDE_PROJECT_DIR}` resolves against the scanned project).
+Managed policy and marketplace plugins stay unread — see *Deliberately
+unread* below.
 
 ## Plugin `hooks/hooks.json`
 
@@ -144,9 +147,15 @@ the same position `mcp.url-without-type` shipped in — it exists because the
 failure is silent at scan time, not because it is common. Zero findings here is
 not evidence the checks are worthless.
 
+## `--global` user settings
+
+`~/.claude/settings.json` is opened only with `--global` / `includeGlobal`,
+the same scoping as `~/.claude/skills`. Same-event hooks from user and
+project settings coexist — the page lists every location as a place a
+hook can be defined and does not say one replaces the other.
+
 ## Deliberately unread
 
-- `~/.claude/settings.json` — outside the project, same scoping as global skills.
 - Managed policy settings — organization-wide, not the project's to fix.
 - Installed marketplace plugins under `~/.claude/plugins` — outside the project,
   and the docs say the install directory "changes on each plugin update".
