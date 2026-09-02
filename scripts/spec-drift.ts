@@ -16,7 +16,11 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { COMMANDCODE_HOOK_EVENTS, GROK_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "../src/checks/index";
-import { COPILOT_ONLY_EVENTS, COPILOT_TO_VSCODE_EVENT } from "../src/facts/hook-schema";
+import {
+  COPILOT_ONLY_EVENTS,
+  COPILOT_PASCAL_ALIASES,
+  COPILOT_TO_VSCODE_EVENT,
+} from "../src/facts/hook-schema";
 import { SPEC_SURFACES, surfaceStalenessNotes } from "./spec-surfaces";
 
 const SPEC_DIR = join(import.meta.dir, "../docs/spec");
@@ -161,7 +165,11 @@ async function checkCopilotHookEvents(report: Report): Promise<void> {
     report.notes.push(`could not fetch ${url} — Copilot CLI hook events unverified`);
     return;
   }
-  const claimed = [...Object.keys(COPILOT_TO_VSCODE_EVENT), ...COPILOT_ONLY_EVENTS];
+  const claimed = [
+    ...Object.keys(COPILOT_TO_VSCODE_EVENT),
+    ...COPILOT_ONLY_EVENTS,
+    ...Object.keys(COPILOT_PASCAL_ALIASES),
+  ];
   const missingFromPage = claimed.filter((e) => !html.includes(e));
   if (missingFromPage.length > 0) {
     report.drift.push(

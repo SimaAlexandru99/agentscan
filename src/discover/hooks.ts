@@ -132,7 +132,8 @@ function isMatcherOnlyGroup(group: Record<string, unknown>): boolean {
     group.command === undefined &&
     group.url === undefined &&
     group.bash === undefined &&
-    group.powershell === undefined
+    group.powershell === undefined &&
+    group.exec === undefined
   );
 }
 
@@ -155,6 +156,7 @@ function handlersFromGroups(groups: unknown, nestedOnly: boolean): Record<string
       first.args !== undefined ||
       first.bash !== undefined ||
       first.powershell !== undefined ||
+      first.exec !== undefined ||
       first.prompt !== undefined) &&
     !Array.isArray(first.hooks)
   ) {
@@ -407,10 +409,20 @@ function vscodeNativeHookFromEntry(item: Record<string, unknown>, ctx: HookConte
   return commandFactsFromLaunches(ctx, item, "command-without-command");
 }
 
+/**
+ * Copilot CLI command handlers launch through one of `bash`, `powershell`, or
+ * `command`, or through `exec` (an executable spawned without a shell, with
+ * optional `args`). `exec` is documented as an alternative to the other three,
+ * so an entry that carries only `exec` is complete. See docs/spec/copilot-hooks.md.
+ */
 function copilotCommandChoice(
   item: Record<string, unknown>,
   hostPlatform: NodeJS.Platform,
-): { command: string; skipExists: boolean } | undefined {
+): { command: string; args?: unknown; skipExists: boolean } | undefined {
+  const exec = nonemptyString(item.exec);
+  if (exec !== undefined) {
+    return { command: exec, args: item.args, skipExists: false };
+  }
   const bash = nonemptyString(item.bash);
   const powershell = nonemptyString(item.powershell);
   const command = nonemptyString(item.command);
@@ -494,7 +506,7 @@ function copilotHookFromEntry(item: Record<string, unknown>, ctx: HookContext): 
       }),
     ];
   }
-  const launch = launchFromCommandArgs(choice.command, undefined, undefined, cwd);
+  const launch = launchFromCommandArgs(choice.command, choice.args, undefined, cwd);
   if (launch === undefined) {
     return [
       baseFact(ctx, {

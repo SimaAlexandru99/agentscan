@@ -14,6 +14,7 @@ import type { ConfigErrorFact, McpFact } from "../facts/types";
 import {
   CLAUDE_MCP_TRANSPORTS,
   COMMANDCODE_MCP_TRANSPORTS,
+  COMMANDCODE_TOLERATED_MCP_TRANSPORTS,
 } from "../facts/commandcode";
 import { parseJsonc } from "./jsonc";
 import {
@@ -28,8 +29,9 @@ import { NESTED_DISCOVERY_MAX_DEPTH, readJsonConfig, walkFiles } from "./shared"
 /** Anything that makes the command a shell program rather than one path. */
 const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&|\s/;
 
+// `%VAR%` is Gemini CLI's documented Windows-only env syntax (docs/spec/gemini-mcp.md).
 const INTERPOLATED =
-  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$\{(?:userHome|workspaceFolder|workspaceFolderBasename|pathSeparator|\/)\}|\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{\{\s*secrets\.[A-Za-z0-9_.]+\s*\}\}|\$[A-Za-z_][A-Za-z0-9_]*/;
+  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$\{(?:userHome|workspaceFolder|workspaceFolderBasename|pathSeparator|\/)\}|\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{\{\s*secrets\.[A-Za-z0-9_.]+\s*\}\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%/;
 
 /**
  * Decide whether an MCP `command` value is a filesystem path we can check.
@@ -253,6 +255,9 @@ function commandcodeMcpDefect(
       return undefined;
     }
     if (profile === "mcp-json" && CLAUDE_MCP_TRANSPORTS.has(declared)) {
+      return undefined;
+    }
+    if (COMMANDCODE_TOLERATED_MCP_TRANSPORTS.has(declared)) {
       return undefined;
     }
     return "invalid-transport";

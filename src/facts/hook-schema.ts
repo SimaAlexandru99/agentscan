@@ -84,10 +84,26 @@ export const COPILOT_ONLY_EVENTS = new Set([
   "userPromptTransformed",
 ]);
 
+/**
+ * PascalCase spellings the Copilot hooks reference documents for Copilot-only
+ * events in its "VS Code compatible format" (`sessionEnd` / `SessionEnd`,
+ * `postToolUseFailure` / `PostToolUseFailure`, `errorOccurred` / `ErrorOccurred`,
+ * and the "PascalCase `PermissionRequest`" matcher note). These are not native
+ * VS Code events, so they stay out of `VSCODE_HOOK_EVENTS`.
+ * Source: docs/spec/copilot-hooks.md (read 2026-09-02)
+ */
+export const COPILOT_PASCAL_ALIASES: Readonly<Record<string, string>> = {
+  SessionEnd: "sessionEnd",
+  PostToolUseFailure: "postToolUseFailure",
+  ErrorOccurred: "errorOccurred",
+  PermissionRequest: "permissionRequest",
+};
+
 export const COPILOT_HOOK_EVENTS = new Set([
   ...VSCODE_HOOK_EVENTS,
   ...Object.keys(COPILOT_TO_VSCODE_EVENT),
   ...COPILOT_ONLY_EVENTS,
+  ...Object.keys(COPILOT_PASCAL_ALIASES),
 ]);
 
 /**

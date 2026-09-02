@@ -118,7 +118,7 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
   },
   {
     id: "copilot.hook.command-without-command",
-    description: "Copilot CLI command hook declares none of bash, powershell, or command",
+    description: "Copilot CLI command hook declares none of bash, powershell, command, or exec",
     provenance: "spec-required",
     lastVerified: "2026-08-31",
   },

@@ -231,7 +231,7 @@ function defectMessage(hook: HookFact, defect: HookDefect): string {
       return `${event} hook group is missing a \`hooks\` array`;
     case "command-without-command":
       return hookProfile(hook) === "copilot-cli"
-        ? `${event} command hook declares none of bash, powershell, or command`
+        ? `${event} command hook declares none of bash, powershell, command, or exec`
         : `${event} command hook declares no command`;
     case "http-without-url":
       return `${event} http hook declares no url`;

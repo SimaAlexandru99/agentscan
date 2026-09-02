@@ -4,10 +4,20 @@ import type { Facts, Finding, LockedSkillFact, SkillFact, SkillSchemaProfile } f
 import type { CheckOptions } from "./options";
 import { make } from "./make";
 
-/** Agent Skills name: [a-z0-9]+ hyphen segments, 1–64 chars. See docs/spec/agent-skills.md. */
-const AGENT_SKILLS_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+/**
+ * Agent Skills name: hyphen-separated segments of lowercase letters and digits,
+ * 1–64 chars. The spec says "unicode lowercase alphanumeric characters", and the
+ * reference validator (`skills-ref`) accepts any Unicode letter or digit as long
+ * as the name equals its own lowercase form, so `résumé-builder` is valid and an
+ * ASCII-only regex was a false error. See docs/spec/agent-skills.md.
+ */
+const AGENT_SKILLS_NAME = /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u;
 const AGENT_SKILLS_NAME_MAX = 64;
 const AGENT_SKILLS_DESCRIPTION_MAX = 1024;
+
+export function isValidAgentSkillsName(name: string): boolean {
+  return AGENT_SKILLS_NAME.test(name) && name === name.toLowerCase();
+}
 
 /** Global skills live outside the repo; say so, or a reader cannot tell. */
 function skillEvidence(skill: SkillFact, value: string): Finding["evidence"] {
@@ -208,14 +218,14 @@ function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
           suggest: "Shorten the frontmatter name",
         }),
       );
-    } else if (!AGENT_SKILLS_NAME.test(name)) {
+    } else if (!isValidAgentSkillsName(name)) {
       out.push(
         make("agent-skills.skill.invalid-name", skillSubject(skill), {
           action: "warn",
           severity: "error",
           message: `Skill name "${name}" is not a valid Agent Skills identifier`,
           reason:
-            "Name must be lowercase letters, numbers, and hyphens, without a leading or trailing hyphen or consecutive hyphens. See docs/spec/agent-skills.md.",
+            "Name must be lowercase letters (any script), numbers, and hyphens, without a leading or trailing hyphen or consecutive hyphens. See docs/spec/agent-skills.md.",
           evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
           suggest: "Use a lowercase hyphenated name that matches the directory",
         }),
