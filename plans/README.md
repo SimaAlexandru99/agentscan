@@ -283,8 +283,11 @@ skill names (`agent-skills.skill.invalid-name`), Copilot `exec` form
 (`copilot.hook.command-without-command`), Copilot PascalCase aliases
 (`copilot.hook.unknown-event`), Gemini `%VAR%` (`mcp.literal-env`), and
 `permissionMode: inherit` (`commandcode.agent.invalid-permission-mode`).
-Every one was a vendor addition the 2026-08-31 captures had not caught up
-with; none was a wrong reading of the page at capture time.
+Whether each line was added to the vendor page after 2026-08-31 or was on
+the page and missed at capture cannot be told from the pages themselves. The
+two failure modes need different defences: a per-surface content hash in
+`spec:check` would flag the first; only conformance fixtures built from the
+vendor's own examples catch the second.
 
 ## 2026-08-31 Windsurf native coverage
 

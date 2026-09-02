@@ -113,5 +113,8 @@ The last full re-read was 2026-09-02 ([check-inventory.md](check-inventory.md)):
 broken — an alias (`streamable-http`), a tolerated transport (`sse`), a wider
 character class (Unicode skill names), a new field (`exec`), new spellings
 (PascalCase Copilot events), an interpolation form (`%VAR%`), and a default
-value (`inherit`). All were vendor additions the captures had not caught up
-with, which is the direction this file predicts.
+value (`inherit`). Each is a line the 2026-08-31 captures did not hold; the
+pages do not say whether it was added after that date or was there and
+missed. Either way the failure was the one this file predicts — a valid
+shape reported as broken — and `spec:check` only compares hook-event names
+against the live pages, so none of the seven could have been caught by it.
