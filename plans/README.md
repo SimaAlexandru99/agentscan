@@ -271,6 +271,19 @@ is tagged and each plan's spec captures still match live pages.
 | 033 | Add remaining MCP and config providers | P2 | L | 025, 032 | DONE — [plan](033-remaining-providers.md) |
 | 034 | Publish the coverage matrix and release 1.0.0 | P2 | M | 033 | DONE — [plan](034-coverage-matrix-and-1-0-0.md) |
 
+## 2026-09-02 repeatable re-verification
+
+| Plan | Title | Priority | Effort | Depends on | Status |
+|------|-------|----------|--------|------------|--------|
+| 038 | Make the 2026-09-02 re-verification repeatable | P1 | M | check inventory (`ed3f335`..`661cbc4`) | DONE — [plan](038-spec-drift-content-hash-and-verbatim-fixtures.md) |
+
+`spec:check` compares a content hash of all 35 unique source pages against
+`scripts/spec-hashes.json` (`spec:record` rewrites it after a re-read), and
+the conformance fixtures carry the vendors' own examples verbatim with a
+minimum fact count per fixture. Page text is never stored. The two halves
+answer the two ways a capture goes wrong: the page changed, or the line was
+there and missed.
+
 ## 2026-09-02 full check re-verification
 
 No numbered plan file. Every one of the 99 checks was re-read against its

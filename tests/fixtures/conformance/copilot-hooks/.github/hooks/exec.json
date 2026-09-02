@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "exec": "YOUR_EXECUTABLE",
+        "args": ["YOUR_ARGUMENT"],
+        "cwd": "OPTIONAL/WORKING/DIRECTORY",
+        "env": { "VAR": "VALUE" },
+        "timeoutSec": 30
+      }
+    ]
+  }
+}

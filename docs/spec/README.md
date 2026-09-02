@@ -92,16 +92,42 @@ like a check that read all of it.
 ## Re-verification
 
 ```bash
-bun run spec:check
+bun run spec:check     # compare against the live pages; exit 1 on drift
+bun run spec:record    # after re-reading: rewrite scripts/spec-hashes.json
 ```
 
-Diffs the hardcoded Claude, VS Code, Copilot CLI, Command Code, and Grok
-hook-event sets against the live docs pages, checks `scripts/spec-surfaces.ts`
-lastVerified dates, and warns when the newest capture here is over 90 days old. It makes
-network calls, so it is a release-time script and is never reached from
-`agentscan check` — the scan path touches no network and that is worth more than
-automatic freshness. It over-reports by design; adjudicated false alarms go in
-`REVIEWED_NOT_EVENTS`.
+`spec:check` does three things against the live pages. It diffs the hardcoded
+Claude, VS Code, Copilot CLI, Command Code, and Grok hook-event sets against
+the pages that define them. It checks `scripts/spec-surfaces.ts` lastVerified
+dates and warns when the newest capture here is over 90 days old. And, for
+every unique URL in `SPEC_SURFACES`, it reduces the page to prose, hashes it,
+and compares against the baseline in `scripts/spec-hashes.json`; a changed
+hash is reported as drift with the recorded date and the URL. The page text is
+never stored — only a 16-hex hash — so nothing here redistributes vendor
+documentation.
+
+The hash comparison is what the 2026-09-02 re-verification was missing: the
+event diff covers five pages, and a date check cannot see a vendor adding an
+alias, a field, or a spelling to any of the other thirty. A changed hash does
+not say what changed; it says open this URL and re-read the capture. Do that,
+update `docs/spec/<file>.md` and the conformance fixture with any new official
+example, then run `spec:record`. Recording without reading turns the detector
+back into silence. `spec:record` writes all or nothing: if any page cannot be
+fetched, or normalises to fewer than 200 characters (an error shell, not
+documentation), the baseline is left untouched and the run exits 1.
+
+It makes network calls, so it is a release-time script (and a weekly job in
+`.github/workflows/spec-drift.yml`) and is never reached from `agentscan check`
+— the scan path touches no network and that is worth more than automatic
+freshness. It over-reports by design; adjudicated false alarms in the event
+diff go in `REVIEWED_NOT_EVENTS`, and a hash that moved for a cosmetic reason
+still costs one read.
+
+The other half of the defence is `tests/fixtures/conformance/`: every fixture
+carries the vendor's own examples verbatim and must scan clean, and the
+conformance test pins a minimum fact count per fixture so discovery cannot
+silently skip one. A line that was on the page and missed at capture — which a
+hash can never detect — shows up there the moment the example is copied in.
 
 Anything in here can go stale. The list most likely to is
 [hook-events.md](hook-events.md) — it already lagged by 22 names once. Re-read
@@ -116,5 +142,7 @@ character class (Unicode skill names), a new field (`exec`), new spellings
 value (`inherit`). Each is a line the 2026-08-31 captures did not hold; the
 pages do not say whether it was added after that date or was there and
 missed. Either way the failure was the one this file predicts — a valid
-shape reported as broken — and `spec:check` only compares hook-event names
-against the live pages, so none of the seven could have been caught by it.
+shape reported as broken — and at the time `spec:check` only compared
+hook-event names against the live pages, so none of the seven could have been
+caught by it. Plan 038 added the per-page content hash and the verbatim
+fixtures for that reason.

@@ -16,7 +16,29 @@ intermediate commit that this train does not cut.
 Full re-verification of all 99 checks against the live official pages on
 2026-09-02, recorded in `docs/spec/check-inventory.md`. 93 held. Six had
 drifted into reporting a documented, working configuration as broken, and
-are corrected here. **99 checks**, **476 tests**.
+are corrected here. Plan 038 then makes that re-verification repeatable.
+**99 checks**, **505 tests**.
+
+### Added
+
+- `bun run spec:check` hashes the prose of every source page in
+  `scripts/spec-surfaces.ts` (35 unique URLs) and compares against
+  `scripts/spec-hashes.json`; a changed page is reported as drift with the
+  recorded date and URL. `bun run spec:record` rewrites the baseline after a
+  human has re-read the page. Page text is never stored. GitHub blob URLs are
+  fetched as raw files. Offline tests cover normalisation, hashing, and the
+  baseline file's shape.
+- Conformance fixtures carry the vendors' own examples verbatim: Claude
+  `type: "http"` / `"streamable-http"` MCP entries and the five documented
+  hook handler examples (command exec form, http, mcp_tool, prompt, agent);
+  Copilot CLI `exec`, `http`, `prompt`, and the PascalCase lifecycle names;
+  Gemini `httpUrl`, SSE `url`, and `%VAR_NAME%` env; the Command Code agents
+  page's full frontmatter example; the Agent Skills optional-fields example
+  with its referenced files; the VS Code OS-override example with its scripts.
+  With the pre-fix checks these fixtures fail on `claude-json`,
+  `copilot-hooks`, and `gemini-json`.
+- The conformance test pins a minimum fact count per fixture, so a discovery
+  regression that silently drops a file cannot keep a fixture green.
 
 ### Fixed
 
@@ -48,7 +70,7 @@ are corrected here. **99 checks**, **476 tests**.
   `lastVerified` match. Six discovery-only surfaces that were not re-opened
   keep their earlier date.
 - `bun run spec:check` now also diffs the Copilot PascalCase aliases against
-  the live page.
+  the live page, and exits 1 when any source page's content hash has moved.
 - New captured lines: Claude hook `args` exec form and `${CLAUDE_PLUGIN_DATA}`;
   Claude sub-agent skip list; VS Code agent-scoped and plugin hook locations;
   Command Code `reasoningEffort` (documented, invalid values fall back and

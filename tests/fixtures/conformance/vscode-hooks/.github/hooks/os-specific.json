@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "./scripts/format.sh",
+        "windows": "powershell -File scripts\\format.ps1",
+        "linux": "./scripts/format-linux.sh",
+        "osx": "./scripts/format-mac.sh"
+      }
+    ]
+  }
+}

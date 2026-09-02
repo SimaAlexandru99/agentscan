@@ -760,7 +760,9 @@ Before publishing a release:
 
 1. Confirm `package.json` and `src/version.ts` contain the same version.
 2. Run `bun run build`, then verify `node dist/cli.js --version` prints it.
-3. Run `bun run typecheck`, `bun test`, and `bun run spec:check`.
+3. Run `bun run typecheck`, `bun test`, and `bun run spec:check`. If a page
+   hash changed, re-read that page, update its `docs/spec/` capture and the
+   conformance fixture, then `bun run spec:record`.
 4. Refresh the test-count badge and version examples above from that release run.
 5. Add a section to [CHANGELOG.md](CHANGELOG.md) for the version, then publish
    the GitHub release from that text.
