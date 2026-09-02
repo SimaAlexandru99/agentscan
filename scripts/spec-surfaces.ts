@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { join } from "node:path";
+
 export type SpecSurface = {
   provider: string;
   surface: "instructions" | "skills" | "agents" | "hooks" | "mcp" | "rules";
@@ -6,6 +9,77 @@ export type SpecSurface = {
   stalenessRisk: "low" | "medium" | "high";
   url: string;
 };
+
+/**
+ * Baseline content hashes, one per unique URL in `SPEC_SURFACES`, owned and
+ * rewritten only by `bun run spec:record`. The page text itself is never
+ * stored; a changed hash is the signal to open the URL and re-read the capture.
+ */
+export const SPEC_HASHES_PATH = join(import.meta.dir, "spec-hashes.json");
+
+export type SpecHashBaseline = Record<string, { hash: string; recorded: string }>;
+
+const ENTITY_NAMES: Readonly<Record<string, string>> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+};
+
+function unescapeEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, body: string) => {
+    if (body.startsWith("#x") || body.startsWith("#X")) {
+      return String.fromCodePoint(Number.parseInt(body.slice(2), 16));
+    }
+    if (body.startsWith("#")) {
+      return String.fromCodePoint(Number.parseInt(body.slice(1), 10));
+    }
+    return ENTITY_NAMES[body.toLowerCase()] ?? whole;
+  });
+}
+
+function firstBlock(html: string, tag: string): string | undefined {
+  const match = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`, "i").exec(html);
+  return match?.[1];
+}
+
+/**
+ * Reduce a documentation page to the prose a reader sees, so that two fetches
+ * of an unchanged page hash the same and a changed sentence changes the hash.
+ *
+ * Scripts, styles, and site furniture (`nav`, `header`, `footer`, `aside`) are
+ * dropped because they carry build ids and menus that move without the spec
+ * moving. When the page marks its content with `<main>` or `<article>`, only
+ * that region is kept. This is deliberately a text reduction, not a parser:
+ * a hash that changes for a cosmetic reason costs one re-read, while a hash
+ * that stays put across a real change would repeat the seven false positives
+ * of 2026-09-02.
+ */
+export function normalizeSpecText(html: string): string {
+  let text = html.replace(/<!--[\s\S]*?-->/g, "");
+  for (const tag of ["script", "style", "noscript", "svg", "nav", "header", "footer", "aside"]) {
+    text = text.replace(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?</${tag}>`, "gi"), " ");
+  }
+  const region = firstBlock(text, "main") ?? firstBlock(text, "article") ?? firstBlock(text, "body") ?? text;
+  // Source formatting is not content: a site that re-wraps its HTML must hash
+  // the same. Only block-level tags may introduce a line break.
+  const stripped = region
+    .replace(/\s+/g, " ")
+    .replace(/<(?:br|\/p|\/div|\/li|\/tr|\/h[1-6]|\/pre|\/td|\/th)\b[^>]*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ");
+  return unescapeEntities(stripped)
+    .replace(/\u00a0/g, " ")
+    .split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter((line) => line.length > 0)
+    .join("\n");
+}
+
+export function specContentHash(text: string): string {
+  return createHash("sha256").update(text, "utf8").digest("hex").slice(0, 16);
+}
 
 /**
  * Machine list of captured surfaces. `spec:check` warns when lastVerified is
@@ -303,6 +377,33 @@ export const SPEC_SURFACES: SpecSurface[] = [
 ];
 
 const STALE_AFTER_DAYS = 90;
+
+/** Unique URLs to fetch; two surfaces may cite the same page. */
+export function uniqueSurfaceUrls(surfaces: readonly SpecSurface[] = SPEC_SURFACES): string[] {
+  return [...new Set(surfaces.map((surface) => surface.url))];
+}
+
+/**
+ * Where to fetch a surface's text from. The documented `url` is what a human
+ * opens; a GitHub `blob` page renders client-side and hashes to an error
+ * placeholder, so its raw file is fetched instead. Everything else is fetched
+ * as written.
+ */
+export function fetchUrlFor(url: string): string {
+  const blob = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/.exec(url);
+  if (blob !== null) {
+    const [, owner, repo, ref, path] = blob;
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${path}`;
+  }
+  return url;
+}
+
+export function surfacesForUrl(
+  url: string,
+  surfaces: readonly SpecSurface[] = SPEC_SURFACES,
+): SpecSurface[] {
+  return surfaces.filter((surface) => surface.url === url);
+}
 
 export function surfaceStalenessNotes(today = Date.now()): string[] {
   const notes: string[] = [];

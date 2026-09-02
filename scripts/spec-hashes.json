@@ -1,0 +1,142 @@
+{
+  "https://agents.md/": {
+    "hash": "c344c5e5ff9df41d",
+    "recorded": "2026-09-02"
+  },
+  "https://agentskills.io/specification": {
+    "hash": "3cb2d7e80855affd",
+    "recorded": "2026-09-02"
+  },
+  "https://antigravity.google/docs/mcp": {
+    "hash": "db1280723ee1809f",
+    "recorded": "2026-09-02"
+  },
+  "https://code.claude.com/docs/en/hooks": {
+    "hash": "7a86025d14534121",
+    "recorded": "2026-09-02"
+  },
+  "https://code.claude.com/docs/en/mcp": {
+    "hash": "87012ab50e4af19d",
+    "recorded": "2026-09-02"
+  },
+  "https://code.claude.com/docs/en/memory": {
+    "hash": "ea303bbc2405b843",
+    "recorded": "2026-09-02"
+  },
+  "https://code.claude.com/docs/en/skills": {
+    "hash": "f750f80c504ad33e",
+    "recorded": "2026-09-02"
+  },
+  "https://code.claude.com/docs/en/sub-agents": {
+    "hash": "d7c470b04a2a3122",
+    "recorded": "2026-09-02"
+  },
+  "https://code.visualstudio.com/docs/agent-customization/custom-agents": {
+    "hash": "eb26ad9512ada8d3",
+    "recorded": "2026-09-02"
+  },
+  "https://code.visualstudio.com/docs/agent-customization/custom-instructions": {
+    "hash": "82397ca78e717f37",
+    "recorded": "2026-09-02"
+  },
+  "https://code.visualstudio.com/docs/agent-customization/hooks": {
+    "hash": "bf93132adfe0e77f",
+    "recorded": "2026-09-02"
+  },
+  "https://code.visualstudio.com/docs/copilot/customization/mcp-servers": {
+    "hash": "2642f1ea4cbf09ea",
+    "recorded": "2026-09-02"
+  },
+  "https://commandcode.ai/docs/agents": {
+    "hash": "9cf9762fec30a60f",
+    "recorded": "2026-09-02"
+  },
+  "https://commandcode.ai/docs/hooks": {
+    "hash": "679871af1c00f558",
+    "recorded": "2026-09-02"
+  },
+  "https://commandcode.ai/docs/mcp": {
+    "hash": "b6e9639306c570da",
+    "recorded": "2026-09-02"
+  },
+  "https://commandcode.ai/docs/memory": {
+    "hash": "8f1e8d4233ff3dd2",
+    "recorded": "2026-09-02"
+  },
+  "https://commandcode.ai/docs/skills": {
+    "hash": "b0f7ccf68288dc13",
+    "recorded": "2026-09-02"
+  },
+  "https://cursor.com/docs/context/mcp": {
+    "hash": "adbfe6aef830928c",
+    "recorded": "2026-09-02"
+  },
+  "https://cursor.com/docs/rules": {
+    "hash": "8a80707a4e9c528c",
+    "recorded": "2026-09-02"
+  },
+  "https://cursor.com/docs/skills": {
+    "hash": "3e76f1d4b590b583",
+    "recorded": "2026-09-02"
+  },
+  "https://developers.openai.com/codex/config-advanced": {
+    "hash": "4791186a54c01fd9",
+    "recorded": "2026-09-02"
+  },
+  "https://docs.continue.dev/customize/deep-dives/mcp": {
+    "hash": "e5f1a409ff2c5949",
+    "recorded": "2026-09-02"
+  },
+  "https://docs.github.com/en/copilot/reference/hooks-reference": {
+    "hash": "fb7db37c2bb73f55",
+    "recorded": "2026-09-02"
+  },
+  "https://docs.windsurf.com/windsurf/cascade/agents-md": {
+    "hash": "6ae8b0762b050993",
+    "recorded": "2026-09-02"
+  },
+  "https://docs.windsurf.com/windsurf/cascade/mcp": {
+    "hash": "fd3ebcfd7ee40ae4",
+    "recorded": "2026-09-02"
+  },
+  "https://docs.windsurf.com/windsurf/cascade/memories": {
+    "hash": "e2f5d8efbfce7164",
+    "recorded": "2026-09-02"
+  },
+  "https://docs.x.ai/build/features/hooks": {
+    "hash": "0d86c4e54cca4852",
+    "recorded": "2026-09-02"
+  },
+  "https://docs.x.ai/build/features/mcp-servers": {
+    "hash": "8fd78f7b35096d9e",
+    "recorded": "2026-09-02"
+  },
+  "https://docs.x.ai/build/features/project-rules": {
+    "hash": "9d0f1a6d1cb53514",
+    "recorded": "2026-09-02"
+  },
+  "https://docs.x.ai/build/features/skills-plugins-marketplaces": {
+    "hash": "863803f8ee4d409b",
+    "recorded": "2026-09-02"
+  },
+  "https://docs.x.ai/build/features/subagents": {
+    "hash": "77738a57ab6847fa",
+    "recorded": "2026-09-02"
+  },
+  "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md": {
+    "hash": "b3caeea9922157ed",
+    "recorded": "2026-09-02"
+  },
+  "https://learn.chatgpt.com/docs/agent-configuration/agents-md": {
+    "hash": "e29c8f5519a6cd3f",
+    "recorded": "2026-09-02"
+  },
+  "https://learn.chatgpt.com/docs/extend/mcp": {
+    "hash": "d46b860d6b9f9246",
+    "recorded": "2026-09-02"
+  },
+  "https://opencode.ai/v2/docs/mcp-servers": {
+    "hash": "46af7fbfb78ef075",
+    "recorded": "2026-09-02"
+  }
+}

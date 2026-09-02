@@ -42,6 +42,7 @@
     "test": "bun test",
     "check": "bun run src/cli.ts check",
     "spec:check": "bun run scripts/spec-drift.ts",
+    "spec:record": "bun run scripts/spec-drift.ts --record",
     "build": "bun build src/cli.ts --target=node --outfile dist/cli.js --banner '#!/usr/bin/env node'",
     "prepublishOnly": "bun run build"
   },

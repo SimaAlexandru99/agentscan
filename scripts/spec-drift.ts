@@ -13,7 +13,7 @@
  * while the hardcoded set is wrong — that already happened, with nine of
  * thirty-one hook events, and it reported a working hook as dead.
  */
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { COMMANDCODE_HOOK_EVENTS, GROK_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "../src/checks/index";
 import {
@@ -21,11 +21,27 @@ import {
   COPILOT_PASCAL_ALIASES,
   COPILOT_TO_VSCODE_EVENT,
 } from "../src/facts/hook-schema";
-import { SPEC_SURFACES, surfaceStalenessNotes } from "./spec-surfaces";
+import {
+  fetchUrlFor,
+  normalizeSpecText,
+  SPEC_HASHES_PATH,
+  SPEC_SURFACES,
+  specContentHash,
+  surfacesForUrl,
+  surfaceStalenessNotes,
+  uniqueSurfaceUrls,
+  type SpecHashBaseline,
+} from "./spec-surfaces";
 
 const SPEC_DIR = join(import.meta.dir, "../docs/spec");
 /** Re-read the sources when the newest capture is older than this. */
 const STALE_AFTER_DAYS = 90;
+/**
+ * `bun run spec:record` — rewrite scripts/spec-hashes.json from the live pages.
+ * Only for a human who has just re-read every page whose hash moved and updated
+ * the capture; recording without reading turns the detector back into silence.
+ */
+const RECORD = process.argv.includes("--record");
 
 /**
  * PascalCase names on the hooks page that have been reviewed and are not hook
@@ -143,6 +159,79 @@ function checkSurfaceStaleness(report: Report): void {
   report.notes.push(`tracking ${SPEC_SURFACES.length} captured spec surfaces`);
 }
 
+function readBaseline(): SpecHashBaseline {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(SPEC_HASHES_PATH, "utf8"));
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return parsed as SpecHashBaseline;
+  } catch {
+    return {};
+  }
+}
+
+function surfaceLabel(url: string): string {
+  const owners = surfacesForUrl(url).map((surface) => `${surface.provider} ${surface.surface}`);
+  return owners.length > 0 ? owners.join(" + ") : url;
+}
+
+/**
+ * Compare every unique source page against its recorded content hash.
+ *
+ * This is what was missing on 2026-09-02: the hook-event diff above covers
+ * five pages, and the staleness check only looks at dates, so a vendor adding
+ * an alias, a field, or a spelling to any of the other pages moved nothing here.
+ * A changed hash does not say what changed — it says "open this URL and re-read
+ * the capture". That is the whole job.
+ */
+async function checkSurfaceContent(report: Report): Promise<SpecHashBaseline> {
+  const baseline = readBaseline();
+  const next: SpecHashBaseline = {};
+  const today = new Date().toISOString().slice(0, 10);
+  let compared = 0;
+  for (const url of uniqueSurfaceUrls()) {
+    const html = await page(fetchUrlFor(url));
+    if (html === null) {
+      report.notes.push(`could not fetch ${url} — content hash unverified (${surfaceLabel(url)})`);
+      const previous = baseline[url];
+      if (previous !== undefined) {
+        next[url] = previous;
+      }
+      continue;
+    }
+    const hash = specContentHash(normalizeSpecText(html));
+    const previous = baseline[url];
+    if (previous === undefined) {
+      next[url] = { hash, recorded: today };
+      if (!RECORD) {
+        report.notes.push(`no content baseline for ${surfaceLabel(url)} — run bun run spec:record`);
+      }
+      continue;
+    }
+    compared += 1;
+    if (previous.hash === hash) {
+      next[url] = previous;
+      continue;
+    }
+    next[url] = { hash, recorded: today };
+    if (!RECORD) {
+      report.drift.push(
+        `${surfaceLabel(url)} page changed since ${previous.recorded} (${previous.hash} → ${hash}) — ${url}`,
+      );
+    }
+  }
+  report.notes.push(`compared ${compared} page content hashes against ${SPEC_HASHES_PATH}`);
+  return next;
+}
+
+function writeBaseline(baseline: SpecHashBaseline): void {
+  const sorted = Object.fromEntries(
+    Object.entries(baseline).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  );
+  writeFileSync(SPEC_HASHES_PATH, `${JSON.stringify(sorted, null, 2)}\n`, "utf8");
+}
+
 async function checkVscodeHookEvents(report: Report): Promise<void> {
   const url = "https://code.visualstudio.com/docs/agent-customization/hooks";
   const html = await page(url);
@@ -216,6 +305,14 @@ await checkVscodeHookEvents(report);
 await checkCopilotHookEvents(report);
 await checkCommandcodeHookEvents(report);
 await checkGrokHookEvents(report);
+const baseline = await checkSurfaceContent(report);
+
+if (RECORD) {
+  writeBaseline(baseline);
+  process.stdout.write(
+    `recorded ${Object.keys(baseline).length} page content hashes to ${SPEC_HASHES_PATH}\n`,
+  );
+}
 
 for (const note of report.notes) {
   process.stdout.write(`note: ${note}\n`);
@@ -228,6 +325,6 @@ for (const item of report.drift) {
   process.stdout.write(`DRIFT: ${item}\n`);
 }
 process.stdout.write(
-  "\nReview each line against the source, update src/ and docs/spec/ together,\nand bump the **Read:** date. Some entries are prose false alarms.\n",
+  "\nReview each line against the source, update src/ and docs/spec/ together,\nand bump the **Read:** date. Some entries are prose false alarms.\nFor a changed page hash: re-read the page, update the capture and the\nconformance fixture, then run bun run spec:record.\n",
 );
 process.exit(1);
