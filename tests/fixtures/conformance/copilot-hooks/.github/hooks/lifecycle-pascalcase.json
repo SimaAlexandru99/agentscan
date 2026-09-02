@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "hooks": {
+    "SessionEnd": [
+      {
+        "type": "command",
+        "bash": "true"
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "type": "command",
+        "bash": "true"
+      }
+    ],
+    "ErrorOccurred": [
+      {
+        "type": "command",
+        "bash": "true"
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "type": "command",
+        "bash": "true"
+      }
+    ]
+  }
+}

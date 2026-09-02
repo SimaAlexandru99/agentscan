@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "http",
+        "url": "https://hooks.example.com/copilot",
+        "headers": { "X-Source": "copilot-cli" },
+        "allowedEnvVars": ["GITHUB_TOKEN"],
+        "timeoutSec": 30
+      }
+    ]
+  }
+}

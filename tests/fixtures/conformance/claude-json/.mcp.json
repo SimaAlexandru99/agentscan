@@ -4,6 +4,14 @@
       "command": "npx",
       "args": ["-y", "mcp-server"],
       "env": { "DB_URL": "${DB_URL}" }
+    },
+    "notion": {
+      "type": "http",
+      "url": "https://mcp.notion.com/mcp"
+    },
+    "copied-from-server-docs": {
+      "type": "streamable-http",
+      "url": "https://mcp.example.com/mcp"
     }
   }
 }
