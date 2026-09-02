@@ -292,13 +292,16 @@ captures already quote and `--global` still skips.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 040 | Open Claude user hooks and user MCP under `--global` | P1 | S | 039 | TODO — [plan](040-claude-global-user-hooks-and-mcp.md) |
+| 040 | Open Claude user hooks and user MCP under `--global` | P1 | S | 039 | DONE `e68f90e` — [plan](040-claude-global-user-hooks-and-mcp.md) |
 
 `--global` already opens `~/.claude/skills`. Plan 040 adds
 `~/.claude/settings.json` (hooks only; same Claude schema) and
 `~/.claude.json` (`mcpServers` only; silent when the key is absent).
 Managed policy, marketplace plugins, and session keys stay unread. No
-new check ids and no 1.5.0 bump.
+new check ids and no 1.5.0 bump. Gates: 542 tests, typecheck, build,
+version 1.4.0. `spec:check` still matches every Claude page; it reported
+unrelated Codex MCP and Gemini MCP content-hash drift on 2026-09-02
+(not recaptured here).
 
 ## 2026-09-02 full check re-verification
 
