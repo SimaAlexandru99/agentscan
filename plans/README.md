@@ -271,7 +271,7 @@ is tagged and each plan's spec captures still match live pages.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 038 | Make the 2026-09-02 re-verification repeatable | P1 | M | check inventory (`ed3f335`..`661cbc4`) | DONE — [plan](038-spec-drift-content-hash-and-verbatim-fixtures.md) |
-| 039 | Close two coverage gaps, then release 1.4.0 | P1 | M | 038 | IN PROGRESS — [plan](039-coverage-gaps-and-1-4-0.md) |
+| 039 | Close two coverage gaps, then release 1.4.0 | P1 | M | 038 | DONE `53edc05` — [plan](039-coverage-gaps-and-1-4-0.md) |
 
 `spec:check` compares a content hash of all 35 unique source pages against
 `scripts/spec-hashes.json` (`spec:record` rewrites it after a re-read), and
@@ -279,6 +279,10 @@ the conformance fixtures carry the vendors' own examples verbatim with a
 minimum fact count per fixture. Page text is never stored. The two halves
 answer the two ways a capture goes wrong: the page changed, or the line was
 there and missed.
+
+Plan 039 then closed the two surfaces that re-verification left unread:
+Copilot CLI inline settings hooks, and literal credentials under MCP
+`headers` / `auth`. Shipped as **1.4.0** (103 checks, 532 tests).
 
 ## 2026-09-02 full check re-verification
 
