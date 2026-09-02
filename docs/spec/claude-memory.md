@@ -1,7 +1,7 @@
 # Claude Code memory — CLAUDE.md and `.claude/rules/`
 
 **Source:** https://code.claude.com/docs/en/memory
-**Read:** 2026-08-30
+**Read:** 2026-09-02
 **Depends on it:** `budget.claude-md`, walk-up `CLAUDE.md` discovery, `.claude/rules/` inventory
 
 ## Project locations

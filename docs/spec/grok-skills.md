@@ -1,7 +1,7 @@
 # Grok Build skills
 
 **Source:** https://docs.x.ai/build/features/skills-plugins-marketplaces
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `grok.skill.missing-frontmatter`, `skill.missing-skill-md`,
 `skill.broken-reference`
 

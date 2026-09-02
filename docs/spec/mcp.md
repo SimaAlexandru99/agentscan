@@ -1,7 +1,7 @@
 # MCP configuration
 
 **Source:** https://code.claude.com/docs/en/mcp
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.hardcoded-secret`, `mcp.literal-env`, `mcp.command-missing`
 
 ## Shared path `.mcp.json`
@@ -39,7 +39,24 @@ lookup.
 
 ## Transports
 
-`stdio` (the default when `type` is absent), `http`, `sse`, `ws`.
+`stdio` (the default when `type` is absent), `http`, `sse`, `ws`, and
+`streamable-http` as an alias for `http`.
+
+Quoted (read 2026-09-02):
+
+> When configuring MCP servers via JSON in `.mcp.json`, `~/.claude.json`, or
+> `claude mcp add-json`, the `type` field accepts `streamable-http` as an alias
+> for `http`. The MCP specification uses the name `streamable-http` for this
+> transport, so configurations copied from server documentation work without
+> modification.
+
+`CLAUDE_MCP_TRANSPORTS` therefore includes `streamable-http`. Before
+2026-09-02 it did not, and a shared `.mcp.json` entry with
+`"type": "streamable-http"` was reported as `commandcode.mcp.invalid-transport`
+at severity error — a false positive on a documented, working Claude config.
+
+The page also notes the SSE transport is deprecated in favour of HTTP; that is
+guidance, not a load failure, and this scanner does not report `sse`.
 
 ## Reserved server names
 

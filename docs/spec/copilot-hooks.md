@@ -1,7 +1,7 @@
 # Copilot CLI hooks
 
 **Source:** https://docs.github.com/en/copilot/reference/hooks-reference
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `copilot.hook.*`, `.github/hooks` `version: 1` detection
 (`src/facts/hook-schema.ts`, `src/discover/hooks.ts`)
 
@@ -43,13 +43,34 @@ Cloud agent loads only `.github/hooks/*.json` from the cloned repository.
 
 ## Command handlers
 
-Quoted fields: one of `bash`, `powershell`, or `command` is required.
-`command` is the cross-platform fallback. `cwd`, `env`, `timeoutSec`
-(default 30), and `timeout` (alias; `timeoutSec` wins) are optional.
-`type` may be omitted and defaults to command.
+Quoted fields: one of `bash`, `powershell`, or `command` is required
+**"unless `exec` is specified"**. `command` is the cross-platform fallback.
+`cwd`, `env`, `timeoutSec` (default 30), and `timeout` (alias; `timeoutSec`
+wins) are optional. `type` may be omitted and defaults to command.
+
+### `exec` form (read 2026-09-02)
+
+Quoted:
+
+> In Copilot CLI, you can use `exec` and `args` to run an executable directly
+> instead of using a shell
+
+> `exec` | string | Instead of `bash`, `powershell`, and `command` | Executable
+> name or path. Runs the executable directly without a shell. Only supported
+> in Copilot CLI.
+
+> `args` | array of strings | No | Arguments passed directly to `exec`.
+
+A handler with `exec` and none of `bash` / `powershell` / `command` is
+complete. `copilot.hook.command-without-command` fires only when all four are
+absent. `exec` is path-checked like any other launch (`./scripts/gone.sh`
+missing is `copilot.hook.missing-script`; a bare executable name is not
+resolved). Before 2026-09-02 the check ignored `exec` and reported a valid
+exec-form hook at severity error.
 
 On POSIX the scanner path-checks `bash`, then `command`; a `powershell`-only
 entry is inventoried and not existence-checked. On Windows the reverse.
+`exec` is platform-neutral and is checked on every host.
 
 ## Other handler types
 
@@ -78,6 +99,31 @@ Copilot-only (never valid on a native VS Code file): `sessionEnd`,
 `postToolUseFailure`, `userPromptTransformed`.
 
 PascalCase VS Code names are also accepted in a `version: 1` file (quoted:
-"VS Code compatible format").
+"VS Code compatible format — Configure the event name in PascalCase (for
+example, `SessionStart`)").
+
+### PascalCase spellings of Copilot-only events (read 2026-09-02)
+
+The payload reference documents these Copilot-only events with a PascalCase
+configuration name as well, in the same `camelCase` / `PascalCase` headers it
+uses for the VS Code-shared events:
+
+| Copilot | PascalCase alias | Where |
+|---------|------------------|-------|
+| `sessionEnd` | `SessionEnd` | heading "`sessionEnd` / `SessionEnd`" |
+| `postToolUseFailure` | `PostToolUseFailure` | heading "`postToolUseFailure` / `PostToolUseFailure`" |
+| `errorOccurred` | `ErrorOccurred` | heading "`errorOccurred` / `ErrorOccurred`" |
+| `permissionRequest` | `PermissionRequest` | note "Claude-format matchers (PascalCase `PermissionRequest`)" |
+
+These live in `COPILOT_PASCAL_ALIASES` and are accepted **only** on
+`version: 1` documents; on a native VS Code file `SessionEnd` is still
+`vscode.hook.unknown-event`. Before 2026-09-02 all four fired
+`copilot.hook.unknown-event` at severity error.
+
+Not added: `Notification`. The `notification` section shows
+`hook_event_name: "Notification"` in its input payload but has no
+`notification` / `Notification` heading, and `userPromptTransformed` and
+`subagentStart` have no PascalCase heading either. Re-read before adding any
+of them.
 
 ## Staleness risk: HIGH

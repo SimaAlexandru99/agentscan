@@ -1,7 +1,7 @@
 # VS Code / Copilot MCP
 
 **Source:** https://code.visualstudio.com/docs/copilot/customization/mcp-servers
-**Read:** 2026-08-30
+**Read:** 2026-09-02
 **Depends on it:** `vscode.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
 ## Project file

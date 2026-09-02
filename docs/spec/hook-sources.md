@@ -4,7 +4,7 @@
 https://code.claude.com/docs/en/plugins ·
 https://code.visualstudio.com/docs/agent-customization/hooks ·
 https://docs.github.com/en/copilot/reference/hooks-reference
-**Read:** 2026-08-31
+**Read:** 2026-09-02 (seven locations unchanged)
 **Depends on it:** `hook.missing-script` and `hook.unknown-event` for every
 source below (`src/discover/hooks.ts`)
 
@@ -106,6 +106,12 @@ every other environment variable.
 
 The docs name `${CLAUDE_PROJECT_DIR}` alongside it; that one is already handled
 and means the project root in every source.
+
+A third placeholder appears as of 2026-09-02: `${CLAUDE_PLUGIN_DATA}`, "the
+plugin's persistent data directory, for dependencies and state that should
+survive plugin updates." It names a per-machine directory this scanner cannot
+locate, so a command under it is skipped (never reported missing), the same as
+any other unresolved variable.
 
 **A bare relative path has no stated base.** The placeholders exist precisely
 because the working directory is not guaranteed, so `./scripts/security-check.sh`

@@ -1,7 +1,7 @@
 # Command Code hooks
 
 **Source:** https://commandcode.ai/docs/hooks
-**Read:** 2026-08-31
+**Read:** 2026-09-02 (four events, command-only, 0–600 timeout unchanged)
 **Depends on it:** `commandcode.hook.unknown-event`, `commandcode.hook.invalid-group`, `commandcode.hook.command-without-command`, `commandcode.hook.unknown-handler-type`, `commandcode.hook.timeout-out-of-bounds`, `commandcode.hook.missing-script`
 
 Also consulted: https://commandcode.ai/docs/settings (settings.local.json is a

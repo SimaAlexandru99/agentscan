@@ -23,6 +23,7 @@ to appear in real projects.** When adding a check:
 
 | File | Covers | Checks that depend on it |
 |------|--------|--------------------------|
+| [check-inventory.md](check-inventory.md) | All 99 checks re-read against their source pages on 2026-09-02; per-check verdict; the 7 false positives corrected | audit record for every id |
 | [hook-events.md](hook-events.md) | The 33 dispatched Claude hook event names; required `type`; command/http/mcp_tool/prompt fields; event/handler compatibility | `claude.hook.unknown-event`, `claude.hook.unknown-handler-type`, `claude.hook.command-without-command`, `claude.hook.http-without-url`, `claude.hook.mcp-tool-without-server-or-tool`, `claude.hook.prompt-without-prompt`, `claude.hook.incompatible-handler` |
 | [hook-sources.md](hook-sources.md) | Where a hook can be registered and how script paths resolve | `claude.hook.missing-script`, `claude.hook.unknown-event` |
 | [skills.md](skills.md) | Claude Code SKILL.md frontmatter; first-paragraph fallback; listing budget | `claude.skill.missing-frontmatter`, `claude.skill.missing-description`, `skill.description-budget` |
@@ -106,3 +107,11 @@ Anything in here can go stale. The list most likely to is
 [hook-events.md](hook-events.md) — it already lagged by 22 names once. Re-read
 the sources when a user reports a false positive on a value they believe is
 valid, and when cutting a release.
+
+The last full re-read was 2026-09-02 ([check-inventory.md](check-inventory.md)):
+93 of 99 checks held, and 6 had drifted into reporting a documented shape as
+broken — an alias (`streamable-http`), a tolerated transport (`sse`), a wider
+character class (Unicode skill names), a new field (`exec`), new spellings
+(PascalCase Copilot events), an interpolation form (`%VAR%`), and a default
+value (`inherit`). All were vendor additions the captures had not caught up
+with, which is the direction this file predicts.

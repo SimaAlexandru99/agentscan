@@ -1,7 +1,7 @@
 # Windsurf / Cascade MCP (`mcp_config.json`)
 
 **Source:** https://docs.windsurf.com/windsurf/cascade/mcp
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `windsurf.mcp.no-launch`, `mcp.command-missing`,
 `security.hardcoded-secret`, `mcp.literal-env`
 

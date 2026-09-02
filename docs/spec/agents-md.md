@@ -1,7 +1,7 @@
 # AGENTS.md — portable instruction files
 
 **Source:** https://agents.md/
-**Read:** 2026-08-30
+**Read:** 2026-09-02
 **Depends on it:** nested `AGENTS.md` discovery, `budget.agents-md` (heuristic only)
 
 ## Required fields

@@ -1,7 +1,8 @@
 # Agent Skills — portable SKILL.md contract
 
 **Source:** https://agentskills.io/specification
-**Read:** 2026-08-31
+**Also:** https://github.com/agentskills/agentskills/blob/main/skills-ref/src/skills_ref/validator.py (reference validator)
+**Read:** 2026-09-02
 **Depends on it:** `agent-skills.skill.missing-frontmatter`, `agent-skills.skill.missing-name`,
 `agent-skills.skill.missing-description`, `agent-skills.skill.invalid-name`,
 `agent-skills.skill.name-does-not-match-directory`, `agent-skills.skill.name-too-long`,
@@ -39,6 +40,25 @@ Quoted name rules:
 > characters (`a-z`, `0-9`) and hyphens (`-`). Must not start or end with a
 > hyphen. Must not contain consecutive hyphens. Must match the parent
 > directory name.
+
+### "unicode lowercase alphanumeric" is wider than `[a-z0-9]`
+
+The reference validator that the spec page points at (`skills-ref validate`)
+implements the name rule as (read 2026-09-02):
+
+> Skill names support i18n characters (Unicode letters) plus hyphens. Names
+> must be lowercase and cannot start/end with hyphens.
+
+and checks `c.isalnum() or c == "-"` for every character plus
+`name == name.lower()`. So `résumé-builder` and `日本語` are valid names, and
+`Résumé` is not. `agent-skills.skill.invalid-name` uses the same rule:
+`^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$` with the name equal to its own lowercase
+form. Before 2026-09-02 the check used an ASCII-only regex and reported a
+lowercase accented name at severity error.
+
+The validator also NFKC-normalises before comparing `name` to the directory.
+This scanner compares the raw strings; a mismatch that exists only between
+Unicode normalisation forms is not reported either way.
 
 Quoted optional fields (2026-08-31):
 

@@ -2,7 +2,7 @@
 
 **Source:** https://learn.chatgpt.com/docs/extend/mcp
 **Also:** https://developers.openai.com/codex/config-advanced
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `codex.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
 ## Files

@@ -2,7 +2,7 @@
 
 **Source:** https://learn.chatgpt.com/docs/agent-configuration/agents-md
 **Also:** https://learn.chatgpt.com/docs/config-file/config-advanced
-**Read:** 2026-08-31
+**Read:** 2026-09-02
 **Depends on it:** `codex.budget.instructions`
 
 ## Discovery
@@ -24,6 +24,13 @@ Quoted:
 
 Do not apply this budget to `CLAUDE.md`. Do not include
 `.commandcode/AGENTS.md` on the Codex chain.
+
+Note (2026-09-02): the config-advanced page summarises the knob as
+"`project_doc_max_bytes`: how much to read from each AGENTS.md file", while the
+AGENTS.md guide quoted above says "stops adding files once the combined size
+reaches the limit". The guide is the detailed walkthrough the summary points
+at, so `codex.budget.instructions` keeps the combined-chain reading. It is
+`info` either way.
 
 ## Config knobs (`.codex/config.toml`)
 

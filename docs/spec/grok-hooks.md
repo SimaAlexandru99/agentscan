@@ -1,7 +1,7 @@
 # Grok Build hooks
 
 **Source:** https://docs.x.ai/build/features/hooks
-**Read:** 2026-08-31
+**Read:** 2026-09-02 (14 events and command/http unchanged)
 **Depends on it:** `grok.hook.unknown-event`, `grok.hook.unknown-handler-type`,
 `grok.hook.command-without-command`, `grok.hook.http-without-url`,
 `grok.hook.invalid-group`, `grok.hook.missing-script`
@@ -9,6 +9,9 @@
 Do not apply Claude's 33-event list or Claude handler types (`mcp_tool`,
 `prompt`, `agent`) to `.grok/hooks`. Compatibility reads of
 `.claude/settings.json` and `.cursor/hooks.json` are unread as Grok sources.
+Quoted (2026-09-02): "Claude Code (`.claude/settings.json`) and Cursor
+(`.cursor/hooks.json`) hook files are read as well, including Cursor's
+camelCase event names." Those files keep their own provider schema here.
 
 ## Files
 

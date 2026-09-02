@@ -271,6 +271,21 @@ is tagged and each plan's spec captures still match live pages.
 | 033 | Add remaining MCP and config providers | P2 | L | 025, 032 | DONE — [plan](033-remaining-providers.md) |
 | 034 | Publish the coverage matrix and release 1.0.0 | P2 | M | 033 | DONE — [plan](034-coverage-matrix-and-1-0-0.md) |
 
+## 2026-09-02 full check re-verification
+
+No numbered plan file. Every one of the 99 checks was re-read against its
+source page; the record is `docs/spec/check-inventory.md`. 93 held. Six ids
+(seven corrections) reported a documented, working configuration as broken
+and were fixed with regression tests in
+`tests/unit/spec-reverify-2026-09.test.ts`: Claude's `streamable-http`
+alias and Command Code `sse` (`commandcode.mcp.invalid-transport`), Unicode
+skill names (`agent-skills.skill.invalid-name`), Copilot `exec` form
+(`copilot.hook.command-without-command`), Copilot PascalCase aliases
+(`copilot.hook.unknown-event`), Gemini `%VAR%` (`mcp.literal-env`), and
+`permissionMode: inherit` (`commandcode.agent.invalid-permission-mode`).
+Every one was a vendor addition the 2026-08-31 captures had not caught up
+with; none was a wrong reading of the page at capture time.
+
 ## 2026-08-31 Windsurf native coverage
 
 | Plan | Title | Priority | Effort | Depends on | Status |

@@ -1,7 +1,7 @@
 # Cursor skills
 
 **Source:** https://cursor.com/docs/skills
-**Read:** 2026-08-30
+**Read:** 2026-09-02
 **Depends on it:** `agent-skills.skill.*`, `skill.missing-skill-md`
 
 Cursor project skills live under `.cursor/skills` and `.agents/skills`. Both
