@@ -65,6 +65,8 @@ to appear in real projects.** When adding a check:
 | [windsurf-rules.md](windsurf-rules.md) | `.devin/rules` + `.windsurf/rules` + `global_rules.md`; 12k / 6k characters | `windsurf.rule.*` |
 | [windsurf-agents-md.md](windsurf-agents-md.md) | `AGENTS.md` / `agents.md`; root always-on, subdirectory auto-glob | discovery |
 | [windsurf-mcp.md](windsurf-mcp.md) | `~/.codeium/windsurf/mcp_config.json` under `--global`; `command` / `serverUrl` / `url` | `windsurf.mcp.no-launch` |
+| [windsurf-hooks.md](windsurf-hooks.md) | `.windsurf/hooks.json`; `--global` `~/.codeium/windsurf/hooks.json`; 12 snake_case events | `windsurf.hook.*` |
+| [windsurf-skills.md](windsurf-skills.md) | `.windsurf/skills`; `--global` `~/.codeium/windsurf/skills`; Agent Skills contract | `agent-skills.skill.*` |
 
 Each `STRUCTURAL_CHECKS` entry also carries `provenance` (`spec-required`,
 `vendor-recommendation`, `security`, `internal-consistency`, or `heuristic`)

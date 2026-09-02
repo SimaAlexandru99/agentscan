@@ -167,6 +167,9 @@ export function resolveScanContext(startDir: string): ScanContext {
     if (nearestGit === undefined && existsSync(join(dir, ".git"))) {
       nearestGit = dir;
     }
+    if (nearestPin !== undefined) {
+      break;
+    }
     const parent = resolve(dir, "..");
     if (parent === dir) {
       break;
@@ -435,17 +438,14 @@ export function readFrontmatter(
   // and truncated the block, so a valid `description:` below it read as absent.
   const fence = /\n(?:---|\.\.\.)[ \t]*(?:\n|$)/.exec(text.slice(3));
   if (fence === null) {
-    if (truncated) {
-      // The block may well be well-formed past the cap; saying it has no
-      // frontmatter is a claim about bytes we chose not to read.
-      errors.push({
-        path: skillMdPath,
-        kind: "unexpected-shape",
-        detail: `frontmatter not closed within the first ${SKILL_MD_CAP} bytes`,
-      });
-      return { hasFrontmatter: true, unparseable: true, lineCount: lineCountOf(text) };
-    }
-    return { hasFrontmatter: false, body: text, lineCount: lineCountOf(text) };
+    errors.push({
+      path: skillMdPath,
+      kind: "unexpected-shape",
+      detail: truncated
+        ? `frontmatter not closed within the first ${SKILL_MD_CAP} bytes`
+        : "frontmatter opening --- is not closed",
+    });
+    return { hasFrontmatter: true, unparseable: true, lineCount: lineCountOf(text) };
   }
   const end = 3 + fence.index;
 

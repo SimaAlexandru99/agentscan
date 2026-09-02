@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-99-111111?style=flat-square" alt="99 checks">
-  <img src="https://img.shields.io/badge/tests-457%20passing-111111?style=flat-square" alt="457 tests">
+  <img src="https://img.shields.io/badge/checks-102-111111?style=flat-square" alt="102 checks">
+  <img src="https://img.shields.io/badge/tests-466%20passing-111111?style=flat-square" alt="466 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>99 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <strong>102 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
   <sub>An offline linter for Claude Code, Command Code, Grok Build, Windsurf, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks, and the MCP / hooks / rules surfaces that 1.3.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
@@ -65,7 +65,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .commandcode/ .grok/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       99 checks, each labeled spec-required, vendor-recommendation,
+3. Check       102 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -186,7 +186,7 @@ Flags for `check`:
 | `--verbose` | Show KEEP + info-severity findings, and print each finding's id |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
-| `--global` | Also scan `~/.claude/skills`, `~/.codex/skills`, `$CODEX_HOME` / `~/.codex/config.toml`, `~/.commandcode/skills`, `~/.agents/skills`, and `$GROK_HOME` / `~/.grok` (see below) |
+| `--global` | Also scan user skills (`~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills`, `~/.codeium/windsurf/skills`), Copilot `~/.copilot/hooks`, Codex `$CODEX_HOME` / `~/.codex/config.toml`, Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user MCP/agents/memory, and Windsurf `~/.codeium/windsurf` MCP + `global_rules.md` + `hooks.json` (see below) |
 | `--config <path>` | Config file path |
 
 **v1 does not write the tree** — no `apply`, no skill delete/install. Findings may *suggest* shell commands; you run them yourself.
@@ -259,16 +259,17 @@ Same tree → same sorted findings, with stable unique `id`s.
 
 ### `--global`
 
-Adds `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`,
-`~/.agents/skills`, `$CODEX_HOME` / `~/.codex` (`config.toml` MCP plus
-`AGENTS.override.md` / `AGENTS.md`), and `$GROK_HOME` / `~/.grok` (skills,
-hooks, `config.toml`) to the structural checks: a `SKILL.md` that is malformed
-is malformed wherever it lives, and those findings carry a `source: global`
-evidence entry so you can tell them apart. Codex and Command Code skills use
-the Agent Skills contract (`name` and `description` required). Grok skills do
-not — `name` and `description` are optional. `--global` also inventories user
-Command Code agents (`~/.commandcode/agents`), MCP (`~/.commandcode/mcp.json`
-and user settings `mcp.servers`), and memory (`~/.commandcode/AGENTS.md`). It
+Adds user skill dirs (`~/.claude/skills`, `~/.codex/skills`,
+`~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills` or
+`~/.grok/skills`), Copilot `~/.copilot/hooks`, Codex `$CODEX_HOME` /
+`~/.codex` (`config.toml` MCP plus `AGENTS.override.md` / `AGENTS.md`),
+Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user
+agents / MCP / memory, and Windsurf `~/.codeium/windsurf/mcp_config.json`,
+`memories/global_rules.md`, `hooks.json`, and `skills` to the structural checks: a `SKILL.md` that
+is malformed is malformed wherever it lives, and those findings carry a
+`source: global` evidence entry so you can tell them apart. Codex and
+Command Code skills use the Agent Skills contract (`name` and `description`
+required). Grok skills do not — `name` and `description` are optional. It
 never opens `auth.json`, `mcp-tokens.json`, Codex `auth.json`, or Grok
 `auth.json` / `mcp_credentials.json`.
 
@@ -350,7 +351,7 @@ Optional `.agentscanrc.json` (create with `agentscan init`):
 
 ```json
 {
-  "skillPaths": [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills", ".commandcode/skills"],
+  "skillPaths": [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills", ".commandcode/skills", ".grok/skills", ".windsurf/skills"],
   "mcpPaths": [".mcp.json", ".claude/mcp.json", "mcp.json", ".vscode/mcp.json", ".cursor/mcp.json", ".agents/mcp_config.json", ".codex/config.toml", ".gemini/settings.json", "opencode.json", "opencode.jsonc", ".opencode/opencode.json", ".opencode/opencode.jsonc", ".continue/config.yaml", ".continue/mcpServers"],
   "policyFiles": ["AGENTS.md", "CLAUDE.md"],
   "ignoreSkills": [],
@@ -548,18 +549,18 @@ Dimensions:
 
 | Ecosystem | project discovery | global discovery | schema | precedence | conformance |
 |-----------|-------------------|------------------|--------|------------|-------------|
-| Agent Skills | `.agents/skills` (and Cursor / Codex / Command Code skill trees) | `--global` `~/.agents/skills`, `~/.codex/skills` | required `name` / `description` plus optional `compatibility` / `metadata` / `allowed-tools`; 500-line info | n/a | `agent-skills` fixture |
+| Agent Skills | `.agents/skills` (and Cursor / Codex / Command Code skill trees). Default `skills/` uses the Claude schema, not this contract | `--global` `~/.agents/skills`, `~/.codex/skills` | required `name` / `description` plus optional `compatibility` / `metadata` / `allowed-tools`; 500-line info | n/a | `agent-skills` fixture |
 | AGENTS.md | nested walk-up | n/a | no required fields | nearest-wins | tests |
-| Claude Code | project settings, skills, agents, `CLAUDE.md`, `.mcp.json` / `.claude/mcp.json` | unread `~/.claude/settings.json`, managed policy, marketplace plugins | 33 events; required handler `type`; MCP reserved names; first-paragraph skill description; listing budget | walk-up `CLAUDE.md` / `.claude/agents` | `claude-json` fixture |
+| Claude Code | project settings, skills, agents, `CLAUDE.md`, `.mcp.json` / `.claude/mcp.json`; in-tree plugin `hooks/hooks.json` (plugin `skills/` unread) | `--global` `~/.claude/skills`; unread `~/.claude/settings.json`, managed policy, marketplace plugins | 33 events; required handler `type`; MCP reserved names; first-paragraph skill description; listing budget | walk-up `CLAUDE.md` / `.claude/agents` | `claude-json` fixture |
 | Command Code | git-root project files; per-directory `AGENTS.md` else `.commandcode/AGENTS.md` | `--global` `~/.commandcode/*`; unread `projects/{slug}/mcp.json` | 4 events; command handlers; Agent Skills; MCP `transport` / `type` | settings merge; project+user hooks coexist; skill/MCP shadow | `commandcode` fixture |
 | Codex | `.codex/config.toml`, `.codex/skills`, AGENTS chain | `--global` `$CODEX_HOME` / `~/.codex/config.toml` MCP; `AGENTS.override.md` then `AGENTS.md`; unread system, managed, requirements, profiles, plugins, trust | TOML MCP; `project_doc_max_bytes`; Agent Skills | override > `AGENTS.md` > fallbacks; one file per dir; root→cwd; `project_root_markers`; MCP user+project both inventoried | `codex-toml` fixture |
 | VS Code | `.github/hooks` without `version: 1`, instruction files, `.github/agents`, `.vscode/mcp.json` | `--global` `~/.copilot/hooks` without `version: 1`; unread policy dirs | 8 events; command-only | workspace over user | `vscode-hooks`, `vscode-json` |
 | Copilot CLI | `.github/hooks` with `version: 1` | `--global` `~/.copilot/hooks` with `version: 1`; unread `/etc/github-copilot/policy.d` | camelCase + PascalCase map; `bash` / `powershell` / `command`; `cwd`; `timeoutSec`; prompt on `sessionStart` | documented sources coexist; policy unread | `copilot-hooks` fixture |
-| Cursor | nested `.cursor/skills`, `.cursor/mcp.json`, `.cursor/rules` | unread documented Cursor user/global paths | Agent Skills; MCP launch; 500-line rules | n/a | `cursor-json` fixture |
+| Cursor | nested `.cursor/skills`; `.cursor/mcp.json` and `.cursor/rules` on the ancestor walk only (not descendant package trees from repo root) | unread documented Cursor user/global paths | Agent Skills; MCP launch; 500-line rules | n/a | `cursor-json` fixture |
 | Grok | `.grok/config.toml` walk-up; `.grok/hooks/*.json`; `.grok/skills`; `.grok/rules/*.md`; `Agents.md` / `AGENT.md` | `--global` `$GROK_HOME` or `~/.grok` config/hooks/skills; unread managed, requirements, plugins, `[skills] paths`, agents, credentials | `command` / `url` MCP (no `type`); 14 events; command/http; frontmatter required, name/description optional; no rules cap | closer project wins; project same-name replaces user | `grok-toml` fixture |
 | Antigravity | `.agents/mcp_config.json` | none | `serverUrl` launch | n/a | `antigravity-json` fixture |
 | Gemini | `.gemini/settings.json` | unread `~/.gemini/settings.json` unless `--global` is wired for it (it is not) | `command` / `url` / `httpUrl`; underscore-alias warning | n/a | `gemini-json` fixture |
-| Windsurf | `.devin/rules/*.md` (preferred), `.windsurf/rules/*.md` (fallback), `.windsurfrules`; portable `AGENTS.md` / `agents.md` | `--global` `~/.codeium/windsurf/mcp_config.json` and `~/.codeium/windsurf/memories/global_rules.md`; unread auto memories, Devin CLI MCP, system `/etc/devin/rules` | 12k / 6k character rules; workspace `trigger`; MCP `command` / `serverUrl` / `url` (no `type`) | n/a (no project MCP; both rule trees inventoried) | `windsurf-rules` fixture |
+| Windsurf | `.devin/rules/*.md` (preferred), `.windsurf/rules/*.md` (fallback), `.windsurfrules`; `.windsurf/hooks.json`; `.windsurf/skills`; portable `AGENTS.md` / `agents.md` | `--global` `~/.codeium/windsurf/mcp_config.json`, `memories/global_rules.md`, `hooks.json`, and `skills`; unread auto memories, Devin CLI MCP, system rules/hooks/skills, JetBrains `~/.codeium/hooks.json` | 12k / 6k character rules; workspace `trigger`; MCP `command` / `serverUrl` / `url` (no `type`); 12 hook events; `command` / `powershell`; Agent Skills on `.windsurf/skills` | n/a (no project MCP; both rule trees inventoried) | `windsurf-rules` fixture |
 | Kiro | none | none | none | n/a | none |
 | Cline | none | none | none | n/a | none |
 | Roo | none | none | none | n/a | none |
@@ -680,7 +681,12 @@ first.
   settings, and installed marketplace plugins under `~/.claude/plugins` all sit
   outside the scanned project, and the docs say a plugin's install directory
   changes on every update. A hook registered in one of those, pointing at a
-  missing script, is not reported.
+  missing script, is not reported. In-tree plugin **skills** (`<plugin>/skills/`)
+  are unread; plugin `hooks/hooks.json` is read.
+- **Default `skills/` is Claude schema.** A repo-root `skills/` directory is
+  discovered, but `name` / directory-match from the Agent Skills spec are not
+  applied there. `.agents/skills`, `.cursor/skills`, `.codex/skills`, and
+  `.commandcode/skills` use the Agent Skills contract.
 - **Copilot CLI policy hooks are unread.** `/etc/github-copilot/policy.d` and the
   Windows policy directory are machine-wide admin files. User
   `~/.copilot/hooks` is scanned only under `--global`. Inline Copilot
@@ -691,9 +697,10 @@ first.
   global-only (`~/.codeium/windsurf/mcp_config.json`, `--global`). The Devin
   Local agent uses unpublished CLI config files — that path is not guessed.
   Auto-generated files under `~/.codeium/windsurf/memories/` other than
-  `global_rules.md` are not opened. System / enterprise rule directories
-  (`/etc/devin/rules`, `/etc/windsurf/rules`) stay unread. There is no
-  quoted project MCP path.
+  `global_rules.md` are not opened. System / enterprise rule, hook, and
+  skill directories (`/etc/devin/rules`, `/etc/windsurf/rules`,
+  `/etc/windsurf/hooks.json`, `/etc/windsurf/skills/`) stay unread. There
+  is no quoted project MCP path. JetBrains `~/.codeium/hooks.json` is unread.
 - **Bounded reads.** A `SKILL.md` is read to 64 KB and a policy file to 100 KB,
   so `skill.broken-reference` and `policyLines` see only that much of a larger
   file. This is reported — `scan.truncated`, at `info` — rather than left

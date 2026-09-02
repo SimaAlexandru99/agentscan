@@ -6,7 +6,13 @@ import type { Provider } from "./provider";
  *
  * See docs/spec/hook-events.md, docs/spec/vscode-hooks.md, docs/spec/copilot-hooks.md.
  */
-export type HookSchemaProfile = "claude" | "vscode-native" | "copilot-cli" | "commandcode" | "grok";
+export type HookSchemaProfile =
+  | "claude"
+  | "vscode-native"
+  | "copilot-cli"
+  | "commandcode"
+  | "grok"
+  | "windsurf";
 
 export type HookHandlerType = "command" | "http" | "mcp_tool" | "prompt" | "agent";
 
@@ -163,6 +169,8 @@ export function inferHookSchemaProfile(
       return "commandcode";
     case "grok":
       return "grok";
+    case "windsurf":
+      return "windsurf";
     case "vscode":
       return "vscode-native";
     case "claude":
@@ -171,7 +179,6 @@ export function inferHookSchemaProfile(
     case "cursor":
     case "antigravity":
     case "gemini":
-    case "windsurf":
     case "kiro":
     case "cline":
     case "roo":

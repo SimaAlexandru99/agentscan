@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defaultConfig } from "../../src/config/schema";
@@ -24,6 +24,23 @@ describe("colliding skill paths", () => {
     const shared = surface.skills.filter((s) => s.id === "shared-skill");
     expect(shared).toHaveLength(2);
     expect(new Set(shared.map((skill) => skill.instanceId)).size).toBe(2);
+  });
+
+  test("does not follow a skills directory symlink out of the scan root", () => {
+    const root = mkdtempSync(join(tmpdir(), "agentscan-symlink-skill-"));
+    writeFileSync(join(root, "package.json"), JSON.stringify({ name: "symlink-test" }));
+    const outside = mkdtempSync(join(tmpdir(), "agentscan-symlink-outside-"));
+    const leaked = join(outside, "leaked");
+    mkdirSync(leaked, { recursive: true });
+    writeFileSync(join(leaked, "SKILL.md"), "---\ndescription: outside the scan\n---\n");
+    mkdirSync(join(root, ".claude", "skills"), { recursive: true });
+    symlinkSync(leaked, join(root, ".claude", "skills", "escape"));
+    const surface = discoverAgentSurface(root, defaultConfig, {
+      includeGlobal: false,
+      scanBoundary: root,
+    });
+    expect(surface.skills.map((skill) => skill.id)).not.toContain("escape");
+    expect(surface.skills.map((skill) => skill.id)).not.toContain("leaked");
   });
 
   test("finds nested .claude/skills directories", () => {

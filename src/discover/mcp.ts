@@ -54,6 +54,9 @@ export function mcpCommandPath(command: string): string | undefined {
       ? trimmed
       : undefined;
   }
+  if (trimmed === "." || trimmed === "..") {
+    return undefined;
+  }
   if (
     trimmed.startsWith("/") ||
     trimmed.startsWith("./") ||

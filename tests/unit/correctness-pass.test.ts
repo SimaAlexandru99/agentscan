@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { mkPinnedProject } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import { runChecks, STRUCTURAL_CHECKS } from "../../src/checks/index";
 import { defaultConfig } from "../../src/config/schema";
@@ -9,9 +9,7 @@ import { extractFacts } from "../../src/facts/extract";
 import type { Facts } from "../../src/facts/types";
 
 function tmpProject(prefix: string): string {
-  const root = mkdtempSync(join(tmpdir(), prefix));
-  writeFileSync(join(root, "package.json"), '{"name":"correctness"}', "utf8");
-  return root;
+  return mkPinnedProject(prefix, "correctness");
 }
 
 function write(root: string, rel: string, body: string): void {

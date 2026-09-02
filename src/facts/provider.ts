@@ -52,7 +52,11 @@ export function schemaProfileFromSkillsDir(dir: string): SkillSchemaProfile {
     normalized.includes("/.codex/skills") ||
     normalized.endsWith("/.codex/skills") ||
     normalized.includes("/.commandcode/skills") ||
-    normalized.endsWith("/.commandcode/skills")
+    normalized.endsWith("/.commandcode/skills") ||
+    normalized.includes("/.windsurf/skills") ||
+    normalized.endsWith("/.windsurf/skills") ||
+    normalized.includes("/.codeium/windsurf/skills") ||
+    normalized.endsWith("/.codeium/windsurf/skills")
   ) {
     return "agent-skills";
   }
@@ -106,6 +110,14 @@ export function providerFromSkillsDir(dir: string): Provider {
     normalized.endsWith("/.grok/skills")
   ) {
     return "grok";
+  }
+  if (
+    normalized.includes("/.windsurf/skills") ||
+    normalized.endsWith("/.windsurf/skills") ||
+    normalized.includes("/.codeium/windsurf/skills") ||
+    normalized.endsWith("/.codeium/windsurf/skills")
+  ) {
+    return "windsurf";
   }
   return "unknown";
 }

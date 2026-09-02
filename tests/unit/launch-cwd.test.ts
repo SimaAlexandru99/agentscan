@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { mkPinnedProject } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import {
   cwdSkipsExistenceCheck,
@@ -12,9 +12,7 @@ import {
 } from "../../src/discover/launch";
 
 function tmpProject(prefix: string): string {
-  const root = mkdtempSync(join(tmpdir(), prefix));
-  writeFileSync(join(root, "package.json"), '{"name":"launch-cwd"}', "utf8");
-  return root;
+  return mkPinnedProject(prefix, "launch-cwd");
 }
 
 function write(root: string, rel: string, body: string): void {

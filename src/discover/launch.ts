@@ -83,6 +83,9 @@ function isPathLike(candidate: string, interpreted: boolean): boolean {
   if (candidate.length === 0 || isWindowsAbsOrUnc(candidate)) {
     return false;
   }
+  if (candidate === "." || candidate === "..") {
+    return false;
+  }
   if (
     candidate.startsWith("/") ||
     candidate.startsWith("./") ||

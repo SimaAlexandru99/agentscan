@@ -77,6 +77,26 @@ are corrected here. Plan 038 then makes that re-verification repeatable.
   load — no check); Antigravity "legacy fields like `url` or `httpUrl` are not
   supported"; Continue `uses:` cited from the config reference.
 
+### From #13 — true findings and Windsurf Cascade hooks / skills
+
+- `.agentscan-root` now stops walk-up, so a dirty `/tmp/.git` cannot become the
+  scan root for fixtures or nested checkouts.
+- Fenced `SKILL.md` examples: a bundled path on the second line of a code
+  fence is not `skill.broken-reference`.
+- Unclosed YAML `---` is `config.unreadable`, not `*.skill.missing-frontmatter`.
+- Invalid Windsurf rule YAML is not `windsurf.rule.missing-trigger`.
+- `node .` / `"."` is not a missing hook script or MCP command.
+- Skill-directory symlinks that leave the scan root are not inventoried.
+- `--global` copy names Copilot hooks and Windsurf user files; Action
+  `bun-version` defaults to `1.4.0` (CI pin).
+- Windsurf Cascade hooks: `.windsurf/hooks.json` and `--global`
+  `~/.codeium/windsurf/hooks.json`. 12 snake_case events; `command` /
+  `powershell`; `windsurf.hook.unknown-event`, `missing-script`,
+  `command-without-command`.
+- Windsurf Cascade skills: `.windsurf/skills` and `--global`
+  `~/.codeium/windsurf/skills`. Agent Skills contract (page cites
+  agentskills.io). System skill dirs unread.
+
 ## 1.3.0 — 2026-08-31
 
 Native Windsurf / Cascade coverage against 2026-08-31 official docs.

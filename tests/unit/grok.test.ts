@@ -2,6 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import * as os from "node:os";
 import { join } from "node:path";
+import { mkPinnedProject, mkPinnedRoot } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import { runChecks } from "../../src/checks/index";
 import { defaultConfig } from "../../src/config/schema";
@@ -10,9 +11,7 @@ import { extractFacts } from "../../src/facts/extract";
 import { providerFromSkillsDir, schemaProfileFromSkillsDir } from "../../src/facts/provider";
 
 function tmpProject(prefix: string): string {
-  const root = mkdtempSync(join(os.tmpdir(), prefix));
-  writeFileSync(join(root, "package.json"), '{"name":"grok"}', "utf8");
-  return root;
+  return mkPinnedProject(prefix, "grok");
 }
 
 function write(root: string, rel: string, body: string): void {
@@ -242,6 +241,15 @@ describe("Grok skills and rules", () => {
     expect(ruleIds(root)).not.toContain("claude.skill.missing-frontmatter");
   });
 
+  test("unclosed frontmatter is unparseable, not missing frontmatter", () => {
+    const root = tmpProject("agentscan-grok-skill-unclosed-");
+    write(root, ".grok/skills/open/SKILL.md", "---\nname: open\n");
+    const { facts, findings } = findingsFor(root);
+    expect(facts.skills[0]?.unparseableFrontmatter).toBe(true);
+    expect(findings.map((f) => f.ruleId)).not.toContain("grok.skill.missing-frontmatter");
+    expect(findings.map((f) => f.ruleId)).toContain("config.unreadable");
+  });
+
   test("long grok rules are not cursor.rule.too-large", () => {
     const root = tmpProject("agentscan-grok-rules-");
     write(root, ".grok/rules/long.md", `${"line\n".repeat(600)}`);
@@ -253,7 +261,7 @@ describe("Grok skills and rules", () => {
 
 describe("Grok project signal", () => {
   test("a tree with only .grok is a valid scan root", () => {
-    const root = mkdtempSync(join(os.tmpdir(), "agentscan-grok-signal-"));
+    const root = mkPinnedRoot("agentscan-grok-signal-");
     write(
       root,
       ".grok/config.toml",

@@ -1,5 +1,6 @@
 import { COMMANDCODE_HOOK_EVENTS, isShadowedCommandcode } from "../facts/commandcode";
 import { GROK_HOOK_EVENTS } from "../facts/grok";
+import { WINDSURF_HOOK_EVENTS } from "../discover/windsurf";
 import {
   COPILOT_HOOK_EVENTS,
   inferHookSchemaProfile,
@@ -34,6 +35,8 @@ function eventsFor(profile: HookSchemaProfile): Set<string> {
       return COMMANDCODE_HOOK_EVENTS;
     case "grok":
       return GROK_HOOK_EVENTS;
+    case "windsurf":
+      return WINDSURF_HOOK_EVENTS;
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -52,6 +55,8 @@ function unknownEventRuleId(profile: HookSchemaProfile): string {
       return "commandcode.hook.unknown-event";
     case "grok":
       return "grok.hook.unknown-event";
+    case "windsurf":
+      return "windsurf.hook.unknown-event";
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -70,6 +75,8 @@ function missingScriptRuleId(profile: HookSchemaProfile): string {
       return "commandcode.hook.missing-script";
     case "grok":
       return "grok.hook.missing-script";
+    case "windsurf":
+      return "windsurf.hook.missing-script";
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -215,6 +222,21 @@ function defectRuleId(profile: HookSchemaProfile, defect: HookDefect): string | 
           return assertNever(defect, `unhandled hook defect: ${defect}`);
         }
       }
+    case "windsurf":
+      switch (defect) {
+        case "command-without-command":
+          return "windsurf.hook.command-without-command";
+        case "invalid-group":
+        case "http-without-url":
+        case "mcp-tool-without-server-or-tool":
+        case "prompt-without-prompt":
+        case "unknown-handler-type":
+        case "incompatible-handler":
+          return undefined;
+        default: {
+          return assertNever(defect, `unhandled hook defect: ${defect}`);
+        }
+      }
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -230,9 +252,13 @@ function defectMessage(hook: HookFact, defect: HookDefect): string {
       }
       return `${event} hook group is missing a \`hooks\` array`;
     case "command-without-command":
-      return hookProfile(hook) === "copilot-cli"
-        ? `${event} command hook declares none of bash, powershell, command, or exec`
-        : `${event} command hook declares no command`;
+      if (hookProfile(hook) === "copilot-cli") {
+        return `${event} command hook declares none of bash, powershell, command, or exec`;
+      }
+      if (hookProfile(hook) === "windsurf") {
+        return `${event} hook declares neither command nor powershell`;
+      }
+      return `${event} command hook declares no command`;
     case "http-without-url":
       return `${event} http hook declares no url`;
     case "mcp-tool-without-server-or-tool":

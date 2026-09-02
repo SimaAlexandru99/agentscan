@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, statSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { providerFromSkillsDir, schemaProfileFromSkillsDir } from "../facts/provider";
 import type { ConfigErrorFact, SkillFact } from "../facts/types";
@@ -21,7 +21,7 @@ const REFERENCE_RE = new RegExp(
  * rest of the document and hid real references; and it knew nothing of `~~~` or
  * four-backtick fences, so examples inside those were reported as broken.
  */
-const FENCE_BLOCK = /^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[ \t]*$|$)/gm;
+const FENCE_BLOCK = /^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[ \t]*$|(?![\s\S]))/gm;
 /** Inline code may point at a bundled file; ordinary prose remains ignored. */
 const INLINE_CODE = /`[^`\n]*`/g;
 /** A URL swallows any path inside it, including one in a query string. */
@@ -113,7 +113,7 @@ function readDirNames(dir: string, errors: ConfigErrorFact[]): string[] | undefi
 
 function isDirectory(path: string): boolean {
   try {
-    return statSync(path).isDirectory();
+    return lstatSync(path).isDirectory();
   } catch {
     return false;
   }
@@ -350,7 +350,7 @@ type NestedDiscoveryOptions = {
   onDirectoryRead?: () => void;
 };
 
-const NESTED_SKILL_PARENTS = new Set([".claude", ".cursor", ".agents", ".codex"]);
+const NESTED_SKILL_PARENTS = new Set([".claude", ".cursor", ".agents", ".codex", ".windsurf"]);
 
 export function discoverNestedClaudeSkills(
   root: string,

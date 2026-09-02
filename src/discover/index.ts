@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import type { AgentscanConfig } from "../config/schema";
 import { grokHomeDir } from "../facts/grok";
 import type {
@@ -34,7 +34,13 @@ import { discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
 import { discoverPluginHooks } from "./plugins";
 import { discoverPolicyFiles, discoverSkillsLocks, resolveCodexProjectRoot } from "./policy";
 import { discoverNestedWindsurfRules, discoverRules } from "./rules";
-import { discoverWindsurfUserMcp, discoverWindsurfUserRules } from "./windsurf";
+import {
+  discoverWindsurfHooksFile,
+  discoverWindsurfUserMcp,
+  discoverWindsurfUserRules,
+  windsurfUserHooksPath,
+  windsurfUserSkillsPath,
+} from "./windsurf";
 import {
   disambiguateSkills,
   discoverNestedClaudeSkills,
@@ -148,6 +154,7 @@ export function discoverAgentSurface(
       join(home, ".commandcode", "skills"),
       join(home, ".agents", "skills"),
       join(grokHomeDir(), "skills"),
+      windsurfUserSkillsPath(home),
     ];
     for (const abs of globalSkillDirs) {
       const resolved = resolve(abs);
@@ -192,6 +199,9 @@ export function discoverAgentSurface(
     hooks.push(...discoverHooks(dir, configErrors));
     hooks.push(...discoverVscodeHooks(dir, configErrors));
     hooks.push(...discoverGrokHooks(join(dir, ".grok", "hooks"), dir, configErrors));
+    hooks.push(
+      ...discoverWindsurfHooksFile(join(dir, ".windsurf", "hooks.json"), dir, configErrors),
+    );
     const discovered = discoverMcpSurface(dir, config.mcpPaths, configErrors);
     if (discovered.codexProjectDocMaxBytes !== undefined && codexProjectDocMaxBytes === undefined) {
       codexProjectDocMaxBytes = discovered.codexProjectDocMaxBytes;
@@ -263,6 +273,14 @@ export function discoverAgentSurface(
       mcp.push(fact);
     }
     rules.push(...discoverWindsurfUserRules(configErrors));
+    const userWindsurfHooks = windsurfUserHooksPath();
+    hooks.push(
+      ...discoverWindsurfHooksFile(
+        userWindsurfHooks,
+        dirname(userWindsurfHooks),
+        configErrors,
+      ),
+    );
   }
   applyCommandcodeMcpPrecedence(mcp, commandcodeProjectRoot);
   applyGrokMcpPrecedence(mcp, startDir);

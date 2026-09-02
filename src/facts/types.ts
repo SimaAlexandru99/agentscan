@@ -167,7 +167,14 @@ export type HookFact = {
    *
    * See docs/spec/hook-sources.md.
    */
-  source?: "settings" | "plugin" | "skill" | "agent" | "vscode-hooks" | "grok-hooks";
+  source?:
+    | "settings"
+    | "plugin"
+    | "skill"
+    | "agent"
+    | "vscode-hooks"
+    | "grok-hooks"
+    | "windsurf-hooks";
   sourceProvider?: Provider;
   schemaProfile?: HookSchemaProfile;
   handlerType?: "command" | "http" | "mcp_tool" | "prompt" | "agent";
@@ -291,6 +298,8 @@ export type RuleFact = {
   windsurfScope?: WindsurfRuleScope;
   /** Workspace `.devin` / `.windsurf` rules only. True when frontmatter `trigger` is set. */
   windsurfHasTrigger?: boolean;
+  /** Frontmatter existed but YAML did not parse; do not claim trigger is missing. */
+  windsurfTriggerUnreadable?: boolean;
 };
 
 export type Facts = {

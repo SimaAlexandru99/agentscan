@@ -2,6 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import * as os from "node:os";
 import { join } from "node:path";
+import { mkPinnedProject, mkPinnedRoot } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import { runChecks } from "../../src/checks/index";
 import { defaultConfig } from "../../src/config/schema";
@@ -9,9 +10,7 @@ import { mcpProfileFromPath } from "../../src/facts/provider";
 import { extractFacts } from "../../src/facts/extract";
 
 function tmpProject(prefix: string): string {
-  const root = mkdtempSync(join(os.tmpdir(), prefix));
-  writeFileSync(join(root, "package.json"), '{"name":"windsurf"}', "utf8");
-  return root;
+  return mkPinnedProject(prefix, "windsurf");
 }
 
 function write(root: string, rel: string, body: string): void {
@@ -89,8 +88,101 @@ describe("Windsurf workspace rules", () => {
     expect(ruleIds(root)).toContain("windsurf.rule.missing-trigger");
   });
 
+  test("invalid workspace YAML is not missing-trigger", () => {
+    const root = tmpProject("agentscan-windsurf-yaml-");
+    write(root, ".devin/rules/broke.md", "---\ntrigger: [unclosed\n---\nbody\n");
+    const { facts, findings } = findingsFor(root);
+    const rule = facts.rules?.find((r) => r.path.endsWith("broke.md"));
+    expect(rule?.windsurfHasTrigger).not.toBe(true);
+    expect(findings.map((f) => f.ruleId)).not.toContain("windsurf.rule.missing-trigger");
+  });
+});
+
+describe("Windsurf Cascade hooks", () => {
+  test("unknown event and missing script fire; neither command nor powershell fires", () => {
+    const root = tmpProject("agentscan-windsurf-hooks-");
+    write(
+      root,
+      ".windsurf/hooks.json",
+      JSON.stringify({
+        hooks: {
+          pre_read_code: [{ command: "bin/missing-windsurf-hook.sh" }],
+          not_an_event: [{ command: "true" }],
+          pre_write_code: [{}],
+        },
+      }),
+    );
+    const ids = ruleIds(root);
+    expect(ids).toContain("windsurf.hook.missing-script");
+    expect(ids).toContain("windsurf.hook.unknown-event");
+    expect(ids).toContain("windsurf.hook.command-without-command");
+    expect(ids).not.toContain("claude.hook.unknown-event");
+  });
+
+  test("user hooks.json is --global only", () => {
+    const root = tmpProject("agentscan-windsurf-user-hooks-");
+    write(root, "AGENTS.md", "keep scanable\n");
+    const tmpHome = mkdtempSync(join(os.tmpdir(), "agentscan-windsurf-home-"));
+    write(
+      tmpHome,
+      ".codeium/windsurf/hooks.json",
+      JSON.stringify({ hooks: { nope: [{ command: "true" }] } }),
+    );
+    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
+    try {
+      expect(ruleIds(root, false)).not.toContain("windsurf.hook.unknown-event");
+      expect(ruleIds(root, true)).toContain("windsurf.hook.unknown-event");
+    } finally {
+      homedirSpy.mockRestore();
+    }
+  });
+});
+
+describe("Windsurf Cascade skills", () => {
+  test("workspace .windsurf/skills uses the Agent Skills contract, not Claude", () => {
+    const root = tmpProject("agentscan-windsurf-skills-");
+    write(
+      root,
+      ".windsurf/skills/deploy/SKILL.md",
+      "---\nname: deploy\ndescription: Ship with checks.\n---\nBody.\n",
+    );
+    write(root, ".windsurf/skills/bare/SKILL.md", "Just a body.\n");
+    const { facts } = findingsFor(root);
+    const deploy = facts.skills.find((s) => s.id === "deploy");
+    expect(deploy?.sourceProvider).toBe("windsurf");
+    expect(deploy?.schemaProfile).toBe("agent-skills");
+    const ids = ruleIds(root);
+    expect(ids).toContain("agent-skills.skill.missing-frontmatter");
+    expect(ids).not.toContain("claude.skill.missing-frontmatter");
+    expect(ids).not.toContain("grok.skill.missing-frontmatter");
+  });
+
+  test("user ~/.codeium/windsurf/skills is --global only", () => {
+    const root = tmpProject("agentscan-windsurf-user-skills-");
+    write(root, "AGENTS.md", "keep scanable\n");
+    const tmpHome = mkdtempSync(join(os.tmpdir(), "agentscan-windsurf-home-"));
+    write(
+      tmpHome,
+      ".codeium/windsurf/skills/global-one/SKILL.md",
+      "---\nname: global-one\ndescription: User skill.\n---\n",
+    );
+    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
+    try {
+      const local = findingsFor(root, false).facts.skills.map((s) => s.id);
+      expect(local).not.toContain("global-one");
+      const global = findingsFor(root, true).facts.skills;
+      const hit = global.find((s) => s.id === "global-one");
+      expect(hit?.source).toBe("global");
+      expect(hit?.sourceProvider).toBe("windsurf");
+    } finally {
+      homedirSpy.mockRestore();
+    }
+  });
+});
+
+describe("Windsurf workspace rules continued", () => {
   test("a tree with only .devin is a valid scan root", () => {
-    const root = mkdtempSync(join(os.tmpdir(), "agentscan-windsurf-signal-"));
+    const root = mkPinnedRoot("agentscan-windsurf-signal-");
     write(root, ".devin/rules/style.md", triggered("use bun\n"));
     const analysis = analyze({ dir: root });
     expect(analysis.facts.rules?.some((r) => r.sourceProvider === "windsurf")).toBe(true);
