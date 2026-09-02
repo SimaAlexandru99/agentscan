@@ -271,6 +271,7 @@ is tagged and each plan's spec captures still match live pages.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 038 | Make the 2026-09-02 re-verification repeatable | P1 | M | check inventory (`ed3f335`..`661cbc4`) | DONE — [plan](038-spec-drift-content-hash-and-verbatim-fixtures.md) |
+| 039 | Close two coverage gaps, then release 1.4.0 | P1 | M | 038 | IN PROGRESS — [plan](039-coverage-gaps-and-1-4-0.md) |
 
 `spec:check` compares a content hash of all 35 unique source pages against
 `scripts/spec-hashes.json` (`spec:record` rewrites it after a re-read), and

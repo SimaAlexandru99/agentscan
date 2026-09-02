@@ -29,7 +29,7 @@ to appear in real projects.** When adding a check:
 | [skills.md](skills.md) | Claude Code SKILL.md frontmatter; first-paragraph fallback; listing budget | `claude.skill.missing-frontmatter`, `claude.skill.missing-description`, `skill.description-budget` |
 | [agent-skills.md](agent-skills.md) | Portable Agent Skills required and optional constrained fields | `agent-skills.skill.*` |
 | [agents.md](agents.md) | Claude subagent frontmatter; letters-and-hyphens names; filename is not compared | every `claude.agent.*` check |
-| [mcp.md](mcp.md) | Claude MCP shape and transports; reserved names; `.mcp.json` is shared | `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.command-missing` |
+| [mcp.md](mcp.md) | Claude MCP shape and transports; reserved names; `.mcp.json` is shared; headers/auth literals | `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.command-missing`, `mcp.literal-credential` |
 | [commandcode-mcp.md](commandcode-mcp.md) | Command Code `transport` / `type` alias; shared `.mcp.json` | `commandcode.mcp.*` |
 | [commandcode-settings.md](commandcode-settings.md) | Settings layers, inline `mcp.servers`, files never to read | discovery |
 | [commandcode-hooks.md](commandcode-hooks.md) | Four events, command handlers, timeout 0–600 | `commandcode.hook.*` |
@@ -50,7 +50,7 @@ to appear in real projects.** When adding a check:
 | [vscode-instructions.md](vscode-instructions.md) | `.github/copilot-instructions.md` and `*.instructions.md` | discovery only |
 | [vscode-agents.md](vscode-agents.md) | `.github/agents`; name defaults to filename | do not emit `claude.agent.*` |
 | [vscode-hooks.md](vscode-hooks.md) | Native VS Code `.github/hooks/*.json`, eight events, command-only | `vscode.hook.*` |
-| [copilot-hooks.md](copilot-hooks.md) | Copilot CLI `version: 1` files; camelCase events; bash/powershell | `copilot.hook.*` |
+| [copilot-hooks.md](copilot-hooks.md) | Copilot CLI `version: 1` files; inline settings `hooks`; camelCase events; bash/powershell | `copilot.hook.*` |
 | [cursor-rules.md](cursor-rules.md) | `.cursor/rules/**/*.mdc` under 500 lines | `cursor.rule.too-large` |
 | [gemini-mcp.md](gemini-mcp.md) | `.gemini/settings.json` launch fields; underscore alias warning | `gemini.mcp.no-launch`, `gemini.mcp.underscore-alias` |
 | [opencode-mcp.md](opencode-mcp.md) | `opencode.json(c)` V1 vs V2; command must be an array | `opencode.mcp.*` |

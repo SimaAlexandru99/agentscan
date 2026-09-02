@@ -32,7 +32,7 @@ const MINIMUM_FACTS: Record<string, FactCounts> = {
   commandcode: { hooks: 4, mcp: 3, skills: 2, agents: 2 },
   "continue-mcpservers": { mcp: 1 },
   "continue-yaml": { mcp: 2 },
-  "copilot-hooks": { hooks: 8 },
+  "copilot-hooks": { hooks: 9 },
   "cursor-json": { mcp: 2 },
   "gemini-json": { mcp: 4 },
   "grok-toml": { hooks: 2, mcp: 2, skills: 1, rules: 1 },

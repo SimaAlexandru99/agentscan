@@ -176,6 +176,10 @@ close. Re-read the hooks reference at release time.
 Workspace `.github/hooks/*.json` is always scanned. Native VS Code files have
 no `version` and are command-only ([vscode-hooks.md](vscode-hooks.md)).
 Copilot CLI files declare `version: 1` ([copilot-hooks.md](copilot-hooks.md)).
-User `~/.copilot/hooks` is scanned only under `--global`.
-`/etc/github-copilot/policy.d` is unread.
+Inline Copilot `hooks` in `.github/copilot/settings.json` and
+`.github/copilot/settings.local.json` are scanned as `copilot-settings`
+(always `copilot-cli`). User `~/.copilot/hooks` and
+`~/.copilot/settings.json` (or `$COPILOT_HOME/…`) are scanned only under
+`--global`. `/etc/github-copilot/policy.d` is unread. `.claude/settings.json`
+stays Claude.
 

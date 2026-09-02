@@ -13,14 +13,28 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
-Full re-verification of all 99 checks against the live official pages on
-2026-09-02, recorded in `docs/spec/check-inventory.md`. 93 held. Six had
-drifted into reporting a documented, working configuration as broken, and
-are corrected here. Plan 038 then makes that re-verification repeatable, and
-#13 adds Windsurf Cascade hooks and skills (three new `windsurf.hook.*` ids).
-**102 checks**, **517 tests**.
+## 1.4.0 — 2026-09-02
+
+Closes two coverage gaps left after the 2026-09-02 re-verification, then
+ships everything that sat in Unreleased: the seven false-positive
+corrections, plan 038 content hashes and verbatim fixtures, and #13
+Windsurf Cascade hooks / skills. **103 checks**, **532 tests**.
 
 ### Added
+
+- Copilot CLI inline `hooks` in `.github/copilot/settings.json` and
+  `.github/copilot/settings.local.json` (always `copilot-cli`, source
+  `copilot-settings`). User `$COPILOT_HOME/settings.json` or
+  `~/.copilot/settings.json` under `--global`. Same-event hooks from
+  settings and `.github/hooks` coexist. `$COPILOT_HOME` is honored for
+  user hook files too. `.claude/settings.json` stays on the Claude
+  profile. Policy and plugin hook files stay unread.
+- `mcp.literal-credential` (security, warning): secret-named string values
+  under MCP `headers`, `http_headers`, or `auth` that are not
+  interpolation. Field paths only; values never echoed. Grok `{{var}}`,
+  Gemini `%VAR%`, and the existing `${VAR}` / `${env:}` / `${input:}`
+  forms are interpolation. Token-shaped literals still fire
+  `security.hardcoded-secret` first.
 
 - `bun run spec:check` hashes the prose of every source page in
   `scripts/spec-surfaces.ts` (35 unique URLs) and compares against

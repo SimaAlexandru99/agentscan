@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join } from "node:path";
 import {
   COMMANDCODE_HOOK_HANDLER_TYPES,
   COMMANDCODE_HOOK_TIMEOUT_MAX,
@@ -793,14 +793,98 @@ export function discoverVscodeHooks(root: string, errors: ConfigErrorFact[]): Ho
 }
 
 /**
- * User hooks at `~/.copilot/hooks`. VS Code and Copilot CLI share this
- * directory. `version: 1` is Copilot CLI; otherwise native VS Code command-only.
- * Only read under `--global`. Policy files under `/etc/github-copilot/policy.d`
- * stay unread. See docs/spec/copilot-hooks.md and docs/spec/vscode-hooks.md.
+ * Copilot CLI user home. `$COPILOT_HOME` when set, otherwise `~/.copilot`.
+ * See docs/spec/copilot-hooks.md.
+ */
+export function copilotHomeDir(): string {
+  const fromEnv = process.env.COPILOT_HOME;
+  if (typeof fromEnv === "string" && fromEnv.trim().length > 0) {
+    return fromEnv;
+  }
+  return join(homedir(), ".copilot");
+}
+
+/**
+ * User hooks at `$COPILOT_HOME/hooks` or `~/.copilot/hooks`. VS Code and
+ * Copilot CLI share this directory. `version: 1` is Copilot CLI; otherwise
+ * native VS Code command-only. Only read under `--global`. Policy files
+ * under `/etc/github-copilot/policy.d` stay unread.
+ * See docs/spec/copilot-hooks.md and docs/spec/vscode-hooks.md.
  */
 export function discoverCopilotUserHooks(errors: ConfigErrorFact[]): HookFact[] {
-  const dir = join(homedir(), ".copilot", "hooks");
+  const dir = join(copilotHomeDir(), "hooks");
   return discoverHookDir(dir, dir, errors, "vscode-native");
+}
+
+function copilotSettingsHooksFromFiles(
+  files: string[],
+  projectRoot: string,
+  errors: ConfigErrorFact[],
+): HookFact[] {
+  const facts: HookFact[] = [];
+  for (const filePath of files) {
+    if (!existsSync(filePath)) {
+      continue;
+    }
+    const raw = readJsonConfig(filePath, errors);
+    if (raw === undefined) {
+      continue;
+    }
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      errors.push({
+        path: filePath,
+        kind: "unexpected-shape",
+        detail: "settings file is not a JSON object",
+      });
+      continue;
+    }
+    const hooks = (raw as Record<string, unknown>).hooks;
+    if (hooks === undefined) {
+      continue;
+    }
+    facts.push(
+      ...hooksFromObject(
+        hooks,
+        filePath,
+        "copilot-settings",
+        { project: projectRoot, own: dirname(filePath) },
+        errors,
+        "vscode",
+        process.platform,
+        "copilot-cli",
+      ),
+    );
+  }
+  return facts;
+}
+
+/**
+ * Inline Copilot CLI `hooks` in project settings. Always `copilot-cli` —
+ * these files are Copilot CLI config, not native VS Code hook documents, so
+ * they do not need `version: 1`. `.claude/settings.json` stays on the Claude
+ * profile. See docs/spec/copilot-hooks.md.
+ */
+export function discoverCopilotSettingsHooks(
+  root: string,
+  errors: ConfigErrorFact[],
+): HookFact[] {
+  return copilotSettingsHooksFromFiles(
+    [
+      join(root, ".github", "copilot", "settings.json"),
+      join(root, ".github", "copilot", "settings.local.json"),
+    ],
+    root,
+    errors,
+  );
+}
+
+/**
+ * Inline Copilot CLI `hooks` in `$COPILOT_HOME/settings.json` or
+ * `~/.copilot/settings.json`. Only read under `--global`.
+ */
+export function discoverCopilotUserSettingsHooks(errors: ConfigErrorFact[]): HookFact[] {
+  const home = copilotHomeDir();
+  return copilotSettingsHooksFromFiles([join(home, "settings.json")], home, errors);
 }
 
 /**

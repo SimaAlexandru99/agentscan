@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "echo 'Started'",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

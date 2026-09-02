@@ -2,8 +2,8 @@
 
 **Source:** https://docs.github.com/en/copilot/reference/hooks-reference
 **Read:** 2026-09-02
-**Depends on it:** `copilot.hook.*`, `.github/hooks` `version: 1` detection
-(`src/facts/hook-schema.ts`, `src/discover/hooks.ts`)
+**Depends on it:** `copilot.hook.*`, `.github/hooks` `version: 1` detection,
+inline settings hooks (`src/facts/hook-schema.ts`, `src/discover/hooks.ts`)
 
 This is **not** the native VS Code hooks page. Native VS Code files omit
 `version` and are command-only with eight PascalCase events; see
@@ -32,11 +32,19 @@ Quoted (Copilot CLI sources, combined; same event from every source runs):
   under `--global`. VS Code also lists this directory as its user location;
   files without `version: 1` are parsed as native VS Code.
 - Project: `.github/hooks/*.json`.
-- Inline `hooks` in `.github/copilot/settings.json`,
-  `.github/copilot/settings.local.json`, `.claude/settings.json`, and
-  `~/.copilot/settings.json`. Unread as Copilot inline config — Claude
-  settings hooks use the Claude profile; Copilot settings files are not a
-  captured project schema here.
+- Inline `hooks` in `.github/copilot/settings.json` and
+  `.github/copilot/settings.local.json` (project, always scanned) and
+  `$COPILOT_HOME/settings.json` or `~/.copilot/settings.json` (user, only
+  under `--global`). Source `copilot-settings`. Always `copilot-cli` —
+  these files are Copilot CLI settings, so they do not need `version: 1`.
+  Quoted (CLI config-dir reference): the `hooks` key "Uses the same schema
+  as `.github/hooks/*.json` files." Quoted (hooks-reference): "When the
+  same event appears in multiple sources, all hook entries from all sources
+  are run."
+- Cross-tool `.claude/settings.json` and `.claude/settings.local.json` are
+  listed on the Copilot page and stay on the Claude profile here. Parsing
+  them as Copilot would apply the wrong contract (optional `type`, flat
+  arrays) to Claude's required nested groups.
 - Plugin `hooks.json`. Unread.
 
 Cloud agent loads only `.github/hooks/*.json` from the cloned repository.

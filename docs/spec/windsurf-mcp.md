@@ -3,7 +3,7 @@
 **Source:** https://docs.windsurf.com/windsurf/cascade/mcp
 **Read:** 2026-09-02
 **Depends on it:** `windsurf.mcp.no-launch`, `mcp.command-missing`,
-`security.hardcoded-secret`, `mcp.literal-env`
+`security.hardcoded-secret`, `mcp.literal-env`, `mcp.literal-credential`
 
 ## Files
 
@@ -81,7 +81,8 @@ Quoted:
 
 This scanner leaves both patterns unresolved. It does not read
 `${file:...}` targets. Interpolated values are not treated as literal
-secrets.
+secrets. A secret-named `headers` value that is not interpolated is
+`mcp.literal-credential`.
 
 ## Unread
 

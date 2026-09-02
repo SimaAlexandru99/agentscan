@@ -990,6 +990,29 @@ describe("mcp checks", () => {
     expect(findings[0]!.message).toContain("API_KEY");
   });
 
+  test("literal headers or auth fields are a warning and never echo values", () => {
+    const findings = runChecks(
+      baseFacts({
+        mcp: [
+          mcp({
+            name: "remote",
+            hasCommand: false,
+            hasUrl: true,
+            schemaProfile: "cursor-json",
+            literalCredentialFields: ["auth.CLIENT_SECRET", "headers.Authorization"],
+            raw: '{"auth":{"CLIENT_SECRET":"oauth-client-secret-value"}}',
+          }),
+        ],
+      }),
+    );
+    expect(findings.map((f) => f.ruleId)).toEqual(["mcp.literal-credential"]);
+    expect(findings[0]!.severity).toBe("warning");
+    expect(findings[0]!.message).toContain("auth.CLIENT_SECRET");
+    expect(findings[0]!.message).toContain("headers.Authorization");
+    expect(findings[0]!.message).not.toContain("oauth-client-secret-value");
+    expect(JSON.stringify(findings[0]!)).not.toContain("oauth-client-secret-value");
+  });
+
   test("${VAR} indirection produces nothing", () => {
     const findings = runChecks(
       baseFacts({
@@ -1746,6 +1769,16 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           hasCommand: true,
           hasUrl: false,
           literalEnvKeys: ["API_KEY"],
+          raw: "{}",
+        },
+        {
+          name: "header-secret",
+          path: "/tmp/proj/.cursor/mcp.json",
+          schemaProfile: "cursor-json",
+          hasCommand: false,
+          hasUrl: true,
+          literalEnvKeys: [],
+          literalCredentialFields: ["auth.CLIENT_SECRET"],
           raw: "{}",
         },
       ],

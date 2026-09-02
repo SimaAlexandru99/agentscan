@@ -29,7 +29,14 @@ import {
   winningSkillsExtraDirs,
 } from "./commandcode";
 import { applyGrokMcpPrecedence, discoverGrokUserMcp } from "./grok";
-import { discoverCopilotUserHooks, discoverGrokHooks, discoverHooks, discoverVscodeHooks } from "./hooks";
+import {
+  discoverCopilotSettingsHooks,
+  discoverCopilotUserHooks,
+  discoverCopilotUserSettingsHooks,
+  discoverGrokHooks,
+  discoverHooks,
+  discoverVscodeHooks,
+} from "./hooks";
 import { discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
 import { discoverPluginHooks } from "./plugins";
 import { discoverPolicyFiles, discoverSkillsLocks, resolveCodexProjectRoot } from "./policy";
@@ -198,6 +205,7 @@ export function discoverAgentSurface(
   for (const dir of dirs) {
     hooks.push(...discoverHooks(dir, configErrors));
     hooks.push(...discoverVscodeHooks(dir, configErrors));
+    hooks.push(...discoverCopilotSettingsHooks(dir, configErrors));
     hooks.push(...discoverGrokHooks(join(dir, ".grok", "hooks"), dir, configErrors));
     hooks.push(
       ...discoverWindsurfHooksFile(join(dir, ".windsurf", "hooks.json"), dir, configErrors),
@@ -239,6 +247,7 @@ export function discoverAgentSurface(
   }
   if (opts.includeGlobal) {
     hooks.push(...discoverCopilotUserHooks(configErrors));
+    hooks.push(...discoverCopilotUserSettingsHooks(configErrors));
     hooks.push(...discoverGrokHooks(join(grokHomeDir(), "hooks"), grokHomeDir(), configErrors));
     for (const fact of discoverGrokUserMcp(configErrors)) {
       const key = mcpKey(fact);
