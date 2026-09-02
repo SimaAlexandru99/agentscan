@@ -40,9 +40,24 @@ function unescapeEntities(text: string): string {
   });
 }
 
+function hasProse(fragment: string): boolean {
+  return fragment.replace(/<[^>]+>/g, " ").trim().length > 0;
+}
+
+/**
+ * The first `<tag>…</tag>` block that contains any text. An empty `<main>`
+ * (a client-rendered shell, or a layout placeholder) must not be preferred
+ * over a `<body>` that holds the prose, or the hash would track nothing.
+ */
 function firstBlock(html: string, tag: string): string | undefined {
-  const match = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`, "i").exec(html);
-  return match?.[1];
+  const pattern = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`, "gi");
+  for (const match of html.matchAll(pattern)) {
+    const inner = match[1];
+    if (inner !== undefined && hasProse(inner)) {
+      return inner;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -79,6 +94,21 @@ export function normalizeSpecText(html: string): string {
 
 export function specContentHash(text: string): string {
   return createHash("sha256").update(text, "utf8").digest("hex").slice(0, 16);
+}
+
+/**
+ * Below this many characters a "page" is almost certainly a fetch or selector
+ * failure (an error shell, a redirect stub), not documentation. The shortest
+ * real capture in the set is the Grok subagents page at ~750 characters.
+ */
+export const SUSPICIOUSLY_SHORT_PAGE_CHARS = 200;
+
+/** URLs a complete baseline must contain but the given one does not. */
+export function missingBaselineUrls(
+  baseline: SpecHashBaseline,
+  urls: readonly string[] = uniqueSurfaceUrls(),
+): string[] {
+  return urls.filter((url) => baseline[url] === undefined);
 }
 
 /**

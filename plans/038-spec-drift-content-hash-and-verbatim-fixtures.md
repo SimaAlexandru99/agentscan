@@ -77,7 +77,10 @@ There are two ways a capture goes wrong, and they need different defences:
    <recorded> (<old> → <new>) — <url>` or `note: no content baseline for <url>
    — run bun run spec:record`. With `--record`, write the new hashes and dates
    to the JSON and exit 0 without reporting content drift. Unfetchable pages
-   stay a `note`, as today.
+   stay a `note`, as today. A page that normalises to under 200 characters is
+   an error shell, not documentation: report it, keep the previous hash, never
+   record it. `--record` writes all or nothing — if any page could not be
+   hashed, leave the baseline untouched and exit 1 (review finding, 2026-09-02).
 4. `package.json`: `"spec:record": "bun run scripts/spec-drift.ts --record"`.
 5. `tests/unit/spec-hashes.test.ts` (offline): normalisation drops script/style
    and nav, keeps `<main>` text, is whitespace-stable; the hash is 16 hex and

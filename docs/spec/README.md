@@ -112,7 +112,9 @@ alias, a field, or a spelling to any of the other thirty. A changed hash does
 not say what changed; it says open this URL and re-read the capture. Do that,
 update `docs/spec/<file>.md` and the conformance fixture with any new official
 example, then run `spec:record`. Recording without reading turns the detector
-back into silence.
+back into silence. `spec:record` writes all or nothing: if any page cannot be
+fetched, or normalises to fewer than 200 characters (an error shell, not
+documentation), the baseline is left untouched and the run exits 1.
 
 It makes network calls, so it is a release-time script (and a weekly job in
 `.github/workflows/spec-drift.yml`) and is never reached from `agentscan check`

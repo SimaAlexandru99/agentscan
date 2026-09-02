@@ -2,11 +2,13 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import {
   fetchUrlFor,
+  missingBaselineUrls,
   normalizeSpecText,
   SPEC_HASHES_PATH,
   SPEC_SURFACES,
   specContentHash,
   surfacesForUrl,
+  SUSPICIOUSLY_SHORT_PAGE_CHARS,
   uniqueSurfaceUrls,
   type SpecHashBaseline,
 } from "../../scripts/spec-surfaces";
@@ -42,6 +44,16 @@ describe("normalizeSpecText", () => {
     expect(normalizeSpecText(`# Markdown heading\n\nPlain  text   here.`)).toBe(
       "# Markdown heading Plain text here.",
     );
+  });
+
+  test("an empty or tag-only main does not win over the body that holds the prose", () => {
+    expect(normalizeSpecText(`<body><main></main><p>Real spec line</p></body>`)).toBe("Real spec line");
+    expect(normalizeSpecText(`<body><main>   <div></div> </main><p>Real spec line</p></body>`)).toBe(
+      "Real spec line",
+    );
+    expect(
+      normalizeSpecText(`<body><main></main><main><p>Second main has it</p></main><p>outside</p></body>`),
+    ).toBe("Second main has it");
   });
 
   test("is stable under whitespace and attribute churn", () => {
@@ -113,5 +125,25 @@ describe("scripts/spec-hashes.json baseline", () => {
   test("the baseline file is sorted by URL so diffs stay readable", () => {
     const keys = Object.keys(baseline);
     expect(keys).toEqual([...keys].sort());
+  });
+
+  test("missingBaselineUrls names exactly the URLs a record run failed to hash", () => {
+    expect(missingBaselineUrls(baseline)).toEqual([]);
+    const dropped = urls.slice(0, 2);
+    expect(dropped.length).toBe(2);
+    const partial = Object.fromEntries(
+      Object.entries(baseline).filter(([url]) => !dropped.includes(url)),
+    ) as SpecHashBaseline;
+    expect(missingBaselineUrls(partial).sort()).toEqual([...dropped].sort());
+    expect(missingBaselineUrls({}).length).toBe(urls.length);
+  });
+
+  test("the short-page guard sits below every real capture", () => {
+    expect(SUSPICIOUSLY_SHORT_PAGE_CHARS).toBeGreaterThan(0);
+    // Longer than an error shell such as "Uh oh! There was an error while
+    // loading. Please reload this page." and shorter than the smallest real
+    // page in the set (Grok subagents, ~750 characters on 2026-09-02).
+    expect(SUSPICIOUSLY_SHORT_PAGE_CHARS).toBeGreaterThan(80);
+    expect(SUSPICIOUSLY_SHORT_PAGE_CHARS).toBeLessThan(700);
   });
 });

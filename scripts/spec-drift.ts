@@ -23,12 +23,14 @@ import {
 } from "../src/facts/hook-schema";
 import {
   fetchUrlFor,
+  missingBaselineUrls,
   normalizeSpecText,
   SPEC_HASHES_PATH,
   SPEC_SURFACES,
   specContentHash,
   surfacesForUrl,
   surfaceStalenessNotes,
+  SUSPICIOUSLY_SHORT_PAGE_CHARS,
   uniqueSurfaceUrls,
   type SpecHashBaseline,
 } from "./spec-surfaces";
@@ -185,22 +187,40 @@ function surfaceLabel(url: string): string {
  * A changed hash does not say what changed — it says "open this URL and re-read
  * the capture". That is the whole job.
  */
-async function checkSurfaceContent(report: Report): Promise<SpecHashBaseline> {
+async function checkSurfaceContent(
+  report: Report,
+): Promise<{ baseline: SpecHashBaseline; unhashed: string[] }> {
   const baseline = readBaseline();
   const next: SpecHashBaseline = {};
+  const unhashed: string[] = [];
   const today = new Date().toISOString().slice(0, 10);
   let compared = 0;
   for (const url of uniqueSurfaceUrls()) {
     const html = await page(fetchUrlFor(url));
     if (html === null) {
       report.notes.push(`could not fetch ${url} — content hash unverified (${surfaceLabel(url)})`);
+      unhashed.push(url);
       const previous = baseline[url];
       if (previous !== undefined) {
         next[url] = previous;
       }
       continue;
     }
-    const hash = specContentHash(normalizeSpecText(html));
+    const text = normalizeSpecText(html);
+    if (text.length < SUSPICIOUSLY_SHORT_PAGE_CHARS) {
+      // An error shell or redirect stub, not documentation. Keep the previous
+      // hash so a bad fetch is never recorded as the page's content.
+      report.drift.push(
+        `${surfaceLabel(url)} normalised to only ${text.length} characters — fetch or selector problem, not compared — ${url}`,
+      );
+      unhashed.push(url);
+      const previous = baseline[url];
+      if (previous !== undefined) {
+        next[url] = previous;
+      }
+      continue;
+    }
+    const hash = specContentHash(text);
     const previous = baseline[url];
     if (previous === undefined) {
       next[url] = { hash, recorded: today };
@@ -222,7 +242,7 @@ async function checkSurfaceContent(report: Report): Promise<SpecHashBaseline> {
     }
   }
   report.notes.push(`compared ${compared} page content hashes against ${SPEC_HASHES_PATH}`);
-  return next;
+  return { baseline: next, unhashed };
 }
 
 function writeBaseline(baseline: SpecHashBaseline): void {
@@ -305,13 +325,24 @@ await checkVscodeHookEvents(report);
 await checkCopilotHookEvents(report);
 await checkCommandcodeHookEvents(report);
 await checkGrokHookEvents(report);
-const baseline = await checkSurfaceContent(report);
+const { baseline, unhashed } = await checkSurfaceContent(report);
 
 if (RECORD) {
-  writeBaseline(baseline);
-  process.stdout.write(
-    `recorded ${Object.keys(baseline).length} page content hashes to ${SPEC_HASHES_PATH}\n`,
-  );
+  // Recording means "these are the pages I re-read today". A page that could
+  // not be fetched or hashed was not re-read, and a baseline with holes would
+  // pass the next run in silence for exactly those pages. Write all or
+  // nothing; the human retries.
+  const notRecorded = [...new Set([...unhashed, ...missingBaselineUrls(baseline)])];
+  if (notRecorded.length === 0) {
+    writeBaseline(baseline);
+    process.stdout.write(
+      `recorded ${Object.keys(baseline).length} page content hashes to ${SPEC_HASHES_PATH}\n`,
+    );
+  } else {
+    report.drift.push(
+      `record aborted: ${notRecorded.length} page(s) could not be hashed, ${SPEC_HASHES_PATH} left unchanged — ${notRecorded.join(", ")}`,
+    );
+  }
 }
 
 for (const note of report.notes) {
