@@ -28,6 +28,15 @@ The seven corrections (two on `commandcode.mcp.invalid-transport`), with the
 published line each rests on, are in [Corrections](#corrections). Regression
 tests: `tests/unit/spec-reverify-2026-09.test.ts`.
 
+**Added after this audit, same day:** PR #13 merged three Windsurf Cascade
+hook checks (`windsurf.hook.unknown-event`, `windsurf.hook.missing-script`,
+`windsurf.hook.command-without-command`; [windsurf-hooks.md](windsurf-hooks.md))
+and the `.windsurf/skills` surface ([windsurf-skills.md](windsurf-skills.md)),
+bringing the registry to 102. They are not in the tables below. At merge time
+both source pages were re-read: the 12 snake_case events match the page, and
+"At least one of `command` or `powershell` must be specified" is quoted
+verbatim. Their content hashes are in `scripts/spec-hashes.json`.
+
 ## Inventory
 
 Severity is what the check emits; provenance is the registry label. Source is

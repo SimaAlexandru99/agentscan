@@ -16,8 +16,9 @@ intermediate commit that this train does not cut.
 Full re-verification of all 99 checks against the live official pages on
 2026-09-02, recorded in `docs/spec/check-inventory.md`. 93 held. Six had
 drifted into reporting a documented, working configuration as broken, and
-are corrected here. Plan 038 then makes that re-verification repeatable.
-**99 checks**, **505 tests**.
+are corrected here. Plan 038 then makes that re-verification repeatable, and
+#13 adds Windsurf Cascade hooks and skills (three new `windsurf.hook.*` ids).
+**102 checks**, **517 tests**.
 
 ### Added
 
