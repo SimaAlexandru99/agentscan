@@ -69,6 +69,20 @@ verbatim. Their content hashes are in `scripts/spec-hashes.json`.
 literals) and Copilot CLI inline settings discovery (existing
 `copilot.hook.*` ids). Registry becomes 103.
 
+**Added 2026-09-03:** nine hook checks for two surfaces this tool had been
+silent on — Gemini CLI hooks in `.gemini/settings.json`
+(`gemini.hook.unknown-event`, `.missing-script`, `.invalid-group`,
+`.command-without-command`, `.unknown-handler-type`;
+[gemini-hooks.md](gemini-hooks.md)) and Cursor `.cursor/hooks.json`
+(`cursor.hook.unknown-event`, `.missing-script`, `.command-without-command`,
+`.unknown-handler-type`; [cursor-hooks.md](cursor-hooks.md)). Registry becomes
+112. They are not in the tables below. Both products documented hooks after the
+2026-09-02 audit; neither file was read, so the failure was silence, not a false
+positive. Both source pages were read in full at merge time: Gemini's 11
+PascalCase events and Cursor's 21 camelCase events each match their page, and
+`spec:check` now diffs both sets. Their content hashes are in
+`scripts/spec-hashes.json`.
+
 ## Inventory
 
 Severity is what the check emits; provenance is the registry label. Source is

@@ -14,7 +14,13 @@ import {
 } from "./skills";
 
 export type { CheckOptions } from "./options";
-export { COPILOT_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "./hooks";
+export {
+  COPILOT_HOOK_EVENTS,
+  CURSOR_HOOK_EVENTS,
+  GEMINI_HOOK_EVENTS,
+  KNOWN_HOOK_EVENTS,
+  VSCODE_HOOK_EVENTS,
+} from "./hooks";
 export { COMMANDCODE_HOOK_EVENTS } from "../facts/commandcode";
 export { GROK_HOOK_EVENTS } from "../facts/grok";
 export { STRUCTURAL_CHECKS } from "./registry";

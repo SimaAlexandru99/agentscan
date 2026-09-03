@@ -30,12 +30,14 @@ import {
   winningCommandcodeModel,
   winningSkillsExtraDirs,
 } from "./commandcode";
+import { discoverCursorHooksFile } from "./cursor";
 import { applyGrokMcpPrecedence, discoverGrokUserMcp } from "./grok";
 import {
   discoverClaudeUserHooks,
   discoverCopilotSettingsHooks,
   discoverCopilotUserHooks,
   discoverCopilotUserSettingsHooks,
+  discoverGeminiHooks,
   discoverGrokHooks,
   discoverHooks,
   discoverVscodeHooks,
@@ -212,8 +214,12 @@ export function discoverAgentSurface(
     hooks.push(...discoverVscodeHooks(dir, configErrors));
     hooks.push(...discoverCopilotSettingsHooks(dir, configErrors));
     hooks.push(...discoverGrokHooks(join(dir, ".grok", "hooks"), dir, configErrors));
+    hooks.push(...discoverGeminiHooks(dir, configErrors));
     hooks.push(
       ...discoverWindsurfHooksFile(join(dir, ".windsurf", "hooks.json"), dir, configErrors),
+    );
+    hooks.push(
+      ...discoverCursorHooksFile(join(dir, ".cursor", "hooks.json"), dir, configErrors),
     );
     const discovered = discoverMcpSurface(dir, config.mcpPaths, configErrors);
     if (discovered.codexProjectDocMaxBytes !== undefined && codexProjectDocMaxBytes === undefined) {

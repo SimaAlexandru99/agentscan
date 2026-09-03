@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-103-111111?style=flat-square" alt="103 checks">
-  <img src="https://img.shields.io/badge/tests-532%20passing-111111?style=flat-square" alt="532 tests">
+  <img src="https://img.shields.io/badge/checks-112-111111?style=flat-square" alt="112 checks">
+  <img src="https://img.shields.io/badge/tests-565%20passing-111111?style=flat-square" alt="565 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>103 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <strong>112 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
   <sub>An offline linter for Claude Code, Command Code, Grok Build, Windsurf, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks (including inline settings), and the MCP / hooks / rules surfaces that 1.4.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
@@ -65,7 +65,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .commandcode/ .grok/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       103 checks, each labeled spec-required, vendor-recommendation,
+3. Check       112 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -504,6 +504,15 @@ internal-consistency, or heuristic. `agentscan rules` lists them all.
 | `grok.hook.command-without-command` | error | A Grok `type: command` hook with no `command` |
 | `grok.hook.http-without-url` | error | A Grok `type: http` hook with no `url` |
 | `grok.hook.unknown-handler-type` | error | A Grok hook whose `type` is missing or not `command` / `http` |
+| `gemini.hook.unknown-event` | error | A Gemini hook registered under an event that is never dispatched (11 events) |
+| `gemini.hook.missing-script` | error | A Gemini command hook whose script does not exist |
+| `gemini.hook.invalid-group` | error | A Gemini hook group missing the required nested `hooks` array, or a non-string `matcher` |
+| `gemini.hook.command-without-command` | error | A Gemini `type: command` hook with no `command` |
+| `gemini.hook.unknown-handler-type` | error | A Gemini hook whose `type` is missing or is not `command` |
+| `cursor.hook.unknown-event` | error | A Cursor hook registered under an event that is never dispatched (21 events) |
+| `cursor.hook.missing-script` | error | A Cursor hook whose script does not exist under the project root |
+| `cursor.hook.command-without-command` | error | A Cursor hook entry with no `command` |
+| `cursor.hook.unknown-handler-type` | error | A Cursor hook whose `type` is present and is not `command` / `prompt` |
 | `grok.skill.missing-frontmatter` | warning | Grok `SKILL.md` with no `---` block |
 | `mcp.command-missing` | error | An MCP `command` that is a path-like value whose file does not exist on disk |
 | `security.hardcoded-secret` | error | A token-shaped literal in MCP config (the value is never echoed back) |
@@ -562,10 +571,10 @@ Dimensions:
 | Codex | `.codex/config.toml`, `.codex/skills`, AGENTS chain | `--global` `$CODEX_HOME` / `~/.codex/config.toml` MCP; `AGENTS.override.md` then `AGENTS.md`; unread system, managed, requirements, profiles, plugins, trust | TOML MCP; `project_doc_max_bytes`; Agent Skills | override > `AGENTS.md` > fallbacks; one file per dir; root→cwd; `project_root_markers`; MCP user+project both inventoried | `codex-toml` fixture |
 | VS Code | `.github/hooks` without `version: 1`, instruction files, `.github/agents`, `.vscode/mcp.json` | `--global` `~/.copilot/hooks` without `version: 1`; unread policy dirs | 8 events; command-only | workspace over user | `vscode-hooks`, `vscode-json` |
 | Copilot CLI | `.github/hooks` with `version: 1`; inline `hooks` in `.github/copilot/settings.json` and `settings.local.json` | `--global` `$COPILOT_HOME` / `~/.copilot/hooks` with `version: 1` and `settings.json`; unread `/etc/github-copilot/policy.d` | camelCase + PascalCase map; `bash` / `powershell` / `command` / `exec`; `cwd`; `timeoutSec`; prompt on `sessionStart` | documented sources coexist; policy unread; `.claude/settings.json` stays Claude | `copilot-hooks` fixture |
-| Cursor | nested `.cursor/skills`; `.cursor/mcp.json` and `.cursor/rules` on the ancestor walk only (not descendant package trees from repo root) | unread documented Cursor user/global paths | Agent Skills; MCP launch; 500-line rules | n/a | `cursor-json` fixture |
+| Cursor | nested `.cursor/skills`; `.cursor/mcp.json`, `.cursor/hooks.json` and `.cursor/rules` on the ancestor walk only (not descendant package trees from repo root) | unread `~/.cursor/hooks.json` and the other documented Cursor user/global paths; unread MDM/team hooks | Agent Skills; MCP launch; 500-line rules; 21 hook events, optional `type` (`command` / `prompt`), required `command` | n/a | `cursor-json` fixture |
 | Grok | `.grok/config.toml` walk-up; `.grok/hooks/*.json`; `.grok/skills`; `.grok/rules/*.md`; `Agents.md` / `AGENT.md` | `--global` `$GROK_HOME` or `~/.grok` config/hooks/skills; unread managed, requirements, plugins, `[skills] paths`, agents, credentials | `command` / `url` MCP (no `type`); 14 events; command/http; frontmatter required, name/description optional; no rules cap | closer project wins; project same-name replaces user | `grok-toml` fixture |
 | Antigravity | `.agents/mcp_config.json` | none | `serverUrl` launch | n/a | `antigravity-json` fixture |
-| Gemini | `.gemini/settings.json` | unread `~/.gemini/settings.json` unless `--global` is wired for it (it is not) | `command` / `url` / `httpUrl`; underscore-alias warning | n/a | `gemini-json` fixture |
+| Gemini | `.gemini/settings.json` — MCP and `hooks` | unread `~/.gemini/settings.json` unless `--global` is wired for it (it is not); unread `/etc/gemini-cli/settings.json` and extension hooks | `command` / `url` / `httpUrl`; underscore-alias warning; 11 hook events, required `type` (`command` only), nested groups, `$GEMINI_PROJECT_DIR` | n/a | `gemini-json` fixture |
 | Windsurf | `.devin/rules/*.md` (preferred), `.windsurf/rules/*.md` (fallback), `.windsurfrules`; `.windsurf/hooks.json`; `.windsurf/skills`; portable `AGENTS.md` / `agents.md` | `--global` `~/.codeium/windsurf/mcp_config.json`, `memories/global_rules.md`, `hooks.json`, and `skills`; unread auto memories, Devin CLI MCP, system rules/hooks/skills, JetBrains `~/.codeium/hooks.json` | 12k / 6k character rules; workspace `trigger`; MCP `command` / `serverUrl` / `url` (no `type`); 12 hook events; `command` / `powershell`; Agent Skills on `.windsurf/skills` | n/a (no project MCP; both rule trees inventoried) | `windsurf-rules` fixture |
 | Kiro | none | none | none | n/a | none |
 | Cline | none | none | none | n/a | none |
@@ -710,7 +719,12 @@ first.
   are scanned only under `--global`. Plugin `hooks.json` stays unread.
   `.claude/settings.json` is read as Claude, not remapped to Copilot.
 - **Gemini user settings are unread.** `~/.gemini/settings.json` is outside a
-  normal project scan.
+  normal project scan — MCP and hooks alike. `/etc/gemini-cli/settings.json`
+  and extension-provided hooks are unread for the same reason.
+- **Cursor user and managed hooks are unread.** `~/.cursor/hooks.json`, the
+  MDM paths (`/etc/cursor/hooks.json` and the macOS / Windows equivalents),
+  and dashboard-synced team hooks are outside the repository. Project
+  `.cursor/hooks.json` is scanned.
 - **Windsurf Devin CLI MCP and auto memories are unread.** Cascade MCP is
   global-only (`~/.codeium/windsurf/mcp_config.json`, `--global`). The Devin
   Local agent uses unpublished CLI config files — that path is not guessed.

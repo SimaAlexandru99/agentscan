@@ -187,6 +187,8 @@ export type HookFact = {
     | "vscode-hooks"
     | "grok-hooks"
     | "windsurf-hooks"
+    | "gemini-settings"
+    | "cursor-hooks"
     | "copilot-settings";
   sourceProvider?: Provider;
   schemaProfile?: HookSchemaProfile;

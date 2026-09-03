@@ -15,7 +15,14 @@
  */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { COMMANDCODE_HOOK_EVENTS, GROK_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS } from "../src/checks/index";
+import {
+  COMMANDCODE_HOOK_EVENTS,
+  CURSOR_HOOK_EVENTS,
+  GEMINI_HOOK_EVENTS,
+  GROK_HOOK_EVENTS,
+  KNOWN_HOOK_EVENTS,
+  VSCODE_HOOK_EVENTS,
+} from "../src/checks/index";
 import {
   COPILOT_ONLY_EVENTS,
   COPILOT_PASCAL_ALIASES,
@@ -317,6 +324,45 @@ async function checkGrokHookEvents(report: Report): Promise<void> {
   }
 }
 
+/**
+ * Gemini's names are ordinary English words in PascalCase (`Notification`,
+ * `SessionStart`), so a substring hit on the whole page would pass on prose
+ * alone. Match the backticked or table-cell spellings the event table uses.
+ */
+async function checkGeminiHookEvents(report: Report): Promise<void> {
+  const url = fetchUrlFor(
+    "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md",
+  );
+  const text = await page(url);
+  if (text === null) {
+    report.notes.push(`could not fetch ${url} — Gemini hook events unverified`);
+    return;
+  }
+  const missingFromPage = [...GEMINI_HOOK_EVENTS].filter(
+    (e) => !new RegExp(`\`${e}\`|\\| *${e} *\\|`).test(text),
+  );
+  if (missingFromPage.length > 0) {
+    report.drift.push(
+      `Gemini hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
+    );
+  }
+}
+
+async function checkCursorHookEvents(report: Report): Promise<void> {
+  const url = "https://cursor.com/docs/hooks";
+  const html = await page(url);
+  if (html === null) {
+    report.notes.push(`could not fetch ${url} — Cursor hook events unverified`);
+    return;
+  }
+  const missingFromPage = [...CURSOR_HOOK_EVENTS].filter((e) => !html.includes(e));
+  if (missingFromPage.length > 0) {
+    report.drift.push(
+      `Cursor hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
+    );
+  }
+}
+
 const report: Report = { drift: [], notes: [] };
 checkCaptureDates(report);
 checkSurfaceStaleness(report);
@@ -325,6 +371,8 @@ await checkVscodeHookEvents(report);
 await checkCopilotHookEvents(report);
 await checkCommandcodeHookEvents(report);
 await checkGrokHookEvents(report);
+await checkGeminiHookEvents(report);
+await checkCursorHookEvents(report);
 const { baseline, unhashed } = await checkSurfaceContent(report);
 
 if (RECORD) {

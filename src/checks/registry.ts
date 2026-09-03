@@ -632,4 +632,58 @@ export const STRUCTURAL_CHECKS: StructuralCheck[] = [
     provenance: "spec-required",
     lastVerified: "2026-08-31",
   },
+  {
+    id: "gemini.hook.unknown-event",
+    description: "Gemini hook registered under an event that is never dispatched",
+    provenance: "spec-required",
+    lastVerified: "2026-09-03",
+  },
+  {
+    id: "gemini.hook.missing-script",
+    description: "Gemini hook points at a script that does not exist, so it never runs",
+    provenance: "internal-consistency",
+    lastVerified: "2026-09-03",
+  },
+  {
+    id: "gemini.hook.invalid-group",
+    description: "Gemini hook group is missing the required nested hooks array, or matcher is not a string",
+    provenance: "spec-required",
+    lastVerified: "2026-09-03",
+  },
+  {
+    id: "gemini.hook.command-without-command",
+    description: "Gemini command hook is missing the command field",
+    provenance: "spec-required",
+    lastVerified: "2026-09-03",
+  },
+  {
+    id: "gemini.hook.unknown-handler-type",
+    description: "Gemini hook omits the required type or uses a value other than command",
+    provenance: "spec-required",
+    lastVerified: "2026-09-03",
+  },
+  {
+    id: "cursor.hook.unknown-event",
+    description: "Cursor hook registered under an event that is never dispatched",
+    provenance: "spec-required",
+    lastVerified: "2026-09-03",
+  },
+  {
+    id: "cursor.hook.missing-script",
+    description: "Cursor hook points at a script that does not exist, so it never runs",
+    provenance: "internal-consistency",
+    lastVerified: "2026-09-03",
+  },
+  {
+    id: "cursor.hook.command-without-command",
+    description: "Cursor hook is missing the required command field",
+    provenance: "spec-required",
+    lastVerified: "2026-09-03",
+  },
+  {
+    id: "cursor.hook.unknown-handler-type",
+    description: "Cursor hook declares a type other than command or prompt",
+    provenance: "spec-required",
+    lastVerified: "2026-09-03",
+  },
 ];

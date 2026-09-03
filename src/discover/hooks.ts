@@ -8,6 +8,7 @@ import {
   COMMANDCODE_HOOK_TIMEOUT_MIN,
   COMMANDCODE_PROJECT_DIR,
 } from "../facts/commandcode";
+import { GEMINI_HOOK_HANDLER_TYPES, GEMINI_PROJECT_DIR } from "../facts/gemini";
 import { GROK_HOOK_HANDLER_TYPES } from "../facts/grok";
 import {
   claudeHandlerCompatible,
@@ -86,9 +87,13 @@ function resolveHookScript(
       exists: isFile(join(homedir(), extracted.slice(2))),
     };
   }
-  if (PROJECT_DIR.test(extracted) || COMMANDCODE_PROJECT_DIR.test(extracted)) {
+  if (
+    PROJECT_DIR.test(extracted) ||
+    COMMANDCODE_PROJECT_DIR.test(extracted) ||
+    GEMINI_PROJECT_DIR.test(extracted)
+  ) {
     const rel = extracted.replace(
-      /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\}|COMMANDCODE_PROJECT_DIR|\{COMMANDCODE_PROJECT_DIR\}|COMMANDCODE_CWD|\{COMMANDCODE_CWD\})\/?/,
+      /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\}|COMMANDCODE_PROJECT_DIR|\{COMMANDCODE_PROJECT_DIR\}|COMMANDCODE_CWD|\{COMMANDCODE_CWD\}|GEMINI_PROJECT_DIR|\{GEMINI_PROJECT_DIR\})\/?/,
       "",
     );
     return { scriptPath: extracted, exists: isFile(join(bases.project, rel)) };
@@ -575,6 +580,25 @@ function grokHookFromEntry(item: Record<string, unknown>, ctx: HookContext): Hoo
   }));
 }
 
+/**
+ * Gemini nests groups like Claude but accepts one handler type. `timeout` is
+ * milliseconds here against the seconds `HookFact.timeout` documents, and no
+ * check reads it, so it is deliberately not recorded rather than recorded in
+ * the wrong unit. See docs/spec/gemini-hooks.md.
+ */
+function geminiHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
+  const typeRaw = typeof item.type === "string" ? item.type : undefined;
+  if (typeRaw === undefined || !GEMINI_HOOK_HANDLER_TYPES.has(typeRaw)) {
+    return [
+      baseFact(ctx, {
+        defect: "unknown-handler-type",
+        unknownHandlerType: unknownTypeLabel(item),
+      }),
+    ];
+  }
+  return commandFactsFromLaunches(ctx, item, "command-without-command");
+}
+
 function hooksFromProfile(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
   switch (ctx.schemaProfile) {
     case "claude":
@@ -587,6 +611,10 @@ function hooksFromProfile(item: Record<string, unknown>, ctx: HookContext): Hook
       return [commandcodeHookFromEntry(item, ctx)];
     case "grok":
       return grokHookFromEntry(item, ctx);
+    case "gemini":
+      return geminiHookFromEntry(item, ctx);
+    // Flat documents with their own readers; never routed through this pipeline.
+    case "cursor":
     case "windsurf":
       return [];
     default: {
@@ -625,7 +653,11 @@ export function hooksFromObject(
   }
 
   const profile = inferHookSchemaProfile(sourceProvider, schemaProfile);
-  const nestedOnly = profile === "claude" || profile === "commandcode" || profile === "grok";
+  const nestedOnly =
+    profile === "claude" ||
+    profile === "commandcode" ||
+    profile === "grok" ||
+    profile === "gemini";
   const facts: HookFact[] = [];
   for (const [event, groups] of Object.entries(hooks as Record<string, unknown>)) {
     if (!Array.isArray(groups)) {
@@ -728,6 +760,40 @@ export function discoverHooks(root: string, errors: ConfigErrorFact[]): HookFact
     ...claudeSettingsHooksFromFile(join(root, ".claude", "settings.json"), root, errors),
     ...claudeSettingsHooksFromFile(join(root, ".claude", "settings.local.json"), root, errors),
   ];
+}
+
+/**
+ * Project `.gemini/settings.json` — the same file the MCP scan opens, read for
+ * its `hooks` object. User `~/.gemini/settings.json` stays unread, matching the
+ * Gemini MCP scope. See docs/spec/gemini-hooks.md.
+ */
+export function discoverGeminiHooks(root: string, errors: ConfigErrorFact[]): HookFact[] {
+  const filePath = join(root, ".gemini", "settings.json");
+  if (!existsSync(filePath)) {
+    return [];
+  }
+  const raw = readJsonConfig(filePath, errors);
+  if (raw === undefined) {
+    return [];
+  }
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    // The MCP reader already reports this file's shape; do not double-report.
+    return [];
+  }
+  const hooks = (raw as Record<string, unknown>).hooks;
+  if (hooks === undefined) {
+    return [];
+  }
+  return hooksFromObject(
+    hooks,
+    filePath,
+    "gemini-settings",
+    { project: root },
+    errors,
+    "gemini",
+    process.platform,
+    "gemini",
+  );
 }
 
 /**
