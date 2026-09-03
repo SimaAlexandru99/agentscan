@@ -119,7 +119,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "agent-skills",
     surface: "skills",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "medium",
     url: "https://agentskills.io/specification",
@@ -159,7 +159,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "claude",
     surface: "hooks",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://code.claude.com/docs/en/hooks",
@@ -183,7 +183,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "codex",
     surface: "mcp",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://learn.chatgpt.com/docs/extend/mcp",
@@ -247,7 +247,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "cursor",
     surface: "rules",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://cursor.com/docs/rules",
@@ -263,7 +263,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "antigravity",
     surface: "mcp",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://antigravity.google/docs/mcp",
@@ -271,7 +271,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "gemini",
     surface: "mcp",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md",
@@ -279,7 +279,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "opencode",
     surface: "mcp",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://opencode.ai/v2/docs/mcp-servers",
@@ -319,7 +319,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "commandcode",
     surface: "agents",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://commandcode.ai/docs/agents",
@@ -351,7 +351,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "grok",
     surface: "hooks",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://docs.x.ai/build/features/hooks",
@@ -383,7 +383,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "windsurf",
     surface: "rules",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://docs.windsurf.com/windsurf/cascade/memories",
@@ -399,7 +399,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "windsurf",
     surface: "mcp",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://docs.windsurf.com/windsurf/cascade/mcp",
@@ -407,7 +407,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "windsurf",
     surface: "hooks",
-    lastVerified: "2026-08-31",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://docs.devin.ai/desktop/cascade/hooks",

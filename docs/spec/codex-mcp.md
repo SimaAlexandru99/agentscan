@@ -2,7 +2,7 @@
 
 **Source:** https://learn.chatgpt.com/docs/extend/mcp
 **Also:** https://developers.openai.com/codex/config-advanced
-**Read:** 2026-09-02
+**Read:** 2026-09-03
 **Depends on it:** `codex.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
 ## Files
@@ -58,13 +58,23 @@ STDIO: `command` (required), optional `args`, `env`, `env_vars`, `cwd`.
 Streamable HTTP: `url` (required). No `type` field is required. Official
 examples set `url` alone.
 
-Quoted:
+Quoted (still on the page 2026-09-03):
 
-> Configure each MCP server with a `[mcp_servers.]` table.
->
-> STDIO: `command` (required). Streamable HTTP: `url` (required).
+> Configure each MCP server with a `[mcp_servers.<server-name>]` table
+> in the configuration file.
+
+> STDIO servers — `command` (required) … Streamable HTTP servers —
+> `url` (required).
 
 Applying Claude's `url`-without-`type` rule to Codex is a false positive.
+
+The 2026-09-03 page hash moved because the vendor added optional
+fields, not a new launch requirement: `experimental_environment`,
+`auth` (`oauth` / `chatgpt`), `http_headers_helper`, `required`,
+`default_tools_approval_mode`, per-tool `approval_mode` /
+`output_token_limit`, `mcp_optional_startup_grace_ms`, and a longer
+OAuth CIMD/DCR section. None of those change `codex.mcp.no-launch`.
+Plugin-provided MCP (manifest / `.mcp.json` `clientId`) stays unread.
 
 Other keys in `config.toml` are not MCP servers and must be ignored.
 User-file `project_doc_max_bytes` / fallbacks / markers are not applied

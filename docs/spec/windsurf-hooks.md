@@ -1,7 +1,7 @@
 # Windsurf / Cascade hooks
 
 **Source:** https://docs.devin.ai/desktop/cascade/hooks
-**Read:** 2026-08-31
+**Read:** 2026-09-03
 **Depends on it:** `windsurf.hook.unknown-event`, `windsurf.hook.missing-script`,
 `windsurf.hook.command-without-command`
 

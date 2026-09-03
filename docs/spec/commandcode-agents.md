@@ -1,7 +1,7 @@
 # Command Code custom agents
 
 **Source:** https://commandcode.ai/docs/agents
-**Read:** 2026-09-02
+**Read:** 2026-09-03
 **Depends on it:** `commandcode.agent.reserved-name`,
 `commandcode.agent.invalid-permission-mode`,
 `commandcode.agent.invalid-field-type`

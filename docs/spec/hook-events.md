@@ -1,7 +1,7 @@
 # Hook events
 
 **Source:** https://code.claude.com/docs/en/hooks
-**Read:** 2026-09-02 (all 33 names, the required `type` enum, per-type required
+**Read:** 2026-09-03 (all 33 names, the required `type` enum, per-type required
 fields, and the three compatibility tiers re-read and unchanged)
 **Depends on it:** `claude.hook.unknown-event`, `claude.hook.unknown-handler-type`,
 `claude.hook.command-without-command`, `claude.hook.http-without-url`,
