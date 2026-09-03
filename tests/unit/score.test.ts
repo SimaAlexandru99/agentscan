@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Finding, Severity } from "../../src/facts/types";
 import { ERROR_COST, WARNING_COST, score } from "../../src/report/score";
+import { ruleMeta } from "../helpers/finding";
 
 const f = (severity: Severity): Finding => ({
   id: `${severity}-${Math.random()}`,
@@ -10,6 +11,7 @@ const f = (severity: Severity): Finding => ({
   subject: "s",
   message: "m",
   reason: "r",
+  ...ruleMeta("r"),
   evidence: [],
 });
 

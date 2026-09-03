@@ -1,6 +1,7 @@
 import { basename } from "node:path";
 import type { Facts, Finding, Severity } from "../facts/types";
 import { type Paint, type Tone, paint } from "./ansi";
+import { provenanceLine } from "./provenance-line";
 import { safe } from "./safe";
 import { score, scoreFace, scoreLabel, scoreTone } from "./score";
 import { sortFindings } from "./sort";
@@ -205,6 +206,10 @@ function formatGroup(
       out.push(ink.dim(`            id: ${safe(f.id)}`));
     }
   }
+  // Where the rule comes from, once per group. Every finding in a group shares
+  // a ruleId, so this is one line, not one per occurrence. Without it a quoted
+  // vendor requirement and an inference of ours print identically.
+  out.push(ink.dim(`        ${safe(provenanceLine(first))}`));
   return out;
 }
 

@@ -1,4 +1,6 @@
 import { COMMANDCODE_HOOK_EVENTS, isShadowedCommandcode } from "../facts/commandcode";
+import { CURSOR_HOOK_EVENTS } from "../facts/cursor";
+import { GEMINI_HOOK_EVENTS } from "../facts/gemini";
 import { GROK_HOOK_EVENTS } from "../facts/grok";
 import { WINDSURF_HOOK_EVENTS } from "../discover/windsurf";
 import {
@@ -13,7 +15,7 @@ import { assertNever, type Provider } from "../facts/provider";
 import type { Facts, Finding, HookDefect, HookFact } from "../facts/types";
 import { make } from "./make";
 
-export { COPILOT_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS };
+export { COPILOT_HOOK_EVENTS, CURSOR_HOOK_EVENTS, GEMINI_HOOK_EVENTS, KNOWN_HOOK_EVENTS, VSCODE_HOOK_EVENTS };
 
 function hookProvider(hook: HookFact): Provider {
   return hook.sourceProvider ?? "claude";
@@ -37,6 +39,10 @@ function eventsFor(profile: HookSchemaProfile): Set<string> {
       return GROK_HOOK_EVENTS;
     case "windsurf":
       return WINDSURF_HOOK_EVENTS;
+    case "gemini":
+      return GEMINI_HOOK_EVENTS;
+    case "cursor":
+      return CURSOR_HOOK_EVENTS;
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -57,6 +63,10 @@ function unknownEventRuleId(profile: HookSchemaProfile): string {
       return "grok.hook.unknown-event";
     case "windsurf":
       return "windsurf.hook.unknown-event";
+    case "gemini":
+      return "gemini.hook.unknown-event";
+    case "cursor":
+      return "cursor.hook.unknown-event";
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -77,6 +87,10 @@ function missingScriptRuleId(profile: HookSchemaProfile): string {
       return "grok.hook.missing-script";
     case "windsurf":
       return "windsurf.hook.missing-script";
+    case "gemini":
+      return "gemini.hook.missing-script";
+    case "cursor":
+      return "cursor.hook.missing-script";
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -231,6 +245,38 @@ function defectRuleId(profile: HookSchemaProfile, defect: HookDefect): string | 
         case "mcp-tool-without-server-or-tool":
         case "prompt-without-prompt":
         case "unknown-handler-type":
+        case "incompatible-handler":
+          return undefined;
+        default: {
+          return assertNever(defect, `unhandled hook defect: ${defect}`);
+        }
+      }
+    case "gemini":
+      switch (defect) {
+        case "invalid-group":
+        case "command-without-command":
+        case "unknown-handler-type":
+          return `gemini.hook.${defect}`;
+        case "http-without-url":
+        case "mcp-tool-without-server-or-tool":
+        case "prompt-without-prompt":
+        case "incompatible-handler":
+          return undefined;
+        default: {
+          return assertNever(defect, `unhandled hook defect: ${defect}`);
+        }
+      }
+    case "cursor":
+      switch (defect) {
+        case "command-without-command":
+        case "unknown-handler-type":
+          return `cursor.hook.${defect}`;
+        // Cursor documents flat arrays, so there is no group to be invalid,
+        // and none of the Claude handler kinds exist here.
+        case "invalid-group":
+        case "http-without-url":
+        case "mcp-tool-without-server-or-tool":
+        case "prompt-without-prompt":
         case "incompatible-handler":
           return undefined;
         default: {

@@ -5,14 +5,17 @@ import { exitCode } from "../../src/report/exit-code";
 import { renderJson } from "../../src/report/json";
 import { sortFindings } from "../../src/report/sort";
 import { renderText } from "../../src/report/text";
+import { ruleMeta } from "../helpers/finding";
 
 function finding(partial: Partial<Finding> & Pick<Finding, "id" | "action" | "severity">): Finding {
+  const ruleId = partial.ruleId ?? "rule.x";
   return {
-    ruleId: partial.ruleId ?? "rule.x",
+    ruleId,
     subject: partial.subject ?? "skill:x",
     message: partial.message ?? "msg",
     reason: partial.reason ?? "reason",
     evidence: partial.evidence ?? [],
+    ...ruleMeta(ruleId),
     ...partial,
   };
 }
@@ -404,6 +407,7 @@ describe("renderText", () => {
       message: `PreToolUse hook points at a script that does not exist: ./h${i}.js`,
       reason: "r",
       evidence: [{ kind: "script", value: `/tmp/proj/.claude/h${i}.js` }],
+      ...ruleMeta("claude.hook.missing-script"),
     }));
 
     const text = renderText({
@@ -435,6 +439,7 @@ describe("renderText", () => {
         message: "PreToolUse hook points at a script that does not exist: ./a.js",
         reason: "r",
         evidence: [{ kind: "hook", value: "PreToolUse @ /tmp/proj/.claude/settings.json" }],
+        ...ruleMeta("claude.hook.missing-script"),
       },
       {
         id: "claude.hook.missing-script:b",
@@ -445,6 +450,7 @@ describe("renderText", () => {
         message: "SessionStart hook points at a script that does not exist: ./b.js",
         reason: "r",
         evidence: [{ kind: "hook", value: "SessionStart @ /tmp/proj/.claude/settings.json" }],
+        ...ruleMeta("claude.hook.missing-script"),
       },
     ];
 
@@ -498,6 +504,7 @@ describe("renderText", () => {
           message: "PreToolUse hook points at a script that does not exist: ./only.js",
           reason: "r",
           evidence: [{ kind: "script", value: "/tmp/proj/.claude/only.js" }],
+          ...ruleMeta("claude.hook.missing-script"),
         },
       ],
       verbose: false,
@@ -647,4 +654,100 @@ describe("renderJson", () => {
     expect(raw).toContain("\n"); // pretty
   });
 
+  test("every finding carries provenance, source, and the read date", () => {
+    const raw = renderJson({
+      version: "0.1.0",
+      root: "/tmp/proj",
+      facts: baseFacts({ root: "/tmp/proj" }),
+      findings: [
+        finding({
+          id: "cursor.hook.unknown-event:hook:bogus",
+          ruleId: "cursor.hook.unknown-event",
+          action: "warn",
+          severity: "error",
+        }),
+      ],
+    });
+    const parsed = JSON.parse(raw) as {
+      findings: {
+        provenance: string;
+        lastVerified: string;
+        source: { kind: string; url?: string; capture?: string };
+      }[];
+    };
+    const first = parsed.findings[0];
+    // The machine surface is the one a CI consumer reads; a comment promising
+    // these keys is not a guarantee.
+    expect(first?.provenance).toBe("spec-required");
+    expect(first?.lastVerified).toBe("2026-09-03");
+    expect(first?.source).toEqual({
+      kind: "spec",
+      url: "https://cursor.com/docs/hooks",
+      capture: "cursor-hooks.md",
+    });
+  });
+
+});
+
+describe("provenance line", () => {
+  test("a spec-backed rule names the page and the read date", () => {
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts({ root: "/tmp/proj" }),
+      findings: [
+        finding({
+          id: "cursor.hook.unknown-event:hook:bogus",
+          ruleId: "cursor.hook.unknown-event",
+          action: "warn",
+          severity: "error",
+        }),
+      ],
+      verbose: false,
+      quiet: false,
+    });
+
+    expect(text).toContain("spec-required · cursor.com/docs/hooks · read 2026-09-03");
+    // scheme stripped, path intact — a truncated URL cannot be pasted
+    expect(text).not.toContain("https://cursor.com/docs/hooks");
+  });
+
+  test("a rule with no vendor page says so instead of printing a bare label", () => {
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts({ root: "/tmp/proj" }),
+      findings: [
+        finding({
+          id: "cursor.hook.missing-script:hook:x",
+          ruleId: "cursor.hook.missing-script",
+          action: "warn",
+          severity: "error",
+        }),
+      ],
+      verbose: false,
+      quiet: false,
+    });
+
+    expect(text).toContain("internal-consistency · no vendor page · agentscan inference");
+  });
+
+  test("it shows without --verbose, once per group", () => {
+    const group = ["a", "b", "c"].map((n) =>
+      finding({
+        id: `cursor.hook.unknown-event:hook:${n}`,
+        ruleId: "cursor.hook.unknown-event",
+        subject: `hook:${n}`,
+        action: "warn",
+        severity: "error",
+      }),
+    );
+    const text = renderText({
+      version: "0.1.0",
+      facts: baseFacts({ root: "/tmp/proj" }),
+      findings: group,
+      verbose: false,
+      quiet: false,
+    });
+
+    expect(text.split("spec-required · cursor.com/docs/hooks").length - 1).toBe(1);
+  });
 });

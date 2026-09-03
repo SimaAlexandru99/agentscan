@@ -12,7 +12,9 @@ export type HookSchemaProfile =
   | "copilot-cli"
   | "commandcode"
   | "grok"
-  | "windsurf";
+  | "windsurf"
+  | "gemini"
+  | "cursor";
 
 export type HookHandlerType = "command" | "http" | "mcp_tool" | "prompt" | "agent";
 
@@ -173,12 +175,14 @@ export function inferHookSchemaProfile(
       return "windsurf";
     case "vscode":
       return "vscode-native";
+    case "gemini":
+      return "gemini";
+    case "cursor":
+      return "cursor";
     case "claude":
     case "agent-skills":
     case "codex":
-    case "cursor":
     case "antigravity":
-    case "gemini":
     case "kiro":
     case "cline":
     case "roo":

@@ -30,6 +30,66 @@ intermediate commit that this train does not cut.
   frontmatter hooks use the skill source. In-tree plugin `skills/`,
   root `SKILL.md`, `agents/` (no frontmatter hooks), `commands/`, and
   `.mcp.json` (`claude-json`). Marketplace plugins stay unread.
+- Gemini CLI hooks: the `hooks` object in project `.gemini/settings.json`,
+  the same file the MCP scan already opens. Nested `{ matcher?, sequential?,
+  hooks: [...] }` groups, required `type` whose only documented value is
+  `command`, and `$GEMINI_PROJECT_DIR` script resolution. Eleven events
+  (`SessionStart`, `SessionEnd`, `BeforeAgent`, `AfterAgent`, `BeforeModel`,
+  `AfterModel`, `BeforeToolSelection`, `BeforeTool`, `AfterTool`,
+  `PreCompress`, `Notification`) on their own profile — Claude's names are
+  never accepted here, and Gemini's are never validated against Claude's.
+  New: `gemini.hook.unknown-event`, `gemini.hook.missing-script`,
+  `gemini.hook.invalid-group`, `gemini.hook.command-without-command`,
+  `gemini.hook.unknown-handler-type`. User `~/.gemini/settings.json`,
+  `/etc/gemini-cli/settings.json`, and extension hooks stay unread, matching
+  the Gemini MCP scope.
+- Cursor hooks: project `.cursor/hooks.json`. Flat arrays, not Claude groups;
+  `command` required on every entry, `type` optional and defaulting to
+  `command` (`command` / `prompt`), scripts resolved against the project root
+  as the page documents. Twenty-one camelCase events across agent, Tab, and
+  app-lifecycle families. New: `cursor.hook.unknown-event`,
+  `cursor.hook.missing-script`, `cursor.hook.command-without-command`,
+  `cursor.hook.unknown-handler-type`. User `~/.cursor/hooks.json`, the MDM
+  paths, and dashboard-synced team hooks stay unread.
+- `spec:check` now diffs the Gemini and Cursor event sets against their live
+  pages, and both pages are tracked by content hash. Registry: **112 checks**.
+- Every finding now says where its rule comes from. `StructuralCheck` gains a
+  required `source`: either `{ kind: "spec", url, capture }` naming the vendor
+  page and the `docs/spec` file holding the verbatim quote, or
+  `{ kind: "derived", detail }` stating plainly that no vendor page asserts it.
+  Required, so a new rule that cannot say where it came from does not compile.
+  `make()` copies it, with `provenance` and `lastVerified`, onto every finding.
+  - Default report: one dim line per rule group —
+    `spec-required · cursor.com/docs/hooks · read 2026-09-03`, or
+    `internal-consistency · no vendor page · agentscan inference`.
+  - `explain`: adds `provenance:`, the full `source:` URL, and `capture:`.
+  - `--json`: three new keys per finding (`provenance`, `source`,
+    `lastVerified`). Additive; no key renamed or removed.
+  - `--output prompt`: a `Source:` bullet, so a fixing agent can read the page
+    before editing the config the rule is about.
+  - `agentscan rules` gains provenance and source columns and a `--json` flag
+    (it previously accepted no flags at all).
+- All 28 pages cited by a rule are already in `SPEC_SURFACES`, so every source
+  a user sees is re-fetched and hash-compared by `bun run spec:check`. A test
+  enforces it, along with: every capture file exists, the capture names the
+  rule, `lastVerified` matches the capture's `**Read:**` date, and a
+  `spec-required` rule may not claim it has no source.
+- `bun run readme:rules` generates the README rule table from the registry;
+  a test fails the build when it drifts. This recovers the three
+  `windsurf.hook.*` rows the hand-maintained table had been missing since #13,
+  and the check count is now asserted against the registry in all four places
+  it is written by hand, including `site/lib/site.ts` (which was still 103).
+
+### Fixed
+
+- 54 rules recorded a `lastVerified` older than the `**Read:**` date of the
+  capture they rest on: the 2026-09-03 re-read of those pages never reached the
+  registry. Synced, with a test that keeps the two in step.
+- Three `tests/unit/codex-mcp.test.ts` cases failed on any machine with
+  `CODEX_HOME` exported: they mock `os.homedir()`, but `codexHomeDir()`
+  correctly prefers the env override. A `tests/helpers/env.ts` preload clears
+  `CODEX_HOME`, `GROK_HOME`, `CLAUDE_CONFIG_DIR`, and `COPILOT_HOME` for the
+  whole suite; the tests that need one still set and restore it themselves.
 
 ## 1.4.0 — 2026-09-02
 

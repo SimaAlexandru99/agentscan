@@ -44,7 +44,8 @@
     "spec:check": "bun run scripts/spec-drift.ts",
     "spec:record": "bun run scripts/spec-drift.ts --record",
     "build": "bun build src/cli.ts --target=node --outfile dist/cli.js --banner '#!/usr/bin/env node'",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build",
+    "readme:rules": "bun run scripts/readme-rules.ts"
   },
   "engines": {
     "node": ">=20.11.0",

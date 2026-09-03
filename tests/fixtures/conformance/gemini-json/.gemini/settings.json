@@ -2,7 +2,10 @@
   "mcpServers": {
     "github": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_PERSONAL_ACCESS_TOKEN"
       }
@@ -16,10 +19,65 @@
     },
     "windowsEnv": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "%GITHUB_PERSONAL_ACCESS_TOKEN%"
       }
     }
+  },
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "write_file|replace",
+        "hooks": [
+          {
+            "name": "security-check",
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/.gemini/hooks/security.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "name": "init",
+            "type": "command",
+            "command": "node .gemini/hooks/init.js"
+          }
+        ]
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "memory",
+            "type": "command",
+            "command": "node .gemini/hooks/inject-memories.js"
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "matcher": "*",
+        "sequential": true,
+        "hooks": [
+          {
+            "name": "validate",
+            "type": "command",
+            "command": "node .gemini/hooks/validate.js"
+          }
+        ]
+      }
+    ]
   }
 }

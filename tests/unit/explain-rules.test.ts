@@ -76,4 +76,43 @@ describe("runRulesCommand", () => {
     }
     expect(result.stdout).toMatch(/claude\.hook\.missing-script\s+.+/);
   });
+
+  test("explain names the provenance, the full URL, and the capture", async () => {
+    const dir = join(fixturesRoot, "lock-drift");
+    const result = await runExplain(
+      "skill.locked-not-installed:skill:pinned-but-gone",
+      { dir },
+    );
+
+    expect(result.stdout).toContain("provenance: internal-consistency");
+    // derived rules print no URL, and say why rather than going quiet
+    expect(result.stdout).toContain("no vendor page");
+    expect(result.stdout).not.toContain("capture: ");
+  });
+
+  test("rules --json carries the source for every rule", async () => {
+    const dir = join(fixturesRoot, "clean-repo");
+    const result = await runRulesCommand({ dir, json: true });
+    const parsed = JSON.parse(result.stdout) as {
+      id: string;
+      provenance: string;
+      source: { kind: string; url?: string; capture?: string };
+    }[];
+
+    expect(parsed.length).toBeGreaterThan(100);
+    const cursorEvent = parsed.find((r) => r.id === "cursor.hook.unknown-event");
+    expect(cursorEvent?.provenance).toBe("spec-required");
+    expect(cursorEvent?.source.url).toBe("https://cursor.com/docs/hooks");
+    expect(cursorEvent?.source.capture).toBe("cursor-hooks.md");
+    // every rule, not just the ones with a page
+    expect(parsed.every((r) => r.source.kind === "spec" || r.source.kind === "derived")).toBe(true);
+  });
+
+  test("the plain listing shows provenance and source next to the id", async () => {
+    const dir = join(fixturesRoot, "clean-repo");
+    const result = await runRulesCommand({ dir });
+
+    expect(result.stdout).toMatch(/cursor\.hook\.unknown-event\s+spec-required\s+cursor\.com\/docs\/hooks/);
+    expect(result.stdout).toMatch(/mcp\.command-missing\s+internal-consistency\s+\(cross-provider/);
+  });
 });

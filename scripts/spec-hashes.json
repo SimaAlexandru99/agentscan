@@ -71,6 +71,10 @@
     "hash": "adbfe6aef830928c",
     "recorded": "2026-09-02"
   },
+  "https://cursor.com/docs/hooks": {
+    "hash": "302e97ef1933578e",
+    "recorded": "2026-09-03"
+  },
   "https://cursor.com/docs/rules": {
     "hash": "8a80707a4e9c528c",
     "recorded": "2026-09-02"
@@ -130,6 +134,14 @@
   "https://docs.x.ai/build/features/subagents": {
     "hash": "77738a57ab6847fa",
     "recorded": "2026-09-02"
+  },
+  "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md": {
+    "hash": "2d6fcfe7e08190f7",
+    "recorded": "2026-09-03"
+  },
+  "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md": {
+    "hash": "9ca6653bf30f06e5",
+    "recorded": "2026-09-03"
   },
   "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md": {
     "hash": "e06f5d588af70902",

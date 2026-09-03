@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [{ "command": ".cursor/hooks/session-init.sh" }],
+    "sessionEnd": [{ "command": ".cursor/hooks/audit.sh" }],
+    "preToolUse": [
+      { "command": ".cursor/hooks/validate-tool.sh", "matcher": "Shell|Read|Write" }
+    ],
+    "postToolUse": [{ "command": ".cursor/hooks/audit-tool.sh" }],
+    "subagentStart": [{ "command": ".cursor/hooks/validate-subagent.sh" }],
+    "subagentStop": [{ "command": ".cursor/hooks/audit-subagent.sh" }],
+    "beforeShellExecution": [{ "command": ".cursor/hooks/script.sh" }],
+    "afterShellExecution": [{ "command": ".cursor/hooks/script.sh" }],
+    "afterMCPExecution": [{ "command": ".cursor/hooks/script.sh" }],
+    "afterFileEdit": [{ "command": ".cursor/hooks/format.sh" }],
+    "preCompact": [{ "command": ".cursor/hooks/audit.sh" }],
+    "stop": [{ "command": ".cursor/hooks/audit.sh", "loop_limit": 10 }],
+    "beforeTabFileRead": [{ "command": ".cursor/hooks/redact-secrets-tab.sh" }],
+    "afterTabFileEdit": [{ "command": ".cursor/hooks/format-tab.sh" }],
+    "workspaceOpen": [{ "command": ".cursor/hooks/register-workspace-plugins.sh" }]
+  }
+}

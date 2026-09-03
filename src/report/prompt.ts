@@ -1,4 +1,5 @@
 import { basename } from "node:path";
+import { provenanceLine } from "./provenance-line";
 import type { Facts, Finding, Severity } from "../facts/types";
 import { safe } from "./safe";
 import { score } from "./score";
@@ -64,6 +65,13 @@ export function renderPrompt(args: {
       }
       for (const e of f.evidence) {
         lines.push(`  - ${safe(e.kind)}: \`${safe(e.value)}\``);
+      }
+      // A fixing agent gains the most from the page itself: it can read the
+      // rule's source before changing the config the rule is about.
+      if (f.source.kind === "spec") {
+        lines.push(`  - Source: ${safe(f.source.url)} (${f.provenance}, read ${f.lastVerified})`);
+      } else {
+        lines.push(`  - Source: ${safe(provenanceLine(f))}`);
       }
       lines.push(`  - Finding id: \`${safe(f.id)}\``);
       lines.push("");

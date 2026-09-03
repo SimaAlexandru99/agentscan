@@ -261,6 +261,14 @@ export const SPEC_SURFACES: SpecSurface[] = [
     url: "https://cursor.com/docs/context/mcp",
   },
   {
+    provider: "cursor",
+    surface: "hooks",
+    lastVerified: "2026-09-03",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://cursor.com/docs/hooks",
+  },
+  {
     provider: "antigravity",
     surface: "mcp",
     lastVerified: "2026-09-03",
@@ -275,6 +283,22 @@ export const SPEC_SURFACES: SpecSurface[] = [
     sourceType: "official",
     stalenessRisk: "high",
     url: "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md",
+  },
+  {
+    provider: "gemini",
+    surface: "hooks",
+    lastVerified: "2026-09-03",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md",
+  },
+  {
+    provider: "gemini",
+    surface: "hooks",
+    lastVerified: "2026-09-03",
+    sourceType: "official",
+    stalenessRisk: "high",
+    url: "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md",
   },
   {
     provider: "opencode",

@@ -52,7 +52,9 @@ to appear in real projects.** When adding a check:
 | [vscode-hooks.md](vscode-hooks.md) | Native VS Code `.github/hooks/*.json`, eight events, command-only | `vscode.hook.*` |
 | [copilot-hooks.md](copilot-hooks.md) | Copilot CLI `version: 1` files; inline settings `hooks`; camelCase events; bash/powershell | `copilot.hook.*` |
 | [cursor-rules.md](cursor-rules.md) | `.cursor/rules/**/*.mdc` under 500 lines | `cursor.rule.too-large` |
+| [cursor-hooks.md](cursor-hooks.md) | `.cursor/hooks.json`; 21 camelCase events; optional `type`, required `command` | `cursor.hook.*` |
 | [gemini-mcp.md](gemini-mcp.md) | `.gemini/settings.json` launch fields; underscore alias warning | `gemini.mcp.no-launch`, `gemini.mcp.underscore-alias` |
+| [gemini-hooks.md](gemini-hooks.md) | `.gemini/settings.json` `hooks`; 11 events; required `type: command`; `$GEMINI_PROJECT_DIR` | `gemini.hook.*` |
 | [opencode-mcp.md](opencode-mcp.md) | `opencode.json(c)` V1 vs V2; command must be an array | `opencode.mcp.*` |
 | [continue-mcp.md](continue-mcp.md) | `.continue/config.yaml` and standalone YAML block metadata | `continue.mcp.no-launch`, `continue.mcp.missing-block-metadata` |
 | [cursor-skills.md](cursor-skills.md) | Nested `.cursor/skills` / `.agents/skills` Agent Skills contract | `agent-skills.skill.*` |
@@ -154,3 +156,13 @@ false-positive check. `spec:check` reported Codex MCP and Gemini MCP hash
 drift only; both pages grew optional fields / sanitization prose. Launch
 contracts and hook-event lists are unchanged. The two hashes were recaptured
 after that re-read.
+
+## Rule to source, machine-readable
+
+Every entry in `src/checks/registry.ts` names the capture it rests on
+(`source.capture`) and that capture's `**Source:**` URL (`source.url`), or
+declares `{ kind: "derived" }` when no vendor page asserts the rule.
+`tests/unit/rule-sources.test.ts` keeps the two in step: the capture must exist,
+must name the rule, must agree on the `**Read:**` date, and the URL must be one
+`SPEC_SURFACES` watches — so every source `agentscan` prints to a user is a page
+`bun run spec:check` re-fetches and hash-compares.

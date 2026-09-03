@@ -1,3 +1,5 @@
 [test]
 # CLI suite only. Marketing-site tests run from site/ via `bun test` there.
 root = "tests"
+# Clear provider home env overrides so homedir() mocks are not shadowed.
+preload = ["./tests/helpers/env.ts"]
