@@ -25,11 +25,11 @@ to appear in real projects.** When adding a check:
 |------|--------|--------------------------|
 | [check-inventory.md](check-inventory.md) | All 99 checks re-read against their source pages on 2026-09-02; per-check verdict; the 7 false positives corrected | audit record for every id |
 | [hook-events.md](hook-events.md) | The 33 dispatched Claude hook event names; required `type`; command/http/mcp_tool/prompt fields; event/handler compatibility | `claude.hook.unknown-event`, `claude.hook.unknown-handler-type`, `claude.hook.command-without-command`, `claude.hook.http-without-url`, `claude.hook.mcp-tool-without-server-or-tool`, `claude.hook.prompt-without-prompt`, `claude.hook.incompatible-handler` |
-| [hook-sources.md](hook-sources.md) | Where a hook can be registered and how script paths resolve | `claude.hook.missing-script`, `claude.hook.unknown-event` |
-| [skills.md](skills.md) | Claude Code SKILL.md frontmatter; first-paragraph fallback; listing budget | `claude.skill.missing-frontmatter`, `claude.skill.missing-description`, `skill.description-budget` |
+| [hook-sources.md](hook-sources.md) | Where a hook can be registered and how script paths resolve; `--global` user settings; command-file hooks | `claude.hook.missing-script`, `claude.hook.unknown-event` |
+| [skills.md](skills.md) | Claude Code SKILL.md frontmatter; first-paragraph fallback; listing budget; `.claude/commands`; in-tree plugin skills | `claude.skill.missing-frontmatter`, `claude.skill.missing-description`, `skill.description-budget` |
 | [agent-skills.md](agent-skills.md) | Portable Agent Skills required and optional constrained fields | `agent-skills.skill.*` |
 | [agents.md](agents.md) | Claude subagent frontmatter; letters-and-hyphens names; filename is not compared | every `claude.agent.*` check |
-| [mcp.md](mcp.md) | Claude MCP shape and transports; reserved names; `.mcp.json` is shared; headers/auth literals | `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.command-missing`, `mcp.literal-credential` |
+| [mcp.md](mcp.md) | Claude MCP shape and transports; reserved names; `.mcp.json` is shared; `--global` `~/.claude.json` user + matching local `mcpServers`; headers/auth literals | `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.command-missing`, `mcp.literal-credential` |
 | [commandcode-mcp.md](commandcode-mcp.md) | Command Code `transport` / `type` alias; shared `.mcp.json` | `commandcode.mcp.*` |
 | [commandcode-settings.md](commandcode-settings.md) | Settings layers, inline `mcp.servers`, files never to read | discovery |
 | [commandcode-hooks.md](commandcode-hooks.md) | Four events, command handlers, timeout 0–600 | `commandcode.hook.*` |
@@ -44,8 +44,8 @@ to appear in real projects.** When adding a check:
 | [codex-mcp.md](codex-mcp.md) | Codex `[mcp_servers.*]` TOML; user file under `--global` | `codex.mcp.no-launch` |
 | [thresholds.md](thresholds.md) | Every numeric threshold and its evidence | all `budget.*`, `skill.description-budget`, `codex.budget.instructions`, `cursor.rule.too-large`, `agent-skills.skill.body-too-large` |
 | [agents-md.md](agents-md.md) | Portable AGENTS.md — no required fields, nested nearest-wins | discovery; `budget.agents-md` stays heuristic |
-| [claude-memory.md](claude-memory.md) | Walk-up `CLAUDE.md` / `.claude/CLAUDE.md` and `.claude/rules` | `budget.claude-md` |
-| [claude-subagents.md](claude-subagents.md) | Walk-up `.claude/agents`; duplicates per directory | `claude.agent.duplicate-name` scope |
+| [claude-memory.md](claude-memory.md) | Walk-up `CLAUDE.md` / `.claude/CLAUDE.md` and `.claude/rules`; `--global` user memory | `budget.claude-md` |
+| [claude-subagents.md](claude-subagents.md) | Walk-up `.claude/agents`; `--global` `~/.claude/agents`; duplicates per directory | `claude.agent.duplicate-name` scope |
 | [codex-agents-md.md](codex-agents-md.md) | Codex chain knobs and 32 KiB cap | `codex.budget.instructions` |
 | [vscode-instructions.md](vscode-instructions.md) | `.github/copilot-instructions.md` and `*.instructions.md` | discovery only |
 | [vscode-agents.md](vscode-agents.md) | `.github/agents`; name defaults to filename | do not emit `claude.agent.*` |

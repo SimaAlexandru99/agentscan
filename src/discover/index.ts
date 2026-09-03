@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import type { AgentscanConfig } from "../config/schema";
+import { claudeConfigDir } from "../facts/claude";
 import { grokHomeDir } from "../facts/grok";
 import type {
   ConfigErrorFact,
@@ -10,6 +11,7 @@ import type {
   SkillFact,
 } from "../facts/types";
 import { discoverAgents } from "./agents";
+import { discoverClaudeCommands } from "./claude";
 import { discoverCodexUserMcp } from "./codex";
 import {
   applyCommandcodeAgentPrecedence,
@@ -30,6 +32,7 @@ import {
 } from "./commandcode";
 import { applyGrokMcpPrecedence, discoverGrokUserMcp } from "./grok";
 import {
+  discoverClaudeUserHooks,
   discoverCopilotSettingsHooks,
   discoverCopilotUserHooks,
   discoverCopilotUserSettingsHooks,
@@ -37,10 +40,10 @@ import {
   discoverHooks,
   discoverVscodeHooks,
 } from "./hooks";
-import { discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
-import { discoverPluginHooks } from "./plugins";
+import { discoverClaudeUserMcp, discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
+import { discoverPluginHooks, discoverPluginSurfaces, findPluginRoots } from "./plugins";
 import { discoverPolicyFiles, discoverSkillsLocks, resolveCodexProjectRoot } from "./policy";
-import { discoverNestedWindsurfRules, discoverRules } from "./rules";
+import { discoverClaudeUserRules, discoverNestedWindsurfRules, discoverRules } from "./rules";
 import {
   discoverWindsurfHooksFile,
   discoverWindsurfUserMcp,
@@ -62,7 +65,9 @@ export { discoverMcp, mcpCommandPath } from "./mcp";
 export { skillReferences } from "./skills";
 
 function mcpKey(fact: McpFact): string {
-  return `${fact.name}@${fact.path}${fact.platform === undefined ? "" : `:${fact.platform}`}`;
+  const platform = fact.platform === undefined ? "" : `:${fact.platform}`;
+  const layer = fact.claudeMcpLayer === undefined ? "" : `:${fact.claudeMcpLayer}`;
+  return `${fact.name}@${fact.path}${platform}${layer}`;
 }
 
 function uniqueRules(facts: RuleFact[]): RuleFact[] {
@@ -156,7 +161,7 @@ export function discoverAgentSurface(
   if (opts.includeGlobal) {
     const home = homedir();
     const globalSkillDirs = [
-      join(home, ".claude", "skills"),
+      join(claudeConfigDir(), "skills"),
       join(home, ".codex", "skills"),
       join(home, ".commandcode", "skills"),
       join(home, ".agents", "skills"),
@@ -235,7 +240,24 @@ export function discoverAgentSurface(
   }
   rules.push(...discoverNestedWindsurfRules(scanBoundary, configErrors));
   mcp.push(...discoverNestedContinueMcp(scanBoundary, configErrors, mcpSeen));
-  hooks.push(...discoverPluginHooks(scanBoundary, configErrors));
+  const pluginRoots = findPluginRoots(scanBoundary, configErrors);
+  hooks.push(...discoverPluginHooks(scanBoundary, configErrors, pluginRoots));
+  const pluginSurfaces = discoverPluginSurfaces(
+    scanBoundary,
+    configErrors,
+    configuredRoots,
+    pluginRoots,
+  );
+  skills.push(...pluginSurfaces.skills);
+  agents.push(...pluginSurfaces.agents);
+  for (const fact of pluginSurfaces.mcp) {
+    const key = mcpKey(fact);
+    if (mcpSeen.has(key)) {
+      continue;
+    }
+    mcpSeen.add(key);
+    mcp.push(fact);
+  }
   hooks.push(...discoverCommandcodeHooks(commandcodeProjectRoot, ccLayers, configErrors));
   for (const fact of discoverCommandcodeInlineMcp(commandcodeProjectRoot, ccLayers, configErrors)) {
     const key = mcpKey(fact);
@@ -246,9 +268,18 @@ export function discoverAgentSurface(
     mcp.push(fact);
   }
   if (opts.includeGlobal) {
+    hooks.push(...discoverClaudeUserHooks(root, configErrors));
     hooks.push(...discoverCopilotUserHooks(configErrors));
     hooks.push(...discoverCopilotUserSettingsHooks(configErrors));
     hooks.push(...discoverGrokHooks(join(grokHomeDir(), "hooks"), grokHomeDir(), configErrors));
+    for (const fact of discoverClaudeUserMcp(configErrors, [root, startDir, scanBoundary])) {
+      const key = mcpKey(fact);
+      if (mcpSeen.has(key)) {
+        continue;
+      }
+      mcpSeen.add(key);
+      mcp.push(fact);
+    }
     for (const fact of discoverGrokUserMcp(configErrors)) {
       const key = mcpKey(fact);
       if (mcpSeen.has(key)) {
@@ -281,6 +312,7 @@ export function discoverAgentSurface(
       mcpSeen.add(key);
       mcp.push(fact);
     }
+    rules.push(...discoverClaudeUserRules(configErrors));
     rules.push(...discoverWindsurfUserRules(configErrors));
     const userWindsurfHooks = windsurfUserHooksPath();
     hooks.push(
@@ -293,17 +325,22 @@ export function discoverAgentSurface(
   }
   applyCommandcodeMcpPrecedence(mcp, commandcodeProjectRoot);
   applyGrokMcpPrecedence(mcp, startDir);
-  const slashCommands = discoverCommandcodeCommands(
-    commandcodeProjectRoot,
-    opts.includeGlobal,
-    configErrors,
-  );
+  const slashCommands = [
+    ...discoverCommandcodeCommands(
+      commandcodeProjectRoot,
+      opts.includeGlobal,
+      configErrors,
+    ),
+    ...discoverClaudeCommands(startDir, scanBoundary, opts.includeGlobal, root, configErrors),
+    ...pluginSurfaces.commands,
+  ];
   const mods = discoverCommandcodeMods(ccLayers);
   const winningModel = winningCommandcodeModel(ccLayers);
   const allHooks = [
     ...hooks,
     ...skills.flatMap((s) => s.frontmatterHooks ?? []),
     ...agents.flatMap((a) => a.frontmatterHooks ?? []),
+    ...slashCommands.flatMap((command) => command.frontmatterHooks ?? []),
   ];
   applyCommandcodeHookPrecedence(allHooks);
 

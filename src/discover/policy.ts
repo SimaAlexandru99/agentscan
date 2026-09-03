@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
+import { claudeConfigDir } from "../facts/claude";
 import type { Provider } from "../facts/provider";
 import type { ConfigErrorFact, LockedSkillFact, PolicyFileFact } from "../facts/types";
 import {
@@ -324,6 +325,15 @@ export function discoverPolicyFiles(
       readPolicyFile(join(homedir(), ".commandcode", "AGENTS.md"), errors, {
         sourceProvider: "commandcode",
         kind: "agents-md",
+        startDir: start,
+      }),
+    );
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(join(claudeConfigDir(), "CLAUDE.md"), errors, {
+        sourceProvider: "claude",
+        kind: "claude-md",
         startDir: start,
       }),
     );

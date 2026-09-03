@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { claudeConfigDir } from "../facts/claude";
 import type { AgentFact, ConfigErrorFact } from "../facts/types";
 import { discoverCommandcodeAgents } from "./commandcode";
 import { ancestorDirsInclusive } from "./shared";
@@ -45,6 +46,7 @@ function readClaudeAgent(
   root: string,
   namespace: string,
   errors: ConfigErrorFact[],
+  includeFrontmatterHooks = true,
 ): AgentFact {
   const fm = readFrontmatter(filePath, errors);
   const fact: AgentFact = {
@@ -68,7 +70,7 @@ function readClaudeAgent(
   if (fm.description !== undefined) {
     fact.description = fm.description;
   }
-  if (fm.hooks !== undefined) {
+  if (includeFrontmatterHooks && fm.hooks !== undefined) {
     const hooks = hooksFromObject(fm.hooks, filePath, "agent", {
       project: root,
       own: dirname(filePath),
@@ -80,10 +82,16 @@ function readClaudeAgent(
   return fact;
 }
 
-function discoverClaudeAgentsDir(
+/**
+ * Recursive `.md` under a Claude `agents/` directory.
+ * Plugin agents omit frontmatter hooks — Claude ignores those fields.
+ * See docs/spec/claude-subagents.md.
+ */
+export function discoverClaudeAgentsDir(
   dir: string,
   root: string,
   errors: ConfigErrorFact[],
+  includeFrontmatterHooks = true,
 ): AgentFact[] {
   if (!existsSync(dir)) {
     return [];
@@ -103,7 +111,7 @@ function discoverClaudeAgentsDir(
     } catch {
       continue;
     }
-    facts.push(readClaudeAgent(filePath, name, root, dir, errors));
+    facts.push(readClaudeAgent(filePath, name, root, dir, errors, includeFrontmatterHooks));
   }
   return facts;
 }
@@ -205,5 +213,8 @@ export function discoverAgents(
     facts.push(...discoverVscodeAgents(dir, errors));
   }
   facts.push(...discoverCommandcodeAgents(commandcodeProjectRoot, includeGlobal, errors));
+  if (includeGlobal) {
+    facts.push(...discoverClaudeAgentsDir(join(claudeConfigDir(), "agents"), root, errors));
+  }
   return facts;
 }

@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
+import { claudeConfigDir } from "../facts/claude";
 import { parse as parseYaml } from "yaml";
 import type { Provider } from "../facts/provider";
 import type { ConfigErrorFact, RuleFact, WindsurfRuleScope } from "../facts/types";
@@ -194,6 +195,14 @@ export function discoverNestedWindsurfRules(
  * Only the quoted global file. Do not glob `~/.codeium/windsurf/memories/`.
  * See docs/spec/windsurf-rules.md.
  */
+/**
+ * User `~/.claude/rules/` (or `$CLAUDE_CONFIG_DIR/rules`). `--global` only.
+ * See docs/spec/claude-memory.md.
+ */
+export function discoverClaudeUserRules(errors: ConfigErrorFact[]): RuleFact[] {
+  return collectMdRules(join(claudeConfigDir(), "rules"), "claude", errors);
+}
+
 export function discoverWindsurfGlobalRules(
   filePath: string,
   errors: ConfigErrorFact[],

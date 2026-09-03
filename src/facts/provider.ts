@@ -191,6 +191,9 @@ export function mcpProfileFromPath(filePath: string): McpSchemaProfile {
   ) {
     return "windsurf-json";
   }
+  if (/(?:^|\/)\.claude\.json$/.test(normalized)) {
+    return "claude-json";
+  }
   return "claude-json";
 }
 

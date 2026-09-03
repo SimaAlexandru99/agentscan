@@ -1,7 +1,7 @@
 # MCP configuration
 
 **Source:** https://code.claude.com/docs/en/mcp
-**Read:** 2026-09-02
+**Read:** 2026-09-03
 **Depends on it:** `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.hardcoded-secret`, `mcp.literal-env`, `mcp.literal-credential`, `mcp.command-missing`
 
 ## Shared path `.mcp.json`
@@ -58,6 +58,32 @@ Quoted (read 2026-09-02):
 > for `http`. The MCP specification uses the name `streamable-http` for this
 > transport, so configurations copied from server documentation work without
 > modification.
+
+agentscan opens `~/.claude.json` only under `--global` / `includeGlobal`.
+It reads top-level `mcpServers` (user scope) and, when present,
+`projects.<path>.mcpServers` (local scope) only for keys that normalize
+to the scanned project root, start directory, or scan boundary. Other
+projects' local servers stay unread. If both keys are absent the file
+is ignored — it is a mixed user file, not an MCP-only document, and a
+missing `mcpServers` is not `config.unreadable`. Same-name servers in
+project `.mcp.json`, user scope, and matching local scope are all
+inventoried (`claudeMcpLayer` distinguishes the home-file layers); the
+page does not quote a replace rule.
+
+Quoted (read 2026-09-03):
+
+> Local scope is the default. A local-scoped server loads only in the
+> project where you added it and stays private to you. Claude Code stores
+> it in `~/.claude.json` under that project's path, so the same server
+> won't appear in your other projects.
+
+> Your configuration directory, `~/.claude` unless you set
+> `CLAUDE_CONFIG_DIR`
+
+`CLAUDE_CONFIG_DIR` relocates the `~/.claude` directory (settings, skills,
+agents, memory, rules, commands). `~/.claude.json` stays
+`join(homedir(), ".claude.json")` — the page names that file separately
+in the home directory.
 
 `CLAUDE_MCP_TRANSPORTS` therefore includes `streamable-http`. Before
 2026-09-02 it did not, and a shared `.mcp.json` entry with

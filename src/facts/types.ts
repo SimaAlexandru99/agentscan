@@ -159,6 +159,12 @@ export type McpFact = {
    * file. Unset means this is not a Grok-ranked MCP source.
    */
   grokEffective?: boolean;
+  /**
+   * Claude `~/.claude.json` layer. Top-level `mcpServers` is user scope;
+   * `projects.<path>.mcpServers` is local scope for one project.
+   * Same-name user and local entries stay distinct. See docs/spec/mcp.md.
+   */
+  claudeMcpLayer?: "user" | "local";
 };
 
 export type HookFact = {
@@ -245,12 +251,14 @@ export type AgentFact = {
   commandcodeEffective?: boolean;
 };
 
-/** Custom slash command markdown. Inventory only for Command Code. */
+/** Custom slash command markdown. Inventory for Command Code and Claude. */
 export type SlashCommandFact = {
   name: string;
   path: string;
   source: "project" | "global";
   sourceProvider: Provider;
+  /** Claude command files use the skill hook shape. See docs/spec/skills.md. */
+  frontmatterHooks?: HookFact[];
 };
 
 /** Declared mod path. Experimental inventory — never executed. */

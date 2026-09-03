@@ -151,7 +151,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "claude",
     surface: "agents",
-    lastVerified: "2026-09-02",
+    lastVerified: "2026-09-03",
     sourceType: "official",
     stalenessRisk: "medium",
     url: "https://code.claude.com/docs/en/sub-agents",

@@ -1,7 +1,7 @@
 # Skills — SKILL.md frontmatter
 
 **Source:** https://code.claude.com/docs/en/skills
-**Read:** 2026-09-02
+**Read:** 2026-09-03
 **Depends on it:** `claude.skill.missing-frontmatter`, `claude.skill.missing-description`,
 `skill.description-budget`
 
@@ -57,6 +57,36 @@ This is **not** applied to Agent Skills schema profiles. See
 | Nested `.claude/skills/`, on a clash | subdirectory path, then the directory name |
 | Plugin `skills/<dir>/SKILL.md` | frontmatter `name` **or** the directory name, namespaced by plugin |
 | Plugin root `SKILL.md` | frontmatter `name`, falling back to the plugin directory name |
+| `.claude/commands/<file>.md` | **the file name** (frontmatter `name` is ignored) |
+
+## Command files
+
+Quoted (read 2026-09-03):
+
+> Custom commands have been merged into skills. A file at
+> `.claude/commands/deploy.md` and a skill at `.claude/skills/deploy/SKILL.md`
+> both create `/deploy` and work the same way.
+
+> Files in `.claude/commands/` support the same frontmatter, except `name`
+> and `paths`, which Claude Code ignores in a command file. You invoke a
+> command file by its file name.
+
+agentscan inventories walk-up `.claude/commands/*.md` as slash commands
+(`sourceProvider: "claude"`). Frontmatter `hooks` use `source: "skill"`.
+User `~/.claude/commands/` (or `$CLAUDE_CONFIG_DIR/commands`) is opened
+only under `--global`. In-tree plugin `commands/` is the same flat-markdown
+shape. Marketplace `~/.claude/plugins` stays unread.
+
+## In-tree plugin skills
+
+Quoted from the plugins reference (already cited in hook-sources.md):
+
+> Skills live in the `skills/` directory. […] A plugin that ships exactly
+> one skill can place `SKILL.md` directly at the plugin root.
+
+agentscan reads those two layouts on in-tree plugin roots (a
+`.claude-plugin/plugin.json` or a `hooks/hooks.json` scan-root plugin).
+`sourceProvider` is `claude`.
 
 ## Two checks this killed
 

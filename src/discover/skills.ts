@@ -290,6 +290,23 @@ function skillFactFromDir(
   return fact;
 }
 
+/**
+ * One directory that is itself a skill (`SKILL.md` at `skillDir`).
+ * Used for a plugin-root `SKILL.md`. See docs/spec/skills.md.
+ */
+export function discoverSkillAtDir(
+  skillDir: string,
+  source: "project" | "global",
+  errors: ConfigErrorFact[],
+  root: string,
+): SkillFact | undefined {
+  const skillMd = join(skillDir, "SKILL.md");
+  if (!isFile(skillMd)) {
+    return undefined;
+  }
+  return skillFactFromDir(skillDir, source, skillDir, errors, root, { hasSkillMd: true });
+}
+
 export function discoverSkillsInDir(
   dir: string,
   source: "project" | "global",
