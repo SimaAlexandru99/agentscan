@@ -186,13 +186,13 @@ plan DONE only after gates pass.
 
 ## Done criteria
 
-- [ ] Local MCP only for matching scanned paths
-- [ ] `CLAUDE_CONFIG_DIR` does not relocate `~/.claude.json`
-- [ ] Plugin agent frontmatter hooks are not findings
-- [ ] Marketplace plugins and managed policy stay unread
-- [ ] No new check id; version stays 1.4.0
-- [ ] `defaultConfig.mcpPaths` unchanged
-- [ ] `bun test`, `typecheck`, `build` exit 0
+- [x] Local MCP only for matching scanned paths
+- [x] `CLAUDE_CONFIG_DIR` does not relocate `~/.claude.json`
+- [x] Plugin agent frontmatter hooks are not findings
+- [x] Marketplace plugins and managed policy stay unread
+- [x] No new check id; version stays 1.4.0
+- [x] `defaultConfig.mcpPaths` unchanged
+- [x] `bun test`, `typecheck`, `build` exit 0
 
 ## STOP conditions
 
