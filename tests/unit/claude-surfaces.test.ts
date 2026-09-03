@@ -196,7 +196,7 @@ describe("Claude user agents, memory, rules, and commands", () => {
       const without = findingsFor(root, false);
       expect(without.facts.agents.some((a) => a.path.includes(tmpHome))).toBe(false);
       expect(without.facts.policyFiles.some((p) => p.path.includes(tmpHome))).toBe(false);
-      expect(without.facts.rules.some((r) => r.path.includes(tmpHome))).toBe(false);
+      expect((without.facts.rules ?? []).some((r) => r.path.includes(tmpHome))).toBe(false);
       expect((without.facts.slashCommands ?? []).some((c) => c.path.includes(tmpHome))).toBe(false);
 
       const { facts } = findingsFor(root, true);
@@ -208,7 +208,7 @@ describe("Claude user agents, memory, rules, and commands", () => {
           (p) => p.kind === "claude-md" && p.path === join(tmpHome, ".claude", "CLAUDE.md"),
         ),
       ).toBe(true);
-      expect(facts.rules.some((r) => r.path === join(tmpHome, ".claude", "rules", "style.md"))).toBe(
+      expect((facts.rules ?? []).some((r) => r.path === join(tmpHome, ".claude", "rules", "style.md"))).toBe(
         true,
       );
       const ping = (facts.slashCommands ?? []).find((c) => c.name === "ping");
