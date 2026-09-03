@@ -18,10 +18,18 @@ intermediate commit that this train does not cut.
   `${CLAUDE_PROJECT_DIR}` resolves against the scanned project. Same-event
   user and project hooks coexist. Managed policy and marketplace plugins
   stay unread.
-- Claude user `~/.claude.json` MCP under `--global` / `includeGlobal`,
-  top-level `mcpServers` only. Absent `mcpServers` is not
-  `config.unreadable`. Same-name project and user servers are both
-  inventoried.
+- Claude user `~/.claude.json` MCP under `--global` / `includeGlobal`:
+  top-level `mcpServers` (user) and matching
+  `projects.<scanned-path>.mcpServers` (local). Absent keys are not
+  `config.unreadable`. Same-name project, user, and local servers are
+  all inventoried. Other projects' local servers stay unread.
+- Claude `--global` user agents, `CLAUDE.md`, rules, and commands
+  (`$CLAUDE_CONFIG_DIR` or `~/.claude`). `CLAUDE_CONFIG_DIR` relocates
+  that directory; `~/.claude.json` stays in the home directory.
+- Project `.claude/commands/*.md` inventoried as Claude slash commands;
+  frontmatter hooks use the skill source. In-tree plugin `skills/`,
+  root `SKILL.md`, `agents/` (no frontmatter hooks), `commands/`, and
+  `.mcp.json` (`claude-json`). Marketplace plugins stay unread.
 
 ## 1.4.0 — 2026-09-02
 

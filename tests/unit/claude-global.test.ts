@@ -141,6 +141,7 @@ describe("Claude user hooks and MCP are --global only", () => {
       expect(user).toBeDefined();
       expect(user!.schemaProfile).toBe("claude-json");
       expect(user!.consumedBy).toContain("claude");
+      expect(user!.claudeMcpLayer).toBe("user");
       expect(user!.path).toBe(join(tmpHome, ".claude.json"));
       expect(findings.map((f) => f.ruleId)).toContain("claude.mcp.url-without-type");
     } finally {

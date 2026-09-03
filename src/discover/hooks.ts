@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
+import { claudeConfigDir } from "../facts/claude";
 import {
   COMMANDCODE_HOOK_HANDLER_TYPES,
   COMMANDCODE_HOOK_TIMEOUT_MAX,
@@ -739,7 +740,7 @@ export function discoverClaudeUserHooks(
   errors: ConfigErrorFact[],
 ): HookFact[] {
   return claudeSettingsHooksFromFile(
-    join(homedir(), ".claude", "settings.json"),
+    join(claudeConfigDir(), "settings.json"),
     projectRoot,
     errors,
   );

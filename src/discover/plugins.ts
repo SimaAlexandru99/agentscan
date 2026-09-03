@@ -1,12 +1,23 @@
 import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-import type { ConfigErrorFact, HookFact } from "../facts/types";
+import { join, resolve } from "node:path";
+import type {
+  AgentFact,
+  ConfigErrorFact,
+  HookFact,
+  McpFact,
+  SkillFact,
+  SlashCommandFact,
+} from "../facts/types";
+import { discoverClaudeAgentsDir } from "./agents";
+import { discoverClaudeCommandsInDir } from "./claude";
 import { hooksFromObject } from "./hooks";
+import { parseClaudePluginMcpFile } from "./mcp";
 import {
   NESTED_DISCOVERY_MAX_DEPTH,
   NESTED_DISCOVERY_SKIP,
   readJsonConfig,
 } from "./shared";
+import { discoverSkillAtDir, discoverSkillsInDir } from "./skills";
 
 /**
  * Plugin roots inside the scanned tree.
@@ -79,9 +90,10 @@ export function findPluginRoots(
 export function discoverPluginHooks(
   root: string,
   errors: ConfigErrorFact[],
+  pluginRoots = findPluginRoots(root, errors),
 ): HookFact[] {
   const facts: HookFact[] = [];
-  for (const pluginRoot of findPluginRoots(root, errors)) {
+  for (const pluginRoot of pluginRoots) {
     const filePath = join(pluginRoot, "hooks", "hooks.json");
     if (!existsSync(filePath)) {
       continue;
@@ -113,4 +125,46 @@ export function discoverPluginHooks(
     );
   }
   return facts;
+}
+
+function asClaudeSkill(skill: SkillFact): SkillFact {
+  return skill.sourceProvider === "unknown" ? { ...skill, sourceProvider: "claude" } : skill;
+}
+
+/**
+ * In-tree plugin skills, agents, commands, and `.mcp.json`.
+ * Marketplace `~/.claude/plugins` is not walked. Plugin agent frontmatter
+ * hooks are ignored — Claude skips them. See docs/spec/hook-sources.md
+ * and docs/spec/skills.md.
+ */
+export function discoverPluginSurfaces(
+  root: string,
+  errors: ConfigErrorFact[],
+  configuredSkillRoots: Set<string>,
+  pluginRoots = findPluginRoots(root, errors),
+): { skills: SkillFact[]; agents: AgentFact[]; mcp: McpFact[]; commands: SlashCommandFact[] } {
+  const skills: SkillFact[] = [];
+  const agents: AgentFact[] = [];
+  const mcp: McpFact[] = [];
+  const commands: SlashCommandFact[] = [];
+  for (const pluginRoot of pluginRoots) {
+    const skillsDir = resolve(join(pluginRoot, "skills"));
+    if (!configuredSkillRoots.has(skillsDir)) {
+      configuredSkillRoots.add(skillsDir);
+      skills.push(
+        ...discoverSkillsInDir(join(pluginRoot, "skills"), "project", errors, root).map(asClaudeSkill),
+      );
+    }
+    const rootSkill = discoverSkillAtDir(pluginRoot, "project", errors, root);
+    if (rootSkill !== undefined) {
+      skills.push(asClaudeSkill(rootSkill));
+    }
+    agents.push(...discoverClaudeAgentsDir(join(pluginRoot, "agents"), root, errors, false));
+    commands.push(...discoverClaudeCommandsInDir(join(pluginRoot, "commands"), "project", root, errors));
+    const mcpFile = join(pluginRoot, ".mcp.json");
+    if (existsSync(mcpFile)) {
+      mcp.push(...parseClaudePluginMcpFile(mcpFile, root, errors));
+    }
+  }
+  return { skills, agents, mcp, commands };
 }

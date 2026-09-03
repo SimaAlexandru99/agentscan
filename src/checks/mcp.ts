@@ -287,9 +287,16 @@ function claudeUrlNeedsType(server: McpFact): boolean {
   return false;
 }
 
+function mcpSubject(server: McpFact): string {
+  const layer = server.claudeMcpLayer === undefined ? "" : `:${server.claudeMcpLayer}`;
+  const platform = server.platform === undefined ? "" : `:${server.platform}`;
+  return `mcp:${server.name}@${server.path}${layer}${platform}`;
+}
+
 export function checkMcp(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const server of facts.mcp) {
+    const subject = mcpSubject(server);
     const shadowed =
       isShadowedCommandcode(server.commandcodeEffective) || isShadowedGrok(server.grokEffective);
     if (shadowed) {
@@ -303,7 +310,7 @@ export function checkMcp(facts: Facts): Finding[] {
     } else if (server.opencodeDefect !== undefined) {
       const defect = server.opencodeDefect;
       out.push(
-        make(openCodeDefectRule(defect), `mcp:${server.name}@${server.path}`, {
+        make(openCodeDefectRule(defect), subject, {
           action: "warn",
           severity: "error",
           message: openCodeDefectMessage(server, defect),
@@ -316,7 +323,7 @@ export function checkMcp(facts: Facts): Finding[] {
     } else if (server.commandcodeDefect !== undefined) {
       const defect = server.commandcodeDefect;
       out.push(
-        make(commandcodeDefectRule(defect), `mcp:${server.name}@${server.path}`, {
+        make(commandcodeDefectRule(defect), subject, {
           action: "warn",
           severity: "error",
           message: commandcodeDefectMessage(server, defect),
@@ -328,7 +335,7 @@ export function checkMcp(facts: Facts): Finding[] {
       );
     } else if (!isLaunchable(server)) {
       out.push(
-        make(noLaunchId(profileOf(server)), `mcp:${server.name}@${server.path}`, {
+        make(noLaunchId(profileOf(server)), subject, {
           action: "warn",
           severity: "error",
           message: noLaunchMessage(server),
@@ -342,9 +349,7 @@ export function checkMcp(facts: Facts): Finding[] {
 
     if (!shadowed && server.command !== undefined && server.commandExists === false) {
       out.push(
-        make("mcp.command-missing", `mcp:${server.name}@${server.path}${
-          server.platform === undefined ? "" : `:${server.platform}`
-        }`, {
+        make("mcp.command-missing", subject, {
           action: "warn",
           severity: "error",
           message: `MCP server "${server.name}" points at a command path that does not exist: ${server.command}`,
@@ -361,7 +366,7 @@ export function checkMcp(facts: Facts): Finding[] {
 
     if (!shadowed && claudeUrlNeedsType(server)) {
       out.push(
-        make("claude.mcp.url-without-type", `mcp:${server.name}@${server.path}`, {
+        make("claude.mcp.url-without-type", subject, {
           action: "warn",
           severity: "error",
           message: `MCP server "${server.name}" has a url but no transport type`,
@@ -379,7 +384,7 @@ export function checkMcp(facts: Facts): Finding[] {
       server.continueMissingMetadataKeys.length > 0
     ) {
       out.push(
-        make("continue.mcp.missing-block-metadata", `mcp:${server.name}@${server.path}`, {
+        make("continue.mcp.missing-block-metadata", subject, {
           action: "warn",
           severity: "error",
           message: `Continue YAML MCP block is missing ${server.continueMissingMetadataKeys.join(", ")}`,
@@ -396,7 +401,7 @@ export function checkMcp(facts: Facts): Finding[] {
 
     if (!shadowed && claudeConsumes(server) && CLAUDE_RESERVED_MCP_NAMES.has(server.name)) {
       out.push(
-        make("claude.mcp.reserved-name", `mcp:${server.name}@${server.path}`, {
+        make("claude.mcp.reserved-name", subject, {
           action: "warn",
           severity: "error",
           message: `MCP server "${server.name}" uses a reserved name that Claude skips`,
@@ -410,7 +415,7 @@ export function checkMcp(facts: Facts): Finding[] {
 
     if (!shadowed && profileOf(server) === "gemini-json" && server.name.includes("_")) {
       out.push(
-        make("gemini.mcp.underscore-alias", `mcp:${server.name}@${server.path}`, {
+        make("gemini.mcp.underscore-alias", subject, {
           action: "warn",
           severity: "warning",
           message: `Gemini MCP server alias "${server.name}" contains an underscore`,
@@ -425,7 +430,7 @@ export function checkMcp(facts: Facts): Finding[] {
     const hit = SECRET_PATTERNS.find((p) => p.re.test(redactInterpolated(server.raw)));
     if (hit !== undefined) {
       out.push(
-        make("security.hardcoded-secret", `mcp:${server.name}@${server.path}`, {
+        make("security.hardcoded-secret", subject, {
           action: "warn",
           severity: "error",
           message: `MCP server "${server.name}" contains what looks like a hardcoded credential (${hit.label})`,
@@ -441,7 +446,7 @@ export function checkMcp(facts: Facts): Finding[] {
 
     if (server.literalEnvKeys.length > 0) {
       out.push(
-        make("mcp.literal-env", `mcp:${server.name}@${server.path}`, {
+        make("mcp.literal-env", subject, {
           action: "warn",
           severity: "warning",
           message: `MCP server "${server.name}" has literal env values: ${server.literalEnvKeys.join(", ")}`,
@@ -459,7 +464,7 @@ export function checkMcp(facts: Facts): Finding[] {
     const credentialFields = server.literalCredentialFields ?? [];
     if (credentialFields.length > 0) {
       out.push(
-        make("mcp.literal-credential", `mcp:${server.name}@${server.path}`, {
+        make("mcp.literal-credential", subject, {
           action: "warn",
           severity: "warning",
           message: `MCP server "${server.name}" has literal credential fields: ${credentialFields.join(", ")}`,

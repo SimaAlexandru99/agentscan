@@ -26,11 +26,12 @@ Quoted:
 > - Subagent frontmatter - While that subagent is running
 
 agentscan reads the two project settings files, in-tree plugin
-`hooks/hooks.json`, and skill / subagent frontmatter. Under `--global` /
-`includeGlobal` it also reads `~/.claude/settings.json` (same Claude
-schema; `${CLAUDE_PROJECT_DIR}` resolves against the scanned project).
-Managed policy and marketplace plugins stay unread — see *Deliberately
-unread* below.
+`hooks/hooks.json`, skill / subagent / command-file frontmatter, and
+in-tree plugin `skills/` plus plugin-root `SKILL.md`. Under `--global` /
+`includeGlobal` it also reads `$CLAUDE_CONFIG_DIR/settings.json` or
+`~/.claude/settings.json` (same Claude schema; `${CLAUDE_PROJECT_DIR}`
+resolves against the scanned project). Managed policy and marketplace
+plugins stay unread — see *Deliberately unread* below.
 
 ## Plugin `hooks/hooks.json`
 
@@ -149,10 +150,11 @@ not evidence the checks are worthless.
 
 ## `--global` user settings
 
-`~/.claude/settings.json` is opened only with `--global` / `includeGlobal`,
-the same scoping as `~/.claude/skills`. Same-event hooks from user and
-project settings coexist — the page lists every location as a place a
-hook can be defined and does not say one replaces the other.
+`~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR/settings.json`) is
+opened only with `--global` / `includeGlobal`, the same scoping as
+user skills, agents, memory, rules, and commands. Same-event hooks from
+user and project settings coexist — the page lists every location as a
+place a hook can be defined and does not say one replaces the other.
 
 ## Deliberately unread
 
