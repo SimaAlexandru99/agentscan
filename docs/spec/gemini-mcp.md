@@ -1,7 +1,7 @@
 # Gemini CLI MCP
 
 **Source:** https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md
-**Read:** 2026-09-02
+**Read:** 2026-09-03
 **Depends on it:** `gemini.mcp.no-launch`, `gemini.mcp.underscore-alias`, `mcp.literal-env`
 
 ## Project file
@@ -48,5 +48,18 @@ Quoted warning (read 2026-08-31):
 
 `gemini.mcp.underscore-alias` is a vendor-recommendation **warning** when the
 alias contains `_`. It is not a load failure.
+
+## 2026-09-03 re-read
+
+The page hash moved. The launch contract is unchanged: required one of
+`command` / `url` / `httpUrl`; `$VAR` / `${VAR}` / `%VAR%` interpolation;
+underscore-alias warning still quoted.
+
+New prose is environment sanitization (host `*TOKEN*` / `*SECRET*` redacted
+unless listed in `env`) and an example that mentions `mcp_config.json` for
+“standard MCP clients or remote skills.” That is not a Gemini CLI project
+discovery path. Project config remains `.gemini/settings.json`. User
+`~/.gemini/settings.json` stays unread unless `--global` is wired for it
+(it is not). `~/.gemini/mcp-oauth-tokens.json` is never opened.
 
 ## Staleness risk: HIGH

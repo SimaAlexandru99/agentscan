@@ -1,7 +1,7 @@
 # Grok Build hooks
 
 **Source:** https://docs.x.ai/build/features/hooks
-**Read:** 2026-09-02 (14 events and command/http unchanged)
+**Read:** 2026-09-03 (14 events and command/http unchanged)
 **Depends on it:** `grok.hook.unknown-event`, `grok.hook.unknown-handler-type`,
 `grok.hook.command-without-command`, `grok.hook.http-without-url`,
 `grok.hook.invalid-group`, `grok.hook.missing-script`

@@ -2,7 +2,7 @@
 
 **Source:** https://agentskills.io/specification
 **Also:** https://github.com/agentskills/agentskills/blob/main/skills-ref/src/skills_ref/validator.py (reference validator)
-**Read:** 2026-09-02
+**Read:** 2026-09-03
 **Depends on it:** `agent-skills.skill.missing-frontmatter`, `agent-skills.skill.missing-name`,
 `agent-skills.skill.missing-description`, `agent-skills.skill.invalid-name`,
 `agent-skills.skill.name-does-not-match-directory`, `agent-skills.skill.name-too-long`,

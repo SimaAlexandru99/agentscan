@@ -1,6 +1,6 @@
 # Check inventory — 2026-09-02 re-verification
 
-**Read:** 2026-09-02
+**Read:** 2026-09-02; addendum 2026-09-03
 **Scope:** every one of the 99 ids in `src/checks/registry.ts`, re-read against
 the official page each one cites. This file is the audit record; the per-page
 captures next to it hold the quoted lines.
@@ -15,6 +15,34 @@ Nothing here was checked against what appears in real projects.
 Context7 was the intended first stop; its monthly quota was exhausted on the
 day, so every page was fetched directly from the vendor (curl / fetch, no
 mirrors). The Agent Skills reference validator source was read from GitHub.
+
+## 2026-09-03 Context7 + official-doc re-read
+
+Registry is 103 checks. Context7 first (`/websites/code_claude`,
+`/openai/codex`, `/websites/cursor`, `/websites/github_en_copilot`,
+`/google-gemini/gemini-cli`, `/websites/commandcode_ai`,
+`/websites/opencode_ai_v2`, `/xai-org/grok-build`, `/websites/continue_dev`),
+then the vendor pages themselves. `bun run spec:check` reported no hook-event
+drift. Two page hashes moved; both were re-read:
+
+| URL | Hash | Check impact |
+|-----|------|--------------|
+| https://learn.chatgpt.com/docs/extend/mcp | `d46b860d6b9f9246` → `4552797adf68eefe` | New optional OAuth / approval / `http_headers_helper` fields. Launch is still STDIO `command` or HTTP `url`. `codex.mcp.no-launch` holds. |
+| https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md | `b3caeea9922157ed` → `e06f5d588af70902` | New env-sanitization prose and a `mcp_config.json` example for standard MCP clients. Launch is still `command` / `url` / `httpUrl`. `gemini.mcp.*` holds. |
+
+Spot-checked against live pages (no check-code change):
+
+- Claude: 33 hook events; handler `type` enum; `streamable-http` alias; reserved MCP names
+- Grok: 14 events; `command` / `http`
+- Windsurf: 12 snake_case events; `command` or `powershell`; MCP `serverUrl` or `url`; 12k / 6k rule budgets; `trigger`
+- Agent Skills: required `name` / `description`; unicode lowercase; `metadata` map; 500-line rec
+- Cursor: `.mdc`; “Keep rules under 500 lines”
+- Antigravity: `command` or `serverUrl`; `url` / `httpUrl` still unsupported
+- OpenCode V2: `mcp.servers`; `type` `local` / `remote`; local `command` is argv
+- Command Code agents: reserved `explore` / `plan` / `review` / `general`; `permissionMode` default `inherit`
+
+Kiro / Cline / Roo / Kilo / Junie stay unread (no published check surface).
+See [codex-mcp.md](codex-mcp.md) and [gemini-mcp.md](gemini-mcp.md).
 
 ## Result
 

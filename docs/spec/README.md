@@ -148,3 +148,9 @@ shape reported as broken — and at the time `spec:check` only compared
 hook-event names against the live pages, so none of the seven could have been
 caught by it. Plan 038 added the per-page content hash and the verbatim
 fixtures for that reason.
+
+A 2026-09-03 Context7 + official-page pass (103 checks) found no new
+false-positive check. `spec:check` reported Codex MCP and Gemini MCP hash
+drift only; both pages grew optional fields / sanitization prose. Launch
+contracts and hook-event lists are unchanged. The two hashes were recaptured
+after that re-read.

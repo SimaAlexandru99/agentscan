@@ -1,7 +1,7 @@
 # Antigravity MCP
 
 **Source:** https://antigravity.google/docs/mcp
-**Read:** 2026-09-02
+**Read:** 2026-09-03
 **Depends on it:** `antigravity.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
 ## Project file
