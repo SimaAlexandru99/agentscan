@@ -107,9 +107,18 @@ worse README. So the README owns the prose and the severity; the registry owns
 the id set, provenance and source; the script enforces the split, and
 `tests/unit/docs-sync.test.ts` fails the build on drift.
 
-`docs-sync` also asserts the check count in all four hand-written places.
-`site/lib/site.ts` was still at 103 while the other three had been fixed by
-hand in the same change — four copies of one integer is not a job for people.
+`docs-sync` also asserts the check count in the three README places it is
+written by hand.
+
+`site/lib/site.ts` is deliberately **not** pinned to the registry. It was
+first "fixed" from 103 to 112 here, which was wrong: the site advertises the
+published package, and 1.4.0 ships 103 — the nine new checks sit in CHANGELOG
+`Unreleased`. Pinning it would have made the site claim "1.4.0 · 112 checks"
+for a package that has 103. The test now only forbids the harmful direction,
+advertising more checks than the registry holds, and lets the site lag until
+release. `site/tests/routes.test.ts` had the same integer hardcoded a fifth
+time; it now reads `PRODUCT_CHECKS` and `PRODUCT_VERSION` instead of literals,
+which is what actually stops this recurring.
 
 ## Deliberately not done
 

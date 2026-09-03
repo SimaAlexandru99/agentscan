@@ -77,8 +77,10 @@ intermediate commit that this train does not cut.
 - `bun run readme:rules` generates the README rule table from the registry;
   a test fails the build when it drifts. This recovers the three
   `windsurf.hook.*` rows the hand-maintained table had been missing since #13,
-  and the check count is now asserted against the registry in all four places
-  it is written by hand, including `site/lib/site.ts` (which was still 103).
+  and the check count is now asserted against the registry in the three README
+  places it is written by hand. `site/lib/site.ts` deliberately stays at the
+  published release's count; the test only forbids the site advertising more
+  checks than the registry holds.
 
 ### Fixed
 

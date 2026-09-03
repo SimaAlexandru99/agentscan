@@ -24,8 +24,14 @@ describe("the documented check count matches the registry", () => {
     expect(readme).toContain(`3. Check       ${total} checks`);
   });
 
-  test("site PRODUCT_CHECKS", () => {
-    expect(read("site/lib/site.ts")).toContain(`export const PRODUCT_CHECKS = ${total};`);
+  test("the site never advertises more checks than exist", () => {
+    // The site describes the published package, so it legitimately lags the
+    // repo while checks sit in CHANGELOG `Unreleased`. Claiming *more* than
+    // the registry holds is the direction that would be a lie.
+    const match = /export const PRODUCT_CHECKS = (\d+);/.exec(read("site/lib/site.ts"));
+    const advertised = Number(match?.[1]);
+    expect(Number.isNaN(advertised)).toBe(false);
+    expect(advertised).toBeLessThanOrEqual(total);
   });
 });
 

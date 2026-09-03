@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { varyIncludesAccept } from "../lib/accept";
+import { PRODUCT_CHECKS, PRODUCT_VERSION } from "../lib/site";
 import { AGENTSCAN_SKILL_DIGEST } from "../lib/skill";
 
 const siteRoot = join(import.meta.dir, "..");
@@ -123,8 +124,10 @@ describe("public routes", () => {
     expect(res.body).toContain("og:image");
     expect(res.body).toContain('og:type" content="website"');
     expect(res.body).toContain('lang="en"');
-    expect(res.body).toContain("1.4.0");
-    expect(res.body).toContain("103 checks");
+    // From the constants, not literals: the check count is written in five
+    // places and the last hand-edit missed two of them.
+    expect(res.body).toContain(PRODUCT_VERSION);
+    expect(res.body).toContain(`${PRODUCT_CHECKS} checks`);
     expect(res.body).not.toContain("Alpha");
   });
 
