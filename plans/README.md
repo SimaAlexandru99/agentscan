@@ -293,7 +293,7 @@ captures already quote and `--global` still skips.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 040 | Open Claude user hooks and user MCP under `--global` | P1 | S | 039 | DONE `e68f90e` — [plan](040-claude-global-user-hooks-and-mcp.md) |
-| 041 | Remaining documented Claude surfaces | P1 | M | 040 | DONE — [plan](041-claude-documented-surfaces.md) |
+| 041 | Remaining documented Claude surfaces | P1 | M | 040 | DONE `96e111e` — [plan](041-claude-documented-surfaces.md) |
 
 `--global` already opens `~/.claude/skills`. Plan 040 adds
 `~/.claude/settings.json` (hooks only; same Claude schema) and
