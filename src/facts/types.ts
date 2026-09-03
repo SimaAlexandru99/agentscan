@@ -1,3 +1,6 @@
+// Type-only, and `checks/provenance.ts` imports nothing — a leaf, so this is
+// erased at build time and adds no runtime edge back into the checks layer.
+import type { RuleProvenance, RuleSource } from "../checks/provenance";
 import type { HookSchemaProfile } from "./hook-schema";
 import type {
   McpLaunchKind,
@@ -376,4 +379,13 @@ export type Finding = {
   reason: string;
   evidence: { kind: string; value: string }[];
   suggest?: string;
+  /**
+   * Copied from the rule's registry entry by `make()`. Carried on the finding
+   * rather than looked up per renderer so that a finding piped anywhere — the
+   * prompt handoff, a `--json` consumer, one line of a report — still says
+   * where its assertion comes from.
+   */
+  provenance: RuleProvenance;
+  source: RuleSource;
+  lastVerified: string;
 };

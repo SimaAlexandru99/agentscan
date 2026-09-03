@@ -1,6 +1,7 @@
 import { analyze } from "../analyze";
 import { canonicalizeFindingId } from "../checks/aliases";
 import type { Finding } from "../facts/types";
+import { provenanceLine } from "../report/provenance-line";
 import { safe } from "../report/safe";
 
 export type ExplainOptions = {
@@ -51,6 +52,14 @@ function formatExplain(f: Finding): string {
   lines.push(`severity: ${f.severity}`);
   lines.push(`subject: ${safe(f.subject)}`);
   lines.push(`rule: ${safe(f.ruleId)}`);
+  lines.push(`provenance: ${safe(provenanceLine(f))}`);
+  if (f.source.kind === "spec") {
+    // The full URL, not the shortened form the report prints, plus the capture
+    // holding the verbatim quote — this is the surface a reader uses to check
+    // the claim rather than take it.
+    lines.push(`source: ${safe(f.source.url)}`);
+    lines.push(`capture: docs/spec/${safe(f.source.capture)}`);
+  }
   lines.push(`message: ${safe(f.message)}`);
   lines.push(`reason: ${safe(f.reason)}`);
   if (f.evidence.length > 0) {

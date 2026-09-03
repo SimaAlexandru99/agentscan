@@ -156,3 +156,13 @@ false-positive check. `spec:check` reported Codex MCP and Gemini MCP hash
 drift only; both pages grew optional fields / sanitization prose. Launch
 contracts and hook-event lists are unchanged. The two hashes were recaptured
 after that re-read.
+
+## Rule to source, machine-readable
+
+Every entry in `src/checks/registry.ts` names the capture it rests on
+(`source.capture`) and that capture's `**Source:**` URL (`source.url`), or
+declares `{ kind: "derived" }` when no vendor page asserts the rule.
+`tests/unit/rule-sources.test.ts` keeps the two in step: the capture must exist,
+must name the rule, must agree on the `**Read:**` date, and the URL must be one
+`SPEC_SURFACES` watches — so every source `agentscan` prints to a user is a page
+`bun run spec:check` re-fetches and hash-compares.

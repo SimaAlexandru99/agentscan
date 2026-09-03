@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Facts, Finding } from "../../src/facts/types";
 import { renderPrompt } from "../../src/report/prompt";
+import { ruleMeta } from "../helpers/finding";
 
 function finding(partial: Partial<Finding> & Pick<Finding, "id">): Finding {
   return {
@@ -11,6 +12,7 @@ function finding(partial: Partial<Finding> & Pick<Finding, "id">): Finding {
     message: "msg",
     reason: "reason",
     evidence: [],
+    ...ruleMeta(partial.ruleId ?? "r.x"),
     ...partial,
   };
 }
@@ -103,5 +105,39 @@ describe("renderPrompt", () => {
     });
     expect(out).toContain("agentscan check");
     expect(out).toMatch(/do not|Do not/);
+  });
+
+  test("the handoff names the page a fixing agent should read", () => {
+    const text = renderPrompt({
+      version: "0.1.0",
+      facts: facts(),
+      findings: [
+        finding({
+          id: "cursor.hook.unknown-event:hook:bogus",
+          ruleId: "cursor.hook.unknown-event",
+          severity: "error",
+        }),
+      ],
+    });
+
+    expect(text).toContain(
+      "- Source: https://cursor.com/docs/hooks (spec-required, read 2026-09-03)",
+    );
+  });
+
+  test("a derived rule says it has no page rather than omitting the line", () => {
+    const text = renderPrompt({
+      version: "0.1.0",
+      facts: facts(),
+      findings: [
+        finding({
+          id: "cursor.hook.missing-script:hook:x",
+          ruleId: "cursor.hook.missing-script",
+          severity: "error",
+        }),
+      ],
+    });
+
+    expect(text).toContain("- Source: internal-consistency · no vendor page · agentscan inference");
   });
 });

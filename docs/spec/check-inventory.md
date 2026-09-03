@@ -83,6 +83,15 @@ PascalCase events and Cursor's 21 camelCase events each match their page, and
 `spec:check` now diffs both sets. Their content hashes are in
 `scripts/spec-hashes.json`.
 
+**Added 2026-09-03 (plan 043):** no new checks — the registry stays at 112 —
+but every entry now carries a required `source` naming the page and the capture
+it rests on, and `tests/unit/rule-sources.test.ts` enforces the join this file
+records only in prose. Three entries were corrected against their own captures:
+`mcp.command-missing`, `security.hardcoded-secret` and `mcp.literal-credential`
+are cross-provider judgements, not lines on Claude's MCP page, and now say so.
+The tables below remain the 2026-09-02 audit; `agentscan rules --json` is the
+current machine-readable inventory.
+
 ## Inventory
 
 Severity is what the check emits; provenance is the registry label. Source is

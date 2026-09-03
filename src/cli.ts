@@ -37,6 +37,9 @@ check options:
   --global               Also scan global skill dirs
   --config <path>        Config file path
 
+rules options:
+  --json                 Every rule with its provenance, source, and read date
+
 init options:
   --force                Overwrite existing .agentscanrc.json
 `;
@@ -200,6 +203,7 @@ export async function main(argv: string[]): Promise<number> {
         const result = await runRulesCommand({
           dir: positionals[1],
           configPath: values.config,
+          json: values.json,
         });
         process.stdout.write(result.stdout);
         return result.exitCode;

@@ -3,7 +3,8 @@
 **Source:** https://code.visualstudio.com/docs/agent-customization/hooks
 **Read:** 2026-09-02 (eight events and command-only shape unchanged)
 **Depends on it:** `vscode.hook.unknown-event`, `vscode.hook.missing-script`,
-`vscode.hook.command-without-command`, `vscode.hook.unknown-handler-type`
+`vscode.hook.command-without-command`, `vscode.hook.unknown-handler-type`,
+`vscode.hook.invalid-group`
 
 Copilot CLI `version: 1` files that also live under `.github/hooks` are
 documented in [copilot-hooks.md](copilot-hooks.md), not here.
