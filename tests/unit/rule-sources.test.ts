@@ -23,7 +23,7 @@ function capture(file: string): string {
  * stale prose. Each assertion below is one half of that promise.
  */
 describe("every rule can say where it came from", () => {
-  test("all 112 rules declare a source", () => {
+  test("every rule declares a source", () => {
     expect(specRules.length + derivedRules.length).toBe(STRUCTURAL_CHECKS.length);
   });
 

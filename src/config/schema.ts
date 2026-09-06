@@ -16,7 +16,7 @@ export const defaultThresholds = {
 };
 
 export const defaultConfig = {
-  skillPaths: [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills", ".commandcode/skills", ".grok/skills", ".windsurf/skills"],
+  skillPaths: [".agents/skills", ".claude/skills", "skills", ".cursor/skills", ".codex/skills", ".commandcode/skills", ".grok/skills", ".windsurf/skills", ".kiro/skills", ".cline/skills", ".roo/skills", ".kilo/skills", ".junie/skills"],
   mcpPaths: [
     ".mcp.json",
     ".claude/mcp.json",

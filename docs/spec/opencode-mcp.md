@@ -1,7 +1,9 @@
 # OpenCode MCP (V1 and V2)
 
 **Source:** https://opencode.ai/v2/docs/mcp-servers
+**Also:** https://opencode.ai/docs/mcp-servers/
 **Read:** 2026-09-03
+**Re-read:** 2026-09-07
 **Depends on it:** `opencode.mcp.no-launch`, `opencode.mcp.missing-type`,
 `opencode.mcp.local-without-command`, `opencode.mcp.remote-without-url`,
 `opencode.mcp.invalid-launch-for-type`, `opencode.mcp.command-not-array`

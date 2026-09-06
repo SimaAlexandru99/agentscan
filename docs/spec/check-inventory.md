@@ -41,7 +41,10 @@ Spot-checked against live pages (no check-code change):
 - OpenCode V2: `mcp.servers`; `type` `local` / `remote`; local `command` is argv
 - Command Code agents: reserved `explore` / `plan` / `review` / `general`; `permissionMode` default `inherit`
 
-Kiro / Cline / Roo / Kilo / Junie stay unread (no published check surface).
+Kiro / Cline / Roo / Kilo / Junie pages were read 2026-09-07. The scanner
+opens Kiro `.kiro/hooks/*.json` + `.kiro/skills` and Cline / Roo / Kilo /
+Junie skill directories. Cline hooks, Cline agents, and Kiro agents stay
+unread (no quoted event list or filename pattern). See plans 045–049.
 See [codex-mcp.md](codex-mcp.md) and [gemini-mcp.md](gemini-mcp.md).
 
 ## Result

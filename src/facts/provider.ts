@@ -56,7 +56,17 @@ export function schemaProfileFromSkillsDir(dir: string): SkillSchemaProfile {
     normalized.includes("/.windsurf/skills") ||
     normalized.endsWith("/.windsurf/skills") ||
     normalized.includes("/.codeium/windsurf/skills") ||
-    normalized.endsWith("/.codeium/windsurf/skills")
+    normalized.endsWith("/.codeium/windsurf/skills") ||
+    normalized.includes("/.kiro/skills") ||
+    normalized.endsWith("/.kiro/skills") ||
+    normalized.includes("/.cline/skills") ||
+    normalized.endsWith("/.cline/skills") ||
+    normalized.includes("/.roo/skills") ||
+    normalized.endsWith("/.roo/skills") ||
+    normalized.includes("/.kilo/skills") ||
+    normalized.endsWith("/.kilo/skills") ||
+    normalized.includes("/.junie/skills") ||
+    normalized.endsWith("/.junie/skills")
   ) {
     return "agent-skills";
   }
@@ -119,6 +129,21 @@ export function providerFromSkillsDir(dir: string): Provider {
   ) {
     return "windsurf";
   }
+  if (normalized.includes("/.kiro/skills") || normalized.endsWith("/.kiro/skills")) {
+    return "kiro";
+  }
+  if (normalized.includes("/.cline/skills") || normalized.endsWith("/.cline/skills")) {
+    return "cline";
+  }
+  if (normalized.includes("/.roo/skills") || normalized.endsWith("/.roo/skills")) {
+    return "roo";
+  }
+  if (normalized.includes("/.kilo/skills") || normalized.endsWith("/.kilo/skills")) {
+    return "kilo";
+  }
+  if (normalized.includes("/.junie/skills") || normalized.endsWith("/.junie/skills")) {
+    return "junie";
+  }
   return "unknown";
 }
 
@@ -150,7 +175,9 @@ export function mcpProfileFromPath(filePath: string): McpSchemaProfile {
   }
   if (
     normalized.endsWith("/.agents/mcp_config.json") ||
-    normalized.endsWith(".agents/mcp_config.json")
+    normalized.endsWith(".agents/mcp_config.json") ||
+    normalized.endsWith("/.gemini/config/mcp_config.json") ||
+    normalized.endsWith(".gemini/config/mcp_config.json")
   ) {
     return "antigravity-json";
   }

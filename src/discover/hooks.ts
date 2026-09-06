@@ -616,6 +616,7 @@ function hooksFromProfile(item: Record<string, unknown>, ctx: HookContext): Hook
     // Flat documents with their own readers; never routed through this pipeline.
     case "cursor":
     case "windsurf":
+    case "kiro":
       return [];
     default: {
       const neverProfile: never = ctx.schemaProfile;
@@ -764,11 +765,23 @@ export function discoverHooks(root: string, errors: ConfigErrorFact[]): HookFact
 
 /**
  * Project `.gemini/settings.json` — the same file the MCP scan opens, read for
- * its `hooks` object. User `~/.gemini/settings.json` stays unread, matching the
- * Gemini MCP scope. See docs/spec/gemini-hooks.md.
+ * its `hooks` object. User `~/.gemini/settings.json` is opened under `--global`
+ * together with that file's MCP servers. See docs/spec/gemini-hooks.md.
  */
 export function discoverGeminiHooks(root: string, errors: ConfigErrorFact[]): HookFact[] {
-  const filePath = join(root, ".gemini", "settings.json");
+  return discoverGeminiHooksFile(join(root, ".gemini", "settings.json"), root, errors);
+}
+
+/**
+ * Gemini `settings.json` hooks. `filePath` may be the project file or the
+ * `--global` user file; relative scripts resolve against `projectRoot`.
+ * See docs/spec/gemini-hooks.md.
+ */
+export function discoverGeminiHooksFile(
+  filePath: string,
+  projectRoot: string,
+  errors: ConfigErrorFact[],
+): HookFact[] {
   if (!existsSync(filePath)) {
     return [];
   }
@@ -788,12 +801,23 @@ export function discoverGeminiHooks(root: string, errors: ConfigErrorFact[]): Ho
     hooks,
     filePath,
     "gemini-settings",
-    { project: root },
+    { project: projectRoot },
     errors,
     "gemini",
     process.platform,
     "gemini",
   );
+}
+
+/**
+ * User `~/.gemini/settings.json` hooks. Only called under `--global`.
+ * Opened together with user MCP so one surface is not attributed without the other.
+ */
+export function discoverGeminiUserHooks(
+  projectRoot: string,
+  errors: ConfigErrorFact[],
+): HookFact[] {
+  return discoverGeminiHooksFile(join(homedir(), ".gemini", "settings.json"), projectRoot, errors);
 }
 
 /**

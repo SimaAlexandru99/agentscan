@@ -192,6 +192,7 @@ export type HookFact = {
     | "windsurf-hooks"
     | "gemini-settings"
     | "cursor-hooks"
+    | "kiro-hooks"
     | "copilot-settings";
   sourceProvider?: Provider;
   schemaProfile?: HookSchemaProfile;
@@ -213,6 +214,12 @@ export type HookFact = {
   commandcodeEffective?: boolean;
   /** `matcher` was present but was not a string. */
   commandcodeInvalidMatcher?: boolean;
+  /**
+   * Why a Kiro file or entry is `invalid-group`. File-level facts use a
+   * synthetic event name, so the message must not claim a missing `hooks`
+   * array when the array is present. See docs/spec/kiro-hooks.md.
+   */
+  kiroInvalidGroup?: "missing-version" | "missing-hooks" | "missing-version-and-hooks" | "entry";
 };
 
 export type AgentSchemaProfile = "claude-md" | "vscode-agent-md" | "commandcode-md";

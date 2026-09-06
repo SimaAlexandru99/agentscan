@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import type { AgentscanConfig } from "../config/schema";
@@ -31,6 +32,11 @@ import {
   winningSkillsExtraDirs,
 } from "./commandcode";
 import { discoverCursorHooksFile } from "./cursor";
+import {
+  discoverKiroHooksDir,
+  kiroUserHooksDir,
+  kiroUserSkillsPath,
+} from "./kiro";
 import { applyGrokMcpPrecedence, discoverGrokUserMcp } from "./grok";
 import {
   discoverClaudeUserHooks,
@@ -38,11 +44,12 @@ import {
   discoverCopilotUserHooks,
   discoverCopilotUserSettingsHooks,
   discoverGeminiHooks,
+  discoverGeminiUserHooks,
   discoverGrokHooks,
   discoverHooks,
   discoverVscodeHooks,
 } from "./hooks";
-import { discoverClaudeUserMcp, discoverMcpSurface, discoverNestedContinueMcp } from "./mcp";
+import { discoverClaudeUserMcp, discoverMcpSurface, discoverNestedContinueMcp, parseMcpFile } from "./mcp";
 import { discoverPluginHooks, discoverPluginSurfaces, findPluginRoots } from "./plugins";
 import { discoverPolicyFiles, discoverSkillsLocks, resolveCodexProjectRoot } from "./policy";
 import { discoverClaudeUserRules, discoverNestedWindsurfRules, discoverRules } from "./rules";
@@ -169,6 +176,11 @@ export function discoverAgentSurface(
       join(home, ".agents", "skills"),
       join(grokHomeDir(), "skills"),
       windsurfUserSkillsPath(home),
+      kiroUserSkillsPath(home),
+      join(home, ".cline", "skills"),
+      join(home, ".roo", "skills"),
+      join(home, ".kilo", "skills"),
+      join(home, ".junie", "skills"),
     ];
     for (const abs of globalSkillDirs) {
       const resolved = resolve(abs);
@@ -221,6 +233,7 @@ export function discoverAgentSurface(
     hooks.push(
       ...discoverCursorHooksFile(join(dir, ".cursor", "hooks.json"), dir, configErrors),
     );
+    hooks.push(...discoverKiroHooksDir(join(dir, ".kiro", "hooks"), dir, configErrors));
     const discovered = discoverMcpSurface(dir, config.mcpPaths, configErrors);
     if (discovered.codexProjectDocMaxBytes !== undefined && codexProjectDocMaxBytes === undefined) {
       codexProjectDocMaxBytes = discovered.codexProjectDocMaxBytes;
@@ -274,10 +287,32 @@ export function discoverAgentSurface(
     mcp.push(fact);
   }
   if (opts.includeGlobal) {
+    const home = homedir();
     hooks.push(...discoverClaudeUserHooks(root, configErrors));
     hooks.push(...discoverCopilotUserHooks(configErrors));
     hooks.push(...discoverCopilotUserSettingsHooks(configErrors));
     hooks.push(...discoverGrokHooks(join(grokHomeDir(), "hooks"), grokHomeDir(), configErrors));
+    hooks.push(
+      ...discoverCursorHooksFile(join(home, ".cursor", "hooks.json"), root, configErrors),
+    );
+    hooks.push(...discoverGeminiUserHooks(root, configErrors));
+    hooks.push(...discoverKiroHooksDir(kiroUserHooksDir(home), root, configErrors));
+    for (const userMcpPath of [
+      join(home, ".gemini", "settings.json"),
+      join(home, ".gemini", "config", "mcp_config.json"),
+    ]) {
+      if (!existsSync(userMcpPath)) {
+        continue;
+      }
+      for (const fact of parseMcpFile(userMcpPath, root, configErrors).facts) {
+        const key = mcpKey(fact);
+        if (mcpSeen.has(key)) {
+          continue;
+        }
+        mcpSeen.add(key);
+        mcp.push(fact);
+      }
+    }
     for (const fact of discoverClaudeUserMcp(configErrors, [root, startDir, scanBoundary])) {
       const key = mcpKey(fact);
       if (mcpSeen.has(key)) {

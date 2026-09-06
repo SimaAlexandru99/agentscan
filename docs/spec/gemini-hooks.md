@@ -1,8 +1,10 @@
 # Gemini CLI hooks
 
-**Source:** https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md
-**Also:** https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md
+**Source:** https://geminicli.com/docs/hooks/
+**Also:** https://geminicli.com/docs/hooks/reference/
+**Also:** https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md
 **Read:** 2026-09-03
+**Re-read:** 2026-09-07
 **Depends on it:** `gemini.hook.unknown-event`, `gemini.hook.missing-script`,
 `gemini.hook.invalid-group`, `gemini.hook.command-without-command`,
 `gemini.hook.unknown-handler-type`
@@ -19,8 +21,8 @@ to lowest:
 > 3. **System settings**: `/etc/gemini-cli/settings.json`.
 > 4. **Extensions**: Hooks defined by installed extensions.
 
-Only the project file is read, matching the Gemini MCP scope: user settings stay
-unread even under `--global` (see "Deliberately unread" below).
+Project `.gemini/settings.json` is always read. User `~/.gemini/settings.json`
+is opened under `--global` together with that file's MCP servers.
 
 ## The complete set — 11 names
 
@@ -90,13 +92,9 @@ same two bases as every other profile ([hook-sources.md](hook-sources.md)).
 
 ## Deliberately unread
 
-- `~/.gemini/settings.json` — user hooks. `--global` is not wired for Gemini on
-  the MCP side either; wiring one surface and not the other would report a
-  user hook as the project's problem. Same line as
-  [gemini-mcp.md](gemini-mcp.md).
 - `/etc/gemini-cli/settings.json` — system settings, not the project's to fix.
-  Same call as Claude managed policy.
 - Extension-provided hooks — outside the repository.
+- `~/.gemini/mcp-oauth-tokens.json` — never opened.
 
 ## Staleness risk: HIGH
 

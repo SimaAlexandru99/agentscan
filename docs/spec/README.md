@@ -49,7 +49,7 @@ to appear in real projects.** When adding a check:
 | [codex-agents-md.md](codex-agents-md.md) | Codex chain knobs and 32 KiB cap | `codex.budget.instructions` |
 | [vscode-instructions.md](vscode-instructions.md) | `.github/copilot-instructions.md` and `*.instructions.md` | discovery only |
 | [vscode-agents.md](vscode-agents.md) | `.github/agents`; name defaults to filename | do not emit `claude.agent.*` |
-| [vscode-hooks.md](vscode-hooks.md) | Native VS Code `.github/hooks/*.json`, eight events, command-only | `vscode.hook.*` |
+| [vscode-hooks.md](vscode-hooks.md) | Native VS Code `.github/hooks/*.json`, eight events, command-only; agent frontmatter; plugin path unread | `vscode.hook.*` |
 | [copilot-hooks.md](copilot-hooks.md) | Copilot CLI `version: 1` files; inline settings `hooks`; camelCase events; bash/powershell | `copilot.hook.*` |
 | [cursor-rules.md](cursor-rules.md) | `.cursor/rules/**/*.mdc` under 500 lines | `cursor.rule.too-large` |
 | [cursor-hooks.md](cursor-hooks.md) | `.cursor/hooks.json`; 21 camelCase events; optional `type`, required `command` | `cursor.hook.*` |
@@ -69,6 +69,12 @@ to appear in real projects.** When adding a check:
 | [windsurf-mcp.md](windsurf-mcp.md) | `~/.codeium/windsurf/mcp_config.json` under `--global`; `command` / `serverUrl` / `url` | `windsurf.mcp.no-launch` |
 | [windsurf-hooks.md](windsurf-hooks.md) | `.windsurf/hooks.json`; `--global` `~/.codeium/windsurf/hooks.json`; 12 snake_case events | `windsurf.hook.*` |
 | [windsurf-skills.md](windsurf-skills.md) | `.windsurf/skills`; `--global` `~/.codeium/windsurf/skills`; Agent Skills contract | `agent-skills.skill.*` |
+| [kiro-hooks.md](kiro-hooks.md) | `.kiro/hooks/*.json`; 10 PascalCase triggers; `command` / `agent` | `kiro.hook.*` |
+| [kiro-skills.md](kiro-skills.md) | `.kiro/skills`; Agent Skills contract | `agent-skills.skill.*` |
+| [cline-skills.md](cline-skills.md) | `.cline/skills`; unread hooks/agents | `agent-skills.skill.*` |
+| [roo-skills.md](roo-skills.md) | `.roo/skills` Agent Skills | `agent-skills.skill.*` |
+| [kilo-skills.md](kilo-skills.md) | `.kilo/skills` Agent Skills | `agent-skills.skill.*` |
+| [junie-skills.md](junie-skills.md) | `.junie/skills`; optional `description` | `agent-skills.skill.*` except missing-description / name-directory |
 
 Each `STRUCTURAL_CHECKS` entry also carries `provenance` (`spec-required`,
 `vendor-recommendation`, `security`, `internal-consistency`, or `heuristic`)

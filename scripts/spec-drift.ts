@@ -20,6 +20,7 @@ import {
   CURSOR_HOOK_EVENTS,
   GEMINI_HOOK_EVENTS,
   GROK_HOOK_EVENTS,
+  KIRO_HOOK_EVENTS,
   KNOWN_HOOK_EVENTS,
   VSCODE_HOOK_EVENTS,
 } from "../src/checks/index";
@@ -329,18 +330,23 @@ async function checkGrokHookEvents(report: Report): Promise<void> {
  * `SessionStart`), so a substring hit on the whole page would pass on prose
  * alone. Match the backticked or table-cell spellings the event table uses.
  */
-async function checkGeminiHookEvents(report: Report): Promise<void> {
-  const url = fetchUrlFor(
-    "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md",
+/** Identifier spelling in markdown backticks, markdown tables, or HTML `<code>`. */
+function pageMentionsEvent(html: string, event: string): boolean {
+  return (
+    html.includes("`" + event + "`") ||
+    new RegExp(`\\| *${event} *\\|`).test(html) ||
+    new RegExp(`<code[^>]*>${event}</code>`).test(html)
   );
+}
+
+async function checkGeminiHookEvents(report: Report): Promise<void> {
+  const url = fetchUrlFor("https://geminicli.com/docs/hooks/");
   const text = await page(url);
   if (text === null) {
     report.notes.push(`could not fetch ${url} — Gemini hook events unverified`);
     return;
   }
-  const missingFromPage = [...GEMINI_HOOK_EVENTS].filter(
-    (e) => !new RegExp(`\`${e}\`|\\| *${e} *\\|`).test(text),
-  );
+  const missingFromPage = [...GEMINI_HOOK_EVENTS].filter((e) => !pageMentionsEvent(text, e));
   if (missingFromPage.length > 0) {
     report.drift.push(
       `Gemini hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
@@ -363,6 +369,21 @@ async function checkCursorHookEvents(report: Report): Promise<void> {
   }
 }
 
+async function checkKiroHookEvents(report: Report): Promise<void> {
+  const url = "https://kiro.dev/docs/ide/whats-new-v1/hooks/";
+  const html = await page(url);
+  if (html === null) {
+    report.notes.push(`could not fetch ${url} — Kiro hook events unverified`);
+    return;
+  }
+  const missingFromPage = [...KIRO_HOOK_EVENTS].filter((e) => !pageMentionsEvent(html, e));
+  if (missingFromPage.length > 0) {
+    report.drift.push(
+      `Kiro hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
+    );
+  }
+}
+
 const report: Report = { drift: [], notes: [] };
 checkCaptureDates(report);
 checkSurfaceStaleness(report);
@@ -373,6 +394,7 @@ await checkCommandcodeHookEvents(report);
 await checkGrokHookEvents(report);
 await checkGeminiHookEvents(report);
 await checkCursorHookEvents(report);
+await checkKiroHookEvents(report);
 const { baseline, unhashed } = await checkSurfaceContent(report);
 
 if (RECORD) {

@@ -2,6 +2,7 @@ import { COMMANDCODE_HOOK_EVENTS, isShadowedCommandcode } from "../facts/command
 import { CURSOR_HOOK_EVENTS } from "../facts/cursor";
 import { GEMINI_HOOK_EVENTS } from "../facts/gemini";
 import { GROK_HOOK_EVENTS } from "../facts/grok";
+import { KIRO_HOOK_EVENTS } from "../facts/kiro";
 import { WINDSURF_HOOK_EVENTS } from "../discover/windsurf";
 import {
   COPILOT_HOOK_EVENTS,
@@ -43,6 +44,8 @@ function eventsFor(profile: HookSchemaProfile): Set<string> {
       return GEMINI_HOOK_EVENTS;
     case "cursor":
       return CURSOR_HOOK_EVENTS;
+    case "kiro":
+      return KIRO_HOOK_EVENTS;
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -67,6 +70,8 @@ function unknownEventRuleId(profile: HookSchemaProfile): string {
       return "gemini.hook.unknown-event";
     case "cursor":
       return "cursor.hook.unknown-event";
+    case "kiro":
+      return "kiro.hook.unknown-event";
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -91,6 +96,8 @@ function missingScriptRuleId(profile: HookSchemaProfile): string {
       return "gemini.hook.missing-script";
     case "cursor":
       return "cursor.hook.missing-script";
+    case "kiro":
+      return "kiro.hook.missing-script";
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -131,6 +138,11 @@ export function checkHookEvents(facts: Facts): Finding[] {
       continue;
     }
     const profile = hookProfile(hook);
+    // File-level Kiro defects use a synthetic event name. Validating it as an
+    // unknown trigger invents a second finding about a name the file never declared.
+    if (profile === "kiro" && hook.defect === "invalid-group") {
+      continue;
+    }
     const ruleId = unknownEventRuleId(profile);
     const event = hook.event ?? hook.name;
     const key = `${profile}:${event}`;
@@ -283,6 +295,21 @@ function defectRuleId(profile: HookSchemaProfile, defect: HookDefect): string | 
           return assertNever(defect, `unhandled hook defect: ${defect}`);
         }
       }
+    case "kiro":
+      switch (defect) {
+        case "invalid-group":
+        case "command-without-command":
+        case "prompt-without-prompt":
+        case "unknown-handler-type":
+          return `kiro.hook.${defect}`;
+        case "http-without-url":
+        case "mcp-tool-without-server-or-tool":
+        case "incompatible-handler":
+          return undefined;
+        default: {
+          return assertNever(defect, `unhandled hook defect: ${defect}`);
+        }
+      }
     default: {
       return assertNever(profile, `unhandled hook schema profile: ${profile}`);
     }
@@ -295,6 +322,20 @@ function defectMessage(hook: HookFact, defect: HookDefect): string {
     case "invalid-group":
       if (hook.commandcodeInvalidMatcher === true) {
         return `${event} hook matcher is not a string`;
+      }
+      if (hookProfile(hook) === "kiro") {
+        switch (hook.kiroInvalidGroup) {
+          case "missing-hooks":
+            return "Kiro hook file is missing a `hooks` array";
+          case "missing-version-and-hooks":
+            return 'Kiro hook file is missing version "v1" and a `hooks` array';
+          case "entry":
+            return "Kiro hook entry is not an object";
+          case "missing-version":
+            return 'Kiro hook file is missing version "v1"';
+          default:
+            return 'Kiro hook file is missing version "v1" or a `hooks` array';
+        }
       }
       return `${event} hook group is missing a \`hooks\` array`;
     case "command-without-command":

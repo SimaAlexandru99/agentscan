@@ -2,6 +2,7 @@
 
 **Source:** https://docs.github.com/en/copilot/reference/hooks-reference
 **Read:** 2026-09-02
+**Re-read:** 2026-09-07
 **Depends on it:** `copilot.hook.*`, `.github/hooks` `version: 1` detection,
 inline settings hooks (`src/facts/hook-schema.ts`, `src/discover/hooks.ts`)
 
@@ -42,9 +43,13 @@ Quoted (Copilot CLI sources, combined; same event from every source runs):
   same event appears in multiple sources, all hook entries from all sources
   are run."
 - Cross-tool `.claude/settings.json` and `.claude/settings.local.json` are
-  listed on the Copilot page and stay on the Claude profile here. Parsing
-  them as Copilot would apply the wrong contract (optional `type`, flat
-  arrays) to Claude's required nested groups.
+  quoted on the Copilot hooks reference ("files in the repository are also
+  read"). agentscan still *lints* them as Claude: required nested groups and
+  required `type`. Copilot-only event names in that file stay
+  `claude.hook.unknown-event` — the page does not list Copilot-only events
+  as valid keys inside the Claude document. Parsing them as Copilot would
+  apply the wrong contract (optional `type`, flat arrays) to Claude's
+  required nested groups.
 - Plugin `hooks.json`. Unread.
 
 Cloud agent loads only `.github/hooks/*.json` from the cloned repository.

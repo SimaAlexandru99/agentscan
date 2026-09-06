@@ -1,7 +1,9 @@
 # Cursor hooks
 
 **Source:** https://cursor.com/docs/hooks
+**Also:** https://cursor.com/docs/reference/third-party-hooks
 **Read:** 2026-09-03
+**Re-read:** 2026-09-07
 **Depends on it:** `cursor.hook.unknown-event`, `cursor.hook.missing-script`,
 `cursor.hook.command-without-command`, `cursor.hook.unknown-handler-type`
 (`src/facts/cursor.ts`, `src/discover/cursor.ts`, `src/checks/hooks.ts`)
@@ -14,8 +16,13 @@ Quoted:
 > Project hooks run in any trusted workspace and are checked into version
 > control with your project
 
-That is the only location this tool reads. Quoted priority, highest to lowest:
-Enterprise → Team → Project → User.
+Quoted priority, highest to lowest: Enterprise → Team → Project → User →
+Claude files (third-party import). This tool reads project
+`.cursor/hooks.json` always, and `~/.cursor/hooks.json` under `--global`.
+MDM and dashboard team hooks stay unread. Claude settings files stay on
+the Claude profile ([copilot-hooks.md](copilot-hooks.md) records the same
+choice for Copilot). User-file scripts resolve against the scanned project
+root, matching Claude user hooks.
 
 ## The complete set — 21 names
 

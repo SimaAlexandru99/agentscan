@@ -23,6 +23,7 @@ export {
 } from "./hooks";
 export { COMMANDCODE_HOOK_EVENTS } from "../facts/commandcode";
 export { GROK_HOOK_EVENTS } from "../facts/grok";
+export { KIRO_HOOK_EVENTS } from "../facts/kiro";
 export { STRUCTURAL_CHECKS } from "./registry";
 export type { RuleProvenance, StructuralCheck } from "./provenance";
 export { canonicalRuleId, canonicalizeFindingId, ignoreRuleSet, RULE_ALIASES } from "./aliases";

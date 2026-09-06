@@ -1,13 +1,16 @@
 # Gemini CLI MCP
 
 **Source:** https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md
+**Also:** https://geminicli.com/docs/tools/mcp-server/
 **Read:** 2026-09-03
+**Re-read:** 2026-09-07
 **Depends on it:** `gemini.mcp.no-launch`, `gemini.mcp.underscore-alias`, `mcp.literal-env`
 
 ## Project file
 
 Project config: `.gemini/settings.json` (`mcpServers` object).
-User config `~/.gemini/settings.json` is outside a normal project scan.
+User config `~/.gemini/settings.json` is opened under `--global` (hooks and
+MCP together). `~/.gemini/mcp-oauth-tokens.json` is never opened.
 
 ## Launch fields
 

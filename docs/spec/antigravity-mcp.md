@@ -2,12 +2,13 @@
 
 **Source:** https://antigravity.google/docs/mcp
 **Read:** 2026-09-03
+**Re-read:** 2026-09-07
 **Depends on it:** `antigravity.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
 ## Project file
 
 Workspace local setup: `.agents/mcp_config.json`.
-Global (unread on a normal project scan): `~/.gemini/config/mcp_config.json`.
+Global: `~/.gemini/config/mcp_config.json` — opened under `--global` only.
 
 ## Shape
 

@@ -174,12 +174,18 @@ function discoverVscodeAgents(root: string, errors: ConfigErrorFact[]): AgentFac
       fact.description = fm.description;
     }
     if (fm.hooks !== undefined) {
-      const hooks = hooksFromObject(fm.hooks, filePath, "agent", {
-        project: root,
-        own: dirname(filePath),
-      }, errors);
+      const hooks = hooksFromObject(
+        fm.hooks,
+        filePath,
+        "agent",
+        { project: root, own: dirname(filePath) },
+        errors,
+        "vscode",
+        process.platform,
+        "vscode-native",
+      );
       if (hooks.length > 0) {
-        fact.frontmatterHooks = hooks.map((h) => ({ ...h, sourceProvider: "vscode" }));
+        fact.frontmatterHooks = hooks;
       }
     }
     facts.push(fact);

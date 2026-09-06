@@ -1039,7 +1039,7 @@ function continueMcpFilename(name: string): boolean {
   return /\.(ya?ml|jsonc?)$/i.test(name) && !name.startsWith(".");
 }
 
-function parseMcpFile(
+export function parseMcpFile(
   filePath: string,
   root: string,
   errors: ConfigErrorFact[],

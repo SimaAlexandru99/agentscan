@@ -1,7 +1,9 @@
 # VS Code agent hooks
 
-**Source:** https://code.visualstudio.com/docs/agent-customization/hooks
+**Source:** https://code.visualstudio.com/docs/agents/reference/hooks-reference
+**Also:** https://code.visualstudio.com/docs/agent-customization/hooks
 **Read:** 2026-09-02 (eight events and command-only shape unchanged)
+**Re-read:** 2026-09-07 (agent frontmatter hooks parsed as vscode-native)
 **Depends on it:** `vscode.hook.unknown-event`, `vscode.hook.missing-script`,
 `vscode.hook.command-without-command`, `vscode.hook.unknown-handler-type`,
 `vscode.hook.invalid-group`
@@ -33,6 +35,12 @@ Official example (no `version` field):
 Each handler must specify `type: "command"` and a command. This is a flat
 array of handlers, not Claude's matcher-group wrapper (though Claude-format
 settings files are also loaded from `.claude/settings.json`).
+
+Quoted locations also include custom-agent frontmatter `hooks` in
+`.github/agents/*.agent.md` (scanned as vscode-native) and plugin
+`hooks.json` / `hooks/hooks.json`. In-tree Claude plugins
+(`.claude-plugin/plugin.json`) stay Claude. VS Code marketplace plugin
+install directories are unread (path changes; not a project file).
 
 Quoted command properties: `cwd`, `env`, `timeout`, and OS-specific overrides
 (`windows` / `linux` / `osx`). Official docs select the OS-specific command

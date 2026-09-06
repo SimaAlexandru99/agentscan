@@ -5,8 +5,8 @@ import { STRUCTURAL_CHECKS } from "./registry";
 /**
  * Rule id to its registry entry.
  *
- * Built once. `make()` calls this for every finding, and a linear scan of 112
- * entries per finding is a cost with no reason to exist.
+ * Built once. `make()` calls this for every finding, and a linear scan of the
+ * registry per finding is a cost with no reason to exist.
  */
 const BY_ID: Map<string, StructuralCheck> = new Map(
   STRUCTURAL_CHECKS.map((check) => [check.id, check]),

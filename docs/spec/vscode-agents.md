@@ -2,6 +2,7 @@
 
 **Source:** https://code.visualstudio.com/docs/agent-customization/custom-agents
 **Read:** 2026-08-30
+**Re-read:** 2026-09-07 (frontmatter `hooks` parsed as vscode-native)
 **Depends on it:** discovery of `.github/agents/*.agent.md` (and `.md` in that folder)
 
 ## Location
@@ -26,5 +27,10 @@ The header is **optional**. Quoted field table:
 
 Do **not** emit `claude.agent.missing-name` or `claude.agent.missing-frontmatter`
 as errors for these files. Identity may come from the filename.
+
+Frontmatter `hooks` (quoted on the VS Code hooks page as "Custom agent") are
+parsed with `schemaProfile: "vscode-native"` at `hooksFromObject` time — not
+Claude nested groups. A documented flat `type: command` array must not become
+`claude.hook.invalid-group`.
 
 ## Staleness risk: HIGH

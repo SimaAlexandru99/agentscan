@@ -14,7 +14,8 @@ export type HookSchemaProfile =
   | "grok"
   | "windsurf"
   | "gemini"
-  | "cursor";
+  | "cursor"
+  | "kiro";
 
 export type HookHandlerType = "command" | "http" | "mcp_tool" | "prompt" | "agent";
 
@@ -179,11 +180,12 @@ export function inferHookSchemaProfile(
       return "gemini";
     case "cursor":
       return "cursor";
+    case "kiro":
+      return "kiro";
     case "claude":
     case "agent-skills":
     case "codex":
     case "antigravity":
-    case "kiro":
     case "cline":
     case "roo":
     case "kilo":

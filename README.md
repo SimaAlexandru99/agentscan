@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-112-111111?style=flat-square" alt="112 checks">
-  <img src="https://img.shields.io/badge/tests-586%20passing-111111?style=flat-square" alt="586 tests">
+  <img src="https://img.shields.io/badge/checks-118-111111?style=flat-square" alt="118 checks">
+  <img src="https://img.shields.io/badge/tests-603%20passing-111111?style=flat-square" alt="603 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
@@ -16,8 +16,8 @@
 </p>
 
 <p align="center">
-  <strong>112 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
-  <sub>An offline linter for Claude Code, Command Code, Grok Build, Windsurf, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks (including inline settings), and the MCP / hooks / rules surfaces that 1.4.0 actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
+  <strong>118 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <sub>An offline linter for Claude Code, Command Code, Grok Build, Windsurf, Kiro, Cline, Roo, Kilo, Junie, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks (including inline settings), and the MCP / hooks / rules surfaces the registry actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
 ---
@@ -65,7 +65,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .commandcode/ .grok/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       112 checks, each labeled spec-required, vendor-recommendation,
+3. Check       118 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -466,7 +466,7 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `scan.truncated` | info | internal-consistency | _scan cap_ | A file past the scan cap, so the checks that read its body saw only a prefix — about this tool's reach, not about your project |
 | `claude.hook.unknown-event` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude hook registered under an event name that is never dispatched |
 | `claude.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A registered Claude command hook whose script does not exist — it never runs |
-| `vscode.hook.unknown-event` | error | spec-required | [code.visualstudio.com/docs/agent-customization/hooks](https://code.visualstudio.com/docs/agent-customization/hooks) | A VS Code hook registered under an event name that is never dispatched |
+| `vscode.hook.unknown-event` | error | spec-required | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | A VS Code hook registered under an event name that is never dispatched |
 | `vscode.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A VS Code command hook whose script does not exist |
 | `claude.hook.invalid-group` | error | internal-consistency | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude hook matcher group with no nested `hooks` array (flat handler arrays are invalid) |
 | `claude.hook.command-without-command` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude `type: command` hook with no `command` |
@@ -475,9 +475,9 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `claude.hook.unknown-handler-type` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude hook whose required `type` is missing or not one of command, http, mcp_tool, prompt, agent |
 | `claude.hook.prompt-without-prompt` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude `type: prompt` or `type: agent` hook with no `prompt` |
 | `claude.hook.incompatible-handler` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude handler type that the event does not support |
-| `vscode.hook.invalid-group` | error | internal-consistency | [code.visualstudio.com/docs/agent-customization/hooks](https://code.visualstudio.com/docs/agent-customization/hooks) | A VS Code hook group that is not a command handler array |
-| `vscode.hook.command-without-command` | error | spec-required | [code.visualstudio.com/docs/agent-customization/hooks](https://code.visualstudio.com/docs/agent-customization/hooks) | A native VS Code `type: command` hook with no `command` |
-| `vscode.hook.unknown-handler-type` | error | spec-required | [code.visualstudio.com/docs/agent-customization/hooks](https://code.visualstudio.com/docs/agent-customization/hooks) | A native VS Code hook whose `type` is not `command` |
+| `vscode.hook.invalid-group` | error | internal-consistency | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | A VS Code hook group that is not a command handler array |
+| `vscode.hook.command-without-command` | error | spec-required | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | A native VS Code `type: command` hook with no `command` |
+| `vscode.hook.unknown-handler-type` | error | spec-required | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | A native VS Code hook whose `type` is not `command` |
 | `copilot.hook.unknown-event` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | A Copilot CLI hook registered under an event that is never dispatched |
 | `copilot.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Copilot CLI command hook whose script does not exist |
 | `copilot.hook.command-without-command` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | A Copilot CLI command hook with none of `bash`, `powershell`, `command`, or `exec` |
@@ -565,15 +565,21 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `windsurf.hook.unknown-event` | error | spec-required | [docs.devin.ai/desktop/cascade/hooks](https://docs.devin.ai/desktop/cascade/hooks) | A Windsurf Cascade hook registered under an event name that is never dispatched (12 snake_case events) |
 | `windsurf.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Windsurf hook whose script does not exist, so the guard it claims is not in effect |
 | `windsurf.hook.command-without-command` | error | spec-required | [docs.devin.ai/desktop/cascade/hooks](https://docs.devin.ai/desktop/cascade/hooks) | A Windsurf hook entry declaring neither `command` nor `powershell`, so nothing runs |
-| `gemini.hook.unknown-event` | error | spec-required | [github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md](https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md) | A Gemini hook registered under an event that is never dispatched (11 events) |
+| `gemini.hook.unknown-event` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | A Gemini hook registered under an event that is never dispatched (11 events) |
 | `gemini.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Gemini command hook whose script does not exist |
-| `gemini.hook.invalid-group` | error | spec-required | [github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md](https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md) | A Gemini hook group missing the required nested `hooks` array, or a non-string `matcher` |
-| `gemini.hook.command-without-command` | error | spec-required | [github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md](https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md) | A Gemini `type: command` hook with no `command` |
-| `gemini.hook.unknown-handler-type` | error | spec-required | [github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md](https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md) | A Gemini hook whose `type` is missing or is not `command` |
+| `gemini.hook.invalid-group` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | A Gemini hook group missing the required nested `hooks` array, or a non-string `matcher` |
+| `gemini.hook.command-without-command` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | A Gemini `type: command` hook with no `command` |
+| `gemini.hook.unknown-handler-type` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | A Gemini hook whose `type` is missing or is not `command` |
 | `cursor.hook.unknown-event` | error | spec-required | [cursor.com/docs/hooks](https://cursor.com/docs/hooks) | A Cursor hook registered under an event that is never dispatched (21 events) |
 | `cursor.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Cursor hook whose script does not exist under the project root |
 | `cursor.hook.command-without-command` | error | spec-required | [cursor.com/docs/hooks](https://cursor.com/docs/hooks) | A Cursor hook entry with no `command` |
 | `cursor.hook.unknown-handler-type` | error | spec-required | [cursor.com/docs/hooks](https://cursor.com/docs/hooks) | A Cursor hook whose `type` is present and is not `command` / `prompt` |
+| `kiro.hook.unknown-event` | error | spec-required | [kiro.dev/docs/ide/whats-new-v1/hooks](https://kiro.dev/docs/ide/whats-new-v1/hooks/) | A Kiro hook registered under a trigger that is never dispatched (10 PascalCase events) |
+| `kiro.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Kiro command hook whose script does not exist, so it never runs |
+| `kiro.hook.command-without-command` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | A Kiro `type: command` hook with no `command` |
+| `kiro.hook.prompt-without-prompt` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | A Kiro `type: agent` hook with no `prompt` |
+| `kiro.hook.unknown-handler-type` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | A Kiro hook whose `action.type` is missing or is not `command` / `agent` |
+| `kiro.hook.invalid-group` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | A Kiro hook file missing `version: "v1"` or a `hooks` array |
 <!-- rules:end -->
 
 ### Coverage in 1.4.0
@@ -596,19 +602,19 @@ Dimensions:
 | Claude Code | project settings, skills, agents, commands, `CLAUDE.md`, `.mcp.json` / `.claude/mcp.json`; in-tree plugin hooks / skills / agents / commands / `.mcp.json` | `--global` `$CLAUDE_CONFIG_DIR` or `~/.claude` (skills, settings, agents, `CLAUDE.md`, rules, commands) and `~/.claude.json` (user + matching local `mcpServers`); unread managed policy, marketplace plugins, other projects' local MCP | 33 events; required handler `type`; MCP reserved names; first-paragraph skill description; listing budget | walk-up `CLAUDE.md` / `.claude/agents` / `.claude/commands`; user+project+local layers inventoried | `claude-json` fixture |
 | Command Code | git-root project files; per-directory `AGENTS.md` else `.commandcode/AGENTS.md` | `--global` `~/.commandcode/*`; unread `projects/{slug}/mcp.json` | 4 events; command handlers; Agent Skills; MCP `transport` / `type` | settings merge; project+user hooks coexist; skill/MCP shadow | `commandcode` fixture |
 | Codex | `.codex/config.toml`, `.codex/skills`, AGENTS chain | `--global` `$CODEX_HOME` / `~/.codex/config.toml` MCP; `AGENTS.override.md` then `AGENTS.md`; unread system, managed, requirements, profiles, plugins, trust | TOML MCP; `project_doc_max_bytes`; Agent Skills | override > `AGENTS.md` > fallbacks; one file per dir; root→cwd; `project_root_markers`; MCP user+project both inventoried | `codex-toml` fixture |
-| VS Code | `.github/hooks` without `version: 1`, instruction files, `.github/agents`, `.vscode/mcp.json` | `--global` `~/.copilot/hooks` without `version: 1`; unread policy dirs | 8 events; command-only | workspace over user | `vscode-hooks`, `vscode-json` |
-| Copilot CLI | `.github/hooks` with `version: 1`; inline `hooks` in `.github/copilot/settings.json` and `settings.local.json` | `--global` `$COPILOT_HOME` / `~/.copilot/hooks` with `version: 1` and `settings.json`; unread `/etc/github-copilot/policy.d` | camelCase + PascalCase map; `bash` / `powershell` / `command` / `exec`; `cwd`; `timeoutSec`; prompt on `sessionStart` | documented sources coexist; policy unread; `.claude/settings.json` stays Claude | `copilot-hooks` fixture |
-| Cursor | nested `.cursor/skills`; `.cursor/mcp.json`, `.cursor/hooks.json` and `.cursor/rules` on the ancestor walk only (not descendant package trees from repo root) | unread `~/.cursor/hooks.json` and the other documented Cursor user/global paths; unread MDM/team hooks | Agent Skills; MCP launch; 500-line rules; 21 hook events, optional `type` (`command` / `prompt`), required `command` | n/a | `cursor-json` fixture |
+| VS Code | `.github/hooks` without `version: 1`, instruction files, `.github/agents` (frontmatter hooks as vscode-native), `.vscode/mcp.json` | `--global` `~/.copilot/hooks` without `version: 1`; unread policy dirs; unread marketplace plugin `hooks.json` (install path unpublished) | 8 events; command-only | workspace over user | `vscode-hooks`, `vscode-json` |
+| Copilot CLI | `.github/hooks` with `version: 1`; inline `hooks` in `.github/copilot/settings.json` and `settings.local.json` | `--global` `$COPILOT_HOME` / `~/.copilot/hooks` with `version: 1` and `settings.json`; unread `/etc/github-copilot/policy.d` | camelCase + PascalCase map; `bash` / `powershell` / `command` / `exec`; `cwd`; `timeoutSec`; prompt on `sessionStart` | documented sources coexist; policy unread; Copilot also reads `.claude/settings.json` but this scanner lints that file as Claude | `copilot-hooks` fixture |
+| Cursor | nested `.cursor/skills`; `.cursor/mcp.json`, `.cursor/hooks.json` and `.cursor/rules` on the ancestor walk only (not descendant package trees from repo root) | `--global` `~/.cursor/hooks.json`; unread MDM/team hooks; unread third-party Claude import as Cursor schema | Agent Skills; MCP launch; 500-line rules; 21 hook events, optional `type` (`command` / `prompt`), required `command` | n/a | `cursor-json` fixture |
 | Grok | `.grok/config.toml` walk-up; `.grok/hooks/*.json`; `.grok/skills`; `.grok/rules/*.md`; `Agents.md` / `AGENT.md` | `--global` `$GROK_HOME` or `~/.grok` config/hooks/skills; unread managed, requirements, plugins, `[skills] paths`, agents, credentials | `command` / `url` MCP (no `type`); 14 events; command/http; frontmatter required, name/description optional; no rules cap | closer project wins; project same-name replaces user | `grok-toml` fixture |
-| Antigravity | `.agents/mcp_config.json` | none | `serverUrl` launch | n/a | `antigravity-json` fixture |
-| Gemini | `.gemini/settings.json` — MCP and `hooks` | unread `~/.gemini/settings.json` unless `--global` is wired for it (it is not); unread `/etc/gemini-cli/settings.json` and extension hooks | `command` / `url` / `httpUrl`; underscore-alias warning; 11 hook events, required `type` (`command` only), nested groups, `$GEMINI_PROJECT_DIR` | n/a | `gemini-json` fixture |
+| Antigravity | `.agents/mcp_config.json` | `--global` `~/.gemini/config/mcp_config.json`; unread credential siblings | `command` / `serverUrl` (`url` / `httpUrl` unsupported) | n/a | `antigravity-json` fixture |
+| Gemini | `.gemini/settings.json` — MCP and `hooks` | `--global` `~/.gemini/settings.json` (hooks and MCP together); unread `/etc/gemini-cli/settings.json`, extension hooks, and `mcp-oauth-tokens.json` | `command` / `url` / `httpUrl`; underscore-alias warning; 11 hook events, required `type` (`command` only), nested groups, `$GEMINI_PROJECT_DIR` | n/a | `gemini-json` fixture |
 | Windsurf | `.devin/rules/*.md` (preferred), `.windsurf/rules/*.md` (fallback), `.windsurfrules`; `.windsurf/hooks.json`; `.windsurf/skills`; portable `AGENTS.md` / `agents.md` | `--global` `~/.codeium/windsurf/mcp_config.json`, `memories/global_rules.md`, `hooks.json`, and `skills`; unread auto memories, Devin CLI MCP, system rules/hooks/skills, JetBrains `~/.codeium/hooks.json` | 12k / 6k character rules; workspace `trigger`; MCP `command` / `serverUrl` / `url` (no `type`); 12 hook events; `command` / `powershell`; Agent Skills on `.windsurf/skills` | n/a (no project MCP; both rule trees inventoried) | `windsurf-rules` fixture |
-| Kiro | none | none | none | n/a | none |
-| Cline | none | none | none | n/a | none |
-| Roo | none | none | none | n/a | none |
-| Kilo | none | none | none | n/a | none |
+| Kiro | `.kiro/hooks/*.json`, `.kiro/skills` | `--global` `~/.kiro/hooks/`, `~/.kiro/skills`; unread `.kiro/agents/` (no quoted filename pattern) | 10 PascalCase triggers; `command` / `agent`; Agent Skills | inventories both layers | unit tests |
+| Cline | `.cline/skills` | `--global` `~/.cline/skills`; unread hooks (no quoted event list), unread agents | Agent Skills | n/a | unit tests |
+| Roo | `.roo/skills` | `--global` `~/.roo/skills` | Agent Skills | n/a | unit tests |
+| Kilo | `.kilo/skills` | `--global` `~/.kilo/skills`; unread extra paths in `kilo.jsonc` | Agent Skills | n/a | unit tests |
 | OpenCode | `opencode.json(c)` V1 and V2 | none | V2 local `command` must be an argv array | n/a | `opencode-json` fixture |
-| Junie | none | none | none | n/a | none |
+| Junie | `.junie/skills` | `--global` `~/.junie/skills`; unread `--skill-location` / extension skills | Agent Skills with optional `description`; `name` need not match the folder | n/a | unit tests |
 | Continue | `.continue/config.yaml`, `.continue/mcpServers/*` | none | launch `command` / `url` / `uses`; standalone YAML `name` / `version` / `schema` | n/a | `continue-yaml`, `continue-mcpservers` |
 
 Cursor project rules (`.cursor/rules/**/*.mdc`) are a separate surface: discovery plus `cursor.rule.too-large` at info. Claude `.claude/rules/**/*.md` is inventoried and has no published line budget. Windsurf workspace rules use a 12,000-character budget (`windsurf.rule.too-large`); do not apply the Cursor 500-line check. Portable `AGENTS.md` / `agents.md` stay `sourceProvider: unknown` — this scanner does not claim exclusive Windsurf ownership.
@@ -653,6 +659,13 @@ under `--global`, plus VS Code workspace hooks and Command Code settings hooks:
 | `.commandcode/settings.json` · `.commandcode/settings.local.json` (and user settings under `--global`) | Command Code project root (git root, or cwd outside a git repo), `$COMMANDCODE_PROJECT_DIR`, `$COMMANDCODE_CWD` |
 | `.grok/hooks/*.json` | project root and the hooks directory |
 | `$GROK_HOME/hooks` or `~/.grok/hooks` under `--global` | same Grok 14-event / command-or-http split |
+| `.github/agents/*.agent.md` frontmatter | vscode-native (command-only); project root and the agent file's directory |
+| `.kiro/hooks/*.json` | project root; array-of-hooks, not Claude event-keyed objects |
+| `~/.kiro/hooks/` under `--global` | scanned project root |
+| `.cursor/hooks.json` | project root |
+| `~/.cursor/hooks.json` under `--global` | scanned project root |
+| `.gemini/settings.json` `hooks` | project root, `$GEMINI_PROJECT_DIR` |
+| `~/.gemini/settings.json` `hooks` under `--global` | scanned project root, `$GEMINI_PROJECT_DIR` |
 
 `${CLAUDE_PLUGIN_ROOT}` is expanded **only** for a hook that came from a plugin.
 In a settings file it names nothing, so the path is skipped rather than guessed
@@ -738,20 +751,35 @@ first.
   because Claude skips them.
 - **Default `skills/` is Claude schema.** A repo-root `skills/` directory is
   discovered, but `name` / directory-match from the Agent Skills spec are not
-  applied there. `.agents/skills`, `.cursor/skills`, `.codex/skills`, and
-  `.commandcode/skills` use the Agent Skills contract.
+  applied there. `.agents/skills`, `.cursor/skills`, `.codex/skills`,
+  `.commandcode/skills`, `.kiro/skills`, `.cline/skills`, `.roo/skills`,
+  `.kilo/skills`, and `.junie/skills` use the Agent Skills contract. Junie
+  does not require `description` and does not require `name` to match the
+  folder.
 - **Copilot CLI policy hooks are unread.** `/etc/github-copilot/policy.d` and the
   Windows policy directory are machine-wide admin files. User
   `~/.copilot/hooks` and `~/.copilot/settings.json` (or `$COPILOT_HOME/…`)
   are scanned only under `--global`. Plugin `hooks.json` stays unread.
-  `.claude/settings.json` is read as Claude, not remapped to Copilot.
-- **Gemini user settings are unread.** `~/.gemini/settings.json` is outside a
-  normal project scan — MCP and hooks alike. `/etc/gemini-cli/settings.json`
-  and extension-provided hooks are unread for the same reason.
-- **Cursor user and managed hooks are unread.** `~/.cursor/hooks.json`, the
-  MDM paths (`/etc/cursor/hooks.json` and the macOS / Windows equivalents),
-  and dashboard-synced team hooks are outside the repository. Project
-  `.cursor/hooks.json` is scanned.
+  Copilot also reads repository `.claude/settings.json`; this scanner still
+  lints that file as Claude (required nested groups and required `type`).
+  Copilot-only event names there stay `claude.hook.unknown-event`.
+- **Gemini system settings are unread.** `~/.gemini/settings.json` (hooks and
+  MCP together) is scanned only under `--global`. `/etc/gemini-cli/settings.json`
+  and extension-provided hooks stay unread. `mcp-oauth-tokens.json` is never
+  opened.
+- **Cursor managed hooks are unread.** `~/.cursor/hooks.json` is scanned only
+  under `--global`. MDM paths (`/etc/cursor/hooks.json` and the macOS /
+  Windows equivalents) and dashboard-synced team hooks stay unread. Cursor's
+  third-party import of Claude hook files stays on the Claude profile.
+- **Antigravity global MCP.** `~/.gemini/config/mcp_config.json` is scanned
+  only under `--global`. Project `.agents/mcp_config.json` is always read.
+  `url` / `httpUrl` are still not launch fields.
+- **Kiro agents and Cline hooks stay unread.** `.kiro/agents/` has no quoted
+  filename pattern. Cline's hooks page did not quote an event identifier
+  table. Cline agents are unread for the same reason.
+- **VS Code marketplace plugin hooks are unread.** In-tree Claude plugins
+  stay Claude. VS Code's `hooks.json` / `hooks/hooks.json` inside an
+  installed plugin package is not a project path.
 - **Windsurf Devin CLI MCP and auto memories are unread.** Cascade MCP is
   global-only (`~/.codeium/windsurf/mcp_config.json`, `--global`). The Devin
   Local agent uses unpublished CLI config files — that path is not guessed.

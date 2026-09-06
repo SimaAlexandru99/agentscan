@@ -13,6 +13,28 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+- Kiro hooks (`.kiro/hooks/*.json`, `--global` `~/.kiro/hooks/`) on their
+  own profile: 10 PascalCase triggers from the IDE 1.0 table, `command` /
+  `agent` actions, array-of-hooks files. New: `kiro.hook.unknown-event`,
+  `kiro.hook.missing-script`, `kiro.hook.command-without-command`,
+  `kiro.hook.prompt-without-prompt`, `kiro.hook.unknown-handler-type`,
+  `kiro.hook.invalid-group`. Agents stay unread (no quoted filename
+  pattern). Skills: `.kiro/skills` as Agent Skills.
+- Cline / Roo / Kilo / Junie skill directories (`.cline/skills`,
+  `.roo/skills`, `.kilo/skills`, `.junie/skills`, plus `--global` home
+  copies). Junie does not require `description` and does not require
+  `name` to match the folder. Cline hooks and Cline/Kiro agents stay
+  unread.
+- VS Code `.github/agents/*.agent.md` frontmatter hooks parse as
+  vscode-native. Marketplace plugin `hooks.json` stays unread.
+- `--global` Cursor `~/.cursor/hooks.json`, Gemini
+  `~/.gemini/settings.json` (hooks and MCP together), and Antigravity
+  `~/.gemini/config/mcp_config.json`. Credential siblings are never
+  opened. Copilot-consumed `.claude/settings.json` stays Claude.
+- Spec provenance: VS Code hooks-reference, geminicli.com (GitHub MCP
+  page kept for the underscore warning), both OpenCode MCP URLs.
+  Registry: **118 checks**.
+
 - Claude user `~/.claude/settings.json` hooks under `--global` /
   `includeGlobal`. Same Claude schema as project settings;
   `${CLAUDE_PROJECT_DIR}` resolves against the scanned project. Same-event
@@ -40,19 +62,19 @@ intermediate commit that this train does not cut.
   never accepted here, and Gemini's are never validated against Claude's.
   New: `gemini.hook.unknown-event`, `gemini.hook.missing-script`,
   `gemini.hook.invalid-group`, `gemini.hook.command-without-command`,
-  `gemini.hook.unknown-handler-type`. User `~/.gemini/settings.json`,
-  `/etc/gemini-cli/settings.json`, and extension hooks stay unread, matching
-  the Gemini MCP scope.
+  `gemini.hook.unknown-handler-type`. User `~/.gemini/settings.json` is
+  opened under `--global` together with that file's MCP servers.
+  `/etc/gemini-cli/settings.json` and extension hooks stay unread.
 - Cursor hooks: project `.cursor/hooks.json`. Flat arrays, not Claude groups;
   `command` required on every entry, `type` optional and defaulting to
   `command` (`command` / `prompt`), scripts resolved against the project root
   as the page documents. Twenty-one camelCase events across agent, Tab, and
   app-lifecycle families. New: `cursor.hook.unknown-event`,
   `cursor.hook.missing-script`, `cursor.hook.command-without-command`,
-  `cursor.hook.unknown-handler-type`. User `~/.cursor/hooks.json`, the MDM
-  paths, and dashboard-synced team hooks stay unread.
-- `spec:check` now diffs the Gemini and Cursor event sets against their live
-  pages, and both pages are tracked by content hash. Registry: **112 checks**.
+  `cursor.hook.unknown-handler-type`. User `~/.cursor/hooks.json` is opened
+  under `--global`. MDM paths and dashboard-synced team hooks stay unread.
+- `spec:check` now diffs the Gemini, Cursor, and Kiro event sets against
+  their live pages, and those pages are tracked by content hash.
 - Every finding now says where its rule comes from. `StructuralCheck` gains a
   required `source`: either `{ kind: "spec", url, capture }` naming the vendor
   page and the `docs/spec` file holding the verbatim quote, or

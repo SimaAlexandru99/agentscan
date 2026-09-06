@@ -48,7 +48,12 @@ function skillSchema(skill: SkillFact): SkillSchemaProfile {
     skill.sourceProvider === "cursor" ||
     skill.sourceProvider === "codex" ||
     skill.sourceProvider === "commandcode" ||
-    skill.sourceProvider === "windsurf"
+    skill.sourceProvider === "windsurf" ||
+    skill.sourceProvider === "kiro" ||
+    skill.sourceProvider === "cline" ||
+    skill.sourceProvider === "roo" ||
+    skill.sourceProvider === "kilo" ||
+    skill.sourceProvider === "junie"
   ) {
     return "agent-skills";
   }
@@ -60,7 +65,7 @@ function skillSchema(skill: SkillFact): SkillSchemaProfile {
 
 function skillRoot(skill: SkillFact): string {
   const path = skill.path.replaceAll("\\", "/");
-  for (const marker of ["/.claude/skills", "/.agents/skills", "/.cursor/skills", "/.codex/skills", "/.commandcode/skills", "/.grok/skills"]) {
+  for (const marker of ["/.claude/skills", "/.agents/skills", "/.cursor/skills", "/.codex/skills", "/.commandcode/skills", "/.grok/skills", "/.windsurf/skills", "/.kiro/skills", "/.cline/skills", "/.roo/skills", "/.kilo/skills", "/.junie/skills"]) {
     const index = path.lastIndexOf(marker);
     if (index !== -1) {
       return path.slice(0, index + marker.length);
@@ -232,7 +237,7 @@ function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
         }),
       );
     }
-    if (name !== dirName) {
+    if (name !== dirName && skill.sourceProvider !== "junie") {
       out.push(
         make("agent-skills.skill.name-does-not-match-directory", skillSubject(skill), {
           action: "warn",
@@ -248,21 +253,23 @@ function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
   }
 
   if (skill.description === undefined) {
-    const typeNote =
-      skill.descriptionKind !== undefined && skill.descriptionKind !== "string"
-        ? ` (found ${skill.descriptionKind}, not a string)`
-        : "";
-    out.push(
-      make("agent-skills.skill.missing-description", skillSubject(skill), {
-        action: "warn",
-        severity: "error",
-        message: `SKILL.md frontmatter has no string \`description\`${typeNote}`,
-        reason:
-          "The Agent Skills spec requires `description` as a string (1–1024 characters). See docs/spec/agent-skills.md.",
-        evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
-        suggest: "Add a description that says what the skill does and when to use it",
-      }),
-    );
+    if (skill.sourceProvider !== "junie") {
+      const typeNote =
+        skill.descriptionKind !== undefined && skill.descriptionKind !== "string"
+          ? ` (found ${skill.descriptionKind}, not a string)`
+          : "";
+      out.push(
+        make("agent-skills.skill.missing-description", skillSubject(skill), {
+          action: "warn",
+          severity: "error",
+          message: `SKILL.md frontmatter has no string \`description\`${typeNote}`,
+          reason:
+            "The Agent Skills spec requires `description` as a string (1–1024 characters). See docs/spec/agent-skills.md.",
+          evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
+          suggest: "Add a description that says what the skill does and when to use it",
+        }),
+      );
+    }
   } else if (skill.description.length > AGENT_SKILLS_DESCRIPTION_MAX) {
     out.push(
       make("agent-skills.skill.description-too-long", skillSubject(skill), {
