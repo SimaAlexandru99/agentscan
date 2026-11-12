@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { canonicalizeFindingId, ignoreRuleSet } from "./checks/registry";
+import { ignoreRuleSet } from "./checks/registry";
 import { runChecks } from "./checks/index";
 import { loadConfig } from "./config/load";
 import type { AgentscanConfig } from "./config/schema";
@@ -77,8 +77,7 @@ export function analyze(options: AnalyzeOptions = {}): Analysis {
   );
 
   // Exact finding ids, so one false positive need not disable a whole rule.
-  // Legacy rule-id prefixes canonicalize the same way ignoreRules and explain do.
-  const ignoredFindings = new Set(config.ignoreFindings.map(canonicalizeFindingId));
+  const ignoredFindings = new Set(config.ignoreFindings);
   const findings = sortFindings(
     structural.filter((f) => !ignoredFindings.has(f.id)),
   );

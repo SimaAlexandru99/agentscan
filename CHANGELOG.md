@@ -104,6 +104,16 @@ intermediate commit that this train does not cut.
   published release's count; the test only forbids the site advertising more
   checks than the registry holds.
 
+### Removed
+
+- `ignoreRules`, `ignoreFindings`, and `explain` no longer accept 0.7 rule
+  ids (`hook.missing-script`, `skill.missing-frontmatter`, and the rest of
+  that set). Use the id the finding prints (`claude.hook.missing-script`).
+- `thresholds.skillDescriptionBytes` and `thresholds.skills` are rejected.
+  The listing budget key is `thresholds.skillListingChars`.
+- The README "Catches" column is the registry description. `bun run
+  readme:rules` no longer keeps a second, hand-written sentence.
+
 ### Changed
 
 - An explicit `--config <path>` that does not exist now exits 2 with
@@ -114,11 +124,6 @@ intermediate commit that this train does not cut.
 
 ### Fixed
 
-- The deprecated `thresholds.skillDescriptionBytes` alias was never read: the
-  `skillListingChars` default always won. It now applies when
-  `skillListingChars` is not set.
-- `ignoreFindings` accepts legacy rule-id prefixes
-  (`skill.missing-frontmatter:skill:a`), as `ignoreRules` and `explain` do.
 - 54 rules recorded a `lastVerified` older than the `**Read:**` date of the
   capture they rest on: the 2026-09-03 re-read of those pages never reached the
   registry. Synced, with a test that keeps the two in step.

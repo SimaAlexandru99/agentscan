@@ -11,35 +11,20 @@ export type OutputFormat = z.infer<typeof outputFormatSchema>;
 
 const limit = z.number().int().positive();
 
-const thresholdsSchema = z.preprocess(
-  // The deprecated alias applies only when the user did not set the new key;
-  // a zod default on skillListingChars would otherwise always win.
-  (raw) =>
-    typeof raw === "object" &&
-    raw !== null &&
-    !("skillListingChars" in raw) &&
-    "skillDescriptionBytes" in raw
-      ? { ...raw, skillListingChars: raw.skillDescriptionBytes }
-      : raw,
-  z.object({
-    /**
-     * Characters of Claude skill listing text (description or first markdown
-     * paragraph, plus when_to_use) loaded at startup. Official runtime is 1% of
-     * the model context window; this fallback is 8000 characters when the window
-     * is unknown. Each entry is truncated at skillListingMaxDescChars.
-     */
-    skillListingChars: limit.default(8_000),
-    skillListingMaxDescChars: limit.default(1_536),
-    /** @deprecated accepted for one release as an alias of skillListingChars. */
-    skillDescriptionBytes: limit.optional(),
-    /** @deprecated accepted for one release; no check consumes it. */
-    skills: limit.optional(),
-    mcp: limit.default(5),
-    agentsMdLines: limit.default(150),
-    claudeMdLines: limit.default(200),
-    agents: limit.default(8),
-  }).strict(),
-);
+const thresholdsSchema = z.object({
+  /**
+   * Characters of Claude skill listing text (description or first markdown
+   * paragraph, plus when_to_use) loaded at startup. Official runtime is 1% of
+   * the model context window; this fallback is 8000 characters when the window
+   * is unknown. Each entry is truncated at skillListingMaxDescChars.
+   */
+  skillListingChars: limit.default(8_000),
+  skillListingMaxDescChars: limit.default(1_536),
+  mcp: limit.default(5),
+  agentsMdLines: limit.default(150),
+  claudeMdLines: limit.default(200),
+  agents: limit.default(8),
+}).strict();
 
 export const configSchema = z.object({
   skillPaths: z.array(z.string()).default([...DEFAULT_SKILL_PATHS]),

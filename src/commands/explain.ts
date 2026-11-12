@@ -1,5 +1,4 @@
 import { analyze } from "../analyze";
-import { canonicalizeFindingId } from "../checks/registry";
 import type { Finding } from "../findings";
 import { provenanceLine } from "../report/provenance-line";
 import { safe } from "../report/safe";
@@ -18,9 +17,7 @@ export type ExplainOptions = {
  */
 export function runExplain(findingId: string, options: ExplainOptions = {}): CommandResult {
   const { findings } = analyze(options);
-  const finding = findings.find(
-    (f) => f.id === findingId || f.id === canonicalizeFindingId(findingId),
-  );
+  const finding = findings.find((f) => f.id === findingId);
 
   if (finding === undefined) {
     return {

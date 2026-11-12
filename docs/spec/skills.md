@@ -43,8 +43,7 @@ agentscan cannot read the model's context window. The configurable fallback is
 `thresholds.skillListingChars` (default **8000 characters**). Per-entry cap is
 `thresholds.skillListingMaxDescChars` (default **1536**). Listing text is
 `description` (or the first markdown paragraph) plus `when_to_use`.
-`thresholds.skillDescriptionBytes` is accepted for one release as an alias of
-`skillListingChars` — do not treat 16000 bytes as the runtime budget.
+Do not treat 16000 bytes as the runtime budget.
 
 This is **not** applied to Agent Skills schema profiles. See
 [thresholds.md](thresholds.md).

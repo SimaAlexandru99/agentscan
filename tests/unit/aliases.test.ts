@@ -5,14 +5,14 @@ import { mkPinnedProject } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import { ignoreRuleSet } from "../../src/checks/registry";
 
-describe("rule aliases", () => {
-  test("ignoreRules accepts pre-0.8 ids", () => {
+describe("retired rule ids", () => {
+  test("ignoreRules does not treat a 0.7 id as the canonical id", () => {
     expect(ignoreRuleSet(["hook.unknown-event"]).has("claude.hook.unknown-event")).toBe(
-      true,
+      false,
     );
   });
 
-  test("a project ignoreRules entry with the old id hides the new finding", () => {
+  test("a project ignoreRules entry with the old id does not hide the new finding", () => {
     const root = mkPinnedProject("agentscan-alias-", "alias");
     mkdirSync(join(root, ".claude"), { recursive: true });
     writeFileSync(
@@ -26,6 +26,6 @@ describe("rule aliases", () => {
       "utf8",
     );
     const { findings } = analyze({ dir: root });
-    expect(findings.map((f) => f.ruleId)).not.toContain("claude.hook.unknown-event");
+    expect(findings.map((f) => f.ruleId)).toContain("claude.hook.unknown-event");
   });
 });

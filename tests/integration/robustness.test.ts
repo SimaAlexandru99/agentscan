@@ -466,7 +466,7 @@ describe("suppressing a single finding", () => {
     expect(after.findings.map((f) => f.id)).toEqual([ids[1] as string]);
   });
 
-  test("ignoreFindings accepts a legacy rule-id prefix, like ignoreRules and explain", async () => {
+  test("ignoreFindings does not accept a 0.7 rule-id prefix", async () => {
     const dir = project({
       "package.json": '{"name":"x"}',
       ".claude/skills/a/SKILL.md": "# no frontmatter\n",
@@ -479,7 +479,9 @@ describe("suppressing a single finding", () => {
       JSON.stringify({ ignoreFindings: ["skill.missing-frontmatter:skill:a"] }),
       "utf8",
     );
-    expect((await report(dir)).findings).toEqual([]);
+    expect((await report(dir)).findings.map((f) => f.id)).toEqual([
+      "claude.skill.missing-frontmatter:skill:a",
+    ]);
   });
 
   test("an ignored finding cannot fail the build", async () => {

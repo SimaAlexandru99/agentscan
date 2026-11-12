@@ -285,7 +285,7 @@ describe("Continue, JSONC, scan boundary, explain aliases", () => {
     );
   });
 
-  test("old finding id works in explain", async () => {
+  test("a 0.7 finding id is not found by explain", async () => {
     const root = tmpProject("agentscan-explain-alias-");
     write(
       root,
@@ -301,8 +301,8 @@ describe("Continue, JSONC, scan boundary, explain aliases", () => {
     const result = await runExplain("hook.missing-script:hook:PreToolUse:./guard.js", {
       dir: root,
     });
-    expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("claude.hook.missing-script:hook:PreToolUse:./guard.js");
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("hook.missing-script:hook:PreToolUse:./guard.js");
   });
 });
 

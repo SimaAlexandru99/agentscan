@@ -5,17 +5,9 @@
  *   bun run readme:rules          # rewrite the table
  *   bun run readme:rules --check  # exit 1 if it is out of date
  *
- * Why it preserves cells instead of printing `check.description`: the README's
- * "Catches" prose is deliberately richer than the registry one-liner —
- * "Config file is not valid JSON or cannot be read" against "A config file that
- * is not valid JSON, so whatever it declares is silently not in effect". A
- * generator that overwrote it would trade a drift bug for a worse README. So
- * the README stays the source of truth for the prose, the registry stays the
- * source of truth for the id set, severity, provenance, and source, and this
- * script enforces exactly that split.
- *
- * A rule with no row yet gets one seeded from the registry description, marked
- * for a human to improve.
+ * The registry is the source of truth for id, severity, provenance, source,
+ * and the Catches sentence (`check.description`). Hand-written README prose
+ * is not kept.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -29,27 +21,6 @@ const START = "<!-- rules:start -->";
 const END = "<!-- rules:end -->";
 const CHECK = process.argv.includes("--check");
 
-type Existing = { catches: string };
-
-/**
- * Parse the current table so hand-written prose survives.
- *
- * Reads the generated five-column shape: id, severity, provenance, source, catches.
- */
-function existingRows(block: string): Map<string, Existing> {
-  const out = new Map<string, Existing>();
-  for (const line of block.split("\n")) {
-    const trimmed = line.trim();
-    const m = /^\| `([^`]+)` \| [^|]*? \| [^|]*? \| .*? \| (.*?) \|$/.exec(trimmed);
-    const id = m?.[1];
-    const catches = m?.[2];
-    if (id !== undefined && catches !== undefined) {
-      out.set(id, { catches: catches.trim() });
-    }
-  }
-  return out;
-}
-
 function sourceCell(check: StructuralCheck): string {
   if (check.source.kind === "spec") {
     return `[${shortSourceUrl(check.source.url)}](${check.source.url})`;
@@ -57,24 +28,17 @@ function sourceCell(check: StructuralCheck): string {
   return `_${check.source.detail}_`;
 }
 
-function render(existing: Map<string, Existing>): { table: string; seeded: string[] } {
-  const seeded: string[] = [];
+function render(): string {
   const rows = [
     "| id | Severity | Provenance | Source | Catches |",
     "|----|----------|------------|--------|---------|",
   ];
   for (const check of STRUCTURAL_CHECKS) {
-    const prior = existing.get(check.id);
-    if (prior === undefined) {
-      seeded.push(check.id);
-    }
-    const severity = severityLabel(check);
-    const catches = prior?.catches ?? check.description;
     rows.push(
-      `| \`${check.id}\` | ${severity} | ${check.provenance} | ${sourceCell(check)} | ${catches} |`,
+      `| \`${check.id}\` | ${severityLabel(check)} | ${check.provenance} | ${sourceCell(check)} | ${check.description} |`,
     );
   }
-  return { table: rows.join("\n"), seeded };
+  return rows.join("\n");
 }
 
 const text = readFileSync(README, "utf8");
@@ -85,8 +49,7 @@ if (from === -1 || to === -1 || to < from) {
   process.exit(2);
 }
 
-const block = text.slice(from + START.length, to);
-const { table, seeded } = render(existingRows(block));
+const table = render();
 const next = `${text.slice(0, from + START.length)}\n${table}\n${text.slice(to)}`;
 
 if (CHECK) {
@@ -100,8 +63,3 @@ if (CHECK) {
 
 writeFileSync(README, next, "utf8");
 process.stdout.write(`wrote ${STRUCTURAL_CHECKS.length} rules to the README table\n`);
-if (seeded.length > 0) {
-  process.stdout.write(
-    `seeded from the registry description, improve the prose by hand: ${seeded.join(", ")}\n`,
-  );
-}

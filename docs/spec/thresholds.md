@@ -54,7 +54,6 @@ Listing text is `description` (or the first markdown paragraph) plus
 fallback ceiling is `thresholds.skillListingChars` (default **8000
 characters**). Per-entry cap is `thresholds.skillListingMaxDescChars` (default
 **1536**). Do **not** use a fixed 16000-byte value as the runtime budget.
-`thresholds.skillDescriptionBytes` is a deprecated alias of `skillListingChars`.
 
 This is **not** applied to Agent Skills schema profiles. The Agent Skills spec
 caps a single description at 1024 characters; that is a different check.

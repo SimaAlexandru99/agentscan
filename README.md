@@ -462,124 +462,124 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 <!-- rules:start -->
 | id | Severity | Provenance | Source | Catches |
 |----|----------|------------|--------|---------|
-| `config.unreadable` | error | internal-consistency | _parser result_ | A config file that is not valid JSON, so whatever it declares is silently not in effect |
-| `scan.truncated` | info | internal-consistency | _scan cap_ | A file past the scan cap, so the checks that read its body saw only a prefix — about this tool's reach, not about your project |
-| `claude.hook.unknown-event` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude hook registered under an event name that is never dispatched |
-| `claude.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A registered Claude command hook whose script does not exist — it never runs |
-| `vscode.hook.unknown-event` | error | spec-required | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | A VS Code hook registered under an event name that is never dispatched |
-| `vscode.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A VS Code command hook whose script does not exist |
-| `claude.hook.invalid-group` | error | internal-consistency | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude hook matcher group with no nested `hooks` array (flat handler arrays are invalid) |
-| `claude.hook.command-without-command` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude `type: command` hook with no `command` |
-| `claude.hook.http-without-url` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude `type: http` hook with no `url` |
-| `claude.hook.mcp-tool-without-server-or-tool` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude `type: mcp_tool` hook missing `server` or `tool` |
-| `claude.hook.unknown-handler-type` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude hook whose required `type` is missing or not one of command, http, mcp_tool, prompt, agent |
-| `claude.hook.prompt-without-prompt` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude `type: prompt` or `type: agent` hook with no `prompt` |
-| `claude.hook.incompatible-handler` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | A Claude handler type that the event does not support |
-| `vscode.hook.invalid-group` | error | internal-consistency | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | A VS Code hook group that is not a command handler array |
-| `vscode.hook.command-without-command` | error | spec-required | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | A native VS Code `type: command` hook with no `command` |
-| `vscode.hook.unknown-handler-type` | error | spec-required | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | A native VS Code hook whose `type` is not `command` |
-| `copilot.hook.unknown-event` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | A Copilot CLI hook registered under an event that is never dispatched |
-| `copilot.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Copilot CLI command hook whose script does not exist |
-| `copilot.hook.command-without-command` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | A Copilot CLI command hook with none of `bash`, `powershell`, `command`, or `exec` |
-| `copilot.hook.http-without-url` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | A Copilot CLI `type: http` hook with no `url` |
-| `copilot.hook.prompt-without-prompt` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | A Copilot CLI `type: prompt` hook with no `prompt` |
-| `copilot.hook.unknown-handler-type` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | A Copilot CLI hook whose `type` is not command, http, or prompt |
-| `copilot.hook.incompatible-handler` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | A Copilot CLI prompt hook registered on an event other than `sessionStart` |
-| `skill.missing-skill-md` | warning | internal-consistency | [agentskills.io/specification](https://agentskills.io/specification) | A directory under a skill path with no `SKILL.md` |
-| `claude.skill.missing-frontmatter` | warning | spec-required | [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills) | Claude `SKILL.md` with no `---` block |
-| `claude.skill.missing-description` | info | vendor-recommendation | [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills) | Claude frontmatter has no `description` and no first markdown paragraph |
-| `agent-skills.skill.missing-frontmatter` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill `SKILL.md` has no YAML frontmatter |
-| `agent-skills.skill.missing-name` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill frontmatter has no required `name` |
-| `agent-skills.skill.missing-description` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill frontmatter has no required `description` |
-| `agent-skills.skill.invalid-name` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill name is not lowercase letters (any script) and digits joined by single hyphens |
-| `agent-skills.skill.name-does-not-match-directory` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill `name` does not match its directory |
+| `config.unreadable` | error | internal-consistency | _parser result_ | Config file is not valid JSON or cannot be read |
+| `scan.truncated` | info | internal-consistency | _scan cap_ | File is larger than the scan cap, so body checks read only a prefix of it |
+| `claude.hook.unknown-event` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | Hook registered under an event name that is never dispatched |
+| `claude.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Hook points at a script that does not exist, so it never runs |
+| `vscode.hook.unknown-event` | error | spec-required | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | VS Code hook registered under an event name that is never dispatched |
+| `vscode.hook.missing-script` | error | internal-consistency | _agentscan inference_ | VS Code hook points at a script that does not exist, so it never runs |
+| `claude.hook.invalid-group` | error | internal-consistency | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | Claude hook group has a matcher but no hooks array |
+| `claude.hook.command-without-command` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | Claude command hook is missing the command field |
+| `claude.hook.http-without-url` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | Claude http hook is missing the url field |
+| `claude.hook.mcp-tool-without-server-or-tool` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | Claude MCP tool hook is missing required server and tool fields |
+| `claude.hook.unknown-handler-type` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | Claude hook uses a handler type that is not command, http, mcp_tool, prompt, or agent, or omits the required type |
+| `claude.hook.prompt-without-prompt` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | Claude prompt or agent hook is missing the required prompt field |
+| `claude.hook.incompatible-handler` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | Claude hook handler type is not valid for its event |
+| `vscode.hook.invalid-group` | error | internal-consistency | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | VS Code hook group has a matcher but no hooks array |
+| `vscode.hook.command-without-command` | error | spec-required | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | VS Code command hook is missing the command field |
+| `vscode.hook.unknown-handler-type` | error | spec-required | [code.visualstudio.com/docs/agents/reference/hooks-reference](https://code.visualstudio.com/docs/agents/reference/hooks-reference) | VS Code hook uses a handler type other than the required type command |
+| `copilot.hook.unknown-event` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | Copilot CLI hook registered under an event name that is never dispatched |
+| `copilot.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Copilot CLI hook points at a script that does not exist, so it never runs |
+| `copilot.hook.command-without-command` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | Copilot CLI command hook declares none of bash, powershell, command, or exec |
+| `copilot.hook.http-without-url` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | Copilot CLI http hook is missing the url field |
+| `copilot.hook.prompt-without-prompt` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | Copilot CLI prompt hook is missing the prompt field |
+| `copilot.hook.unknown-handler-type` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | Copilot CLI hook uses a handler type that is not command, http, or prompt |
+| `copilot.hook.incompatible-handler` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | Copilot CLI prompt hook is registered on an event other than sessionStart |
+| `skill.missing-skill-md` | warning | internal-consistency | [agentskills.io/specification](https://agentskills.io/specification) | Skill directory has no SKILL.md |
+| `claude.skill.missing-frontmatter` | warning | spec-required | [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills) | SKILL.md has no YAML frontmatter block |
+| `claude.skill.missing-description` | info | vendor-recommendation | [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills) | SKILL.md frontmatter has no description and no first markdown paragraph |
+| `agent-skills.skill.missing-frontmatter` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill SKILL.md has no YAML frontmatter block |
+| `agent-skills.skill.missing-name` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill frontmatter has no required name |
+| `agent-skills.skill.missing-description` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill frontmatter has no required description |
+| `agent-skills.skill.invalid-name` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill name is not a valid identifier |
+| `agent-skills.skill.name-does-not-match-directory` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill name does not match its directory |
 | `agent-skills.skill.name-too-long` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill name exceeds 64 characters |
 | `agent-skills.skill.description-too-long` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill description exceeds 1024 characters |
-| `agent-skills.skill.invalid-compatibility` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill `compatibility` is present but is not a 1–500 character string |
-| `agent-skills.skill.invalid-metadata` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill `metadata` is present but is not `map<string, string>` |
-| `agent-skills.skill.invalid-allowed-tools` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill `allowed-tools` is present but is not a string |
-| `agent-skills.skill.body-too-large` | info | vendor-recommendation | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill `SKILL.md` exceeds the 500-line recommendation |
-| `skill.not-in-lock` | info | heuristic | _lockfile hygiene, not a requirement_ | A skill on disk that the lockfile does not track (installer policy) |
-| `skill.locked-not-installed` | warning | internal-consistency | _agentscan inference_ | `skills-lock.json` pins a skill that is not on disk |
-| `skill.broken-reference` | warning | internal-consistency | [agentskills.io/specification](https://agentskills.io/specification) | The body points at a bundled file that does not exist |
-| `skill.duplicate-description` | info | heuristic | _selection hint, not a requirement_ | Two or more skills carry an identical description (heuristic) |
-| `skill.description-budget` | info | vendor-recommendation | [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills) | Claude skill listing text (description or first paragraph, plus `when_to_use`) exceeds the 1% context-window budget, with an 8000-character fallback and a 1536-character per-entry cap |
-| `skill.no-lockfile` | info | heuristic | _lockfile hygiene, not a requirement_ | Skills present with no lockfile at all (only with `requireLock`) |
-| `claude.agent.missing-frontmatter` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | A Claude agent definition with no `---` block |
-| `claude.agent.missing-description` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Claude agent frontmatter has no `description` |
-| `claude.agent.missing-name` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Claude agent frontmatter has no `name` |
-| `claude.agent.duplicate-name` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Multiple Claude agent files declare the same name |
-| `claude.agent.invalid-name` | warning/error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Claude agent name is not lowercase letters and hyphens (error if it starts with `-` or contains `:`; filename is not compared) |
-| `claude.mcp.no-launch` | error | spec-required | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | A Claude MCP server with neither `command` nor `url` |
-| `vscode.mcp.no-launch` | error | spec-required | [code.visualstudio.com/docs/copilot/customization/mcp-servers](https://code.visualstudio.com/docs/copilot/customization/mcp-servers) | A VS Code MCP server (`servers`) with neither `command` nor `url` |
-| `cursor.mcp.no-launch` | error | spec-required | [cursor.com/docs/context/mcp](https://cursor.com/docs/context/mcp) | A Cursor MCP server with neither `command` nor `url` |
-| `antigravity.mcp.no-launch` | error | spec-required | [antigravity.google/docs/mcp](https://antigravity.google/docs/mcp) | An Antigravity MCP server with neither `command` nor `serverUrl` |
-| `codex.mcp.no-launch` | error | spec-required | [learn.chatgpt.com/docs/extend/mcp](https://learn.chatgpt.com/docs/extend/mcp) | A Codex `[mcp_servers.*]` entry with neither `command` nor `url` |
-| `gemini.mcp.no-launch` | error | spec-required | [github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md) | A Gemini MCP server with neither `command`, `url`, nor `httpUrl` |
-| `gemini.mcp.underscore-alias` | warning | vendor-recommendation | [github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md) | A Gemini MCP server alias contains `_`, which can make policies fail silently |
-| `opencode.mcp.no-launch` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | An OpenCode MCP server with neither `command` nor `url` |
-| `opencode.mcp.missing-type` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | An OpenCode MCP server missing `type: local` or `type: remote` |
-| `opencode.mcp.local-without-command` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | An OpenCode `type: local` server with no `command` |
-| `opencode.mcp.remote-without-url` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | An OpenCode `type: remote` server with no `url` |
-| `opencode.mcp.invalid-launch-for-type` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | An OpenCode server whose launch field does not match its `type` |
-| `opencode.mcp.command-not-array` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | An OpenCode V2 local `command` that is not an argv array |
-| `continue.mcp.no-launch` | error | spec-required | [docs.continue.dev/customize/deep-dives/mcp](https://docs.continue.dev/customize/deep-dives/mcp) | A Continue MCP server with neither `command`, `url`, nor `uses` |
-| `continue.mcp.missing-block-metadata` | error | spec-required | [docs.continue.dev/customize/deep-dives/mcp](https://docs.continue.dev/customize/deep-dives/mcp) | A standalone `.continue/mcpServers/*.yaml` block missing `name`, `version`, or `schema` (not applied to copied JSON) |
-| `commandcode.mcp.no-launch` | error | spec-required | [commandcode.ai/docs/mcp](https://commandcode.ai/docs/mcp) | A Command Code settings / user MCP server with neither `command` nor `url` |
-| `commandcode.mcp.invalid-transport` | error | spec-required | [commandcode.ai/docs/mcp](https://commandcode.ai/docs/mcp) | A Command Code MCP `transport` / `type` that is not `http` or `stdio` (Claude `sse` / `ws` on shared `.mcp.json` is skipped) |
-| `commandcode.mcp.http-without-url` | error | spec-required | [commandcode.ai/docs/mcp](https://commandcode.ai/docs/mcp) | A Command Code HTTP MCP server with no `url` |
-| `commandcode.mcp.stdio-without-command` | error | spec-required | [commandcode.ai/docs/mcp](https://commandcode.ai/docs/mcp) | A Command Code stdio MCP server with no `command` |
-| `commandcode.hook.unknown-event` | error | spec-required | [commandcode.ai/docs/hooks](https://commandcode.ai/docs/hooks) | A Command Code hook registered under an event that is never dispatched (four events only) |
-| `commandcode.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Command Code command hook whose script does not exist |
-| `commandcode.hook.invalid-group` | error | spec-required | [commandcode.ai/docs/hooks](https://commandcode.ai/docs/hooks) | A Command Code hook group missing the required nested `hooks` array, or a non-string `matcher` |
-| `commandcode.hook.command-without-command` | error | spec-required | [commandcode.ai/docs/hooks](https://commandcode.ai/docs/hooks) | A Command Code `type: command` hook whose `command` is missing, empty, or not a string |
-| `commandcode.hook.unknown-handler-type` | error | spec-required | [commandcode.ai/docs/hooks](https://commandcode.ai/docs/hooks) | A Command Code hook whose `type` is missing, not a string, or not `"command"` |
-| `commandcode.hook.timeout-out-of-bounds` | error | spec-required | [commandcode.ai/docs/hooks](https://commandcode.ai/docs/hooks) | A Command Code hook `timeout` outside 0–600 seconds |
-| `commandcode.agent.reserved-name` | error | spec-required | [commandcode.ai/docs/agents](https://commandcode.ai/docs/agents) | A Command Code custom agent named `explore`, `plan`, `review`, or `general` — ignored at load |
-| `commandcode.agent.invalid-permission-mode` | error | spec-required | [commandcode.ai/docs/agents](https://commandcode.ai/docs/agents) | A Command Code agent `permissionMode` that is not a documented value |
-| `commandcode.agent.invalid-field-type` | error | spec-required | [commandcode.ai/docs/agents](https://commandcode.ai/docs/agents) | A Command Code agent field whose type the spec does not accept |
-| `grok.mcp.no-launch` | error | spec-required | [docs.x.ai/build/features/mcp-servers](https://docs.x.ai/build/features/mcp-servers) | A Grok `[mcp_servers.*]` entry with neither `command` nor `url` |
-| `grok.hook.unknown-event` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | A Grok hook registered under an event that is never dispatched (14 events) |
-| `grok.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Grok command hook whose script does not exist |
-| `grok.hook.invalid-group` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | A Grok hook group missing the required nested `hooks` array, or a non-string `matcher` |
-| `grok.hook.command-without-command` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | A Grok `type: command` hook with no `command` |
-| `grok.hook.http-without-url` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | A Grok `type: http` hook with no `url` |
-| `grok.hook.unknown-handler-type` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | A Grok hook whose `type` is missing or not `command` / `http` |
-| `grok.skill.missing-frontmatter` | error | spec-required | [docs.x.ai/build/features/skills-plugins-marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces) | Grok `SKILL.md` with no `---` block |
-| `mcp.command-missing` | error | internal-consistency | _cross-provider path assertion; docs/spec/mcp.md calls it internal-consistency_ | An MCP `command` that is a path-like value whose file does not exist on disk |
-| `claude.mcp.url-without-type` | error | spec-required | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | A Claude remote MCP server with a `url` but no `type` — read as stdio and skipped. On shared `.mcp.json`, a Command Code `transport` field satisfies the other consumer and this check does not fire |
-| `claude.mcp.reserved-name` | error | spec-required | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | A Claude-consumed MCP server named with a reserved identifier (`workspace`, `claude-in-chrome`, `computer-use`, `Claude Preview`, `Claude Browser`) — skipped at load |
-| `security.hardcoded-secret` | error | security | _cross-provider token-shape judgement, not a quoted rule_ | A token-shaped literal in MCP config (the value is never echoed back) |
-| `mcp.literal-env` | warning | security | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | Secret-named `env` values that are literals instead of interpolation |
-| `mcp.literal-credential` | warning | security | _cross-provider header judgement; no single vendor page states it_ | Secret-named `headers` / `http_headers` / `auth` values that are literals instead of interpolation (field paths only; the value is never echoed) |
-| `budget.agents-md` | info | heuristic | _size hint, not a requirement_ | `AGENTS.md` past a secondary 150-line hint (heuristic; not an AGENTS.md requirement) |
-| `budget.claude-md` | info | vendor-recommendation | [code.claude.com/docs/en/memory](https://code.claude.com/docs/en/memory) | `CLAUDE.md` past the official “target under 200 lines” recommendation |
-| `budget.agents` | info | heuristic | _size hint, not a requirement_ | More agent definitions than a focused set (>8) — heuristic proxy |
-| `budget.mcp` | info | heuristic | _size hint, not a requirement_ | More MCP servers than a tool-selection hint (>5) — heuristic proxy |
-| `codex.budget.instructions` | info | vendor-recommendation | [learn.chatgpt.com/docs/agent-configuration/agents-md](https://learn.chatgpt.com/docs/agent-configuration/agents-md) | Codex root→cwd `AGENTS.md` chain exceeds the default 32 KiB |
-| `cursor.rule.too-large` | info | vendor-recommendation | [cursor.com/docs/rules](https://cursor.com/docs/rules) | A `.cursor/rules/*.mdc` file exceeds the 500-line recommendation |
-| `windsurf.rule.too-large` | info | vendor-recommendation | [docs.windsurf.com/windsurf/cascade/memories](https://docs.windsurf.com/windsurf/cascade/memories) | A Windsurf workspace rule exceeds 12,000 characters |
-| `windsurf.rule.global-too-large` | info | vendor-recommendation | [docs.windsurf.com/windsurf/cascade/memories](https://docs.windsurf.com/windsurf/cascade/memories) | `~/.codeium/windsurf/memories/global_rules.md` exceeds 6,000 characters |
-| `windsurf.rule.missing-trigger` | warning | spec-required | [docs.windsurf.com/windsurf/cascade/memories](https://docs.windsurf.com/windsurf/cascade/memories) | A `.devin/rules` / `.windsurf/rules` file omits frontmatter `trigger` |
-| `windsurf.mcp.no-launch` | error | spec-required | [docs.windsurf.com/windsurf/cascade/mcp](https://docs.windsurf.com/windsurf/cascade/mcp) | Windsurf MCP server declares neither `command`, `serverUrl`, nor `url` |
-| `windsurf.hook.unknown-event` | error | spec-required | [docs.devin.ai/desktop/cascade/hooks](https://docs.devin.ai/desktop/cascade/hooks) | A Windsurf Cascade hook registered under an event name that is never dispatched (12 snake_case events) |
-| `windsurf.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Windsurf hook whose script does not exist, so the guard it claims is not in effect |
-| `windsurf.hook.command-without-command` | error | spec-required | [docs.devin.ai/desktop/cascade/hooks](https://docs.devin.ai/desktop/cascade/hooks) | A Windsurf hook entry declaring neither `command` nor `powershell`, so nothing runs |
-| `gemini.hook.unknown-event` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | A Gemini hook registered under an event that is never dispatched (11 events) |
-| `gemini.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Gemini command hook whose script does not exist |
-| `gemini.hook.invalid-group` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | A Gemini hook group missing the required nested `hooks` array, or a non-string `matcher` |
-| `gemini.hook.command-without-command` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | A Gemini `type: command` hook with no `command` |
-| `gemini.hook.unknown-handler-type` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | A Gemini hook whose `type` is missing or is not `command` |
-| `cursor.hook.unknown-event` | error | spec-required | [cursor.com/docs/hooks](https://cursor.com/docs/hooks) | A Cursor hook registered under an event that is never dispatched (21 events) |
-| `cursor.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Cursor hook whose script does not exist under the project root |
-| `cursor.hook.command-without-command` | error | spec-required | [cursor.com/docs/hooks](https://cursor.com/docs/hooks) | A Cursor hook entry with no `command` |
-| `cursor.hook.unknown-handler-type` | error | spec-required | [cursor.com/docs/hooks](https://cursor.com/docs/hooks) | A Cursor hook whose `type` is present and is not `command` / `prompt` |
-| `kiro.hook.unknown-event` | error | spec-required | [kiro.dev/docs/ide/whats-new-v1/hooks](https://kiro.dev/docs/ide/whats-new-v1/hooks/) | A Kiro hook registered under a trigger that is never dispatched (10 PascalCase events) |
-| `kiro.hook.missing-script` | error | internal-consistency | _agentscan inference_ | A Kiro command hook whose script does not exist, so it never runs |
-| `kiro.hook.command-without-command` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | A Kiro `type: command` hook with no `command` |
-| `kiro.hook.prompt-without-prompt` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | A Kiro `type: agent` hook with no `prompt` |
-| `kiro.hook.unknown-handler-type` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | A Kiro hook whose `action.type` is missing or is not `command` / `agent` |
-| `kiro.hook.invalid-group` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | A Kiro hook file missing `version: "v1"` or a `hooks` array |
+| `agent-skills.skill.invalid-compatibility` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill compatibility is not a string of 1–500 characters |
+| `agent-skills.skill.invalid-metadata` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill metadata is not a map of string to string |
+| `agent-skills.skill.invalid-allowed-tools` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill allowed-tools is not a string |
+| `agent-skills.skill.body-too-large` | info | vendor-recommendation | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill SKILL.md exceeds the 500-line recommendation |
+| `skill.not-in-lock` | info | heuristic | _lockfile hygiene, not a requirement_ | Skill on disk is not tracked by skills-lock.json |
+| `skill.locked-not-installed` | warning | internal-consistency | _agentscan inference_ | skills-lock.json pins a skill that is not installed |
+| `skill.broken-reference` | warning | internal-consistency | [agentskills.io/specification](https://agentskills.io/specification) | SKILL.md points at a bundled file that does not exist |
+| `skill.duplicate-description` | info | heuristic | _selection hint, not a requirement_ | Two or more skills share an identical description |
+| `skill.description-budget` | info | vendor-recommendation | [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills) | Claude skill names + descriptions exceed the listing character budget |
+| `skill.no-lockfile` | info | heuristic | _lockfile hygiene, not a requirement_ | Skills present with no skills-lock.json (requireLock only) |
+| `claude.agent.missing-frontmatter` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Agent definition has no YAML frontmatter block |
+| `claude.agent.missing-description` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Agent frontmatter has no description |
+| `claude.agent.missing-name` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Agent frontmatter has no name |
+| `claude.agent.duplicate-name` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Agent names are duplicated |
+| `claude.agent.invalid-name` | warning/error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Agent frontmatter name is not a valid identifier |
+| `claude.mcp.no-launch` | error | spec-required | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | MCP server declares neither command nor url |
+| `vscode.mcp.no-launch` | error | spec-required | [code.visualstudio.com/docs/copilot/customization/mcp-servers](https://code.visualstudio.com/docs/copilot/customization/mcp-servers) | VS Code MCP server declares neither command nor url |
+| `cursor.mcp.no-launch` | error | spec-required | [cursor.com/docs/context/mcp](https://cursor.com/docs/context/mcp) | Cursor MCP server declares neither command nor url |
+| `antigravity.mcp.no-launch` | error | spec-required | [antigravity.google/docs/mcp](https://antigravity.google/docs/mcp) | Antigravity MCP server declares neither command nor serverUrl |
+| `codex.mcp.no-launch` | error | spec-required | [learn.chatgpt.com/docs/extend/mcp](https://learn.chatgpt.com/docs/extend/mcp) | Codex MCP server declares neither command nor url |
+| `gemini.mcp.no-launch` | error | spec-required | [github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md) | Gemini MCP server declares neither command, url, nor httpUrl |
+| `gemini.mcp.underscore-alias` | warning | vendor-recommendation | [github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md) | Gemini MCP server alias contains an underscore, which can make policies fail silently |
+| `opencode.mcp.no-launch` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | OpenCode MCP server declares neither command nor url |
+| `opencode.mcp.missing-type` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | OpenCode MCP server is missing type local or remote |
+| `opencode.mcp.local-without-command` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | OpenCode local MCP server declares no command |
+| `opencode.mcp.remote-without-url` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | OpenCode remote MCP server declares no url |
+| `opencode.mcp.invalid-launch-for-type` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | OpenCode MCP server launch field does not match its type |
+| `opencode.mcp.command-not-array` | error | spec-required | [opencode.ai/v2/docs/mcp-servers](https://opencode.ai/v2/docs/mcp-servers) | OpenCode V2 local MCP command is not an argv array |
+| `continue.mcp.no-launch` | error | spec-required | [docs.continue.dev/customize/deep-dives/mcp](https://docs.continue.dev/customize/deep-dives/mcp) | Continue MCP server declares neither command, url, nor uses |
+| `continue.mcp.missing-block-metadata` | error | spec-required | [docs.continue.dev/customize/deep-dives/mcp](https://docs.continue.dev/customize/deep-dives/mcp) | Standalone Continue YAML MCP block is missing name, version, or schema |
+| `commandcode.mcp.no-launch` | error | spec-required | [commandcode.ai/docs/mcp](https://commandcode.ai/docs/mcp) | Command Code MCP server declares neither command nor url |
+| `commandcode.mcp.invalid-transport` | error | spec-required | [commandcode.ai/docs/mcp](https://commandcode.ai/docs/mcp) | Command Code MCP transport is not http or stdio |
+| `commandcode.mcp.http-without-url` | error | spec-required | [commandcode.ai/docs/mcp](https://commandcode.ai/docs/mcp) | Command Code HTTP MCP server declares no url |
+| `commandcode.mcp.stdio-without-command` | error | spec-required | [commandcode.ai/docs/mcp](https://commandcode.ai/docs/mcp) | Command Code stdio MCP server declares no command |
+| `commandcode.hook.unknown-event` | error | spec-required | [commandcode.ai/docs/hooks](https://commandcode.ai/docs/hooks) | Command Code hook registered under an event that is never dispatched |
+| `commandcode.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Command Code hook points at a script that does not exist, so it never runs |
+| `commandcode.hook.invalid-group` | error | spec-required | [commandcode.ai/docs/hooks](https://commandcode.ai/docs/hooks) | Command Code hook group is missing the required nested hooks array, or matcher is not a string |
+| `commandcode.hook.command-without-command` | error | spec-required | [commandcode.ai/docs/hooks](https://commandcode.ai/docs/hooks) | Command Code command hook is missing the command field |
+| `commandcode.hook.unknown-handler-type` | error | spec-required | [commandcode.ai/docs/hooks](https://commandcode.ai/docs/hooks) | Command Code hook uses a handler type other than the required string "command" |
+| `commandcode.hook.timeout-out-of-bounds` | error | spec-required | [commandcode.ai/docs/hooks](https://commandcode.ai/docs/hooks) | Command Code hook timeout is outside 0–600 seconds |
+| `commandcode.agent.reserved-name` | error | spec-required | [commandcode.ai/docs/agents](https://commandcode.ai/docs/agents) | Command Code custom agent uses a reserved name and is ignored |
+| `commandcode.agent.invalid-permission-mode` | error | spec-required | [commandcode.ai/docs/agents](https://commandcode.ai/docs/agents) | Command Code agent permissionMode is not a documented value |
+| `commandcode.agent.invalid-field-type` | error | spec-required | [commandcode.ai/docs/agents](https://commandcode.ai/docs/agents) | Command Code agent field has a type the spec does not accept |
+| `grok.mcp.no-launch` | error | spec-required | [docs.x.ai/build/features/mcp-servers](https://docs.x.ai/build/features/mcp-servers) | Grok MCP server declares neither command nor url |
+| `grok.hook.unknown-event` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | Grok hook registered under an event that is never dispatched |
+| `grok.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Grok hook points at a script that does not exist, so it never runs |
+| `grok.hook.invalid-group` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | Grok hook group is missing the required nested hooks array, or matcher is not a string |
+| `grok.hook.command-without-command` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | Grok command hook is missing the command field |
+| `grok.hook.http-without-url` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | Grok http hook is missing the url field |
+| `grok.hook.unknown-handler-type` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | Grok hook uses a handler type other than command or http, or omits the required type |
+| `grok.skill.missing-frontmatter` | error | spec-required | [docs.x.ai/build/features/skills-plugins-marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces) | Grok SKILL.md has no YAML frontmatter block |
+| `mcp.command-missing` | error | internal-consistency | _cross-provider path assertion; docs/spec/mcp.md calls it internal-consistency_ | MCP server command is a path that does not exist on disk |
+| `claude.mcp.url-without-type` | error | spec-required | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | Remote MCP server has a url but no transport type |
+| `claude.mcp.reserved-name` | error | spec-required | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | Claude MCP server uses a reserved name that Claude skips at load |
+| `security.hardcoded-secret` | error | security | _cross-provider token-shape judgement, not a quoted rule_ | MCP config contains a token-shaped literal |
+| `mcp.literal-env` | warning | security | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | MCP env value is a literal secret-shaped key instead of interpolation |
+| `mcp.literal-credential` | warning | security | _cross-provider header judgement; no single vendor page states it_ | MCP headers, http_headers, or auth value is a literal secret instead of interpolation |
+| `budget.agents-md` | info | heuristic | _size hint, not a requirement_ | AGENTS.md longer than the heuristic line budget (>150 lines) |
+| `budget.claude-md` | info | vendor-recommendation | [code.claude.com/docs/en/memory](https://code.claude.com/docs/en/memory) | CLAUDE.md longer than the documented size target (~200 lines) |
+| `budget.agents` | info | heuristic | _size hint, not a requirement_ | More agent definitions than a focused set (>8 files in .claude/agents) |
+| `budget.mcp` | info | heuristic | _size hint, not a requirement_ | Project MCP server count above the point where tool selection may degrade |
+| `codex.budget.instructions` | info | vendor-recommendation | [learn.chatgpt.com/docs/agent-configuration/agents-md](https://learn.chatgpt.com/docs/agent-configuration/agents-md) | Codex AGENTS.md chain exceeds project_doc_max_bytes (32 KiB default) |
+| `cursor.rule.too-large` | info | vendor-recommendation | [cursor.com/docs/rules](https://cursor.com/docs/rules) | Cursor project rule exceeds the 500-line recommendation |
+| `windsurf.rule.too-large` | info | vendor-recommendation | [docs.windsurf.com/windsurf/cascade/memories](https://docs.windsurf.com/windsurf/cascade/memories) | Windsurf workspace rule exceeds the 12,000-character limit |
+| `windsurf.rule.global-too-large` | info | vendor-recommendation | [docs.windsurf.com/windsurf/cascade/memories](https://docs.windsurf.com/windsurf/cascade/memories) | Windsurf global_rules.md exceeds the 6,000-character limit |
+| `windsurf.rule.missing-trigger` | warning | spec-required | [docs.windsurf.com/windsurf/cascade/memories](https://docs.windsurf.com/windsurf/cascade/memories) | Windsurf workspace rule is missing frontmatter trigger |
+| `windsurf.mcp.no-launch` | error | spec-required | [docs.windsurf.com/windsurf/cascade/mcp](https://docs.windsurf.com/windsurf/cascade/mcp) | Windsurf MCP server declares neither command, serverUrl, nor url |
+| `windsurf.hook.unknown-event` | error | spec-required | [docs.devin.ai/desktop/cascade/hooks](https://docs.devin.ai/desktop/cascade/hooks) | Windsurf hook registered under an event name that is never dispatched |
+| `windsurf.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Windsurf hook points at a script that does not exist, so it never runs |
+| `windsurf.hook.command-without-command` | error | spec-required | [docs.devin.ai/desktop/cascade/hooks](https://docs.devin.ai/desktop/cascade/hooks) | Windsurf hook declares neither command nor powershell |
+| `gemini.hook.unknown-event` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | Gemini hook registered under an event that is never dispatched |
+| `gemini.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Gemini hook points at a script that does not exist, so it never runs |
+| `gemini.hook.invalid-group` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | Gemini hook group is missing the required nested hooks array, or matcher is not a string |
+| `gemini.hook.command-without-command` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | Gemini command hook is missing the command field |
+| `gemini.hook.unknown-handler-type` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | Gemini hook omits the required type or uses a value other than command |
+| `cursor.hook.unknown-event` | error | spec-required | [cursor.com/docs/hooks](https://cursor.com/docs/hooks) | Cursor hook registered under an event that is never dispatched |
+| `cursor.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Cursor hook points at a script that does not exist, so it never runs |
+| `cursor.hook.command-without-command` | error | spec-required | [cursor.com/docs/hooks](https://cursor.com/docs/hooks) | Cursor hook is missing the required command field |
+| `cursor.hook.unknown-handler-type` | error | spec-required | [cursor.com/docs/hooks](https://cursor.com/docs/hooks) | Cursor hook declares a type other than command or prompt |
+| `kiro.hook.unknown-event` | error | spec-required | [kiro.dev/docs/ide/whats-new-v1/hooks](https://kiro.dev/docs/ide/whats-new-v1/hooks/) | Kiro hook registered under a trigger that is never dispatched |
+| `kiro.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Kiro command hook points at a script that does not exist, so it never runs |
+| `kiro.hook.command-without-command` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro command hook is missing the command field |
+| `kiro.hook.prompt-without-prompt` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro agent hook is missing the required prompt field |
+| `kiro.hook.unknown-handler-type` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro hook action type is missing or is not command or agent |
+| `kiro.hook.invalid-group` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro hook file is missing version v1 or a hooks array |
 <!-- rules:end -->
 
 ### Coverage in 1.4.0
@@ -618,8 +618,6 @@ Dimensions:
 | Continue | `.continue/config.yaml`, `.continue/mcpServers/*` | none | launch `command` / `url` / `uses`; standalone YAML `name` / `version` / `schema` | n/a | `continue-yaml`, `continue-mcpservers` |
 
 Cursor project rules (`.cursor/rules/**/*.mdc`) are a separate surface: discovery plus `cursor.rule.too-large` at info. Claude `.claude/rules/**/*.md` is inventoried and has no published line budget. Windsurf workspace rules use a 12,000-character budget (`windsurf.rule.too-large`); do not apply the Cursor 500-line check. Portable `AGENTS.md` / `agents.md` stay `sourceProvider: unknown` — this scanner does not claim exclusive Windsurf ownership.
-
-Old 0.7 rule ids still work in `ignoreRules` and `explain` (for example `hook.missing-script` aliases `claude.hook.missing-script`).
 
 Agent definitions are checked for structure only. A Claude agent's frontmatter
 `name` is not compared to the filename; it must be lowercase letters and

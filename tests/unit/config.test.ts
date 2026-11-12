@@ -27,7 +27,7 @@ describe("loadConfig", () => {
     const cfg = loadConfig(root);
     expect(cfg.failOn).toBe("never");
     expect(cfg.skillPaths).toEqual(defaultConfig.skillPaths);
-    expect(cfg.thresholds.skills).toBeUndefined();
+    expect("skills" in cfg.thresholds).toBe(false);
     expect(cfg.thresholds.mcp).toBe(5);
   });
 
@@ -42,17 +42,20 @@ describe("loadConfig", () => {
     expect(cfg.failOn).toBe("warning");
   });
 
-  test("rejects unknown root keys but accepts legacy skills threshold", () => {
+  test("rejects unknown root keys and retired threshold keys", () => {
     const root = mkPinnedRoot("agentscan-");
     writeFileSync(join(root, ".agentscanrc.json"), JSON.stringify({
       failon: "warning",
-      thresholds: { skills: 30 },
     }));
     expect(() => loadConfig(root)).toThrow();
     writeFileSync(join(root, ".agentscanrc.json"), JSON.stringify({
       thresholds: { skills: 30 },
     }));
-    expect(loadConfig(root).thresholds.skills).toBe(30);
+    expect(() => loadConfig(root)).toThrow(/Unrecognized key\(s\) in object: 'skills'/);
+    writeFileSync(join(root, ".agentscanrc.json"), JSON.stringify({
+      thresholds: { skillDescriptionBytes: 1234 },
+    }));
+    expect(() => loadConfig(root)).toThrow(/Unrecognized key\(s\) in object: 'skillDescriptionBytes'/);
   });
 });
 
@@ -71,22 +74,12 @@ describe("config errors", () => {
   });
 });
 
-describe("deprecated thresholds.skillDescriptionBytes", () => {
-  const load = (thresholds: object) => {
-    const root = mkPinnedRoot("agentscan-");
-    writeFileSync(join(root, ".agentscanrc.json"), JSON.stringify({ thresholds }));
-    return loadConfig(root).thresholds.skillListingChars;
-  };
-
-  test("applies when skillListingChars is not set", () => {
-    expect(load({ skillDescriptionBytes: 1234 })).toBe(1234);
-  });
-
-  test("loses to an explicit skillListingChars", () => {
-    expect(load({ skillDescriptionBytes: 1234, skillListingChars: 99 })).toBe(99);
-  });
-
+describe("skill listing threshold", () => {
   test("absent leaves the default", () => {
-    expect(load({})).toBe(defaultConfig.thresholds.skillListingChars);
+    const root = mkPinnedRoot("agentscan-");
+    writeFileSync(join(root, ".agentscanrc.json"), JSON.stringify({ thresholds: {} }));
+    expect(loadConfig(root).thresholds.skillListingChars).toBe(
+      defaultConfig.thresholds.skillListingChars,
+    );
   });
 });

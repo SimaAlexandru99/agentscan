@@ -1,4 +1,4 @@
-import { canonicalRuleId, checkById } from "../../src/checks/registry";
+import { checkById } from "../../src/checks/registry";
 import type { Finding } from "../../src/findings";
 
 /**
@@ -11,7 +11,7 @@ import type { Finding } from "../../src/findings";
 export function ruleMeta(
   ruleId: string,
 ): Pick<Finding, "provenance" | "source" | "lastVerified"> {
-  const check = checkById(canonicalRuleId(ruleId));
+  const check = checkById(ruleId);
   if (check !== undefined) {
     return {
       provenance: check.provenance,
