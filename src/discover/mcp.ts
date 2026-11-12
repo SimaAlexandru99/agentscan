@@ -616,11 +616,7 @@ function parseTomlMcpServers(
 ): McpFact[] {
   const owner = profile === "codex-toml" ? "Codex" : "Grok";
   if (!isRecord(raw)) {
-    io.errors.push({
-      path: filePath,
-      kind: "unexpected-shape",
-      detail: `${owner} config root is not a TOML table`,
-    });
+    reportRootShapeOnce(filePath, io, `${owner} config root is not a TOML table`);
     return [];
   }
   const obj = raw as Record<string, unknown>;

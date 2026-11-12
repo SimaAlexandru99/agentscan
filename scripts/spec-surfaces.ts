@@ -168,6 +168,11 @@ export const SPEC_SURFACES: SpecSurface[] = [
   },
   {
     provider: "codex",
+    surface: "hooks",
+    ...SPEC_PAGES.codexHooks,
+  },
+  {
+    provider: "codex",
     surface: "mcp",
     lastVerified: "2026-09-02",
     url: "https://developers.openai.com/codex/config-advanced",

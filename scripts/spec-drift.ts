@@ -268,6 +268,7 @@ const HOOK_EVENT_PAGES: Record<HookSchemaProfile, HookEventPage | null> = {
   },
   windsurf: null,
   devin: { label: "Devin", url: SPEC_PAGES.devinHooks.url },
+  codex: { label: "Codex", url: SPEC_PAGES.codexHooks.url },
 };
 
 /** Names the page ties to hooks, minus the ones we know; filtered to keep the noise survivable. */

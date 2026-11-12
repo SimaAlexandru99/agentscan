@@ -13,6 +13,18 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+- Codex hooks: project `.codex/hooks.json` and inline `[hooks]` in
+  `.codex/config.toml`, plus the same two files under `$CODEX_HOME` or
+  `~/.codex` with `--global`. Both files in a layer are inventoried. Fourteen
+  events. `command` and `mcp_tool` run; `prompt` and `agent` are parsed but
+  skipped; `SessionEnd` does not run `mcp_tool`. SessionEnd and Interrupt
+  timeouts must be 1–3 seconds. Other events are not timeout-checked.
+  Plugins, `requirements.toml`, and the trust gate stay unread. New:
+  `codex.hook.unknown-event`, `codex.hook.missing-script`,
+  `codex.hook.invalid-group`, `codex.hook.command-without-command`,
+  `codex.hook.mcp-tool-without-server-or-tool`,
+  `codex.hook.unknown-handler-type`, `codex.hook.incompatible-handler`,
+  `codex.hook.timeout-out-of-bounds`.
 - Cursor user MCP under `--global`: `~/.cursor/mcp.json` uses the same
   `cursor-json` profile as the project file. A missing `version` is not a
   finding.

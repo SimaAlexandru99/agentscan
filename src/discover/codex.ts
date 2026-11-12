@@ -1,8 +1,9 @@
 import { isAbsolute, join } from "node:path";
 import { mcpProfileFromPath } from "../facts/provider";
 import { providerHome } from "../facts/providers";
-import type { McpFact } from "../facts/types";
-import { isRecord, readConfigFile, type ScanIO } from "./fs";
+import type { HookFact, McpFact } from "../facts/types";
+import { isRecord, readConfigFile, reportRootShapeOnce, type ScanIO } from "./fs";
+import { hooksFromObject, readHooksFile } from "./hooks";
 import { parseCodexTomlFile } from "./mcp";
 
 /**
@@ -72,6 +73,57 @@ function projectDocSettingsFromToml(raw: unknown): CodexProjectConfig {
     out.projectRootMarkers = markers ?? [];
   }
   return out;
+}
+
+const CODEX_HOOKS_FILE = {
+  source: "codex-hooks" as const,
+  sourceProvider: "codex" as const,
+  profile: "codex" as const,
+};
+
+/**
+ * `hooks.json` plus inline `[hooks]` in `config.toml`. Both files in one
+ * layer are inventoried; a higher layer does not replace a lower one, and
+ * this scanner does not model the trust gate. `config.toml` is the same
+ * cached parse the MCP reader uses. See docs/spec/codex-hooks.md.
+ */
+function discoverCodexHookFiles(dir: string, projectRoot: string, io: ScanIO): HookFact[] {
+  return [
+    ...readHooksFile(join(dir, "hooks.json"), CODEX_HOOKS_FILE, { project: projectRoot }, io),
+    ...hooksFromCodexToml(join(dir, "config.toml"), projectRoot, io),
+  ];
+}
+
+/** Project `.codex/hooks.json` and `.codex/config.toml`. One walk-up directory. */
+export function discoverCodexProjectHooks(dir: string, io: ScanIO): HookFact[] {
+  return discoverCodexHookFiles(join(dir, ".codex"), dir, io);
+}
+
+/**
+ * User `hooks.json` and `config.toml` under `$CODEX_HOME` or `~/.codex`.
+ * Only called under `--global`. Relative commands resolve against `projectRoot`
+ * (the scan root), not the git root.
+ */
+export function discoverCodexUserHooks(projectRoot: string, io: ScanIO): HookFact[] {
+  return discoverCodexHookFiles(providerHome("codex"), projectRoot, io);
+}
+
+function hooksFromCodexToml(filePath: string, projectRoot: string, io: ScanIO): HookFact[] {
+  const raw = readConfigFile(filePath, io, { optional: true });
+  if (raw === undefined) {
+    return [];
+  }
+  if (!isRecord(raw)) {
+    reportRootShapeOnce(filePath, io, "Codex config root is not a TOML table");
+    return [];
+  }
+  if (raw.hooks === undefined) {
+    return [];
+  }
+  return hooksFromObject(raw.hooks, filePath, "codex-hooks", { project: projectRoot }, io, {
+    sourceProvider: "codex",
+    schemaProfile: "codex",
+  });
 }
 
 function stringArray(value: unknown): string[] | undefined {

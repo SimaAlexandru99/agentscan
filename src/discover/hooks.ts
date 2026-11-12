@@ -1,4 +1,9 @@
 import { dirname, join } from "node:path";
+import {
+  CODEX_SHORT_TIMEOUT_EVENTS,
+  CODEX_SHORT_TIMEOUT_MAX,
+  CODEX_SHORT_TIMEOUT_MIN,
+} from "../facts/codex";
 import { DEVIN_HOOK_HANDLER_TYPES } from "../facts/devin";
 import { providerHome } from "../facts/providers";
 import { GEMINI_HOOK_HANDLER_TYPES } from "../facts/gemini";
@@ -462,6 +467,68 @@ function geminiHookFromEntry(item: Record<string, unknown>, ctx: HookContext): H
 }
 
 /**
+ * SessionEnd and Interrupt are the only events with a quoted timeout range
+ * (1–3 seconds). A finite timeout on any other event is recorded and not
+ * flagged: the page quotes a 600 second default and no maximum.
+ */
+function codexTimeoutFacts(
+  item: Record<string, unknown>,
+  event: string,
+): Pick<HookFact, "timeout" | "timeoutOutOfBounds"> {
+  if (!("timeout" in item)) {
+    return {};
+  }
+  const value = item.timeout;
+  const short = CODEX_SHORT_TIMEOUT_EVENTS.has(event);
+  if (typeof value === "number" && Number.isFinite(value)) {
+    if (short && (value < CODEX_SHORT_TIMEOUT_MIN || value > CODEX_SHORT_TIMEOUT_MAX)) {
+      return { timeout: value, timeoutOutOfBounds: true };
+    }
+    return { timeout: value };
+  }
+  return short ? { timeoutOutOfBounds: true } : {};
+}
+
+/**
+ * Codex nests groups like Claude. `command` and `mcp_tool` run. `prompt` and
+ * `agent` are parsed but skipped. A missing `type` is not command. `SessionEnd`
+ * does not run `mcp_tool`. See docs/spec/codex-hooks.md.
+ */
+function codexHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
+  const timeoutFacts = codexTimeoutFacts(item, ctx.event);
+  const typeRaw = typeof item.type === "string" ? item.type : undefined;
+  if (typeRaw === "prompt" || typeRaw === "agent") {
+    return [baseFact(ctx, { handlerType: typeRaw, defect: "incompatible-handler", ...timeoutFacts })];
+  }
+  if (typeRaw === "mcp_tool") {
+    if (ctx.event === "SessionEnd") {
+      return [baseFact(ctx, { handlerType: "mcp_tool", defect: "incompatible-handler", ...timeoutFacts })];
+    }
+    const server = nonemptyString(item.server);
+    const tool = nonemptyString(item.tool);
+    return [
+      baseFact(ctx, {
+        handlerType: "mcp_tool",
+        ...(server === undefined || tool === undefined
+          ? { defect: "mcp-tool-without-server-or-tool" as const }
+          : {}),
+        ...timeoutFacts,
+      }),
+    ];
+  }
+  if (typeRaw !== "command") {
+    return [
+      baseFact(ctx, {
+        defect: "unknown-handler-type",
+        unknownHandlerType: unknownTypeLabel(item),
+        ...timeoutFacts,
+      }),
+    ];
+  }
+  return [{ ...commandHook(baseFact(ctx), nonemptyString(item.command), ctx.bases.project), ...timeoutFacts }];
+}
+
+/**
  * Devin CLI nests groups like Claude. `type` is `command` or `prompt`.
  * `timeout` has no quoted range, so it is not recorded. See docs/spec/devin-hooks.md.
  */
@@ -496,6 +563,7 @@ const ENTRY_READERS: Record<PipedProfile, (item: Record<string, unknown>, ctx: H
   grok: grokHookFromEntry,
   gemini: geminiHookFromEntry,
   devin: devinHookFromEntry,
+  codex: codexHookFromEntry,
 };
 
 function isPipedProfile(profile: HookSchemaProfile): profile is PipedProfile {

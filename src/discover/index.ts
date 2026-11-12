@@ -12,7 +12,13 @@ import type {
 } from "../facts/types";
 import { discoverAgents } from "./agents";
 import { discoverClaudeCommands } from "./claude";
-import { CODEX_PROJECT_DOC_MAX_BYTES, discoverCodexUserMcp, readCodexProjectConfig } from "./codex";
+import {
+  CODEX_PROJECT_DOC_MAX_BYTES,
+  discoverCodexProjectHooks,
+  discoverCodexUserHooks,
+  discoverCodexUserMcp,
+  readCodexProjectConfig,
+} from "./codex";
 import {
   applyCommandcodeHookPrecedence,
   applyCommandcodeMcpPrecedence,
@@ -178,7 +184,11 @@ const SOURCES: Source[] = [
   },
   {
     id: "codex",
-    user: ({ io }) => ({ mcp: discoverCodexUserMcp(io) }),
+    project: (dir, { io }) => ({ hooks: discoverCodexProjectHooks(dir, io) }),
+    user: ({ root, io }) => ({
+      hooks: discoverCodexUserHooks(root, io),
+      mcp: discoverCodexUserMcp(io),
+    }),
   },
   {
     id: "commandcode",

@@ -6,12 +6,14 @@ import {
 import { CURSOR_HOOK_EVENTS } from "./cursor";
 import { GEMINI_HOOK_EVENTS } from "./gemini";
 import { GROK_HOOK_EVENTS } from "./grok";
+import { CODEX_HOOK_EVENTS, CODEX_SHORT_TIMEOUT_MAX, CODEX_SHORT_TIMEOUT_MIN } from "./codex";
 import {
   COPILOT_HOOK_EVENTS,
   KNOWN_HOOK_EVENTS,
   VSCODE_HOOK_EVENTS,
   type HookDefect,
   type HookDefectDetail,
+  type HookHandlerType,
 } from "./hook-schema";
 import { DEVIN_HOOK_EVENTS } from "./devin";
 import { KIRO_HOOK_EVENTS } from "./kiro";
@@ -35,7 +37,16 @@ export type HookProfileSpec = {
   events: ReadonlySet<string>;
   ruleIdPrefix: string;
   defects: readonly HookDefect[];
-  messages?: Partial<Record<HookDefect, (event: string, detail: HookDefectDetail | undefined) => string | undefined>>;
+  messages?: Partial<
+    Record<
+      HookDefect,
+      (
+        event: string,
+        detail: HookDefectDetail | undefined,
+        handlerType: HookHandlerType | undefined,
+      ) => string | undefined
+    >
+  >;
   layout: HookLayout;
   /** Source string this profile writes on facts that come from its own file. */
   fileSource?: string;
@@ -127,6 +138,36 @@ export const PROFILES = {
     ],
     layout: "nested",
     fileSource: "devin-hooks",
+  },
+  /**
+   * Nested groups in `hooks.json` or `[hooks]` in `config.toml`.
+   * `prompt` and `agent` are parsed but not run. `SessionEnd` does not run
+   * `mcp_tool`. The timeout range is only SessionEnd and Interrupt; the
+   * reader sets `timeoutOutOfBounds` for those two. See docs/spec/codex-hooks.md.
+   */
+  codex: {
+    events: CODEX_HOOK_EVENTS,
+    ruleIdPrefix: "codex",
+    defects: [
+      "invalid-group",
+      "command-without-command",
+      "mcp-tool-without-server-or-tool",
+      "unknown-handler-type",
+      "incompatible-handler",
+    ],
+    messages: {
+      "incompatible-handler": (event, _detail, handlerType) =>
+        handlerType === "mcp_tool"
+          ? `${event} does not run mcp_tool handlers`
+          : `${event} ${handlerType ?? "prompt"} handler is parsed but skipped`,
+    },
+    timeout: {
+      min: CODEX_SHORT_TIMEOUT_MIN,
+      max: CODEX_SHORT_TIMEOUT_MAX,
+      reason: `Codex SessionEnd and Interrupt timeouts are seconds in the closed range ${CODEX_SHORT_TIMEOUT_MIN}–${CODEX_SHORT_TIMEOUT_MAX}. Other events default to 600 seconds and have no quoted maximum, so they are not checked. See docs/spec/codex-hooks.md.`,
+    },
+    layout: "nested",
+    fileSource: "codex-hooks",
   },
   gemini: {
     events: GEMINI_HOOK_EVENTS,

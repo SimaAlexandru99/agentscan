@@ -70,7 +70,11 @@ function defectRuleId(profile: HookSchemaProfile, defect: HookDefect): HookRuleI
 
 function defectMessage(hook: HookFact, defect: HookDefect): string {
   const event = hook.event;
-  const override = HOOK_PROFILES[hook.schemaProfile].messages?.[defect]?.(event, hook.defectDetail);
+  const override = HOOK_PROFILES[hook.schemaProfile].messages?.[defect]?.(
+    event,
+    hook.defectDetail,
+    hook.handlerType,
+  );
   if (override !== undefined) {
     return override;
   }

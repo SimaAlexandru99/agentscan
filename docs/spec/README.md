@@ -47,6 +47,7 @@ to appear in real projects.** When adding a check:
 | [claude-memory.md](claude-memory.md) | Walk-up `CLAUDE.md` / `.claude/CLAUDE.md` and `.claude/rules`; `--global` user memory | `budget.claude-md` |
 | [claude-subagents.md](claude-subagents.md) | Walk-up `.claude/agents`; `--global` `~/.claude/agents`; duplicates per directory | `claude.agent.duplicate-name` scope |
 | [codex-agents-md.md](codex-agents-md.md) | Codex chain knobs and 32 KiB cap | `codex.budget.instructions` |
+| [codex-hooks.md](codex-hooks.md) | `hooks.json` and inline `[hooks]`; 14 events; `command` / `mcp_tool`; prompt and agent skipped; SessionEnd and Interrupt timeout 1–3 | `codex.hook.*` |
 | [vscode-instructions.md](vscode-instructions.md) | `.github/copilot-instructions.md` and `*.instructions.md` | discovery only |
 | [vscode-agents.md](vscode-agents.md) | `.github/agents`; name defaults to filename | do not emit `claude.agent.*` |
 | [vscode-hooks.md](vscode-hooks.md) | Legacy Local `.github/hooks/*.json`, eight events, command-only; agent frontmatter; plugin path unread | `vscode.hook.*` |

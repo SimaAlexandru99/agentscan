@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-125-111111?style=flat-square" alt="125 checks">
+  <img src="https://img.shields.io/badge/checks-133-111111?style=flat-square" alt="133 checks">
   <img src="https://img.shields.io/badge/tests-603%20passing-111111?style=flat-square" alt="603 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>125 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <strong>133 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
   <sub>An offline linter for Claude Code, Command Code, Grok Build, Windsurf, Kiro, Cline, Roo, Kilo, Junie, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks (including inline settings), and the MCP / hooks / rules surfaces the registry actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
@@ -65,7 +65,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .commandcode/ .grok/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       125 checks, each labeled spec-required, vendor-recommendation,
+3. Check       133 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -186,7 +186,7 @@ Flags for `check`:
 | `--verbose` | Show info-severity findings, and print each finding's id |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
-| `--global` | Also scan user skills (`$CLAUDE_CONFIG_DIR/skills` or `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills`, `~/.codeium/windsurf/skills`), Claude user settings / agents / `CLAUDE.md` / rules / commands and `$CLAUDE_CONFIG_DIR/.claude.json` or `~/.claude.json` (user + matching local `mcpServers`), Copilot `$COPILOT_HOME` / `~/.copilot/hooks` and `settings.json`, Codex `$CODEX_HOME` / `~/.codex/config.toml`, Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user MCP/agents/memory, and Windsurf `~/.codeium/windsurf` MCP + `global_rules.md` + `hooks.json` (see below) |
+| `--global` | Also scan user skills (`$CLAUDE_CONFIG_DIR/skills` or `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills`, `~/.codeium/windsurf/skills`), Claude user settings / agents / `CLAUDE.md` / rules / commands and `$CLAUDE_CONFIG_DIR/.claude.json` or `~/.claude.json` (user + matching local `mcpServers`), Copilot `$COPILOT_HOME` / `~/.copilot/hooks` and `settings.json`, Codex `$CODEX_HOME` / `~/.codex/hooks.json` and `config.toml` (MCP plus inline `[hooks]`), Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user MCP/agents/memory, and Windsurf `~/.codeium/windsurf` MCP + `global_rules.md` + `hooks.json` (see below) |
 | `--config <path>` | Config file path |
 
 **v1 does not write the tree** — no `apply`, no skill delete/install. Findings may *suggest* shell commands; you run them yourself.
@@ -264,7 +264,7 @@ Adds user skill dirs (`$CLAUDE_CONFIG_DIR/skills` or `~/.claude/skills`, `~/.cod
 `~/.grok/skills`), Claude user settings / agents / `CLAUDE.md` / rules /
 commands and `~/.claude.json` (top-level user `mcpServers` plus local
 `projects.<scanned-path>.mcpServers`), Copilot `~/.copilot/hooks`, Codex `$CODEX_HOME` /
-`~/.codex` (`config.toml` MCP plus `AGENTS.override.md` / `AGENTS.md`),
+`~/.codex` (`hooks.json`, `config.toml` MCP and inline `[hooks]`, plus `AGENTS.override.md` / `AGENTS.md`),
 Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user
 agents / MCP / memory, and Windsurf `~/.codeium/windsurf/mcp_config.json`,
 `memories/global_rules.md`, `hooks.json`, and `skills` to the structural checks: a `SKILL.md` that
@@ -573,6 +573,14 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `devin.hook.command-without-command` | error | spec-required | [docs.devin.ai/cli/extensibility/hooks/overview](https://docs.devin.ai/cli/extensibility/hooks/overview) | Devin command hook declares no command |
 | `devin.hook.prompt-without-prompt` | error | spec-required | [docs.devin.ai/cli/extensibility/hooks/overview](https://docs.devin.ai/cli/extensibility/hooks/overview) | Devin prompt hook declares no prompt |
 | `devin.hook.unknown-handler-type` | error | spec-required | [docs.devin.ai/cli/extensibility/hooks/overview](https://docs.devin.ai/cli/extensibility/hooks/overview) | Devin hook handler type is not command or prompt |
+| `codex.hook.unknown-event` | error | spec-required | [learn.chatgpt.com/docs/hooks](https://learn.chatgpt.com/docs/hooks) | Codex hook registered under an event name that is never dispatched |
+| `codex.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Codex hook points at a script that does not exist, so it never runs |
+| `codex.hook.invalid-group` | error | spec-required | [learn.chatgpt.com/docs/hooks](https://learn.chatgpt.com/docs/hooks) | Codex hook group is missing a hooks array, or matcher is not a string |
+| `codex.hook.command-without-command` | error | spec-required | [learn.chatgpt.com/docs/hooks](https://learn.chatgpt.com/docs/hooks) | Codex command hook declares no command |
+| `codex.hook.mcp-tool-without-server-or-tool` | error | spec-required | [learn.chatgpt.com/docs/hooks](https://learn.chatgpt.com/docs/hooks) | Codex MCP tool hook declares no server or tool |
+| `codex.hook.unknown-handler-type` | error | spec-required | [learn.chatgpt.com/docs/hooks](https://learn.chatgpt.com/docs/hooks) | Codex hook handler type is not command, mcp_tool, prompt, or agent |
+| `codex.hook.incompatible-handler` | error | spec-required | [learn.chatgpt.com/docs/hooks](https://learn.chatgpt.com/docs/hooks) | Codex prompt or agent handler is parsed but skipped, or SessionEnd uses mcp_tool |
+| `codex.hook.timeout-out-of-bounds` | error | spec-required | [learn.chatgpt.com/docs/hooks](https://learn.chatgpt.com/docs/hooks) | Codex SessionEnd or Interrupt hook timeout is outside 1–3 seconds |
 | `gemini.hook.unknown-event` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | Gemini hook registered under an event that is never dispatched |
 | `gemini.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Gemini hook points at a script that does not exist, so it never runs |
 | `gemini.hook.invalid-group` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | Gemini hook group is missing the required nested hooks array, or matcher is not a string |
@@ -609,7 +617,7 @@ Dimensions:
 | AGENTS.md | nested walk-up | n/a | no required fields | nearest-wins | tests |
 | Claude Code | project settings, skills, agents, commands, `CLAUDE.md`, `.mcp.json` / `.claude/mcp.json`; in-tree plugin hooks / skills / agents / commands / `.mcp.json` | `--global` `$CLAUDE_CONFIG_DIR` or `~/.claude` (skills, settings, agents, `CLAUDE.md`, rules, commands) and `$CLAUDE_CONFIG_DIR/.claude.json` or `~/.claude.json` (user + matching local `mcpServers`); unread managed policy, marketplace plugins, other projects' local MCP | 33 events; required handler `type`; MCP reserved names; first-paragraph skill description; listing budget | walk-up `CLAUDE.md` / `.claude/agents` / `.claude/commands`; user+project+local layers inventoried | `claude-json` fixture |
 | Command Code | git-root project files; per-directory `AGENTS.md` else `.commandcode/AGENTS.md` | `--global` `~/.commandcode/*`; unread `projects/{slug}/mcp.json` | 4 events; command handlers; Agent Skills; MCP `transport` / `type` | settings merge; project+user hooks coexist; skill/MCP shadow | `commandcode` fixture |
-| Codex | `.codex/config.toml`, `.codex/skills`, AGENTS chain | `--global` `$CODEX_HOME` / `~/.codex/config.toml` MCP; `AGENTS.override.md` then `AGENTS.md`; unread system, managed, requirements, profiles, plugins, trust | TOML MCP; `project_doc_max_bytes`; Agent Skills | override > `AGENTS.md` > fallbacks; one file per dir; root→cwd; `project_root_markers`; MCP user+project both inventoried | `codex-toml` fixture |
+| Codex | `.codex/hooks.json` and inline `[hooks]` in `.codex/config.toml` on the ancestor walk; `.codex/skills`; AGENTS chain | `--global` `$CODEX_HOME` / `~/.codex` `hooks.json` and `config.toml` (MCP and `[hooks]`); `AGENTS.override.md` then `AGENTS.md`; unread system, managed, requirements, profiles, plugins, trust | 14 hook events; `command` / `mcp_tool`; `prompt` and `agent` parsed but skipped; SessionEnd rejects `mcp_tool`; SessionEnd and Interrupt timeout 1–3; TOML MCP; `project_doc_max_bytes`; Agent Skills | both hook files in a layer are inventoried; trust is not modeled; override > `AGENTS.md` > fallbacks; one file per dir; root→cwd; `project_root_markers`; MCP user+project both inventoried | `codex-hooks`, `codex-toml` fixtures |
 | VS Code | `.github/hooks` without `version: 1` (legacy Local), instruction files, `.github/agents` (frontmatter hooks as vscode-native), `.vscode/mcp.json` `servers` | `--global` `~/.copilot/hooks` without `version: 1`; unread policy dirs; unread marketplace plugin `hooks.json` (install path unpublished) | 8 PascalCase events; command-only. New Copilot hooks are the Copilot row | workspace over user | `vscode-hooks`, `vscode-json` |
 | Copilot CLI | `.github/hooks` with `version: 1`; inline `hooks` in `.github/copilot/settings.json` and `settings.local.json` | `--global` `$COPILOT_HOME` / `~/.copilot/hooks` with `version: 1`, `settings.json`, and `mcp-config.json` (`mcpServers`); unread `/etc/github-copilot/policy.d` | camelCase + PascalCase map; `bash` / `powershell` / `command` / `exec` / `http`; `cwd`; `timeoutSec`; prompt on `sessionStart`; user MCP `command` / `url` | documented sources coexist; policy unread; Copilot also reads `.claude/settings.json` but this scanner lints that file as Claude. Workspace `.mcp.json` stays the shared profile | `copilot-hooks` fixture |
 | Cursor | nested `.cursor/skills`; `.cursor/mcp.json`, `.cursor/hooks.json` and `.cursor/rules` on the ancestor walk only (not descendant package trees from repo root) | `--global` `~/.cursor/hooks.json` and `~/.cursor/mcp.json`; unread MDM/team hooks; unread `~/.cursor/skills/` until a page quotes that directory; unread third-party Claude import as Cursor schema | Agent Skills; MCP launch; 500-line rules; 21 hook events, optional `type` (`command` / `prompt`), required `command`. Missing `version` is not a finding | n/a | `cursor-json` fixture |
@@ -728,11 +736,16 @@ first.
   still inspect every readable MCP file.
 - **Codex admin and profile layers are unread.** System `/etc/codex/config.toml`,
   managed preferences, `requirements.toml`, `$CODEX_HOME/<name>.config.toml`
-  profiles, plugin MCP, and `trust_level` are not opened. User
-  `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) MCP is scanned only
-  under `--global`. `auth.json` is never opened. Same-name user and project
-  MCP servers are both inventoried — the published page does not quote a
+  profiles, plugin hooks and MCP, and `trust_level` are not opened. Project
+  `.codex/hooks.json` and inline `[hooks]` in `.codex/config.toml` are
+  inventoried on the ancestor walk even when that layer is untrusted. The
+  same two files under `$CODEX_HOME` (or `~/.codex`) are opened only with
+  `--global`. `auth.json` is never opened. Same-name user and project MCP
+  servers are both inventoried — the published page does not quote a
   replace-entirely rule. User-file `project_doc_*` knobs are not applied.
+  Relative hook commands resolve against the scanned directory, not the git
+  root. SessionEnd and Interrupt timeouts outside 1–3 seconds are findings;
+  other events have no quoted maximum.
 - **Command Code local MCP is unread.** `~/.commandcode/projects/{project}/mcp.json`
   is keyed by a working-directory slug that the sessions page does not publish.
   Until it does, that path is skipped rather than guessed. Bundled Command Code
