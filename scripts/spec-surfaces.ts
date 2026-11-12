@@ -227,6 +227,11 @@ export const SPEC_SURFACES: SpecSurface[] = [
   },
   {
     provider: "antigravity",
+    surface: "hooks",
+    ...SPEC_PAGES.antigravityHooks,
+  },
+  {
+    provider: "antigravity",
     surface: "mcp",
     ...SPEC_PAGES.antigravityMcp,
   },

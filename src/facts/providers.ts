@@ -57,7 +57,12 @@ export const PROVIDERS = {
   gemini: { dotDir: ".gemini" },
   opencode: { dotDir: ".opencode" },
   continue: { dotDir: ".continue" },
-  antigravity: {},
+  /**
+   * User config root for `hooks.json` and `mcp_config.json`. No `dotDir`:
+   * project `.agents` stays the `agent-skills` provider, and project hooks
+   * are opened by the `.agents/hooks.json` path. See docs/spec/antigravity-hooks.md.
+   */
+  antigravity: { home: ".gemini/config" },
   /** `$COPILOT_HOME`, otherwise `~/.copilot`. See docs/spec/copilot-hooks.md. */
   copilot: { dotDir: ".github", home: ".copilot", homeEnv: "COPILOT_HOME" },
 } satisfies Record<string, ProviderSpec>;

@@ -6,6 +6,7 @@ import {
 import { CURSOR_HOOK_EVENTS } from "./cursor";
 import { GEMINI_HOOK_EVENTS } from "./gemini";
 import { GROK_HOOK_EVENTS } from "./grok";
+import { ANTIGRAVITY_HOOK_EVENTS } from "./antigravity";
 import { CODEX_HOOK_EVENTS, CODEX_SHORT_TIMEOUT_MAX, CODEX_SHORT_TIMEOUT_MIN } from "./codex";
 import {
   COPILOT_HOOK_EVENTS,
@@ -184,6 +185,22 @@ export const PROFILES = {
     defects: ["command-without-command", "unknown-handler-type"],
     layout: "event-keyed",
     fileSource: "cursor-hooks",
+  },
+  /**
+   * Name-keyed `.agents/hooks.json`. Direct `{ type?, command }` handlers are
+   * valid; only a matcher group needs a `hooks` array. `type` defaults to
+   * `command`. No quoted timeout range. See docs/spec/antigravity-hooks.md.
+   */
+  antigravity: {
+    events: ANTIGRAVITY_HOOK_EVENTS,
+    ruleIdPrefix: "antigravity",
+    defects: ["invalid-group", "command-without-command", "unknown-handler-type"],
+    messages: {
+      "invalid-group": (event, detail) =>
+        detail === "matcher-not-string" ? `${event} hook matcher is not a string` : undefined,
+    },
+    layout: "own",
+    fileSource: "antigravity-hooks",
   },
   kiro: {
     events: KIRO_HOOK_EVENTS,

@@ -13,6 +13,14 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+- Antigravity hooks: `.agents/hooks.json` on the ancestor walk, and
+  `~/.gemini/config/hooks.json` under `--global`. The file maps hook names to
+  definitions. Direct handlers and matcher groups are both valid. `enabled:
+  false` skips a definition. `type` defaults to `command`. Six events.
+  Plugin hooks stay unread. New: `antigravity.hook.unknown-event`,
+  `antigravity.hook.missing-script`, `antigravity.hook.invalid-group`,
+  `antigravity.hook.command-without-command`,
+  `antigravity.hook.unknown-handler-type`.
 - Codex hooks: project `.codex/hooks.json` and inline `[hooks]` in
   `.codex/config.toml`, plus the same two files under `$CODEX_HOME` or
   `~/.codex` with `--global`. Both files in a layer are inventoried. Fourteen

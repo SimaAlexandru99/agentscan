@@ -41,6 +41,7 @@ to appear in real projects.** When adding a check:
 | [vscode-mcp.md](vscode-mcp.md) | VS Code `.vscode/mcp.json` `servers`; Copilot user `mcp-config.json` `mcpServers` | `vscode.mcp.no-launch` |
 | [cursor-mcp.md](cursor-mcp.md) | Cursor `.cursor/mcp.json` | `cursor.mcp.no-launch` |
 | [antigravity-mcp.md](antigravity-mcp.md) | Antigravity `serverUrl`, with `url` as an alias | `antigravity.mcp.no-launch` |
+| [antigravity-hooks.md](antigravity-hooks.md) | `.agents/hooks.json` and `~/.gemini/config/hooks.json`; 6 events; direct handlers; `command` only | `antigravity.hook.*` |
 | [codex-mcp.md](codex-mcp.md) | Codex `[mcp_servers.*]` TOML; user file under `--global` | `codex.mcp.no-launch` |
 | [thresholds.md](thresholds.md) | Every numeric threshold and its evidence | all `budget.*`, `skill.description-budget`, `codex.budget.instructions`, `cursor.rule.too-large`, `agent-skills.skill.body-too-large` |
 | [agents-md.md](agents-md.md) | Portable AGENTS.md — no required fields, nested nearest-wins | discovery; `budget.agents-md` stays heuristic |

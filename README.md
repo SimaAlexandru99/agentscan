@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-133-111111?style=flat-square" alt="133 checks">
+  <img src="https://img.shields.io/badge/checks-138-111111?style=flat-square" alt="138 checks">
   <img src="https://img.shields.io/badge/tests-603%20passing-111111?style=flat-square" alt="603 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>133 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <strong>138 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
   <sub>An offline linter for Claude Code, Command Code, Grok Build, Windsurf, Kiro, Cline, Roo, Kilo, Junie, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks (including inline settings), and the MCP / hooks / rules surfaces the registry actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
@@ -65,7 +65,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .commandcode/ .grok/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       133 checks, each labeled spec-required, vendor-recommendation,
+3. Check       138 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -186,7 +186,7 @@ Flags for `check`:
 | `--verbose` | Show info-severity findings, and print each finding's id |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
-| `--global` | Also scan user skills (`$CLAUDE_CONFIG_DIR/skills` or `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills`, `~/.codeium/windsurf/skills`), Claude user settings / agents / `CLAUDE.md` / rules / commands and `$CLAUDE_CONFIG_DIR/.claude.json` or `~/.claude.json` (user + matching local `mcpServers`), Copilot `$COPILOT_HOME` / `~/.copilot/hooks` and `settings.json`, Codex `$CODEX_HOME` / `~/.codex/hooks.json` and `config.toml` (MCP plus inline `[hooks]`), Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user MCP/agents/memory, and Windsurf `~/.codeium/windsurf` MCP + `global_rules.md` + `hooks.json` (see below) |
+| `--global` | Also scan user skills (`$CLAUDE_CONFIG_DIR/skills` or `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills`, `~/.codeium/windsurf/skills`), Claude user settings / agents / `CLAUDE.md` / rules / commands and `$CLAUDE_CONFIG_DIR/.claude.json` or `~/.claude.json` (user + matching local `mcpServers`), Copilot `$COPILOT_HOME` / `~/.copilot/hooks` and `settings.json`, Codex `$CODEX_HOME` / `~/.codex/hooks.json` and `config.toml` (MCP plus inline `[hooks]`), Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user MCP/agents/memory, Antigravity `~/.gemini/config/hooks.json`, and Windsurf `~/.codeium/windsurf` MCP + `global_rules.md` + `hooks.json` (see below) |
 | `--config <path>` | Config file path |
 
 **v1 does not write the tree** — no `apply`, no skill delete/install. Findings may *suggest* shell commands; you run them yourself.
@@ -265,7 +265,8 @@ Adds user skill dirs (`$CLAUDE_CONFIG_DIR/skills` or `~/.claude/skills`, `~/.cod
 commands and `~/.claude.json` (top-level user `mcpServers` plus local
 `projects.<scanned-path>.mcpServers`), Copilot `~/.copilot/hooks`, Codex `$CODEX_HOME` /
 `~/.codex` (`hooks.json`, `config.toml` MCP and inline `[hooks]`, plus `AGENTS.override.md` / `AGENTS.md`),
-Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user
+Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Antigravity
+`~/.gemini/config/hooks.json`, Command Code user
 agents / MCP / memory, and Windsurf `~/.codeium/windsurf/mcp_config.json`,
 `memories/global_rules.md`, `hooks.json`, and `skills` to the structural checks: a `SKILL.md` that
 is malformed is malformed wherever it lives, and those findings carry a
@@ -515,6 +516,11 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `vscode.mcp.no-launch` | error | spec-required | [code.visualstudio.com/docs/agents/reference/mcp-configuration](https://code.visualstudio.com/docs/agents/reference/mcp-configuration) | VS Code MCP server declares neither command nor url |
 | `cursor.mcp.no-launch` | error | spec-required | [cursor.com/docs/context/mcp](https://cursor.com/docs/context/mcp) | Cursor MCP server declares neither command nor url |
 | `antigravity.mcp.no-launch` | error | spec-required | [antigravity.google/docs/mcp](https://antigravity.google/docs/mcp) | Antigravity MCP server declares neither command, serverUrl, nor url |
+| `antigravity.hook.unknown-event` | error | spec-required | [antigravity.google/docs/hooks](https://antigravity.google/docs/hooks) | Antigravity hook registered under an event name that is never dispatched |
+| `antigravity.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Antigravity hook points at a script that does not exist, so it never runs |
+| `antigravity.hook.invalid-group` | error | spec-required | [antigravity.google/docs/hooks](https://antigravity.google/docs/hooks) | Antigravity hook group is missing a hooks array, or matcher is not a string |
+| `antigravity.hook.command-without-command` | error | spec-required | [antigravity.google/docs/hooks](https://antigravity.google/docs/hooks) | Antigravity command hook declares no command |
+| `antigravity.hook.unknown-handler-type` | error | spec-required | [antigravity.google/docs/hooks](https://antigravity.google/docs/hooks) | Antigravity hook handler type is not command |
 | `codex.mcp.no-launch` | error | spec-required | [learn.chatgpt.com/docs/extend/mcp](https://learn.chatgpt.com/docs/extend/mcp) | Codex MCP server declares neither command nor url |
 | `gemini.mcp.no-launch` | error | spec-required | [github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md) | Gemini MCP server declares neither command, url, nor httpUrl |
 | `gemini.mcp.underscore-alias` | warning | vendor-recommendation | [github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md) | Gemini MCP server alias contains an underscore, which can make policies fail silently |
@@ -622,7 +628,7 @@ Dimensions:
 | Copilot CLI | `.github/hooks` with `version: 1`; inline `hooks` in `.github/copilot/settings.json` and `settings.local.json` | `--global` `$COPILOT_HOME` / `~/.copilot/hooks` with `version: 1`, `settings.json`, and `mcp-config.json` (`mcpServers`); unread `/etc/github-copilot/policy.d` | camelCase + PascalCase map; `bash` / `powershell` / `command` / `exec` / `http`; `cwd`; `timeoutSec`; prompt on `sessionStart`; user MCP `command` / `url` | documented sources coexist; policy unread; Copilot also reads `.claude/settings.json` but this scanner lints that file as Claude. Workspace `.mcp.json` stays the shared profile | `copilot-hooks` fixture |
 | Cursor | nested `.cursor/skills`; `.cursor/mcp.json`, `.cursor/hooks.json` and `.cursor/rules` on the ancestor walk only (not descendant package trees from repo root) | `--global` `~/.cursor/hooks.json` and `~/.cursor/mcp.json`; unread MDM/team hooks; unread `~/.cursor/skills/` until a page quotes that directory; unread third-party Claude import as Cursor schema | Agent Skills; MCP launch; 500-line rules; 21 hook events, optional `type` (`command` / `prompt`), required `command`. Missing `version` is not a finding | n/a | `cursor-json` fixture |
 | Grok | `.grok/config.toml` walk-up; `.grok/hooks/*.json`; `.grok/skills`; `.grok/rules/*.md`; `Agents.md` / `AGENT.md` | `--global` `$GROK_HOME` or `~/.grok` config/hooks/skills; unread managed, requirements, plugins, `[skills] paths`, agents, credentials | `command` / `url` MCP (no `type`); 14 events; command/http; frontmatter required, name/description optional; no rules cap | closer project wins; project same-name replaces user | `grok-toml` fixture |
-| Antigravity | `.agents/mcp_config.json` | `--global` `~/.gemini/config/mcp_config.json`; unread credential siblings | `command` / `serverUrl` (`url` is an alias; `httpUrl` is not a launch field) | n/a | `antigravity-json` fixture |
+| Antigravity | `.agents/mcp_config.json`; `.agents/hooks.json` on the ancestor walk | `--global` `~/.gemini/config/mcp_config.json` and `hooks.json`; unread plugin `hooks.json`; unread `~/.gemini/antigravity-cli/settings.json` | `command` / `serverUrl` (`url` is an alias; `httpUrl` is not a launch field); 6 hook events; direct handlers or matcher groups; `type` defaults to `command` | n/a | `antigravity-json`, `antigravity-hooks` fixtures |
 | Gemini | `.gemini/settings.json` — MCP and `hooks` | `--global` `~/.gemini/settings.json` (hooks and MCP together); unread `/etc/gemini-cli/settings.json`, extension hooks, and `mcp-oauth-tokens.json` | `command` / `url` / `httpUrl`; underscore-alias warning; 11 hook events, required `type` (`command` only), nested groups, `$GEMINI_PROJECT_DIR` | n/a | `gemini-json` fixture |
 | Windsurf | `.devin/rules/*.md` (preferred), `.windsurf/rules/*.md` (fallback), `.windsurfrules`; `.windsurf/hooks.json`; `.windsurf/skills`; portable `AGENTS.md` / `agents.md` | `--global` `~/.codeium/windsurf/mcp_config.json`, `memories/global_rules.md`, `hooks.json`, and `skills`; unread auto memories, system rules/hooks/skills, JetBrains `~/.codeium/hooks.json` | 12k / 6k character rules; workspace `trigger`; MCP `command` / `serverUrl` / `url` (no `type`); 12 snake_case hook events; `command` / `powershell`; Agent Skills on `.windsurf/skills` | n/a (no project MCP on this row; both rule trees inventoried). Devin CLI hooks and MCP are the next row | `windsurf-rules` fixture |
 | Devin CLI | `.devin/hooks.v1.json`; `"hooks"` in `.devin/config.json` and `config.local.json`; `.devin/mcp_config.json` and `mcp_config.local.json`; `mcpServers` left in those config files; `.devin/skills` | `--global` `~/.config/devin/config.json`, `mcp_config.json`, and `skills`; unread Windows `%APPDATA%\devin` | 8 events (`PostCompaction`, not `PostCompact`); `command` / `prompt`; MCP `command` / `url` (`transport` `http` or `sse` is not a check); Agent Skills | Claude settings Devin also loads stay Claude findings | unit tests |
@@ -792,9 +798,13 @@ first.
   under `--global`. MDM paths (`/etc/cursor/hooks.json` and the macOS /
   Windows equivalents) and dashboard-synced team hooks stay unread. Cursor's
   third-party import of Claude hook files stays on the Claude profile.
-- **Antigravity global MCP.** `~/.gemini/config/mcp_config.json` is scanned
-  only under `--global`. Project `.agents/mcp_config.json` is always read.
-  `url` / `httpUrl` are still not launch fields.
+- **Antigravity global files.** `~/.gemini/config/mcp_config.json` and
+  `hooks.json` are scanned only under `--global`. Project
+  `.agents/mcp_config.json` and `.agents/hooks.json` are read on the ancestor
+  walk. `url` is an alias of `serverUrl`. `httpUrl` alone is still not a
+  launch field. Plugin `hooks.json` and
+  `~/.gemini/antigravity-cli/settings.json` stay unread. Hook `timeout` has
+  no quoted range, so it is not checked.
 - **Kiro agents and Cline hooks stay unread.** `.kiro/agents/` has no quoted
   filename pattern. Cline's hooks page did not quote an event identifier
   table. Cline agents are unread for the same reason.

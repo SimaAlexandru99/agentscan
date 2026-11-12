@@ -11,6 +11,7 @@ import type {
   SkillFact,
 } from "../facts/types";
 import { discoverAgents } from "./agents";
+import { discoverAntigravityHooksFile } from "./antigravity";
 import { discoverClaudeCommands } from "./claude";
 import {
   CODEX_PROJECT_DOC_MAX_BYTES,
@@ -180,6 +181,15 @@ const SOURCES: Source[] = [
     user: ({ root, io }) => ({
       hooks: discoverGeminiUserHooks(root, io),
       mcp: discoverGeminiUserMcp(root, io),
+    }),
+  },
+  {
+    id: "antigravity",
+    project: (dir, { io }) => ({
+      hooks: discoverAntigravityHooksFile(join(dir, ".agents", "hooks.json"), dir, io),
+    }),
+    user: ({ root, io }) => ({
+      hooks: discoverAntigravityHooksFile(join(providerHome("antigravity"), "hooks.json"), root, io),
     }),
   },
   {
