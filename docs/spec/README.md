@@ -77,6 +77,7 @@ to appear in real projects.** When adding a check:
 | [windsurf-skills.md](windsurf-skills.md) | `.windsurf/skills`; `--global` `~/.codeium/windsurf/skills`; Agent Skills contract | `agent-skills.skill.*` |
 | [kiro-hooks.md](kiro-hooks.md) | `.kiro/hooks/*.json`; 13 PascalCase triggers; `command` / `agent` | `kiro.hook.*` |
 | [kiro-skills.md](kiro-skills.md) | `.kiro/skills`; Agent Skills contract | `agent-skills.skill.*` |
+| [kiro-agents.md](kiro-agents.md) | `.kiro/agents` and `~/.kiro/agents`; path name; nearer workspace wins | discovery only |
 | [cline-skills.md](cline-skills.md) | `.cline/skills`; unread hooks/agents | `agent-skills.skill.*` |
 | [roo-skills.md](roo-skills.md) | `.roo/skills` Agent Skills | `agent-skills.skill.*` |
 | [kilo-skills.md](kilo-skills.md) | `.kilo/skills` Agent Skills | `agent-skills.skill.*` |

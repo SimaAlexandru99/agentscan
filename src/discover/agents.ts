@@ -1,5 +1,6 @@
-import { isFile, listDir, type ScanIO } from "./fs";
+import { isFile, isRecord, listDir, readConfigFile, reportRootShapeOnce, type ScanIO } from "./fs";
 import { dirname, join } from "node:path";
+import { toPosix } from "../facts/paths";
 import { providerHome } from "../facts/providers";
 import type { AgentFact } from "../facts/types";
 import { discoverCommandcodeAgents } from "./commandcode";
@@ -152,12 +153,101 @@ function discoverVscodeAgents(root: string, io: ScanIO): AgentFact[] {
   return facts;
 }
 
+/** Farther than any ancestor hop, so a workspace agent wins over a global one. */
+const KIRO_GLOBAL_HOPS = Number.MAX_SAFE_INTEGER;
+
+/**
+ * The page names the agent from the path under `agents/`, without the
+ * extension. `team/planner.md` is `team/planner`. See docs/spec/kiro-agents.md.
+ */
+function kiroAgentName(rel: string): string | undefined {
+  const posix = toPosix(rel);
+  if (posix.endsWith(".json")) {
+    return posix.slice(0, -".json".length);
+  }
+  if (posix.endsWith(".md")) {
+    return posix.slice(0, -".md".length);
+  }
+  return undefined;
+}
+
+function readKiroAgent(filePath: string, name: string, namespace: string, io: ScanIO): AgentFact {
+  const fact: AgentFact = {
+    name,
+    path: filePath,
+    sourceProvider: "kiro",
+    namespace,
+    nameSource: "filename",
+    hasFrontmatter: false,
+  };
+  if (filePath.endsWith(".json")) {
+    const value = readConfigFile(filePath, io);
+    if (value !== undefined && !isRecord(value)) {
+      reportRootShapeOnce(filePath, io, "Kiro agent root is not an object");
+    }
+    return fact;
+  }
+  const fm = readFrontmatter(filePath, io);
+  fact.hasFrontmatter = fm.hasFrontmatter;
+  if (fm.unreadable === true) {
+    fact.unreadable = true;
+  }
+  if (fm.unparseable === true) {
+    fact.unparseableFrontmatter = true;
+  }
+  return fact;
+}
+
+/**
+ * `.kiro/agents` or `~/.kiro/agents`. Nested directories count. Dotfiles and
+ * other extensions do not. JSON and Markdown are both inventory; neither
+ * uses the Claude agent schema. See docs/spec/kiro-agents.md.
+ */
+export function discoverKiroAgentsDir(dir: string, io: ScanIO): AgentFact[] {
+  const facts: AgentFact[] = [];
+  for (const rel of agentFiles(dir, io)) {
+    const name = kiroAgentName(rel);
+    if (name === undefined) {
+      continue;
+    }
+    const filePath = join(dir, rel);
+    if (!isFile(filePath)) {
+      continue;
+    }
+    facts.push(readKiroAgent(filePath, name, dir, io));
+  }
+  return facts;
+}
+
+/**
+ * Same name at a higher hop loses. Equal hops (a `.json` and a `.md` in one
+ * directory) both stay. The page says workspace wins over global and does
+ * not say which workspace layer wins, so the nearer start directory does.
+ */
+function shadowFartherKiroAgents(pending: { fact: AgentFact; hops: number }[]): AgentFact[] {
+  const nearest = new Map<string, number>();
+  for (const item of pending) {
+    const prev = nearest.get(item.fact.name);
+    if (prev === undefined || item.hops < prev) {
+      nearest.set(item.fact.name, item.hops);
+    }
+  }
+  return pending.map((item) => {
+    const best = nearest.get(item.fact.name) ?? item.hops;
+    if (item.hops > best) {
+      return { ...item.fact, effective: false };
+    }
+    return item.fact;
+  });
+}
+
 /**
  * Claude: every `.claude/agents` from startDir up to root (docs/spec/claude-subagents.md).
  * VS Code: `.github/agents` (docs/spec/vscode-agents.md).
  * Command Code: `<commandcodeProjectRoot>/.commandcode/agents/*.md` only;
  * user dir under `--global`. Nested package `.commandcode/agents` is not
  * Command Code project config.
+ * Kiro: `.kiro/agents` on that same walk, plus `~/.kiro/agents` under `--global`.
  */
 export function discoverAgents(
   root: string,
@@ -167,19 +257,27 @@ export function discoverAgents(
   commandcodeProjectRoot = root,
 ): AgentFact[] {
   const facts: AgentFact[] = [];
+  const kiroPending: { fact: AgentFact; hops: number }[] = [];
   const seenDirs = new Set<string>();
-  for (const dir of ancestorDirsInclusive(startDir, root)) {
+  const ancestors = ancestorDirsInclusive(startDir, root);
+  for (const [hop, dir] of ancestors.entries()) {
     const agentsDir = join(dir, ".claude", "agents");
-    if (seenDirs.has(agentsDir)) {
-      continue;
+    if (!seenDirs.has(agentsDir)) {
+      seenDirs.add(agentsDir);
+      facts.push(...discoverClaudeAgentsDir(agentsDir, root, io));
+      facts.push(...discoverVscodeAgents(dir, io));
     }
-    seenDirs.add(agentsDir);
-    facts.push(...discoverClaudeAgentsDir(agentsDir, root, io));
-    facts.push(...discoverVscodeAgents(dir, io));
+    for (const fact of discoverKiroAgentsDir(join(dir, ".kiro", "agents"), io)) {
+      kiroPending.push({ fact, hops: hop });
+    }
   }
   facts.push(...discoverCommandcodeAgents(commandcodeProjectRoot, includeGlobal, io));
   if (includeGlobal) {
     facts.push(...discoverClaudeAgentsDir(join(providerHome("claude"), "agents"), root, io));
+    for (const fact of discoverKiroAgentsDir(join(providerHome("kiro"), "agents"), io)) {
+      kiroPending.push({ fact, hops: KIRO_GLOBAL_HOPS });
+    }
   }
+  facts.push(...shadowFartherKiroAgents(kiroPending));
   return facts;
 }

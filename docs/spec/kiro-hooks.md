@@ -58,8 +58,8 @@ trigger. `userTriggered` has no v1 equivalent and is unread.
 
 ## Deliberately unread
 
-- `.kiro/agents/` — the custom-agents page names fields but not a filename
-  pattern.
+- `.kiro/agents/*.json` and `*.md` are agents, not hooks. See
+  [kiro-agents.md](kiro-agents.md).
 - Legacy `.kiro.hook` files.
 
 ## Staleness risk: HIGH

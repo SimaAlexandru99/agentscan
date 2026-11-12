@@ -13,6 +13,12 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+- Kiro agents: `.kiro/agents/**/*.json` and `*.md` on the ancestor walk, and
+  `~/.kiro/agents/` under `--global`. The name is the path relative to that
+  directory, without the extension. A nearer workspace file shadows a farther
+  workspace file and a global file with the same name. No field is required.
+  No new rule id. A `.json` and a `.md` with the same stem in one directory
+  are both kept.
 - Antigravity rules and skills. Workspace `GEMINI.md` and `.agents/GEMINI.md`,
   one level of `.agents/rules/*.md` and legacy `.agent/rules/*.md`, and
   `.agents/rules.json` as shape only (`inherits` and `entries` paths are not

@@ -186,7 +186,7 @@ Flags for `check`:
 | `--verbose` | Show info-severity findings, and print each finding's id |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
-| `--global` | Also scan user skills (`$CLAUDE_CONFIG_DIR/skills` or `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills`, `~/.codeium/windsurf/skills`), Claude user settings / agents / `CLAUDE.md` / rules / commands and `$CLAUDE_CONFIG_DIR/.claude.json` or `~/.claude.json` (user + matching local `mcpServers`), Copilot `$COPILOT_HOME` / `~/.copilot/hooks` and `settings.json`, Codex `$CODEX_HOME` / `~/.codex/hooks.json` and `config.toml` (MCP plus inline `[hooks]`), Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user MCP/agents/memory, Antigravity `~/.gemini/config/hooks.json`, `rules/`, and `skills/`, plus `~/.gemini/AGENTS.md` and `GEMINI.md`, and Windsurf `~/.codeium/windsurf` MCP + `global_rules.md` + `hooks.json` (see below) |
+| `--global` | Also scan user skills (`$CLAUDE_CONFIG_DIR/skills` or `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills`, `~/.codeium/windsurf/skills`), Claude user settings / agents / `CLAUDE.md` / rules / commands and `$CLAUDE_CONFIG_DIR/.claude.json` or `~/.claude.json` (user + matching local `mcpServers`), Copilot `$COPILOT_HOME` / `~/.copilot/hooks` and `settings.json`, Codex `$CODEX_HOME` / `~/.codex/hooks.json` and `config.toml` (MCP plus inline `[hooks]`), Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user MCP/agents/memory, Antigravity `~/.gemini/config/hooks.json`, `rules/`, and `skills/`, plus `~/.gemini/AGENTS.md` and `GEMINI.md`, Kiro `~/.kiro/agents`, and Windsurf `~/.codeium/windsurf` MCP + `global_rules.md` + `hooks.json` (see below) |
 | `--config <path>` | Config file path |
 
 **v1 does not write the tree** — no `apply`, no skill delete/install. Findings may *suggest* shell commands; you run them yourself.
@@ -267,7 +267,7 @@ commands and `~/.claude.json` (top-level user `mcpServers` plus local
 `~/.codex` (`hooks.json`, `config.toml` MCP and inline `[hooks]`, plus `AGENTS.override.md` / `AGENTS.md`),
 Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Antigravity
 `~/.gemini/config/hooks.json`, `rules/`, and `skills/`, plus
-`~/.gemini/AGENTS.md` and `GEMINI.md`, Command Code user
+`~/.gemini/AGENTS.md` and `GEMINI.md`, Kiro `~/.kiro/agents`, Command Code user
 agents / MCP / memory, and Windsurf `~/.codeium/windsurf/mcp_config.json`,
 `memories/global_rules.md`, `hooks.json`, and `skills` to the structural checks: a `SKILL.md` that
 is malformed is malformed wherever it lives, and those findings carry a
@@ -638,7 +638,7 @@ Dimensions:
 | Gemini | `.gemini/settings.json` — MCP and `hooks` | `--global` `~/.gemini/settings.json` (hooks and MCP together); unread `/etc/gemini-cli/settings.json`, extension hooks, and `mcp-oauth-tokens.json` | `command` / `url` / `httpUrl`; underscore-alias warning; 11 hook events, required `type` (`command` only), nested groups, `$GEMINI_PROJECT_DIR` | n/a | `gemini-json` fixture |
 | Windsurf | `.devin/rules/*.md` (preferred), `.windsurf/rules/*.md` (fallback), `.windsurfrules`; `.windsurf/hooks.json`; `.windsurf/skills`; portable `AGENTS.md` / `agents.md` | `--global` `~/.codeium/windsurf/mcp_config.json`, `memories/global_rules.md`, `hooks.json`, and `skills`; unread auto memories, system rules/hooks/skills, JetBrains `~/.codeium/hooks.json` | 12k / 6k character rules; workspace `trigger`; MCP `command` / `serverUrl` / `url` (no `type`); 12 snake_case hook events; `command` / `powershell`; Agent Skills on `.windsurf/skills` | n/a (no project MCP on this row; both rule trees inventoried). Devin CLI hooks and MCP are the next row | `windsurf-rules` fixture |
 | Devin CLI | `.devin/hooks.v1.json`; `"hooks"` in `.devin/config.json` and `config.local.json`; `.devin/mcp_config.json` and `mcp_config.local.json`; `mcpServers` left in those config files; `.devin/skills` | `--global` `~/.config/devin/config.json`, `mcp_config.json`, and `skills`; unread Windows `%APPDATA%\devin` | 8 events (`PostCompaction`, not `PostCompact`); `command` / `prompt`; MCP `command` / `url` (`transport` `http` or `sse` is not a check); Agent Skills | Claude settings Devin also loads stay Claude findings | unit tests |
-| Kiro | `.kiro/hooks/*.json`, `.kiro/skills` | `--global` `~/.kiro/hooks/`, `~/.kiro/skills`; unread `.kiro/agents/` (no quoted filename pattern) | 13 PascalCase triggers, including `SessionEnd`, `PreCompact`, `PostCompact`; `command` / `agent`; Agent Skills | inventories both layers | unit tests |
+| Kiro | `.kiro/hooks/*.json`, `.kiro/skills`, `.kiro/agents/**/*.json` and `*.md` on the ancestor walk | `--global` `~/.kiro/hooks/`, `~/.kiro/skills`, `~/.kiro/agents/` | 13 PascalCase triggers, including `SessionEnd`, `PreCompact`, `PostCompact`; `command` / `agent`; Agent Skills. Agents are inventory only: the name is the relative path without the extension, and no field is required | nearer workspace agent shadows a farther one and a global one with the same name | unit tests |
 | Cline | `.cline/skills` | `--global` `~/.cline/skills`; unread hooks (no quoted event list), unread agents | Agent Skills | n/a | unit tests |
 | Roo | `.roo/skills` | `--global` `~/.roo/skills` | Agent Skills | n/a | unit tests |
 | Kilo | `.kilo/skills` | `--global` `~/.kilo/skills`; unread extra paths in `kilo.jsonc` | Agent Skills | n/a | unit tests |
@@ -821,9 +821,13 @@ first.
   range, so it is not checked. Global skills use the Agent Skills contract,
   which requires `name` even though the Antigravity skills page says `name`
   defaults to the folder.
-- **Kiro agents and Cline hooks stay unread.** `.kiro/agents/` has no quoted
-  filename pattern. Cline's hooks page did not quote an event identifier
-  table. Cline agents are unread for the same reason.
+- **Cline hooks stay unread.** Cline's hooks page did not quote an event
+  identifier table. Cline agents are unread for the same reason. Kiro agents
+  are inventoried from `.kiro/agents/**/*.json` and `*.md` on the ancestor
+  walk, and from `~/.kiro/agents/` under `--global`. The name is the path
+  relative to the agents directory without the extension. A nearer workspace
+  agent shadows a farther one and a global one with the same name. No field
+  is required, so there is no `kiro.agent.*` check.
 - **VS Code marketplace plugin hooks are unread.** In-tree Claude plugins
   stay Claude. VS Code's `hooks.json` / `hooks/hooks.json` inside an
   installed plugin package is not a project path.
