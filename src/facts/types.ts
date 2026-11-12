@@ -246,6 +246,16 @@ export type PolicyFileFact = {
 /** Windsurf rule scope. See docs/spec/windsurf-rules.md. */
 export type WindsurfRuleScope = "workspace" | "global" | "legacy";
 
+/**
+ * One defect on a modular Antigravity rule. Unreadable YAML is a config
+ * error and leaves this unset. See docs/spec/antigravity-rules.md.
+ */
+export type AntigravityRuleDefect =
+  | "missing-trigger"
+  | "invalid-trigger"
+  | "missing-description"
+  | "missing-globs";
+
 export type RuleFact = {
   path: string;
   sourceProvider: Provider;
@@ -259,6 +269,8 @@ export type RuleFact = {
    * `trigger`. `unreadable` means the YAML did not parse, so do not claim it is missing.
    */
   windsurfTrigger?: "yes" | "no" | "unreadable";
+  /** Modular `.agents/rules` and `~/.gemini/config/rules` files only. */
+  antigravityDefect?: AntigravityRuleDefect;
 };
 
 /** Everything discovery reads from the agent configuration of one scan. */

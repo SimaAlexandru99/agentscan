@@ -13,6 +13,22 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+- Antigravity rules and skills. Workspace `GEMINI.md` and `.agents/GEMINI.md`,
+  one level of `.agents/rules/*.md` and legacy `.agent/rules/*.md`, and
+  `.agents/rules.json` as shape only (`inherits` and `entries` paths are not
+  opened). `--global` adds `~/.gemini/AGENTS.md`, `~/.gemini/GEMINI.md`,
+  `~/.gemini/config/AGENTS.md`, `~/.gemini/config/GEMINI.md`,
+  `~/.gemini/config/rules/*.md`, and `~/.gemini/config/skills/`. Workspace
+  `AGENTS.md` stays the portable policy file, so the 24,000-byte check does
+  not apply to it. The byte check counts the raw file, before
+  `@[label](path)` expansion. The 20,000-token aggregate is not checked.
+  Plugin rules and plugin skills stay unread, as do
+  `~/.gemini/antigravity-cli/skills/`, `~/.gemini/skills/`, and
+  `~/.gemini/antigravity/skills/`. Global skills use the Agent Skills
+  contract. New: `antigravity.rule.missing-trigger`,
+  `antigravity.rule.invalid-trigger`,
+  `antigravity.rule.missing-description`, `antigravity.rule.missing-globs`,
+  `antigravity.rule.too-large`.
 - Antigravity hooks: `.agents/hooks.json` on the ancestor walk, and
   `~/.gemini/config/hooks.json` under `--global`. The file maps hook names to
   definitions. Direct handlers and matcher groups are both valid. `enabled:

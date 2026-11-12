@@ -66,7 +66,12 @@ import {
   discoverSkillsLocks,
   resolveCodexProjectRoot,
 } from "./policy";
-import { discoverClaudeUserRules, discoverNestedWindsurfRules, discoverRules } from "./rules";
+import {
+  discoverAntigravityUserRules,
+  discoverClaudeUserRules,
+  discoverNestedWindsurfRules,
+  discoverRules,
+} from "./rules";
 import {
   discoverWindsurfHooksFile,
   discoverWindsurfUserMcp,
@@ -190,6 +195,7 @@ const SOURCES: Source[] = [
     }),
     user: ({ root, io }) => ({
       hooks: discoverAntigravityHooksFile(join(providerHome("antigravity"), "hooks.json"), root, io),
+      rules: discoverAntigravityUserRules(io),
     }),
   },
   {

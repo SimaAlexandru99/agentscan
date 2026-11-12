@@ -1,11 +1,12 @@
 import type { Provider } from "../facts/provider";
-import type { Facts, RuleFact } from "../facts/types";
+import type { AntigravityRuleDefect, Facts, RuleFact } from "../facts/types";
 import type { Finding } from "../findings";
 import { make } from "./make";
 
 const CURSOR_RULE_LINE_LIMIT = 500;
 const WINDSURF_WORKSPACE_CHAR_LIMIT = 12_000;
 const WINDSURF_GLOBAL_CHAR_LIMIT = 6_000;
+const ANTIGRAVITY_RULE_BYTE_LIMIT = 24_000;
 
 /**
  * Vendor rule-file size checks. Only limits quoted in docs/spec/ are emitted.
@@ -23,6 +24,7 @@ export function checkRules(facts: Facts): Finding[] {
     if (missing !== undefined) {
       out.push(missing);
     }
+    out.push(...antigravityRuleFindings(rule));
   }
   return out;
 }
@@ -94,4 +96,81 @@ function missingTriggerFinding(rule: RuleFact): Finding | undefined {
     evidence: [{ kind: "rule", value: rule.path }],
     suggest: "Add a `trigger` field to the YAML frontmatter",
   });
+}
+
+type AntigravityDefectCopy = {
+  id:
+    | "antigravity.rule.missing-trigger"
+    | "antigravity.rule.invalid-trigger"
+    | "antigravity.rule.missing-description"
+    | "antigravity.rule.missing-globs";
+  message: string;
+  reason: string;
+  suggest: string;
+};
+
+const ANTIGRAVITY_DEFECTS: Record<AntigravityRuleDefect, AntigravityDefectCopy> = {
+  "missing-trigger": {
+    id: "antigravity.rule.missing-trigger",
+    message: "Antigravity rule is missing a frontmatter trigger",
+    reason:
+      "Every Markdown file in an Antigravity rules directory must start with YAML frontmatter that sets `trigger`. `AGENTS.md` and `GEMINI.md` do not. See docs/spec/antigravity-rules.md.",
+    suggest: "Add a `trigger` field to the YAML frontmatter",
+  },
+  "invalid-trigger": {
+    id: "antigravity.rule.invalid-trigger",
+    message: "Antigravity rule trigger is not always_on, model_decision, glob, or manual",
+    reason:
+      "Antigravity accepts only those four `trigger` values. See docs/spec/antigravity-rules.md.",
+    suggest: "Set `trigger` to always_on, model_decision, glob, or manual",
+  },
+  "missing-description": {
+    id: "antigravity.rule.missing-description",
+    message: "Antigravity model_decision rule is missing a description",
+    reason:
+      "A `model_decision` rule needs a non-empty `description` string. Other triggers do not. See docs/spec/antigravity-rules.md.",
+    suggest: "Add a `description` string to the frontmatter",
+  },
+  "missing-globs": {
+    id: "antigravity.rule.missing-globs",
+    message: "Antigravity glob rule is missing globs",
+    reason:
+      "A `glob` rule needs a non-empty `globs` or `glob` string. See docs/spec/antigravity-rules.md.",
+    suggest: "Add a `globs` or `glob` string to the frontmatter",
+  },
+};
+
+function antigravityRuleFindings(rule: RuleFact): Finding[] {
+  if (rule.sourceProvider !== "antigravity") {
+    return [];
+  }
+  const out: Finding[] = [];
+  const defect = rule.antigravityDefect;
+  if (defect !== undefined) {
+    const spec = ANTIGRAVITY_DEFECTS[defect];
+    out.push(
+      make(spec.id, `rule:${rule.path}`, {
+        message: spec.message,
+        reason: spec.reason,
+        evidence: [{ kind: "rule", value: rule.path }],
+        suggest: spec.suggest,
+      }),
+    );
+  }
+  if (rule.byteLength > ANTIGRAVITY_RULE_BYTE_LIMIT) {
+    out.push(
+      make("antigravity.rule.too-large", `rule:${rule.path}`, {
+        message: `Antigravity rule exceeds 24,000 bytes (${rule.byteLength} bytes)`,
+        reason:
+          "Antigravity truncates any single rule file that exceeds 24,000 bytes. This check uses the raw file, before `@[label](path)` expansion, so a smaller file can still be truncated after includes. See docs/spec/antigravity-rules.md.",
+        evidence: [
+          { kind: "rule", value: rule.path },
+          { kind: "count", value: `bytes=${rule.byteLength}` },
+          { kind: "threshold", value: String(ANTIGRAVITY_RULE_BYTE_LIMIT) },
+        ],
+        suggest: "Shorten the rule file. Antigravity truncates a file past 24,000 bytes",
+      }),
+    );
+  }
+  return out;
 }

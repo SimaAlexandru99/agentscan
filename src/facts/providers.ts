@@ -58,11 +58,12 @@ export const PROVIDERS = {
   opencode: { dotDir: ".opencode" },
   continue: { dotDir: ".continue" },
   /**
-   * User config root for `hooks.json` and `mcp_config.json`. No `dotDir`:
-   * project `.agents` stays the `agent-skills` provider, and project hooks
-   * are opened by the `.agents/hooks.json` path. See docs/spec/antigravity-hooks.md.
+   * User config root for `hooks.json`, `mcp_config.json`, `rules/`, and
+   * `skills/`. No `dotDir`: project `.agents` stays the `agent-skills`
+   * provider, and project hooks are opened by the `.agents/hooks.json` path.
+   * See docs/spec/antigravity-hooks.md and docs/spec/antigravity-skills.md.
    */
-  antigravity: { home: ".gemini/config" },
+  antigravity: { home: ".gemini/config", userSkills: true, skills: "agent-skills" },
   /** `$COPILOT_HOME`, otherwise `~/.copilot`. See docs/spec/copilot-hooks.md. */
   copilot: { dotDir: ".github", home: ".copilot", homeEnv: "COPILOT_HOME" },
 } satisfies Record<string, ProviderSpec>;
@@ -85,7 +86,10 @@ export function providerHome(id: ProviderKey): string {
 
 const WITH_SKILLS = SPECS.filter(([, spec]) => spec.skills !== undefined) as [Exclude<Provider, "unknown">, ProviderSpec][];
 
-export const PROJECT_SKILL_DIRS = WITH_SKILLS.map(([, spec]) => `${spec.dotDir}/skills`);
+/** Project `skills/` dirs. A provider with `skills` but no `dotDir` is user-only. */
+export const PROJECT_SKILL_DIRS = WITH_SKILLS.flatMap(([, spec]) =>
+  spec.dotDir === undefined ? [] : [`${spec.dotDir}/skills`],
+);
 
 /**
  * Default `skillPaths`. The bare `skills/` dir belongs to no provider and sits
@@ -106,7 +110,9 @@ export const DEFAULT_SKILL_PATHS = [
  * `.commandcode/skills` only at its project root, never in a nested package.
  */
 export const SKILL_DOT_DIRS = new Set(
-  WITH_SKILLS.filter(([id]) => id !== "commandcode").map(([, spec]) => spec.dotDir!),
+  WITH_SKILLS.flatMap(([id, spec]) =>
+    id === "commandcode" || spec.dotDir === undefined ? [] : [spec.dotDir],
+  ),
 );
 
 export const USER_SKILL_PROVIDERS = WITH_SKILLS.filter(([, spec]) => spec.userSkills).map(([id]) => id);
@@ -114,7 +120,10 @@ export const USER_SKILL_PROVIDERS = WITH_SKILLS.filter(([, spec]) => spec.userSk
 export const AGENT_CONFIG_DOT_DIRS = SPECS.flatMap(([, spec]) => spec.dotDir ?? []);
 
 const SKILL_MARKERS = WITH_SKILLS.flatMap(([id, spec]) => {
-  const markers = [`/${spec.dotDir}/skills`];
+  const markers: string[] = [];
+  if (spec.dotDir !== undefined) {
+    markers.push(`/${spec.dotDir}/skills`);
+  }
   if (spec.home !== undefined && spec.userSkills) {
     markers.push(`/${spec.home}/skills`);
   }

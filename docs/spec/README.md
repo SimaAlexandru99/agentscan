@@ -42,6 +42,8 @@ to appear in real projects.** When adding a check:
 | [cursor-mcp.md](cursor-mcp.md) | Cursor `.cursor/mcp.json` | `cursor.mcp.no-launch` |
 | [antigravity-mcp.md](antigravity-mcp.md) | Antigravity `serverUrl`, with `url` as an alias | `antigravity.mcp.no-launch` |
 | [antigravity-hooks.md](antigravity-hooks.md) | `.agents/hooks.json` and `~/.gemini/config/hooks.json`; 6 events; direct handlers; `command` only | `antigravity.hook.*` |
+| [antigravity-rules.md](antigravity-rules.md) | `GEMINI.md`, modular `rules/*.md`, 24,000-byte limit; workspace `AGENTS.md` stays policy | `antigravity.rule.*` |
+| [antigravity-skills.md](antigravity-skills.md) | Global `~/.gemini/config/skills`; workspace `.agents/skills` stays Agent Skills | discovery only |
 | [codex-mcp.md](codex-mcp.md) | Codex `[mcp_servers.*]` TOML; user file under `--global` | `codex.mcp.no-launch` |
 | [thresholds.md](thresholds.md) | Every numeric threshold and its evidence | all `budget.*`, `skill.description-budget`, `codex.budget.instructions`, `cursor.rule.too-large`, `agent-skills.skill.body-too-large` |
 | [agents-md.md](agents-md.md) | Portable AGENTS.md — no required fields, nested nearest-wins | discovery; `budget.agents-md` stays heuristic |

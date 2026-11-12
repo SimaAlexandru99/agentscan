@@ -41,6 +41,7 @@ export const SPEC_PAGES = {
   codexHooks: { url: "https://learn.chatgpt.com/docs/hooks", lastVerified: "2026-11-12" },
   antigravityMcp: { url: "https://antigravity.google/docs/mcp", lastVerified: "2026-11-12" },
   antigravityHooks: { url: "https://antigravity.google/docs/hooks", lastVerified: "2026-11-12" },
+  antigravityRules: { url: "https://antigravity.google/docs/rules", lastVerified: "2026-11-12" },
   devinHooks: { url: "https://docs.devin.ai/cli/extensibility/hooks/overview", lastVerified: "2026-11-12" },
   devinMcp: { url: "https://docs.devin.ai/cli/extensibility/mcp/configuration", lastVerified: "2026-11-12" },
   // No rule cites this page; `spec:check` reads VS Code hook event names from it.
