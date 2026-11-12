@@ -47,9 +47,10 @@ const PROFILES = {
     sourceProvider: "antigravity",
     consumedBy: ["antigravity"],
     ruleIdPrefix: "antigravity",
-    launchable: (server) => server.hasCommand || server.hasServerUrl === true,
-    noLaunchDeclares: "neither command nor serverUrl",
-    noLaunchAdd: "a command (or serverUrl)",
+    launchable: (server) =>
+      server.hasCommand || server.hasServerUrl === true || server.hasUrl,
+    noLaunchDeclares: "neither command, serverUrl, nor url",
+    noLaunchAdd: "a command, serverUrl, or url",
   },
   "codex-toml": { ...COMMAND_OR_URL, sourceProvider: "codex", consumedBy: ["codex"], ruleIdPrefix: "codex" },
   "gemini-json": {
@@ -82,6 +83,20 @@ const PROFILES = {
     launchable: (server) => commandOrUrl(server) || server.hasServerUrl === true,
     noLaunchDeclares: "neither command, serverUrl, nor url",
     noLaunchAdd: "a command, serverUrl, or url",
+  },
+  "devin-json": {
+    ...COMMAND_OR_URL,
+    sourceProvider: "devin",
+    consumedBy: ["devin"],
+    ruleIdPrefix: "devin",
+  },
+  // Copilot's portable file. Same launch fields as `.vscode/mcp.json`, so it
+  // shares `vscode.mcp.no-launch` and does not pull Claude's url-without-type.
+  "copilot-json": {
+    ...COMMAND_OR_URL,
+    sourceProvider: "vscode",
+    consumedBy: ["vscode"],
+    ruleIdPrefix: "vscode",
   },
 } as const satisfies Record<McpSchemaProfile, McpProfileSpec>;
 

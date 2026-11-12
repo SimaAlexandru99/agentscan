@@ -249,7 +249,9 @@ type HookEventPage = {
  */
 const HOOK_EVENT_PAGES: Record<HookSchemaProfile, HookEventPage | null> = {
   claude: { label: "Claude", url: SPEC_PAGES.claudeHooks.url, scanCandidates: true },
-  "vscode-native": { label: "VS Code", url: SPEC_PAGES.vscodeHooksGuide.url },
+  // The customization guide now documents the Copilot harness. The eight
+  // PascalCase names live on the legacy Local reference.
+  "vscode-native": { label: "VS Code", url: SPEC_PAGES.vscodeHooks.url },
   // Copilot CLI also accepts the VS Code names; those are checked on the VS Code page.
   "copilot-cli": { label: "Copilot CLI", url: SPEC_PAGES.copilotHooks.url, skip: VSCODE_HOOK_EVENTS },
   commandcode: { label: "Command Code", url: SPEC_PAGES.commandcodeHooks.url },
@@ -258,6 +260,7 @@ const HOOK_EVENT_PAGES: Record<HookSchemaProfile, HookEventPage | null> = {
   cursor: { label: "Cursor", url: SPEC_PAGES.cursorHooks.url },
   kiro: { label: "Kiro", url: SPEC_PAGES.kiroHooksV1.url, mentions: pageMentionsEvent },
   windsurf: null,
+  devin: { label: "Devin", url: SPEC_PAGES.devinHooks.url },
 };
 
 /** Names the page ties to hooks, minus the ones we know; filtered to keep the noise survivable. */

@@ -6,10 +6,16 @@
 **Depends on it:** `copilot.hook.*`, `.github/hooks` `version: 1` detection,
 inline settings hooks (`src/facts/hook-schema.ts`, `src/discover/hooks.ts`)
 
-This is **not** the native VS Code hooks page. Native VS Code files omit
+This is **not** the legacy Local VS Code hooks page. Local files omit
 `version` and are command-only with eight PascalCase events; see
-[vscode-hooks.md](vscode-hooks.md). Applying VS Code command-only assumptions
-to a Copilot CLI `version: 1` file is a false positive.
+[vscode-hooks.md](vscode-hooks.md). Applying those command-only assumptions
+to a `version: 1` file is a false positive.
+
+**Re-read:** 2026-11-12. The VS Code customization guide creates new Copilot
+harness hooks as `.github/hooks/*.json` with `"version": 1` and camelCase
+events (`preToolUse`). That is this profile. `version === 1` stays the
+classifier. camelCase without `version: 1` stays Local and can emit
+`vscode.hook.unknown-event`.
 
 ## Detection
 

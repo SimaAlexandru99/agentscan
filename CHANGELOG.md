@@ -13,6 +13,27 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+- Devin CLI, beside the legacy Windsurf contract: `.devin/hooks.v1.json`
+  and `"hooks"` in `.devin/config.json` / `config.local.json` (user
+  `~/.config/devin/config.json` under `--global`); MCP
+  `.devin/mcp_config.json`, `.devin/mcp_config.local.json`, and a
+  `mcpServers` key still sitting in those config files. Launch is `command`
+  or `url` (`sse` is a valid transport, not a check). Skills:
+  `.devin/skills` and `--global` `~/.config/devin/skills`. New:
+  `devin.hook.unknown-event`, `devin.hook.missing-script`,
+  `devin.hook.invalid-group`, `devin.hook.command-without-command`,
+  `devin.hook.prompt-without-prompt`, `devin.hook.unknown-handler-type`,
+  `devin.mcp.no-launch`. `.windsurf/hooks.json` and
+  `~/.codeium/windsurf/mcp_config.json` stay the Cascade contract.
+  `.claude/settings.json` stays Claude.
+- Antigravity MCP: `url` is an alias of `serverUrl`. `httpUrl` alone is
+  still `antigravity.mcp.no-launch`.
+- Copilot portable user MCP under `--global`: `$COPILOT_HOME/mcp-config.json`
+  or `~/.copilot/mcp-config.json` (`mcpServers`, `command` or `url`),
+  reported as `vscode.mcp.no-launch`. `.vscode/mcp.json` stays the `servers`
+  file. Legacy Local hooks stay the eight PascalCase command-only events;
+  `version: 1` stays Copilot.
+
 - Kiro hooks (`.kiro/hooks/*.json`, `--global` `~/.kiro/hooks/`) on their
   own profile: 10 PascalCase triggers from the IDE 1.0 table, `command` /
   `agent` actions, array-of-hooks files. New: `kiro.hook.unknown-event`,
@@ -33,7 +54,6 @@ intermediate commit that this train does not cut.
   opened. Copilot-consumed `.claude/settings.json` stays Claude.
 - Spec provenance: VS Code hooks-reference, geminicli.com (GitHub MCP
   page kept for the underscore warning), both OpenCode MCP URLs.
-  Registry: **118 checks**.
 
 - Claude user `~/.claude/settings.json` hooks under `--global` /
   `includeGlobal`. Same Claude schema as project settings;

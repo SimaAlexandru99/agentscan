@@ -1,7 +1,7 @@
 # Antigravity MCP
 
 **Source:** https://antigravity.google/docs/mcp
-**Read:** 2026-09-03
+**Read:** 2026-11-12
 **Re-read:** 2026-09-07
 **Depends on it:** `antigravity.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
@@ -15,18 +15,19 @@ Global: `~/.gemini/config/mcp_config.json` — opened under `--global` only.
 Top-level `mcpServers`. Each entry's transport is **one required** of:
 
 - `command` (string) — stdio
-- `serverUrl` (string) — remote Streamable HTTP or SSE
+- `serverUrl` (string) — remote Streamable HTTP
 
-Quoted:
+Quoted (2026-11-12):
 
-> Transport (one required): `command` (string); `serverUrl` (string).
+> Each server entry under `mcpServers` must specify **one transport property**
+> (`command` for a local `stdio` server, or `serverUrl` for a remote
+> Streamable HTTP server).
 
-`url` and `httpUrl` are **not** listed as launch fields. An entry that has
-only `url` is not launchable by this schema. Quoted (2026-09-02):
+> **`serverUrl`** … You can also use `url`.
 
-> Remote Connection Schema: When declaring remote SSE, Streamable HTTP, or
-> websocket-based MCP connections, you must define the `serverUrl` field.
-> Legacy fields like `url` or `httpUrl` are not supported.
+`url` is an alias of `serverUrl`. An entry with only `url` is launchable.
+`httpUrl` is not listed. An entry that has only `httpUrl` is
+`antigravity.mcp.no-launch`.
 
 Optional fields include `args`, `env`, `cwd`, `headers`, `authProviderType`,
 `oauth`, `disabled`, `disabledTools`.

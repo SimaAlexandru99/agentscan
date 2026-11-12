@@ -14,7 +14,6 @@ import { AGENT_CONFIG_DOT_DIRS } from "../facts/providers";
  */
 const AGENT_CONFIG_SIGNALS = [
   ...AGENT_CONFIG_DOT_DIRS,
-  ".devin",
   ".mcp.json",
   "mcp.json",
   "AGENTS.md",

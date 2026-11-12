@@ -1,4 +1,5 @@
 import { dirname, join } from "node:path";
+import { DEVIN_HOOK_HANDLER_TYPES } from "../facts/devin";
 import { providerHome } from "../facts/providers";
 import { GEMINI_HOOK_HANDLER_TYPES } from "../facts/gemini";
 import { GROK_HOOK_HANDLER_TYPES } from "../facts/grok";
@@ -460,6 +461,32 @@ function geminiHookFromEntry(item: Record<string, unknown>, ctx: HookContext): H
   return commandFactsFromLaunches(ctx, item, "command-without-command");
 }
 
+/**
+ * Devin CLI nests groups like Claude. `type` is `command` or `prompt`.
+ * `timeout` has no quoted range, so it is not recorded. See docs/spec/devin-hooks.md.
+ */
+function devinHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
+  const typeRaw = typeof item.type === "string" ? item.type : undefined;
+  if (typeRaw === undefined || !DEVIN_HOOK_HANDLER_TYPES.has(typeRaw)) {
+    return [
+      baseFact(ctx, {
+        defect: "unknown-handler-type",
+        unknownHandlerType: unknownTypeLabel(item),
+      }),
+    ];
+  }
+  if (typeRaw === "prompt") {
+    const prompt = nonemptyString(item.prompt);
+    return [
+      baseFact(ctx, {
+        handlerType: "prompt",
+        ...(prompt === undefined ? { defect: "prompt-without-prompt" as const } : {}),
+      }),
+    ];
+  }
+  return [commandHook(baseFact(ctx), nonemptyString(item.command), ctx.bases.project)];
+}
+
 /** One handler entry -> facts, for profiles whose layout is `nested` or `flat-array`. */
 const ENTRY_READERS: Record<PipedProfile, (item: Record<string, unknown>, ctx: HookContext) => HookFact[]> = {
   claude: claudeHookFromEntry,
@@ -468,6 +495,7 @@ const ENTRY_READERS: Record<PipedProfile, (item: Record<string, unknown>, ctx: H
   commandcode: (item, ctx) => [commandcodeHookFromEntry(item, ctx)],
   grok: grokHookFromEntry,
   gemini: geminiHookFromEntry,
+  devin: devinHookFromEntry,
 };
 
 function isPipedProfile(profile: HookSchemaProfile): profile is PipedProfile {

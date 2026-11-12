@@ -27,8 +27,8 @@ export const SPEC_PAGES = {
   kiroHooksV1: { url: "https://kiro.dev/docs/ide/whats-new-v1/hooks/", lastVerified: "2026-09-07" },
   geminiHooks: { url: "https://geminicli.com/docs/hooks/", lastVerified: "2026-09-03" },
   geminiMcp: { url: "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md", lastVerified: "2026-09-03" },
-  vscodeHooks: { url: "https://code.visualstudio.com/docs/agents/reference/hooks-reference", lastVerified: "2026-09-02" },
-  vscodeMcp: { url: "https://code.visualstudio.com/docs/copilot/customization/mcp-servers", lastVerified: "2026-09-02" },
+  vscodeHooks: { url: "https://code.visualstudio.com/docs/agents/reference/hooks-reference", lastVerified: "2026-11-12" },
+  vscodeMcp: { url: "https://code.visualstudio.com/docs/agents/reference/mcp-configuration", lastVerified: "2026-11-12" },
   windsurfRules: { url: "https://docs.windsurf.com/windsurf/cascade/memories", lastVerified: "2026-09-02" },
   windsurfMcp: { url: "https://docs.windsurf.com/windsurf/cascade/mcp", lastVerified: "2026-09-03" },
   windsurfHooks: { url: "https://docs.devin.ai/desktop/cascade/hooks", lastVerified: "2026-09-03" },
@@ -38,7 +38,9 @@ export const SPEC_PAGES = {
   continueMcp: { url: "https://docs.continue.dev/customize/deep-dives/mcp", lastVerified: "2026-09-02" },
   codexMcp: { url: "https://learn.chatgpt.com/docs/extend/mcp", lastVerified: "2026-09-03" },
   codexAgentsMd: { url: "https://learn.chatgpt.com/docs/agent-configuration/agents-md", lastVerified: "2026-09-02" },
-  antigravityMcp: { url: "https://antigravity.google/docs/mcp", lastVerified: "2026-09-03" },
+  antigravityMcp: { url: "https://antigravity.google/docs/mcp", lastVerified: "2026-11-12" },
+  devinHooks: { url: "https://docs.devin.ai/cli/extensibility/hooks/overview", lastVerified: "2026-11-12" },
+  devinMcp: { url: "https://docs.devin.ai/cli/extensibility/mcp/configuration", lastVerified: "2026-11-12" },
   // No rule cites this page; `spec:check` reads VS Code hook event names from it.
   vscodeHooksGuide: { url: "https://code.visualstudio.com/docs/agent-customization/hooks", lastVerified: "2026-09-02" },
 } as const satisfies Record<string, SpecPage>;

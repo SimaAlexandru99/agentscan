@@ -30,6 +30,7 @@ import {
   winningSkillsExtraDirs,
 } from "./commandcode";
 import { discoverCursorHooksFile } from "./cursor";
+import { discoverDevinProject, discoverDevinUser } from "./devin";
 import { discoverKiroHooksDir } from "./kiro";
 import { applyGrokMcpPrecedence, discoverGrokUserMcp } from "./grok";
 import {
@@ -46,6 +47,7 @@ import {
 import {
   addUniqueMcp,
   discoverClaudeUserMcp,
+  discoverCopilotUserMcp,
   discoverGeminiUserMcp,
   discoverMcpSurface,
   discoverNestedContinueMcp,
@@ -151,8 +153,9 @@ const SOURCES: Source[] = [
   {
     id: "copilot",
     project: (dir, { io }) => ({ hooks: discoverCopilotSettingsHooks(dir, io) }),
-    user: ({ io }) => ({
+    user: ({ root, io }) => ({
       hooks: [...discoverCopilotUserHooks(io), ...discoverCopilotUserSettingsHooks(io)],
+      mcp: discoverCopilotUserMcp(root, io),
     }),
   },
   {
@@ -182,6 +185,11 @@ const SOURCES: Source[] = [
     user: (scan) => ({
       mcp: discoverCommandcodeUserMcp(resolveCommandcodeProjectRoot(scan), scan.io),
     }),
+  },
+  {
+    id: "devin",
+    project: (dir, { io }) => discoverDevinProject(dir, io),
+    user: ({ root, io }) => discoverDevinUser(root, io),
   },
   {
     id: "windsurf",

@@ -273,7 +273,12 @@ describe("--global user files stay off the default scan", () => {
     write(
       tmpHome,
       ".gemini/config/mcp_config.json",
-      JSON.stringify({ mcpServers: { remote: { url: "https://example.com/mcp" } } }),
+      JSON.stringify({
+        mcpServers: {
+          remote: { url: "https://example.com/mcp" },
+          empty: {},
+        },
+      }),
     );
     write(tmpHome, ".gemini/mcp-oauth-tokens.json", '{"token":"secret"}');
 

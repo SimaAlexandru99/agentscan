@@ -40,6 +40,12 @@ export const PROVIDERS = {
   /** Settings page: `$GROK_HOME`, or `~/.grok` when unset. Never used to open credential files. */
   grok: { dotDir: ".grok", homeEnv: "GROK_HOME", skills: "grok", userSkills: true },
   windsurf: { dotDir: ".windsurf", home: ".codeium/windsurf", skills: "agent-skills", userSkills: true },
+  /**
+   * Devin CLI. Linux/macOS user config is `~/.config/devin`. Windows
+   * `%APPDATA%\devin` is unread. `.windsurf` and `.codeium/windsurf` stay on
+   * `windsurf`. See docs/spec/devin-hooks.md and docs/spec/devin-mcp.md.
+   */
+  devin: { dotDir: ".devin", home: ".config/devin", skills: "agent-skills", userSkills: true },
   kiro: { dotDir: ".kiro", skills: "agent-skills", userSkills: true },
   cline: { dotDir: ".cline", skills: "agent-skills", userSkills: true },
   roo: { dotDir: ".roo", skills: "agent-skills", userSkills: true },

@@ -47,9 +47,9 @@
     "hash": "a4afc56928cacb3b",
     "recorded": "2026-09-06"
   },
-  "https://code.visualstudio.com/docs/copilot/customization/mcp-servers": {
-    "hash": "2642f1ea4cbf09ea",
-    "recorded": "2026-09-02"
+  "https://code.visualstudio.com/docs/agents/reference/mcp-configuration": {
+    "hash": "5d160895cbbe1631",
+    "recorded": "2026-11-12"
   },
   "https://commandcode.ai/docs/agents": {
     "hash": "fb1ad25a17cf1a87",
@@ -102,6 +102,14 @@
   "https://docs.continue.dev/customize/deep-dives/mcp": {
     "hash": "e5f1a409ff2c5949",
     "recorded": "2026-09-02"
+  },
+  "https://docs.devin.ai/cli/extensibility/hooks/overview": {
+    "hash": "9d417101effd5d17",
+    "recorded": "2026-11-12"
+  },
+  "https://docs.devin.ai/cli/extensibility/mcp/configuration": {
+    "hash": "60ca673201ba8098",
+    "recorded": "2026-11-12"
   },
   "https://docs.devin.ai/desktop/cascade/hooks": {
     "hash": "47b06bdb69741e78",

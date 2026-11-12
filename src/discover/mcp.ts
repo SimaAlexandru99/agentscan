@@ -671,6 +671,32 @@ export function parseWindsurfJsonFile(
   return parseMcpServers(raw, filePath, root, io, "windsurf-json");
 }
 
+/**
+ * Read one JSON MCP file as `profile`, ignoring the path table.
+ * `mcpServersOptional`: a settings file that merely has no `mcpServers` key
+ * is not a shape error (Devin `config.json` also carries hooks).
+ */
+export function parseProfiledMcpFile(
+  filePath: string,
+  root: string,
+  io: ScanIO,
+  profile: McpSchemaProfile,
+  opts: { optional?: boolean; mcpServersOptional?: boolean } = {},
+): McpFact[] {
+  const raw = readConfigFile(filePath, io, opts);
+  if (raw === undefined) {
+    return [];
+  }
+  if (!isRecord(raw)) {
+    reportRootShapeOnce(filePath, io, "MCP config root is not an object");
+    return [];
+  }
+  if (opts.mcpServersOptional === true && !isRecord(raw.mcpServers)) {
+    return [];
+  }
+  return parseMcpServers(raw, filePath, root, io, profile);
+}
+
 function parseOpenCode(
   raw: unknown,
   filePath: string,
@@ -959,6 +985,18 @@ function discoverContinueMcpDir(
     addUniqueMcp(facts, seen, parseMcpFile(filePath, root, io));
   }
   return facts;
+}
+
+/**
+ * Copilot portable user MCP. Only called under `--global`.
+ * `$COPILOT_HOME/mcp-config.json`, else `~/.copilot/mcp-config.json`.
+ * The path may not end in `.copilot/` when `COPILOT_HOME` is set, so the
+ * profile is forced. See docs/spec/vscode-mcp.md.
+ */
+export function discoverCopilotUserMcp(root: string, io: ScanIO): McpFact[] {
+  return parseProfiledMcpFile(join(providerHome("copilot"), "mcp-config.json"), root, io, "copilot-json", {
+    optional: true,
+  });
 }
 
 /** User Gemini MCP. Only called under `--global`. Settings and `mcp_config.json` together. */

@@ -1,17 +1,29 @@
 # VS Code / Copilot MCP
 
-**Source:** https://code.visualstudio.com/docs/copilot/customization/mcp-servers
-**Read:** 2026-09-02
+**Source:** https://code.visualstudio.com/docs/agents/reference/mcp-configuration
+**Read:** 2026-11-12
 **Depends on it:** `vscode.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
+
+## Two formats
+
+Quoted (2026-11-12):
+
+- VS Code format: `.vscode/mcp.json`, top-level `servers`. The Copilot harness
+  does not read this file directly. VS Code forwards eligible servers.
+  `servers` stays the key. Do not read `mcpServers` out of this file.
+- Portable Copilot format: workspace-root `.mcp.json` and user
+  `$COPILOT_HOME/mcp-config.json` (fallback `~/.copilot/mcp-config.json`),
+  top-level `mcpServers`. Copilot reads the portable format directly.
+
+Workspace `.mcp.json` stays the shared `mcp-json` profile (Claude and
+Command Code). It is not given `consumedBy: vscode`, so `vscode.mcp.no-launch`
+does not fire on a Claude `.mcp.json`. The user file is `copilot-json`,
+opened under `--global` only, and shares `vscode.mcp.no-launch`. Launch is
+`command` or `url`. Claude `url-without-type` does not apply.
 
 ## Project file
 
-Workspace MCP lives at `.vscode/mcp.json` (also a user-profile `mcp.json`
-outside the project — unread unless `--global` is later specified).
-
-## Shape
-
-Top-level key is `servers`, not `mcpServers`. Official example:
+`.vscode/mcp.json`. Top-level key is `servers`, not `mcpServers`. Official example:
 
 ```json
 {

@@ -29,7 +29,7 @@ describe("MCP profile parsers", () => {
     expect(analysis.findings.filter((f) => f.ruleId.endsWith("mcp.no-launch"))).toEqual([]);
   });
 
-  test("Antigravity serverUrl is launchable; url alone is not", () => {
+  test("Antigravity serverUrl and url are launchable; httpUrl alone is not", () => {
     const root = mkPinnedRoot("agentscan-ag-mcp-");
     mkdirSync(join(root, ".agents"), { recursive: true });
     writeFileSync(
@@ -37,14 +37,16 @@ describe("MCP profile parsers", () => {
       JSON.stringify({
         mcpServers: {
           remote: { serverUrl: "https://example.com/mcp/" },
-          stale: { url: "https://example.com/mcp/" },
+          alias: { url: "https://example.com/mcp/" },
+          stale: { httpUrl: "https://example.com/mcp/" },
         },
       }),
       "utf8",
     );
     const found = findings(root);
     expect(found.map((f) => f.ruleId)).toEqual(["antigravity.mcp.no-launch"]);
-    expect(found[0]!.message).toContain("serverUrl");
+    expect(found[0]!.message).toContain("stale");
+    expect(found[0]!.message).toContain("url");
   });
 
   test("Cursor url without type is not a Claude false positive", () => {

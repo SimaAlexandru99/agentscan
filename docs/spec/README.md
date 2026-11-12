@@ -38,9 +38,9 @@ to appear in real projects.** When adding a check:
 | [commandcode-memory.md](commandcode-memory.md) | Per directory `AGENTS.md` else `.commandcode/AGENTS.md`; `@path` is not a hard error | discovery |
 | [commandcode-commands.md](commandcode-commands.md) | `.commandcode/commands` inventory | none |
 | [commandcode-mods.md](commandcode-mods.md) | Mods inventory-only; never execute | none |
-| [vscode-mcp.md](vscode-mcp.md) | VS Code `.vscode/mcp.json` `servers` wrapper | `vscode.mcp.no-launch` |
+| [vscode-mcp.md](vscode-mcp.md) | VS Code `.vscode/mcp.json` `servers`; Copilot user `mcp-config.json` `mcpServers` | `vscode.mcp.no-launch` |
 | [cursor-mcp.md](cursor-mcp.md) | Cursor `.cursor/mcp.json` | `cursor.mcp.no-launch` |
-| [antigravity-mcp.md](antigravity-mcp.md) | Antigravity `serverUrl` | `antigravity.mcp.no-launch` |
+| [antigravity-mcp.md](antigravity-mcp.md) | Antigravity `serverUrl`, with `url` as an alias | `antigravity.mcp.no-launch` |
 | [codex-mcp.md](codex-mcp.md) | Codex `[mcp_servers.*]` TOML; user file under `--global` | `codex.mcp.no-launch` |
 | [thresholds.md](thresholds.md) | Every numeric threshold and its evidence | all `budget.*`, `skill.description-budget`, `codex.budget.instructions`, `cursor.rule.too-large`, `agent-skills.skill.body-too-large` |
 | [agents-md.md](agents-md.md) | Portable AGENTS.md — no required fields, nested nearest-wins | discovery; `budget.agents-md` stays heuristic |
@@ -49,7 +49,7 @@ to appear in real projects.** When adding a check:
 | [codex-agents-md.md](codex-agents-md.md) | Codex chain knobs and 32 KiB cap | `codex.budget.instructions` |
 | [vscode-instructions.md](vscode-instructions.md) | `.github/copilot-instructions.md` and `*.instructions.md` | discovery only |
 | [vscode-agents.md](vscode-agents.md) | `.github/agents`; name defaults to filename | do not emit `claude.agent.*` |
-| [vscode-hooks.md](vscode-hooks.md) | Native VS Code `.github/hooks/*.json`, eight events, command-only; agent frontmatter; plugin path unread | `vscode.hook.*` |
+| [vscode-hooks.md](vscode-hooks.md) | Legacy Local `.github/hooks/*.json`, eight events, command-only; agent frontmatter; plugin path unread | `vscode.hook.*` |
 | [copilot-hooks.md](copilot-hooks.md) | Copilot CLI `version: 1` files; inline settings `hooks`; camelCase events; bash/powershell | `copilot.hook.*` |
 | [cursor-rules.md](cursor-rules.md) | `.cursor/rules/**/*.mdc` under 500 lines | `cursor.rule.too-large` |
 | [cursor-hooks.md](cursor-hooks.md) | `.cursor/hooks.json`; 21 camelCase events; optional `type`, required `command` | `cursor.hook.*` |
@@ -68,6 +68,8 @@ to appear in real projects.** When adding a check:
 | [windsurf-agents-md.md](windsurf-agents-md.md) | `AGENTS.md` / `agents.md`; root always-on, subdirectory auto-glob | discovery |
 | [windsurf-mcp.md](windsurf-mcp.md) | `~/.codeium/windsurf/mcp_config.json` under `--global`; `command` / `serverUrl` / `url` | `windsurf.mcp.no-launch` |
 | [windsurf-hooks.md](windsurf-hooks.md) | `.windsurf/hooks.json`; `--global` `~/.codeium/windsurf/hooks.json`; 12 snake_case events | `windsurf.hook.*` |
+| [devin-hooks.md](devin-hooks.md) | `.devin/hooks.v1.json` and `"hooks"` in Devin config; 8 events; `command` / `prompt` | `devin.hook.*` |
+| [devin-mcp.md](devin-mcp.md) | `.devin/mcp_config.json`; `--global` `~/.config/devin/mcp_config.json`; `command` / `url` | `devin.mcp.no-launch` |
 | [windsurf-skills.md](windsurf-skills.md) | `.windsurf/skills`; `--global` `~/.codeium/windsurf/skills`; Agent Skills contract | `agent-skills.skill.*` |
 | [kiro-hooks.md](kiro-hooks.md) | `.kiro/hooks/*.json`; 10 PascalCase triggers; `command` / `agent` | `kiro.hook.*` |
 | [kiro-skills.md](kiro-skills.md) | `.kiro/skills`; Agent Skills contract | `agent-skills.skill.*` |

@@ -15,7 +15,9 @@ export type McpSchemaProfile =
   | "opencode-json"
   | "continue-yaml"
   | "grok-toml"
-  | "windsurf-json";
+  | "windsurf-json"
+  | "devin-json"
+  | "copilot-json";
 
 export function assertNever(value: never, message: string): never {
   throw new Error(message);
@@ -66,6 +68,14 @@ const MCP_FILE_RULES: readonly {
     profile: "windsurf-json",
     test: (p) => /(?:^|\/)\.codeium\/windsurf\/mcp_config\.json$/.test(p),
   },
+  {
+    profile: "devin-json",
+    test: (p) => /(?:^|\/)\.devin\/mcp_config(?:\.local)?\.json$/.test(p),
+  },
+  {
+    profile: "copilot-json",
+    test: (p) => /(?:^|\/)\.copilot\/mcp-config\.json$/.test(p),
+  },
 ];
 
 /** Default `mcpPaths`. Order is the order project files are read. */
@@ -85,6 +95,8 @@ export const DEFAULT_MCP_PATHS = [
   ".continue/config.yaml",
   ".continue/mcpServers",
   ".grok/config.toml",
+  ".devin/mcp_config.json",
+  ".devin/mcp_config.local.json",
 ] as const;
 
 export function mcpProfileFromPath(filePath: string): McpSchemaProfile {

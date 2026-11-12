@@ -2,6 +2,11 @@
 
 **Source:** https://docs.devin.ai/desktop/cascade/hooks
 **Read:** 2026-09-03
+
+**Re-read:** 2026-11-12. The Devin CLI hooks overview does not document this
+snake_case file or `.windsurf/hooks.json`. Those paths stay this legacy
+Cascade contract. Current Devin CLI hooks are
+[devin-hooks.md](devin-hooks.md).
 **Depends on it:** `windsurf.hook.unknown-event`, `windsurf.hook.missing-script`,
 `windsurf.hook.command-without-command`
 

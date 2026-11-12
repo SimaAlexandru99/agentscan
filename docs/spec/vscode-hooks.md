@@ -2,8 +2,17 @@
 
 **Source:** https://code.visualstudio.com/docs/agents/reference/hooks-reference
 **Also:** https://code.visualstudio.com/docs/agent-customization/hooks
-**Read:** 2026-09-02 (eight events and command-only shape unchanged)
+**Read:** 2026-11-12
 **Re-read:** 2026-09-07 (agent frontmatter hooks parsed as vscode-native)
+
+The source page is now titled "Legacy Local hooks reference". Quoted
+(2026-11-12, customization guide): the older Local harness has a separate
+Local hooks reference, used to interpret existing hooks during migration,
+not as the schema for a new Copilot hook. New Copilot hooks are `version: 1`
+camelCase files, documented in [copilot-hooks.md](copilot-hooks.md). A
+numeric `version` does not select a different Local payload. This profile
+stays the eight PascalCase command-only events. Do not delete them to match
+the customization guide: that guide's event table is the Copilot harness.
 **Depends on it:** `vscode.hook.unknown-event`, `vscode.hook.missing-script`,
 `vscode.hook.command-without-command`, `vscode.hook.unknown-handler-type`,
 `vscode.hook.invalid-group`

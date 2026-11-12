@@ -13,6 +13,7 @@ import {
   type HookDefect,
   type HookDefectDetail,
 } from "./hook-schema";
+import { DEVIN_HOOK_EVENTS } from "./devin";
 import { KIRO_HOOK_EVENTS } from "./kiro";
 import { WINDSURF_HOOK_EVENTS } from "./windsurf";
 
@@ -114,6 +115,18 @@ export const PROFILES = {
     },
     layout: "event-keyed",
     fileSource: "windsurf-hooks",
+  },
+  devin: {
+    events: DEVIN_HOOK_EVENTS,
+    ruleIdPrefix: "devin",
+    defects: [
+      "invalid-group",
+      "command-without-command",
+      "prompt-without-prompt",
+      "unknown-handler-type",
+    ],
+    layout: "nested",
+    fileSource: "devin-hooks",
   },
   gemini: {
     events: GEMINI_HOOK_EVENTS,

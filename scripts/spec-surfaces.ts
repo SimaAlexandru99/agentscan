@@ -333,6 +333,16 @@ export const SPEC_SURFACES: SpecSurface[] = [
     ...SPEC_PAGES.windsurfHooks,
   },
   {
+    provider: "devin",
+    surface: "hooks",
+    ...SPEC_PAGES.devinHooks,
+  },
+  {
+    provider: "devin",
+    surface: "mcp",
+    ...SPEC_PAGES.devinMcp,
+  },
+  {
     provider: "windsurf",
     surface: "skills",
     lastVerified: "2026-08-31",
