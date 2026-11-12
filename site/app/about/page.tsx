@@ -3,11 +3,14 @@ import Link from "next/link";
 
 import { ArticleLayout } from "@/components/article-layout";
 import {
+  BREAKING_NOTE,
+  COVERAGE_LINES,
   GITHUB_REPO,
   NPM_PACKAGE,
   PRODUCT_CHECKS,
   PRODUCT_VERSION,
   RUN_COMMAND,
+  STILL_UNREAD,
 } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -35,6 +38,15 @@ export default function AboutPage() {
         as <code className="font-mono text-foreground">AGENTS.md</code>, then
         reports where the config disagrees with the disk.
       </p>
+      <h2 className="mt-10 text-xl font-semibold tracking-tight text-foreground">
+        What 2.0.0 reads
+      </h2>
+      <ul className="mt-4 list-disc space-y-2 pl-5">
+        {COVERAGE_LINES.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+      <p>{STILL_UNREAD}</p>
       <p>
         It exists for a specific failure: a hook still registered after its
         script was deleted. The agent starts. Nothing in the editor, the
@@ -69,7 +81,8 @@ export default function AboutPage() {
           docs/spec/
         </a>
         . Heuristics stay at info and are labeled. 1.0.0 was the
-        first stable release. {PRODUCT_VERSION} ships {PRODUCT_CHECKS} checks.
+        first stable release. {PRODUCT_VERSION} ships {PRODUCT_CHECKS} checks.{" "}
+        {BREAKING_NOTE}
       </p>
       <p>
         This website is the public marketing and docs surface for that CLI. It

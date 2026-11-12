@@ -1,9 +1,12 @@
 import { AGENTSCAN_SKILL_MD } from "@/lib/skill";
 import {
   absoluteUrl,
+  BREAKING_NOTE,
   CHECK_COMMAND,
+  COVERAGE_LINES,
   GITHUB_ISSUES,
   GITHUB_REPO,
+  GLOBAL_FLAG_MEANING,
   NPM_PACKAGE,
   NPM_URL,
   PRODUCT_CHECKS,
@@ -11,6 +14,7 @@ import {
   PRODUCT_VERSION,
   RUN_COMMAND,
   SITE_ORIGIN,
+  STILL_UNREAD,
 } from "@/lib/site";
 
 export type MarkdownPage = {
@@ -38,7 +42,7 @@ Your agent config says the guard is on. The script is gone. Nothing told you.
 
 ${PRODUCT_VERSION} · ${PRODUCT_CHECKS} checks · offline on check
 
-Linters read the code your agent writes. This reads the agent itself — skills, hooks, MCP servers, lockfiles, and policy files.
+Linters read the code your agent writes. This reads the agent itself — skills, hooks, MCP servers, lockfiles, policy files, and the Codex, Antigravity, Cursor, Gemini, Kiro, and Devin CLI contracts.
 
 ## How to run
 
@@ -57,9 +61,15 @@ No AI, no network on check. Read the config, read the disk, compare. Same tree i
 - Writes nothing — the scanned tree is left untouched.
 - Spec-required checks cite a published line in [docs/spec/](${GITHUB_REPO}/tree/master/docs/spec). Heuristics stay at info and are labeled.
 
+## What 2.0.0 reads
+
+${COVERAGE_LINES.map((line) => `- ${line}`).join("\n")}
+
+${STILL_UNREAD}
+
 ## Why the tool looks like this
 
-An earlier build reported 37 findings across 17 real projects of which 25 were false — two checks had been written from what real projects looked like instead of from the spec. Both were deleted. Spec-required checks cite a published line in docs/spec/. Heuristics stay at info and are labeled. 1.0.0 was the first stable release. ${PRODUCT_VERSION} ships ${PRODUCT_CHECKS} checks, still offline on check.
+An earlier build reported 37 findings across 17 real projects of which 25 were false — two checks had been written from what real projects looked like instead of from the spec. Both were deleted. Spec-required checks cite a published line in docs/spec/. Heuristics stay at info and are labeled. 1.0.0 was the first stable release. ${PRODUCT_VERSION} ships ${PRODUCT_CHECKS} checks, still offline on check. ${BREAKING_NOTE}
 
 ## For agents
 
@@ -125,8 +135,10 @@ The package is scoped \`${NPM_PACKAGE}\` because npm rejects the bare name. The 
 | \`--verbose\` | Show KEEP + info-severity findings, and print each finding's id |
 | \`--fail-on <level>\` | never (default) · warning · error |
 | \`--fail-under <0-100>\` | Fail when the score drops below this floor |
-| \`--global\` | Also scan ~/.claude/skills, ~/.codex/skills, ~/.commandcode/skills, and ~/.agents/skills |
+| \`--global\` | ${GLOBAL_FLAG_MEANING} |
 | \`--config <path>\` | Config file path |
+
+${BREAKING_NOTE}
 
 v1 does not write the tree — no apply, no skill delete/install. Findings may suggest shell commands; you run them yourself.
 
@@ -191,11 +203,17 @@ export const ABOUT_MARKDOWN = `# About ${PRODUCT_NAME}
 
 ${PRODUCT_NAME} is a local command-line linter for agent configuration. ${PRODUCT_VERSION} ships ${PRODUCT_CHECKS} checks. It reads skills, \`skills-lock.json\`, hooks, MCP server configs, agent definitions, and instruction files such as \`AGENTS.md\`, then reports where the config disagrees with the disk.
 
+## What 2.0.0 reads
+
+${COVERAGE_LINES.map((line) => `- ${line}`).join("\n")}
+
+${STILL_UNREAD}
+
 It exists for a specific failure: a hook still registered after its script was deleted. The agent starts. Nothing in the editor, the runtime, or a normal test suite tells you the guard is gone. ${PRODUCT_NAME} compares the config to the filesystem and prints the miss as \`claude.hook.missing-script\` at error.
 
 The product is the published npm package \`${NPM_PACKAGE}\` (the bare name was rejected as too close to an unrelated package). The command you type is \`agentscan\`. Run it with \`${RUN_COMMAND}\` on Node 20.11+ or Bun. Scans are read-only: they do not write the tree they scan and they do not open a network connection.
 
-An earlier build reported 37 findings across 17 real projects of which 25 were false, because two checks were written from what projects happened to look like instead of from a published spec line. Those checks were deleted. Spec-required checks now cite a line in [docs/spec/](${GITHUB_REPO}/tree/master/docs/spec). Heuristics stay at info and are labeled. 1.0.0 was the first stable release. ${PRODUCT_VERSION} ships ${PRODUCT_CHECKS} checks.
+An earlier build reported 37 findings across 17 real projects of which 25 were false, because two checks were written from what projects happened to look like instead of from a published spec line. Those checks were deleted. Spec-required checks now cite a line in [docs/spec/](${GITHUB_REPO}/tree/master/docs/spec). Heuristics stay at info and are labeled. 1.0.0 was the first stable release. ${PRODUCT_VERSION} ships ${PRODUCT_CHECKS} checks. ${BREAKING_NOTE}
 
 This website is the public marketing and docs surface for that CLI. It is not a hosted scanner, not a SaaS dashboard, and not NextJourney. There is no account system on this origin.
 
@@ -248,6 +266,13 @@ Lint agent configuration on disk. Best-fit jobs:
 - MCP server configs in the project (audit, not a remote MCP of ${PRODUCT_NAME} itself)
 - Skills and \`skills-lock.json\`
 - \`AGENTS.md\` and other instruction files
+- Codex, Antigravity, Cursor, Gemini, Kiro, and Devin CLI contracts shipped in ${PRODUCT_VERSION}
+
+## What ${PRODUCT_VERSION} reads
+
+${COVERAGE_LINES.map((line) => `- ${line}`).join("\n")}
+
+${STILL_UNREAD}
 
 How an agent should call it:
 

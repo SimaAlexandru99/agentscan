@@ -128,7 +128,19 @@ describe("public routes", () => {
     // places and the last hand-edit missed two of them.
     expect(res.body).toContain(PRODUCT_VERSION);
     expect(res.body).toContain(`${PRODUCT_CHECKS} checks`);
+    expect(res.body).toContain("What 2.0.0 reads");
+    expect(res.body).toContain("Devin CLI: hooks, MCP, and skills");
+    expect(res.body).toContain("skillListingChars");
     expect(res.body).not.toContain("Alpha");
+  });
+
+  test("docs HTML names --global user locations and the breaking ids", async () => {
+    const res = await probe("/docs", { headers: { Accept: "text/html" } });
+    expect(res.status).toBe(200);
+    expect(res.body).toContain("Copilot mcp-config.json");
+    expect(res.body).toContain("skillListingChars");
+    expect(res.body).toContain("v1 does not write the tree");
+    expect(res.body).not.toContain("~/.claude/skills, ~/.codex/skills");
   });
 
   test("llms.txt is markdown and honest", async () => {
@@ -199,6 +211,10 @@ describe("public routes", () => {
       expect(res.contentType).toMatch(/text\/html/);
       expect(res.body.length).toBeGreaterThan(500);
       expect(res.body).toContain("agentscan");
+      if (path === "/about") {
+        expect(res.body).toContain("What 2.0.0 reads");
+        expect(res.body).toContain("Kiro agents are inventory only");
+      }
     }
   });
 });

@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SiteFooter } from "@/components/site-footer";
-import { PRODUCT_CHECKS, PRODUCT_VERSION } from "@/lib/site";
+import {
+  BREAKING_NOTE,
+  GLOBAL_FLAG_MEANING,
+  PRODUCT_CHECKS,
+  PRODUCT_VERSION,
+} from "@/lib/site";
 
 export const metadata: Metadata = {
   title: { absolute: `agentscan docs — ${PRODUCT_VERSION}, ${PRODUCT_CHECKS} checks` },
@@ -54,7 +59,7 @@ const flags = [
   },
   {
     flag: "--global",
-    meaning: "Also scan ~/.claude/skills, ~/.codex/skills, ~/.commandcode/skills, and ~/.agents/skills",
+    meaning: GLOBAL_FLAG_MEANING,
   },
   {
     flag: "--config <path>",
@@ -155,6 +160,7 @@ bun run src/cli.ts check ~/your-project`}
               </tbody>
             </table>
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">{BREAKING_NOTE}</p>
           <p className="mt-4 text-sm text-muted-foreground">
             v1 does not write the tree — no apply, no skill delete/install.
             Findings may suggest shell commands; you run them yourself.

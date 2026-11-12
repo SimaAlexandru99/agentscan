@@ -6,7 +6,13 @@ import { SoftwareApplicationJsonLd } from "@/components/json-ld";
 import { SiteFooter } from "@/components/site-footer";
 import { TerminalDemo } from "@/components/terminal-demo";
 import { buttonVariants } from "@/components/ui/button";
-import { PRODUCT_CHECKS, PRODUCT_VERSION } from "@/lib/site";
+import {
+  BREAKING_NOTE,
+  COVERAGE_LINES,
+  PRODUCT_CHECKS,
+  PRODUCT_VERSION,
+  STILL_UNREAD,
+} from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -44,7 +50,8 @@ export default function HomePage() {
           </h1>
           <p className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-200 duration-700 mt-4 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground">
             Linters read the code your agent writes. This reads the agent itself
-            — skills, hooks, MCP servers, lockfiles, and policy files.
+            — skills, hooks, MCP servers, lockfiles, policy files, and the Codex,
+            Antigravity, Cursor, Gemini, Kiro, and Devin CLI contracts.
           </p>
           <p className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-200 duration-700 mt-3 font-mono text-sm text-muted-foreground">
             {PRODUCT_VERSION} · {PRODUCT_CHECKS} checks · offline on check
@@ -121,6 +128,24 @@ export default function HomePage() {
       <section className="border-t border-border/60">
         <div className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+            What 2.0.0 reads
+          </h2>
+          <ul className="mt-8 space-y-4 text-base leading-relaxed text-foreground/90">
+            {COVERAGE_LINES.map((line) => (
+              <li key={line} className="border-l-2 border-primary/70 pl-4">
+                {line}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-8 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
+            {STILL_UNREAD}
+          </p>
+        </div>
+      </section>
+
+      <section className="border-t border-border/60">
+        <div className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
             Why the tool looks like this
           </h2>
           <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
@@ -130,7 +155,7 @@ export default function HomePage() {
             of from the spec. Both were deleted. Spec-required checks cite a
             published line in docs/spec/. Heuristics stay at info and are
             labeled. 1.0.0 was the first stable release. {PRODUCT_VERSION} ships{" "}
-            {PRODUCT_CHECKS} checks, still offline on check.
+            {PRODUCT_CHECKS} checks, still offline on check. {BREAKING_NOTE}
           </p>
         </div>
       </section>
