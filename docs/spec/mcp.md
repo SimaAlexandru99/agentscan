@@ -81,9 +81,10 @@ Quoted (read 2026-09-03):
 > `CLAUDE_CONFIG_DIR`
 
 `CLAUDE_CONFIG_DIR` relocates the `~/.claude` directory (settings, skills,
-agents, memory, rules, commands). `~/.claude.json` stays
-`join(homedir(), ".claude.json")` — the page names that file separately
-in the home directory.
+agents, memory, rules, commands). The SDK page (read 2026-11-12) also
+relocates the global `~/.claude.json` config with that variable, so
+`--global` reads `$CLAUDE_CONFIG_DIR/.claude.json` when it is set and
+`join(homedir(), ".claude.json")` when it is not.
 
 `CLAUDE_MCP_TRANSPORTS` therefore includes `streamable-http`. Before
 2026-09-02 it did not, and a shared `.mcp.json` entry with

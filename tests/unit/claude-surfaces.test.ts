@@ -288,7 +288,7 @@ describe("In-tree Claude plugin surfaces", () => {
 });
 
 describe("CLAUDE_CONFIG_DIR", () => {
-  test("relocates ~/.claude files and leaves ~/.claude.json in homedir", () => {
+  test("relocates ~/.claude files and ~/.claude.json into CLAUDE_CONFIG_DIR", () => {
     const root = tmpProject("agentscan-claude-config-dir-");
     write(root, "AGENTS.md", "keep scanable\n");
     const tmpHome = mkdtempSync(join(os.tmpdir(), "agentscan-claude-home-cfg-"));
@@ -311,6 +311,13 @@ describe("CLAUDE_CONFIG_DIR", () => {
       }),
     );
     write(
+      alt,
+      ".claude.json",
+      JSON.stringify({
+        mcpServers: { fromcfg: { command: "npx" } },
+      }),
+    );
+    write(
       tmpHome,
       ".claude/settings.json",
       JSON.stringify({
@@ -328,7 +335,8 @@ describe("CLAUDE_CONFIG_DIR", () => {
         );
         expect(facts.hooks.some((h) => h.event === "AlsoFake")).toBe(false);
         expect(facts.skills.some((s) => s.id === "fromcfg" && s.source === "global")).toBe(true);
-        expect(facts.mcp.some((s) => s.name === "fromhome" && s.path === join(tmpHome, ".claude.json"))).toBe(
+        expect(facts.mcp.some((s) => s.name === "fromhome")).toBe(false);
+        expect(facts.mcp.some((s) => s.name === "fromcfg" && s.path === join(alt, ".claude.json"))).toBe(
           true,
         );
       }),

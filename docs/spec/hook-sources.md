@@ -155,6 +155,9 @@ opened only with `--global` / `includeGlobal`, the same scoping as
 user skills, agents, memory, rules, and commands. Same-event hooks from
 user and project settings coexist — the page lists every location as a
 place a hook can be defined and does not say one replaces the other.
+The SDK page (read 2026-11-12) also relocates `~/.claude.json` to
+`$CLAUDE_CONFIG_DIR/.claude.json` when the variable is set. Unset, that
+file stays in the home directory. MCP only, still `--global`.
 
 ## Deliberately unread
 

@@ -13,6 +13,13 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+- Kiro hook triggers `SessionEnd`, `PreCompact`, and `PostCompact`, quoted
+  on the types page (2026-11-12). `PreTaskExec` and `PostTaskExec` stay:
+  that table still lists Pre/Post Task Execution and does not quote a
+  replacement token.
+- `CLAUDE_CONFIG_DIR` also relocates `~/.claude.json` to
+  `$CLAUDE_CONFIG_DIR/.claude.json` under `--global`. Unset, the file stays
+  `~/.claude.json`.
 - Devin CLI, beside the legacy Windsurf contract: `.devin/hooks.v1.json`
   and `"hooks"` in `.devin/config.json` / `config.local.json` (user
   `~/.config/devin/config.json` under `--global`); MCP
@@ -35,7 +42,7 @@ intermediate commit that this train does not cut.
   `version: 1` stays Copilot.
 
 - Kiro hooks (`.kiro/hooks/*.json`, `--global` `~/.kiro/hooks/`) on their
-  own profile: 10 PascalCase triggers from the IDE 1.0 table, `command` /
+  own profile: 13 PascalCase triggers, `command` /
   `agent` actions, array-of-hooks files. New: `kiro.hook.unknown-event`,
   `kiro.hook.missing-script`, `kiro.hook.command-without-command`,
   `kiro.hook.prompt-without-prompt`, `kiro.hook.unknown-handler-type`,

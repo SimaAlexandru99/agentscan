@@ -63,6 +63,24 @@ describe("Kiro hook profile is not Claude", () => {
     expect(ruleIds).not.toContain("claude.hook.unknown-event");
   });
 
+  test("SessionEnd, PreCompact, and PostCompact are known; PreTaskExec stays", () => {
+    const root = mkPinnedProject("agentscan-kiro-2026-11-", "kiro");
+    write(
+      root,
+      ".kiro/hooks/compact.json",
+      JSON.stringify({
+        version: "v1",
+        hooks: [
+          { name: "end", trigger: "SessionEnd", action: { type: "command", command: "true" } },
+          { name: "pre", trigger: "PreCompact", action: { type: "command", command: "true" } },
+          { name: "post", trigger: "PostCompact", action: { type: "agent", prompt: "keep" } },
+          { name: "task", trigger: "PreTaskExec", action: { type: "command", command: "true" } },
+        ],
+      }),
+    );
+    expect(scan(root).ruleIds).not.toContain("kiro.hook.unknown-event");
+  });
+
   test("prose FileSave is unknown, not PostFileSave", () => {
     const root = mkPinnedProject("agentscan-kiro-prose-", "kiro");
     write(

@@ -29,8 +29,10 @@ export const PROVIDERS = {
   /**
    * Quoted settings page: `CLAUDE_CONFIG_DIR` keeps home-directory files
    * (`settings`, skills, agents, `CLAUDE.md`, rules) somewhere other than
-   * `~/.claude`. `~/.claude.json` stays in the home directory.
-   * See docs/spec/hook-sources.md and docs/spec/claude-memory.md.
+   * `~/.claude`. The SDK page (read 2026-11-12) also relocates
+   * `~/.claude.json` to `$CLAUDE_CONFIG_DIR/.claude.json`. Unset, that file
+   * stays `join(homedir(), ".claude.json")`.
+   * See docs/spec/hook-sources.md, docs/spec/claude-memory.md, and docs/spec/mcp.md.
    */
   claude: { dotDir: ".claude", homeEnv: "CLAUDE_CONFIG_DIR", skills: "claude", userSkills: true },
   cursor: { dotDir: ".cursor", skills: "agent-skills", portableSkills: true },

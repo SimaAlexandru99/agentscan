@@ -258,7 +258,14 @@ const HOOK_EVENT_PAGES: Record<HookSchemaProfile, HookEventPage | null> = {
   grok: { label: "Grok", url: SPEC_PAGES.grokHooks.url },
   gemini: { label: "Gemini", url: fetchUrlFor(SPEC_PAGES.geminiHooks.url), mentions: pageMentionsEvent },
   cursor: { label: "Cursor", url: SPEC_PAGES.cursorHooks.url },
-  kiro: { label: "Kiro", url: SPEC_PAGES.kiroHooksV1.url, mentions: pageMentionsEvent },
+  // SessionEnd, PreCompact, and PostCompact are quoted on
+  // https://kiro.dev/docs/hooks/types/ (2026-11-12), not on the IDE 1.0 table.
+  kiro: {
+    label: "Kiro",
+    url: SPEC_PAGES.kiroHooksV1.url,
+    mentions: pageMentionsEvent,
+    skip: new Set(["SessionEnd", "PreCompact", "PostCompact"]),
+  },
   windsurf: null,
   devin: { label: "Devin", url: SPEC_PAGES.devinHooks.url },
 };

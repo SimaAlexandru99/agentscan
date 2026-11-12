@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { basename, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { MCP_PROFILES } from "../facts/mcp-profiles";
 import { providerHome } from "../facts/providers";
 import { toPosix } from "../facts/paths";
@@ -487,20 +487,33 @@ function parseClaudeUserJsonMcp(
 }
 
 /**
- * User and local MCP at `~/.claude.json`. Only called under `--global`.
+ * `~/.claude.json`, or `$CLAUDE_CONFIG_DIR/.claude.json` when that variable
+ * is set. The SDK page (read 2026-11-12) relocates this file with
+ * `CLAUDE_CONFIG_DIR`. Unset, it stays next to the home directory.
+ * See docs/spec/mcp.md.
+ */
+function claudeUserJsonPath(): string {
+  const override = process.env.CLAUDE_CONFIG_DIR?.trim();
+  if (override !== undefined && override.length > 0) {
+    return join(override, ".claude.json");
+  }
+  return join(homedir(), ".claude.json");
+}
+
+/**
+ * User and local MCP at `claudeUserJsonPath()`. Only called under `--global`.
  * See docs/spec/mcp.md.
  */
 export function discoverClaudeUserMcp(
   io: ScanIO,
   projectPaths: string[] = [],
 ): McpFact[] {
-  const home = homedir();
-  const filePath = join(home, ".claude.json");
+  const filePath = claudeUserJsonPath();
   const raw = readConfigFile(filePath, io, { optional: true });
   if (raw === undefined) {
     return [];
   }
-  return parseClaudeUserJsonMcp(raw, filePath, home, io, projectPaths);
+  return parseClaudeUserJsonMcp(raw, filePath, dirname(filePath), io, projectPaths);
 }
 
 export function parseClaudePluginMcpFile(

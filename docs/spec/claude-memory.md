@@ -56,7 +56,9 @@ Quoted (read 2026-09-03):
 > `~/.claude/rules/`, are files you wrote yourself.
 
 agentscan opens those two locations only with `--global` / `includeGlobal`,
-under `CLAUDE_CONFIG_DIR` when that variable is set. Managed / org
+under `CLAUDE_CONFIG_DIR` when that variable is set. The same variable
+relocates `~/.claude.json` to `$CLAUDE_CONFIG_DIR/.claude.json` (SDK page,
+read 2026-11-12). Unset, that file stays `~/.claude.json`. Managed / org
 `CLAUDE.md` and auto-memory under `~/.claude/projects/` stay unread.
 
 ## Staleness risk: MEDIUM

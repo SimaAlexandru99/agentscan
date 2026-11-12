@@ -3,6 +3,11 @@
 **Source:** https://kiro.dev/docs/hooks/
 **Also:** https://kiro.dev/docs/ide/whats-new-v1/hooks/
 **Read:** 2026-09-07
+**Re-read:** 2026-11-12 (https://kiro.dev/docs/hooks/types/ and
+https://kiro.dev/docs/cli/v3/hooks-migration/). The types page quotes
+`SessionEnd`, `PreCompact`, and `PostCompact`. Its availability table still
+lists Pre Task Execution and Post Task Execution and does not quote a
+replacement JSON token, so `PreTaskExec` and `PostTaskExec` stay.
 **Depends on it:** `kiro.hook.unknown-event`, `kiro.hook.missing-script`,
 `kiro.hook.command-without-command`, `kiro.hook.prompt-without-prompt`,
 `kiro.hook.unknown-handler-type`, `kiro.hook.invalid-group`
@@ -35,12 +40,14 @@ Quoted:
 
 Missing `version: "v1"` or a `hooks` array is `kiro.hook.invalid-group`.
 
-## Events (10 names)
+## Events (13 names)
 
-Quoted trigger table on https://kiro.dev/docs/ide/whats-new-v1/hooks/:
+Quoted trigger table on https://kiro.dev/docs/ide/whats-new-v1/hooks/, plus
+the three tokens quoted on the types page (re-read 2026-11-12):
 
 ```
-SessionStart          Stop                  UserPromptSubmit
+SessionStart          SessionEnd            Stop
+UserPromptSubmit      PreCompact            PostCompact
 PreTaskExec           PostTaskExec          PreToolUse
 PostToolUse           PostFileCreate        PostFileSave
 PostFileDelete

@@ -71,7 +71,7 @@ to appear in real projects.** When adding a check:
 | [devin-hooks.md](devin-hooks.md) | `.devin/hooks.v1.json` and `"hooks"` in Devin config; 8 events; `command` / `prompt` | `devin.hook.*` |
 | [devin-mcp.md](devin-mcp.md) | `.devin/mcp_config.json`; `--global` `~/.config/devin/mcp_config.json`; `command` / `url` | `devin.mcp.no-launch` |
 | [windsurf-skills.md](windsurf-skills.md) | `.windsurf/skills`; `--global` `~/.codeium/windsurf/skills`; Agent Skills contract | `agent-skills.skill.*` |
-| [kiro-hooks.md](kiro-hooks.md) | `.kiro/hooks/*.json`; 10 PascalCase triggers; `command` / `agent` | `kiro.hook.*` |
+| [kiro-hooks.md](kiro-hooks.md) | `.kiro/hooks/*.json`; 13 PascalCase triggers; `command` / `agent` | `kiro.hook.*` |
 | [kiro-skills.md](kiro-skills.md) | `.kiro/skills`; Agent Skills contract | `agent-skills.skill.*` |
 | [cline-skills.md](cline-skills.md) | `.cline/skills`; unread hooks/agents | `agent-skills.skill.*` |
 | [roo-skills.md](roo-skills.md) | `.roo/skills` Agent Skills | `agent-skills.skill.*` |
