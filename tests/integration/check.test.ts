@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { runCheck } from "../../src/commands/check";
+import { tmpProject, write } from "../helpers/tmp";
 
 const fixturesRoot = join(import.meta.dir, "../fixtures");
 
@@ -16,6 +17,7 @@ type FindingPayload = {
   action: string;
   subject: string;
   ruleId: string;
+  message: string;
 };
 
 type JsonReport = {
@@ -26,7 +28,7 @@ type JsonReport = {
 async function checkFixture(name: string): Promise<JsonReport> {
   const result = await runCheck({
     dir: join(fixturesRoot, name),
-    json: true,
+    output: "json",
     failOn: "never",
   });
 
@@ -50,20 +52,10 @@ describe("runCheck integration", () => {
     );
     // on disk but the lockfile does not track it
     expect(byRule.get("skill.not-in-lock")).toBe("skill:local-only");
-  });
-
-  test("--fail-on warning: 1 on drift, 0 on a clean tree", async () => {
-    const clean = await runCheck({
-      dir: join(fixturesRoot, "clean-repo"),
-      failOn: "warning",
-    });
-    expect(clean.exitCode).toBe(0);
-
-    const result = await runCheck({
-      dir: join(fixturesRoot, "lock-drift"),
-      failOn: "warning",
-    });
-    expect(result.exitCode).toBe(1);
+    // nothing else: the skill's frontmatter and the lockfile both parsed
+    expect([...byRule.keys()].sort()).toEqual(["skill.locked-not-installed", "skill.not-in-lock"]);
+    const pinned = payload.findings.find((f) => f.ruleId === "skill.locked-not-installed");
+    expect(pinned?.message).toContain("someone/skills");
   });
 
   test("clean → zero actionable findings", async () => {
@@ -74,11 +66,38 @@ describe("runCheck integration", () => {
   test("same tree twice → identical JSON", async () => {
     const opts = {
       dir: join(fixturesRoot, "lock-drift"),
-      json: true,
+      output: "json" as const,
       failOn: "never" as const,
     };
     const first = await runCheck(opts);
     const second = await runCheck(opts);
     expect(first.stdout).toBe(second.stdout);
+  });
+});
+
+/** One tree per worst severity: corrupt package.json (error), lock drift (warning + info), an oversized Cursor rule (info). */
+function tree(worst: "error" | "warning" | "info" | "clean"): string {
+  if (worst === "warning") return join(fixturesRoot, "lock-drift");
+  if (worst === "clean") return join(fixturesRoot, "clean-repo");
+  const root = tmpProject("agentscan-exit-");
+  if (worst === "error") write(root, "package.json", "{not json");
+  else write(root, ".cursor/rules/big.mdc", "line\n".repeat(501));
+  return root;
+}
+
+describe("--fail-on decides the exit code", () => {
+  test.each([
+    ["error", "never", 0],
+    ["error", "warning", 1],
+    ["error", "error", 1],
+    ["warning", "never", 0],
+    ["warning", "warning", 1],
+    ["warning", "error", 0],
+    ["info", "warning", 0],
+    ["info", "error", 0],
+    ["clean", "warning", 0],
+    ["clean", "error", 0],
+  ] as const)("worst %s, --fail-on %s -> %d", (worst, failOn, code) => {
+    expect(runCheck({ dir: tree(worst), output: "json", failOn }).exitCode).toBe(code);
   });
 });

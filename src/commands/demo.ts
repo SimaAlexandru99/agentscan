@@ -7,12 +7,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runCheck } from "./check";
-
-export type DemoResult = {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-};
+import type { CommandResult } from "./result";
 
 /**
  * One-shot aha: build a throwaway fixture that reproduces the killer case
@@ -20,8 +15,9 @@ export type DemoResult = {
  *
  * Writes only under the system temp directory — never into the caller's cwd —
  * so `npx @chimix/agentscan demo` works with no project requirements.
+ * Returns the report; the demo always exits 0.
  */
-export async function runDemo(): Promise<DemoResult> {
+export function runDemo(): CommandResult {
   const root = mkdtempSync(join(tmpdir(), "agentscan-demo-"));
   try {
     const claude = join(root, ".claude");
@@ -49,21 +45,13 @@ export async function runDemo(): Promise<DemoResult> {
       "utf8",
     );
 
-    const result = await runCheck({
-      dir: root,
-      failOn: "never",
-      colour: false,
-    });
+    const result = runCheck({ dir: root, colour: false });
 
     const intro =
       "Demo fixture: PreToolUse hook points at a script that is not on disk.\n" +
       "This is the failure agentscan exists for — the agent starts normally; the guard does not.\n\n";
 
-    return {
-      exitCode: 0,
-      stdout: intro + result.stdout,
-      stderr: "",
-    };
+    return { exitCode: 0, stdout: intro + result.stdout };
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

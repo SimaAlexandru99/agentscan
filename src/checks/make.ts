@@ -1,5 +1,14 @@
-import type { Finding } from "../facts/types";
-import { checkById } from "./lookup";
+import type { Finding, Severity } from "../findings";
+import { checkById, type RuleId, type STRUCTURAL_CHECKS } from "./registry";
+
+type RuleSeverity<R extends RuleId> = Extract<(typeof STRUCTURAL_CHECKS)[number], { id: R }>["severity"];
+
+/**
+ * A rule with one registry severity takes it from the registry; a rule that
+ * lists several makes its call site choose one of them per finding.
+ */
+type SeverityArg<R extends RuleId> =
+  RuleSeverity<R> extends readonly (infer S extends Severity)[] ? { severity: S } : { severity?: never };
 
 /**
  * Build a finding.
@@ -7,37 +16,35 @@ import { checkById } from "./lookup";
  * `id` is `${ruleId}:${subject}` — a public contract: it is what the report
  * prints under `--verbose` and in `--json`, what `agentscan explain` resolves,
  * and what `ignoreFindings` matches.
- * Both structural checks and budget checks go through here so there is one
- * place that decides the shape.
- *
- * Provenance is attached here rather than at render time because this is the
- * one place every finding passes through: the human report, `explain`, `--json`
- * and the prompt handoff then all carry it without four separate lookups. The
- * throw is safe because `tests/unit/checks.test.ts` asserts declared ids and
- * emitted ids are the same set — and a finding that cannot account for itself
- * is exactly what this was added to abolish.
+ * Provenance and default severity are attached here so every output carries
+ * them. `ruleId` is typed against the registry; the throw is the runtime
+ * backstop for ids a profile table builds from strings.
  */
-export function make(
-  ruleId: string,
+export function make<R extends RuleId>(
+  ruleId: R,
   subject: string,
   args: {
-    action: Finding["action"];
-    severity: Finding["severity"];
+    /** Default `warn`; `add` only where the fix is to install something. */
+    action?: Finding["action"];
     message: string;
     reason: string;
     evidence: Finding["evidence"];
     suggest?: string;
-  },
+  } & SeverityArg<R>,
 ): Finding {
   const check = checkById(ruleId);
   if (check === undefined) {
     throw new Error(`no registry entry for rule ${ruleId} — add it to STRUCTURAL_CHECKS`);
   }
+  const severity = args.severity ?? check.severity;
+  if (typeof severity !== "string") {
+    throw new Error(`rule ${ruleId} has several severities — the call site must pass one`);
+  }
   const finding: Finding = {
     id: `${ruleId}:${subject}`,
     ruleId,
-    action: args.action,
-    severity: args.severity,
+    action: args.action ?? "warn",
+    severity,
     subject,
     message: args.message,
     reason: args.reason,

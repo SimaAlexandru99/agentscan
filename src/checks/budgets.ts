@@ -1,45 +1,22 @@
-import { basename, dirname, resolve } from "node:path";
-import type { Facts, Finding } from "../facts/types";
-import { ancestorDirsInclusive } from "../discover/shared";
+import { basename } from "node:path";
+import { lineCount } from "../facts/text";
+import type { Thresholds } from "../config/schema";
+import type { Facts } from "../facts/types";
+import type { Finding } from "../findings";
 import { make } from "./make";
+import type { RuleId } from "./registry";
 
-const CODEX_PROJECT_DOC_MAX_BYTES = 32_768;
+type BudgetRuleId = Extract<RuleId, `budget.${string}`>;
 
 type PolicyFile = Facts["policyFiles"][number];
 
 /**
  * Budget checks: the config is well-formed, but there is too much of it.
  *
- * These used to be five YAML files evaluated by a 581-line rule engine. Across
- * 21 real projects that engine produced 9 findings from 3 of its 5 rules, while
- * every actionable finding came from the structural checks next door. The
- * engine's one remaining job was letting users write their own rules — a
- * feature nobody had used, on a tool with no users, whose concrete case
- * (retuning a budget) `thresholds` in `.agentscanrc.json` already covered
- * without any YAML. It was deleted; see plans/010.
- *
- * Every finding these emit is byte-identical to what the rules produced,
- * including the `rule:` subjects, which is why the ids look the way they do.
- *
  * All of them are **info**. They are judgement calls about size, sourced to
  * docs/spec/thresholds.md, not defects — a project can sit over any of these
  * budgets deliberately. Nothing here should ever fail a build.
  */
-
-type BudgetOptions = {
-  agentsMdLines: number;
-  claudeMdLines: number;
-  agents: number;
-  mcp: number;
-};
-
-/**
- * Lines the way `wc -l` counts them: a trailing newline terminates the last
- * line, it does not start another one.
- */
-function lineCount(text: string): number {
-  return text.length === 0 ? 0 : text.replace(/\r?\n$/, "").split(/\r?\n/).length;
-}
 
 /** First policy file with this basename that is over `limit`, if any. */
 function overBudget(
@@ -60,7 +37,7 @@ function overBudget(
 }
 
 function policyLengthFinding(args: {
-  ruleId: string;
+  ruleId: BudgetRuleId;
   file: string;
   limit: number;
   facts: Facts;
@@ -73,8 +50,6 @@ function policyLengthFinding(args: {
   }
   return [
     make(args.ruleId, `rule:${args.ruleId}`, {
-      action: "warn",
-      severity: "info",
       message: `${args.file} is long (${hit.lines} lines > ${args.limit})`,
       reason: args.reason,
       evidence: [
@@ -88,7 +63,7 @@ function policyLengthFinding(args: {
 }
 
 function countFinding(args: {
-  ruleId: string;
+  ruleId: BudgetRuleId;
   count: number;
   limit: number;
   message: string;
@@ -101,8 +76,6 @@ function countFinding(args: {
   }
   return [
     make(args.ruleId, `rule:${args.ruleId}`, {
-      action: "warn",
-      severity: "info",
       message: args.message,
       reason: args.reason,
       evidence: [
@@ -120,10 +93,8 @@ function countFinding(args: {
  * string `npm install` in a project whose `packageManager` is bun, because a
  * looser match would flag every doc that mentions npm in passing.
  */
-export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
-  const claudeAgents = facts.agents.filter(
-    (agent) => agent.sourceProvider === undefined || agent.sourceProvider === "claude",
-  ).length;
+export function runBudgets(facts: Facts, options: Thresholds): Finding[] {
+  const claudeAgents = facts.agents.filter((agent) => agent.sourceProvider === "claude").length;
   return [
     ...policyLengthFinding({
       ruleId: "budget.agents-md",
@@ -171,113 +142,12 @@ export function runBudgets(facts: Facts, options: BudgetOptions): Finding[] {
   ];
 }
 
-/**
- * Codex concatenates AGENTS.md / AGENTS.override.md from the project root
- * down to cwd and stops at `project_doc_max_bytes` (32 KiB). Nested files
- * that are not on that walk-up chain are not counted. CLAUDE.md is excluded.
- * See docs/spec/codex-agents-md.md.
- */
-function isAgentsMdPolicy(policy: PolicyFile): boolean {
-  if (policy.kind === "agents-md") {
-    return true;
-  }
-  if (policy.kind !== undefined) {
-    return false;
-  }
-  const name = basename(policy.path);
-  return name === "AGENTS.md" || name === "AGENTS.override.md";
-}
-
-function nonempty(text: string): boolean {
-  return text.trim().length > 0;
-}
-
-/**
- * Per directory Codex loads at most one file: non-empty AGENTS.override.md,
- * otherwise AGENTS.md, otherwise the first non-empty project_doc_fallback_filenames
- * entry. Empty files are skipped. See docs/spec/codex-agents-md.md.
- */
-export function effectiveCodexInstructionChain(
-  files: PolicyFile[],
-  opts?: {
-    startDir?: string;
-    codexRoot?: string;
-    fallbackFilenames?: string[];
-  },
-): PolicyFile[] {
-  const fallbacks = opts?.fallbackFilenames ?? [];
-  const chainDirs =
-    opts?.startDir !== undefined && opts.codexRoot !== undefined
-      ? new Set(ancestorDirsInclusive(opts.startDir, opts.codexRoot).map((dir) => resolve(dir)))
-      : undefined;
-  const onChain = files.filter((policy) => {
-    if (!isAgentsMdPolicy(policy) && !isFallbackPolicy(policy, fallbacks)) {
-      return false;
-    }
-    const dir = resolve(dirname(policy.path));
-    if (basename(dir) === ".commandcode" && basename(policy.path) === "AGENTS.md") {
-      return false;
-    }
-    if (chainDirs !== undefined) {
-      return chainDirs.has(dir);
-    }
-    return policy.hopsFromStart !== undefined && Number.isFinite(policy.hopsFromStart);
-  });
-  const byDir = new Map<string, PolicyFile[]>();
-  for (const policy of onChain) {
-    const dir = resolve(dirname(policy.path));
-    const bucket = byDir.get(dir);
-    if (bucket === undefined) {
-      byDir.set(dir, [policy]);
-    } else {
-      bucket.push(policy);
-    }
-  }
-  const effective: PolicyFile[] = [];
-  for (const group of byDir.values()) {
-    const pick = pickCodexFile(group, fallbacks);
-    if (pick !== undefined) {
-      effective.push(pick);
-    }
-  }
-  return effective;
-}
-
-function isFallbackPolicy(policy: PolicyFile, fallbacks: string[]): boolean {
-  if (fallbacks.length === 0) {
-    return false;
-  }
-  return fallbacks.includes(basename(policy.path));
-}
-
-function pickCodexFile(group: PolicyFile[], fallbacks: string[]): PolicyFile | undefined {
-  const override = group.find((policy) => basename(policy.path) === "AGENTS.override.md");
-  if (override !== undefined && nonempty(override.text)) {
-    return override;
-  }
-  const normal = group.find((policy) => basename(policy.path) === "AGENTS.md");
-  if (normal !== undefined && nonempty(normal.text)) {
-    return normal;
-  }
-  for (const name of fallbacks) {
-    const fallback = group.find((policy) => basename(policy.path) === name);
-    if (fallback !== undefined && nonempty(fallback.text)) {
-      return fallback;
-    }
-  }
-  return undefined;
-}
-
 function codexInstructionBudget(facts: Facts): Finding[] {
-  const chain = effectiveCodexInstructionChain(facts.policyFiles, {
-    startDir: facts.startDir ?? facts.root,
-    codexRoot: facts.codexProjectRoot ?? facts.root,
-    fallbackFilenames: facts.codexProjectDocFallbackFilenames ?? [],
-  });
+  const chain = facts.codexInstructionChain;
   if (chain.length === 0) {
     return [];
   }
-  const limit = facts.codexProjectDocMaxBytes ?? CODEX_PROJECT_DOC_MAX_BYTES;
+  const limit = facts.codexProjectDocMaxBytes;
   const bytes = chain.reduce(
     (sum, policy) => sum + Buffer.byteLength(policy.text, "utf8"),
     0,
@@ -287,15 +157,13 @@ function codexInstructionBudget(facts: Facts): Finding[] {
   }
   return [
     make("codex.budget.instructions", "rule:codex.budget.instructions", {
-      action: "warn",
-      severity: "info",
       message: `Codex instruction chain exceeds ${limit} bytes (${bytes})`,
       reason:
         "Codex stops adding files once the combined size reaches project_doc_max_bytes (32 KiB by default). At most one file per directory is loaded — AGENTS.override.md if it is non-empty, otherwise AGENTS.md, otherwise the first non-empty project_doc_fallback_filenames entry. This is not applied to CLAUDE.md. See docs/spec/codex-agents-md.md.",
       evidence: [
         { kind: "count", value: `bytes=${bytes}` },
         { kind: "threshold", value: String(limit) },
-        ...chain.map((policy) => ({ kind: "policy", value: policy.path })),
+        ...chain.map((policy) => ({ kind: "policy" as const, value: policy.path })),
       ],
       suggest: `Shorten the AGENTS.md chain or raise project_doc_max_bytes (currently ${limit})`,
     }),

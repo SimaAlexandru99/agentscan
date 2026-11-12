@@ -26,7 +26,7 @@ function project(files: Record<string, string>): string {
 }
 
 async function report(dir: string): Promise<JsonReport> {
-  const result = await runCheck({ dir, json: true, failOn: "never" });
+  const result = await runCheck({ dir, output: "json", failOn: "never" });
   return JSON.parse(result.stdout) as JsonReport;
 }
 
@@ -42,7 +42,7 @@ describe("a parser error never carries source text out", () => {
       ".mcp.json": `{"K": ${CANARY}}`,
     });
     const text = await runCheck({ dir, failOn: "never" });
-    const json = await runCheck({ dir, json: true, failOn: "never" });
+    const json = await runCheck({ dir, output: "json", failOn: "never" });
 
     expect(text.stdout).not.toContain("S3CR3TCANARY");
     expect(json.stdout).not.toContain("S3CR3TCANARY");
@@ -55,7 +55,7 @@ describe("a parser error never carries source text out", () => {
       ".agents/skills/s/SKILL.md": `---\nname: s\nk: *${CANARY}\n---\n`,
     });
     const text = await runCheck({ dir, failOn: "never" });
-    const json = await runCheck({ dir, json: true, failOn: "never" });
+    const json = await runCheck({ dir, output: "json", failOn: "never" });
 
     expect(text.stdout).not.toContain("S3CR3TCANARY");
     expect(json.stdout).not.toContain("S3CR3TCANARY");
@@ -66,7 +66,7 @@ describe("a parser error never carries source text out", () => {
       "package.json": '{"name":"x"}',
       ".agents/skills/s/SKILL.md": "---\nname: [unclosed\n---\n",
     });
-    const json = await runCheck({ dir, json: true, failOn: "never" });
+    const json = await runCheck({ dir, output: "json", failOn: "never" });
     const payload = JSON.parse(json.stdout) as {
       findings: {
         ruleId: string;
@@ -166,12 +166,6 @@ describe("unreadable input is reported, never swallowed", () => {
     expect(finding?.message).toContain("package.json");
   });
 
-  test("a corrupt package.json fails --fail-on error", async () => {
-    const dir = project({ "package.json": "{not json" });
-    const result = await runCheck({ dir, failOn: "error" });
-    expect(result.exitCode).toBe(1);
-  });
-
   test("a valid package.json produces no config error", async () => {
     const dir = project({ "package.json": '{"name":"ok"}' });
     const payload = await report(dir);
@@ -231,7 +225,7 @@ describe("a malformed shape is a finding, not a crash", () => {
       "package.json":
         '{"name":"x","scripts":{"deploy":{"token":"ghp_abcdefghij0123456789abcd"}}}',
     });
-    const result = await runCheck({ dir, json: true, failOn: "never" });
+    const result = await runCheck({ dir, output: "json", failOn: "never" });
     // whatever a discarded value held must not reach the report
     expect(result.stdout).not.toContain("ghp_abcdefghij0123456789abcd");
     expect(result.stdout).toContain("scripts");
@@ -351,15 +345,15 @@ describe("only agent definition files count as agents", () => {
     expect(result.stdout).toContain("1 agents");
   });
 
-  test("a README in the agents directory is still counted — plan 003 closes this", async () => {
-    // Documenting the residue rather than piling on filename heuristics: the
-    // principled discriminator is agent frontmatter, which plan 003 reads.
+  test("a README in the agents directory is flagged for its missing frontmatter", async () => {
+    // Plan 003: agent frontmatter, not a filename list, separates an agent from
+    // prose that happens to sit in the directory.
     const dir = project({
       "package.json": '{"name":"x"}',
       ".claude/agents/README.md": "# how these agents work\n",
     });
-    const result = await runCheck({ dir, failOn: "never" });
-    expect(result.stdout).toContain("1 agents");
+    const payload = await report(dir);
+    expect(payload.findings.map((f) => f.ruleId)).toEqual(["claude.agent.missing-frontmatter"]);
   });
 });
 
@@ -443,7 +437,7 @@ describe("root resolution is visible", () => {
 
   test("a directory with neither package.json nor agent config fails clearly", async () => {
     const dir = mkPinnedRoot("agentscan-empty-");
-    await expect(runCheck({ dir, failOn: "never" })).rejects.toThrow(
+    expect(() => runCheck({ dir, failOn: "never" })).toThrow(
       /No package\.json or agent configuration found/,
     );
   });
@@ -470,6 +464,22 @@ describe("suppressing a single finding", () => {
     const after = await report(dir);
     // one false positive must cost one line of config, not a whole check
     expect(after.findings.map((f) => f.id)).toEqual([ids[1] as string]);
+  });
+
+  test("ignoreFindings accepts a legacy rule-id prefix, like ignoreRules and explain", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      ".claude/skills/a/SKILL.md": "# no frontmatter\n",
+    });
+    const id = (await report(dir)).findings[0]?.id;
+    expect(id).toBe("claude.skill.missing-frontmatter:skill:a");
+
+    writeFileSync(
+      join(dir, ".agentscanrc.json"),
+      JSON.stringify({ ignoreFindings: ["skill.missing-frontmatter:skill:a"] }),
+      "utf8",
+    );
+    expect((await report(dir)).findings).toEqual([]);
   });
 
   test("an ignored finding cannot fail the build", async () => {

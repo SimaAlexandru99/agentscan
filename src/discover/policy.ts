@@ -1,22 +1,15 @@
 import { existsSync } from "node:fs";
-import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
-import { claudeConfigDir } from "../facts/claude";
+import { providerHome } from "../facts/providers";
 import type { Provider } from "../facts/provider";
-import type { ConfigErrorFact, LockedSkillFact, PolicyFileFact } from "../facts/types";
-import {
-  ancestorDirsInclusive,
-  hopsFrom,
-  NESTED_DISCOVERY_MAX_DEPTH,
-  POLICY_CAP,
-  readCapped,
-  readJsonConfig,
-  walkFiles,
-} from "./shared";
+import type { LockedSkillFact, PolicyFileFact } from "../facts/types";
+import { NESTED_DISCOVERY_MAX_DEPTH, POLICY_CAP, walkFiles } from "./shared";
+import { ancestorDirsInclusive, hops } from "./scan-context";
+import { isRecord, readCapped, readConfigFile, type ScanIO } from "./fs";
 
 function readPolicyFile(
   filePath: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   meta: {
     sourceProvider: Provider;
     kind: NonNullable<PolicyFileFact["kind"]>;
@@ -24,34 +17,17 @@ function readPolicyFile(
     hopsDir?: string;
   },
 ): PolicyFileFact | undefined {
-  if (!existsSync(filePath)) {
+  const result = readCapped(filePath, POLICY_CAP, io, { optional: true });
+  if (result === undefined) {
     return undefined;
   }
-  try {
-    const result = readCapped(filePath, POLICY_CAP);
-    const text = result.buf.subarray(0, POLICY_CAP).toString("utf8");
-    if (result.truncated) {
-      errors.push({
-        path: filePath,
-        kind: "truncated",
-        detail: `file exceeds ${POLICY_CAP} byte scan cap`,
-      });
-    }
-    return {
-      path: filePath,
-      text,
-      sourceProvider: meta.sourceProvider,
-      kind: meta.kind,
-      hopsFromStart: hopsFrom(meta.startDir, meta.hopsDir ?? dirname(filePath)),
-    };
-  } catch (err) {
-    errors.push({
-      path: filePath,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return undefined;
-  }
+  return {
+    path: filePath,
+    text: result.text,
+    sourceProvider: meta.sourceProvider,
+    kind: meta.kind,
+    hopsFromStart: hops(meta.startDir, meta.hopsDir ?? dirname(filePath)),
+  };
 }
 
 function addUnique(
@@ -88,6 +64,94 @@ export function resolveCodexProjectRoot(
   }
   return boundary;
 }
+/**
+ * Codex concatenates AGENTS.md / AGENTS.override.md from the project root
+ * down to cwd and stops at `project_doc_max_bytes` (32 KiB). Nested files
+ * that are not on that walk-up chain are not counted. CLAUDE.md is excluded.
+ * See docs/spec/codex-agents-md.md.
+ */
+function isAgentsMdPolicy(policy: PolicyFileFact): boolean {
+  if (policy.kind === "agents-md") {
+    return true;
+  }
+  if (policy.kind !== undefined) {
+    return false;
+  }
+  const name = basename(policy.path);
+  return name === "AGENTS.md" || name === "AGENTS.override.md";
+}
+
+function nonempty(text: string): boolean {
+  return text.trim().length > 0;
+}
+
+/**
+ * Per directory Codex loads at most one file: non-empty AGENTS.override.md,
+ * otherwise AGENTS.md, otherwise the first non-empty project_doc_fallback_filenames
+ * entry. Empty files are skipped. See docs/spec/codex-agents-md.md.
+ */
+export function codexInstructionChain(
+  files: PolicyFileFact[],
+  startDir: string,
+  codexRoot: string,
+  fallbacks: string[],
+): PolicyFileFact[] {
+  const chainDirs = new Set(ancestorDirsInclusive(startDir, codexRoot).map((dir) => resolve(dir)));
+  const onChain = files.filter((policy) => {
+    if (!isAgentsMdPolicy(policy) && !isFallbackPolicy(policy, fallbacks)) {
+      return false;
+    }
+    const dir = resolve(dirname(policy.path));
+    if (basename(dir) === ".commandcode" && basename(policy.path) === "AGENTS.md") {
+      return false;
+    }
+    return chainDirs.has(dir);
+  });
+  const byDir = new Map<string, PolicyFileFact[]>();
+  for (const policy of onChain) {
+    const dir = resolve(dirname(policy.path));
+    const bucket = byDir.get(dir);
+    if (bucket === undefined) {
+      byDir.set(dir, [policy]);
+    } else {
+      bucket.push(policy);
+    }
+  }
+  const effective: PolicyFileFact[] = [];
+  for (const group of byDir.values()) {
+    const pick = pickCodexFile(group, fallbacks);
+    if (pick !== undefined) {
+      effective.push(pick);
+    }
+  }
+  return effective;
+}
+
+function isFallbackPolicy(policy: PolicyFileFact, fallbacks: string[]): boolean {
+  if (fallbacks.length === 0) {
+    return false;
+  }
+  return fallbacks.includes(basename(policy.path));
+}
+
+function pickCodexFile(group: PolicyFileFact[], fallbacks: string[]): PolicyFileFact | undefined {
+  const override = group.find((policy) => basename(policy.path) === "AGENTS.override.md");
+  if (override !== undefined && nonempty(override.text)) {
+    return override;
+  }
+  const normal = group.find((policy) => basename(policy.path) === "AGENTS.md");
+  if (normal !== undefined && nonempty(normal.text)) {
+    return normal;
+  }
+  for (const name of fallbacks) {
+    const fallback = group.find((policy) => basename(policy.path) === name);
+    if (fallback !== undefined && nonempty(fallback.text)) {
+      return fallback;
+    }
+  }
+  return undefined;
+}
+
 function isCommandcodeMemoryFallback(abs: string): boolean {
   return basename(abs) === "AGENTS.md" && basename(dirname(abs)) === ".commandcode";
 }
@@ -104,10 +168,9 @@ function isCommandcodeMemoryFallback(abs: string): boolean {
 export function discoverPolicyFiles(
   root: string,
   policyFiles: string[],
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   startDir = root,
   includeGlobal = false,
-  _commandcodeProjectRoot = root,
   fallbackFilenames: string[] = [],
 ): PolicyFileFact[] {
   const out: PolicyFileFact[] = [];
@@ -127,7 +190,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(root, rel), errors, { sourceProvider, kind, startDir: start }),
+      readPolicyFile(join(root, rel), io, { sourceProvider, kind, startDir: start }),
     );
   }
 
@@ -135,7 +198,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(dir, "AGENTS.md"), errors, {
+      readPolicyFile(join(dir, "AGENTS.md"), io, {
         sourceProvider: "unknown",
         kind: "agents-md",
         startDir: start,
@@ -144,7 +207,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(dir, "agents.md"), errors, {
+      readPolicyFile(join(dir, "agents.md"), io, {
         sourceProvider: "unknown",
         kind: "agents-md",
         startDir: start,
@@ -153,7 +216,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(dir, "Agents.md"), errors, {
+      readPolicyFile(join(dir, "Agents.md"), io, {
         sourceProvider: "grok",
         kind: "agents-md",
         startDir: start,
@@ -162,7 +225,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(dir, "AGENT.md"), errors, {
+      readPolicyFile(join(dir, "AGENT.md"), io, {
         sourceProvider: "grok",
         kind: "agents-md",
         startDir: start,
@@ -172,7 +235,7 @@ export function discoverPolicyFiles(
       addUnique(
         out,
         seen,
-        readPolicyFile(join(dir, ".commandcode", "AGENTS.md"), errors, {
+        readPolicyFile(join(dir, ".commandcode", "AGENTS.md"), io, {
           sourceProvider: "commandcode",
           kind: "agents-md",
           startDir: start,
@@ -183,7 +246,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(dir, "AGENTS.override.md"), errors, {
+      readPolicyFile(join(dir, "AGENTS.override.md"), io, {
         sourceProvider: "codex",
         kind: "agents-md",
         startDir: start,
@@ -196,7 +259,7 @@ export function discoverPolicyFiles(
       addUnique(
         out,
         seen,
-        readPolicyFile(join(dir, name), errors, {
+        readPolicyFile(join(dir, name), io, {
           sourceProvider: "codex",
           kind: "agents-md",
           startDir: start,
@@ -206,7 +269,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(dir, "CLAUDE.md"), errors, {
+      readPolicyFile(join(dir, "CLAUDE.md"), io, {
         sourceProvider: "claude",
         kind: "claude-md",
         startDir: start,
@@ -215,7 +278,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(dir, ".claude", "CLAUDE.md"), errors, {
+      readPolicyFile(join(dir, ".claude", "CLAUDE.md"), io, {
         sourceProvider: "claude",
         kind: "claude-md",
         startDir: start,
@@ -224,7 +287,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(dir, "CLAUDE.local.md"), errors, {
+      readPolicyFile(join(dir, "CLAUDE.local.md"), io, {
         sourceProvider: "claude",
         kind: "claude-md",
         startDir: start,
@@ -251,13 +314,13 @@ export function discoverPolicyFiles(
       }
       return true;
     },
-    errors,
+    io,
   })) {
     const commandcodeMemory = isCommandcodeMemoryFallback(abs);
     addUnique(
       out,
       seen,
-      readPolicyFile(abs, errors, {
+      readPolicyFile(abs, io, {
         sourceProvider: commandcodeMemory
           ? "commandcode"
           : basename(abs) === "AGENTS.override.md"
@@ -275,36 +338,34 @@ export function discoverPolicyFiles(
   addUnique(
     out,
     seen,
-    readPolicyFile(join(root, ".github", "copilot-instructions.md"), errors, {
+    readPolicyFile(join(root, ".github", "copilot-instructions.md"), io, {
       sourceProvider: "vscode",
       kind: "vscode-instructions",
       startDir: start,
     }),
   );
   const instructionsDir = join(root, ".github", "instructions");
-  if (existsSync(instructionsDir)) {
-    for (const abs of walkFiles(instructionsDir, {
-      maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
-      match: (_abs, name) => name.endsWith(".instructions.md"),
-      errors,
-    })) {
-      addUnique(
-        out,
-        seen,
-        readPolicyFile(abs, errors, {
-          sourceProvider: "vscode",
-          kind: "vscode-instructions",
-          startDir: start,
-        }),
-      );
-    }
+  for (const abs of walkFiles(instructionsDir, {
+    maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
+    match: (_abs, name) => name.endsWith(".instructions.md"),
+    io,
+  })) {
+    addUnique(
+      out,
+      seen,
+      readPolicyFile(abs, io, {
+        sourceProvider: "vscode",
+        kind: "vscode-instructions",
+        startDir: start,
+      }),
+    );
   }
 
   if (includeGlobal) {
     addUnique(
       out,
       seen,
-      readPolicyFile(join(homedir(), ".codex", "AGENTS.override.md"), errors, {
+      readPolicyFile(join(providerHome("codex"), "AGENTS.override.md"), io, {
         sourceProvider: "codex",
         kind: "agents-md",
         startDir: start,
@@ -313,7 +374,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(homedir(), ".codex", "AGENTS.md"), errors, {
+      readPolicyFile(join(providerHome("codex"), "AGENTS.md"), io, {
         sourceProvider: "codex",
         kind: "agents-md",
         startDir: start,
@@ -322,7 +383,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(homedir(), ".commandcode", "AGENTS.md"), errors, {
+      readPolicyFile(join(providerHome("commandcode"), "AGENTS.md"), io, {
         sourceProvider: "commandcode",
         kind: "agents-md",
         startDir: start,
@@ -331,7 +392,7 @@ export function discoverPolicyFiles(
     addUnique(
       out,
       seen,
-      readPolicyFile(join(claudeConfigDir(), "CLAUDE.md"), errors, {
+      readPolicyFile(join(providerHome("claude"), "CLAUDE.md"), io, {
         sourceProvider: "claude",
         kind: "claude-md",
         startDir: start,
@@ -360,18 +421,21 @@ export function discoverPolicyFiles(
 type ParsedLock = {
   entries: LockedSkillFact[];
   invalid?: boolean;
+  /** Path is not a file. Distinct from `invalid`: a missing lock is not present. */
+  missing?: boolean;
 };
 
 function parseSkillsLockFile(
   filePath: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): ParsedLock {
-  const raw = readJsonConfig(filePath, errors);
+  const raw = readConfigFile(filePath, io, { optional: true });
   if (raw === undefined) {
-    return { entries: [], invalid: true };
+    const failed = io.errors.some((err) => err.path === filePath);
+    return failed ? { entries: [], invalid: true } : { entries: [], missing: true };
   }
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    errors.push({
+  if (!isRecord(raw)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "skills-lock.json is not a JSON object",
@@ -379,8 +443,8 @@ function parseSkillsLockFile(
     return { entries: [], invalid: true };
   }
   const skills = (raw as Record<string, unknown>).skills;
-  if (skills === null || typeof skills !== "object" || Array.isArray(skills)) {
-    errors.push({
+  if (!isRecord(skills)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "skills-lock.json has no `skills` object",
@@ -392,7 +456,7 @@ function parseSkillsLockFile(
   const locked: LockedSkillFact[] = [];
   for (const [id, value] of Object.entries(skills as Record<string, unknown>)) {
     const entry: LockedSkillFact = { id, lockRoot, lockPath: filePath };
-    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    if (isRecord(value)) {
       const v = value as Record<string, unknown>;
       if (typeof v.source === "string") {
         entry.source = v.source;
@@ -417,7 +481,7 @@ function parseSkillsLockFile(
 export function discoverSkillsLocks(
   scanBoundary: string,
   projectRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): {
   locked: LockedSkillFact[];
   present: boolean;
@@ -432,12 +496,15 @@ export function discoverSkillsLocks(
 
   const consider = (filePath: string): void => {
     const resolved = resolve(filePath);
-    if (seen.has(resolved) || !existsSync(resolved)) {
+    if (seen.has(resolved)) {
       return;
     }
     seen.add(resolved);
+    const parsed = parseSkillsLockFile(resolved, io);
+    if (parsed.missing === true) {
+      return;
+    }
     present = true;
-    const parsed = parseSkillsLockFile(resolved, errors);
     if (parsed.invalid === true) {
       return;
     }
@@ -450,7 +517,7 @@ export function discoverSkillsLocks(
   for (const abs of walkFiles(scanBoundary, {
     maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
     match: (_abs, name) => name === "skills-lock.json",
-    errors,
+    io,
   })) {
     consider(abs);
   }
@@ -460,17 +527,5 @@ export function discoverSkillsLocks(
     present,
     lockRoots,
     ...(present && validCount === 0 ? { invalid: true } : {}),
-  };
-}
-
-export function discoverSkillsLock(
-  root: string,
-  errors: ConfigErrorFact[],
-): { locked: LockedSkillFact[]; present: boolean; invalid?: boolean } {
-  const found = discoverSkillsLocks(root, root, errors);
-  return {
-    locked: found.locked,
-    present: found.present,
-    ...(found.invalid === undefined ? {} : { invalid: found.invalid }),
   };
 }

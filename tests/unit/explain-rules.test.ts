@@ -1,6 +1,7 @@
 // tests/unit/explain-rules.test.ts
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
+import { checkById } from "../../src/checks/registry";
 import { runExplain } from "../../src/commands/explain";
 import { runRulesCommand } from "../../src/commands/rules";
 
@@ -101,18 +102,25 @@ describe("runRulesCommand", () => {
 
     expect(parsed.length).toBeGreaterThan(100);
     const cursorEvent = parsed.find((r) => r.id === "cursor.hook.unknown-event");
-    expect(cursorEvent?.provenance).toBe("spec-required");
-    expect(cursorEvent?.source.url).toBe("https://cursor.com/docs/hooks");
-    expect(cursorEvent?.source.capture).toBe("cursor-hooks.md");
+    const check = checkById("cursor.hook.unknown-event")!;
+    expect(cursorEvent?.provenance).toBe(check.provenance);
+    expect(cursorEvent?.source).toEqual(check.source);
     // every rule, not just the ones with a page
     expect(parsed.every((r) => r.source.kind === "spec" || r.source.kind === "derived")).toBe(true);
   });
 
-  test("the plain listing shows provenance and source next to the id", async () => {
+  test("the plain listing shows severity, provenance and source next to the id", async () => {
     const dir = join(fixturesRoot, "clean-repo");
     const result = await runRulesCommand({ dir });
 
-    expect(result.stdout).toMatch(/cursor\.hook\.unknown-event\s+spec-required\s+cursor\.com\/docs\/hooks/);
-    expect(result.stdout).toMatch(/mcp\.command-missing\s+internal-consistency\s+\(cross-provider/);
+    const check = checkById("cursor.hook.unknown-event")!;
+    if (check.source.kind !== "spec") throw new Error("cursor.hook.unknown-event lost its spec page");
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+    const page = check.source.url.replace(/^https:\/\//, "").replace(/\/$/, "");
+    expect(result.stdout).toMatch(
+      new RegExp(`cursor\\.hook\\.unknown-event\\s+${check.severity}\\s+${check.provenance}\\s+${esc(page)}`),
+    );
+    expect(result.stdout).toMatch(/mcp\.command-missing\s+error\s+internal-consistency\s+\(cross-provider/);
+    expect(result.stdout).toMatch(/claude\.agent\.invalid-name\s+warning\/error\s+spec-required/);
   });
 });

@@ -78,7 +78,7 @@ Quoted from the hooks page:
 Project and user hooks for the same event **coexist** and both stay effective.
 Dedup across project/user only when the exact `command` string is the same for
 that event; the project-family winner remains effective and the user duplicate
-is inventoried with `commandcodeEffective: false`. A distinct user `PreToolUse`
+is inventoried with `effective: false`. A distinct user `PreToolUse`
 is never suppressed merely because project also has a `PreToolUse`.
 
 `settings.local.json` vs project `settings.json` is settings merge, not that
@@ -86,7 +86,7 @@ hook-scope rule: maps deep-merge and scalars overwrite. The `hooks` object is
 a map of event name → array; an event array defined in `settings.local.json`
 replaces the project array for that event only. Other project events remain.
 
-Spec/runtime `commandcode.hook.*` checks skip `commandcodeEffective === false`.
+Spec/runtime `commandcode.hook.*` checks skip `effective === false`.
 
 ## Placeholders
 

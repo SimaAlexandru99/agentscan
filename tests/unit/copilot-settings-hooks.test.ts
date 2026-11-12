@@ -1,25 +1,12 @@
-import { describe, expect, test, spyOn } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { describe, expect, test } from "bun:test";
+import { mkdtempSync } from "node:fs";
 import * as os from "node:os";
 import { join } from "node:path";
-import { analyze } from "../../src/analyze";
 import { defaultConfig } from "../../src/config/schema";
-import { extractFacts } from "../../src/facts/extract";
-import { mkPinnedProject } from "../helpers/tmp";
-
-function tmpProject(prefix: string): string {
-  return mkPinnedProject(prefix, "copilot-settings");
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
-
-function ruleIds(dir: string, includeGlobal = false): string[] {
-  return analyze({ dir, global: includeGlobal }).findings.map((finding) => finding.ruleId);
-}
+import { extractFacts } from "../../src/discover/extract";
+import { scanContext, tmpProject, write } from "../helpers/tmp";
+import { ruleIds } from "../helpers/scan";
+import { withEnv, withHome } from "../helpers/env";
 
 const sessionStartHook = {
   hooks: {
@@ -31,7 +18,7 @@ describe("Copilot CLI inline settings hooks", () => {
   test("project settings.json is copilot-cli with source copilot-settings", () => {
     const root = tmpProject("agentscan-copilot-settings-");
     write(root, ".github/copilot/settings.json", JSON.stringify(sessionStartHook));
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     const hook = facts.hooks.find((h) => h.path.endsWith("settings.json"));
     expect(hook).toBeDefined();
     expect(hook!.schemaProfile).toBe("copilot-cli");
@@ -54,28 +41,11 @@ describe("Copilot CLI inline settings hooks", () => {
         },
       }),
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     expect(facts.hooks).toHaveLength(1);
     expect(facts.hooks[0]!.source).toBe("copilot-settings");
     expect(facts.hooks[0]!.schemaProfile).toBe("copilot-cli");
     expect(ruleIds(root)).not.toContain("copilot.hook.command-without-command");
-  });
-
-  test("missing script in inline settings is copilot.hook.missing-script", () => {
-    const root = tmpProject("agentscan-copilot-settings-gone-");
-    write(
-      root,
-      ".github/copilot/settings.json",
-      JSON.stringify({
-        hooks: {
-          preToolUse: [{ bash: "./gone-inline.sh" }],
-        },
-      }),
-    );
-    const ids = ruleIds(root);
-    expect(ids).toContain("copilot.hook.missing-script");
-    expect(ids).not.toContain("vscode.hook.missing-script");
-    expect(ids).not.toContain("claude.hook.missing-script");
   });
 
   test("inline settings coexist with .github/hooks files", () => {
@@ -89,7 +59,7 @@ describe("Copilot CLI inline settings hooks", () => {
       }),
     );
     write(root, ".github/copilot/settings.json", JSON.stringify(sessionStartHook));
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     expect(facts.hooks).toHaveLength(2);
     expect(facts.hooks.some((h) => h.source === "copilot-settings")).toBe(true);
     expect(facts.hooks.some((h) => h.source === "vscode-hooks")).toBe(true);
@@ -106,7 +76,7 @@ describe("Copilot CLI inline settings hooks", () => {
         },
       }),
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     expect(facts.hooks).toHaveLength(1);
     expect(facts.hooks[0]!.schemaProfile).toBe("claude");
     expect(facts.hooks[0]!.source).toBe("settings");
@@ -126,16 +96,13 @@ describe("Copilot CLI inline settings hooks", () => {
         },
       }),
     );
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       expect(ruleIds(root, false)).not.toContain("copilot.hook.unknown-event");
       expect(ruleIds(root, true)).toContain("copilot.hook.unknown-event");
-      const facts = extractFacts(root, defaultConfig, { includeGlobal: true });
+      const facts = extractFacts(scanContext(root), { ...defaultConfig, includeGlobal: true });
       const user = facts.hooks.find((h) => h.source === "copilot-settings");
       expect(user?.schemaProfile).toBe("copilot-cli");
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 
   test("COPILOT_HOME overrides ~/.copilot for user settings and hooks", () => {
@@ -161,24 +128,16 @@ describe("Copilot CLI inline settings hooks", () => {
         },
       }),
     );
-    const previous = process.env.COPILOT_HOME;
-    process.env.COPILOT_HOME = altHome;
-    try {
-      const without = extractFacts(root, defaultConfig, { includeGlobal: false });
+    withEnv({ COPILOT_HOME: altHome }, () => {
+      const without = extractFacts(scanContext(root), defaultConfig);
       expect(without.hooks).toHaveLength(0);
-      const facts = extractFacts(root, defaultConfig, { includeGlobal: true });
+      const facts = extractFacts(scanContext(root), { ...defaultConfig, includeGlobal: true });
       expect(facts.hooks.some((h) => h.source === "copilot-settings" && h.event === "sessionEnd")).toBe(
         true,
       );
       expect(facts.hooks.some((h) => h.source === "vscode-hooks" && h.event === "errorOccurred")).toBe(
         true,
       );
-    } finally {
-      if (previous === undefined) {
-        delete process.env.COPILOT_HOME;
-      } else {
-        process.env.COPILOT_HOME = previous;
-      }
-    }
+    });
   });
 });

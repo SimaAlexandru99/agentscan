@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { mkPinnedProject } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
-import { ignoreRuleSet } from "../../src/checks/aliases";
+import { ignoreRuleSet } from "../../src/checks/registry";
 
 describe("rule aliases", () => {
   test("ignoreRules accepts pre-0.8 ids", () => {

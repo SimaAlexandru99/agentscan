@@ -32,7 +32,6 @@ export type Paint = {
   strong: (tone: Tone, text: string) => string;
   dim: (text: string) => string;
   bold: (text: string) => string;
-  /** True when this painter actually emits escapes. */
   enabled: boolean;
 };
 

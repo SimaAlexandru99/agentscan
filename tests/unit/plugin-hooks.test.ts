@@ -1,10 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { runChecks } from "../../src/checks/index";
-import { defaultConfig } from "../../src/config/schema";
-import { extractFacts } from "../../src/facts/extract";
+import { mkPinnedRoot } from "../helpers/tmp";
+import { findings as projectFindings } from "../helpers/scan";
 
 /**
  * Hooks in a plugin's `hooks/hooks.json` are one of the seven documented
@@ -14,7 +12,7 @@ import { extractFacts } from "../../src/facts/extract";
  * `description` in 10 of 17 files. See docs/spec/hook-sources.md.
  */
 function project(): string {
-  const root = mkdtempSync(join(tmpdir(), "agentscan-plugin-"));
+  const root = mkPinnedRoot("agentscan-plugin-");
   writeFileSync(join(root, "package.json"), "{}");
   return root;
 }
@@ -42,16 +40,12 @@ function guard(command: string) {
   };
 }
 
-function findingsFor(root: string) {
-  return runChecks(extractFacts(root, defaultConfig, { includeGlobal: false }));
-}
-
 describe("plugin hooks", () => {
   test("a missing ${CLAUDE_PLUGIN_ROOT} script is reported, naming the plugin file", () => {
     const root = project();
     plugin(root, "guard-plugin", guard("${CLAUDE_PLUGIN_ROOT}/scripts/gone.sh"));
 
-    const findings = findingsFor(root).filter(
+    const findings = projectFindings(root).filter(
       (f) => f.ruleId === "claude.hook.missing-script",
     );
     expect(findings).toHaveLength(1);
@@ -72,7 +66,7 @@ describe("plugin hooks", () => {
     mkdirSync(join(dir, "scripts"), { recursive: true });
     writeFileSync(join(dir, "scripts", "check.sh"), "echo ok\n");
 
-    expect(findingsFor(root).filter((f) => f.ruleId.startsWith("hook."))).toEqual([]);
+    expect(projectFindings(root).filter((f) => f.ruleId.startsWith("hook."))).toEqual([]);
   });
 
   test("the scan root itself can be the plugin", () => {
@@ -84,7 +78,7 @@ describe("plugin hooks", () => {
       JSON.stringify({ hooks: guard("${CLAUDE_PLUGIN_ROOT}/bin/absent.sh") }),
     );
 
-    const findings = findingsFor(root).filter(
+    const findings = projectFindings(root).filter(
       (f) => f.ruleId === "claude.hook.missing-script",
     );
     expect(findings).toHaveLength(1);
@@ -100,7 +94,7 @@ describe("plugin hooks", () => {
       JSON.stringify({ hooks: guard("${CLAUDE_PLUGIN_ROOT}/scripts/gone.sh") }),
     );
 
-    expect(findingsFor(root).filter((f) => f.ruleId === "claude.hook.missing-script")).toEqual([]);
+    expect(projectFindings(root).filter((f) => f.ruleId === "claude.hook.missing-script")).toEqual([]);
   });
 
   test("an unknown event in a plugin is reported like any other", () => {
@@ -109,7 +103,7 @@ describe("plugin hooks", () => {
       PreToolUseX: [{ hooks: [{ type: "command", command: "echo hi" }] }],
     });
 
-    const findings = findingsFor(root).filter(
+    const findings = projectFindings(root).filter(
       (f) => f.ruleId === "claude.hook.unknown-event",
     );
     expect(findings).toHaveLength(1);
@@ -123,7 +117,7 @@ describe("plugin hooks", () => {
     writeFileSync(join(dir, ".claude-plugin", "plugin.json"), "{}");
     writeFileSync(join(dir, "hooks", "hooks.json"), "{ not json");
 
-    const findings = findingsFor(root);
+    const findings = projectFindings(root);
     expect(findings.some((f) => f.ruleId === "config.unreadable")).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
-import { checkById } from "../../src/checks/lookup";
-import type { Finding } from "../../src/facts/types";
+import { canonicalRuleId, checkById } from "../../src/checks/registry";
+import type { Finding } from "../../src/findings";
 
 /**
  * The provenance fields `make()` copies onto every finding.
@@ -11,7 +11,7 @@ import type { Finding } from "../../src/facts/types";
 export function ruleMeta(
   ruleId: string,
 ): Pick<Finding, "provenance" | "source" | "lastVerified"> {
-  const check = checkById(ruleId);
+  const check = checkById(canonicalRuleId(ruleId));
   if (check !== undefined) {
     return {
       provenance: check.provenance,

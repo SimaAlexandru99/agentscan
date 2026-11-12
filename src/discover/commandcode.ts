@@ -1,6 +1,8 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { homedir } from "node:os";
-import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
+import { existsSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { isInside, toPosix } from "../facts/paths";
+import { applyPrecedence } from "../facts/precedence";
+import { providerHome } from "../facts/providers";
 import {
   COMMANDCODE_AGENTS_SKILLS_MAX_HOPS,
   COMMANDCODE_PERMISSION_MODES,
@@ -9,16 +11,18 @@ import {
 import type {
   AgentFact,
   CommandcodeAgentDefect,
-  ConfigErrorFact,
   HookFact,
   McpFact,
-  ModFact,
   SkillFact,
   SlashCommandFact,
 } from "../facts/types";
-import { parseInlineCommandcodeMcp, discoverMcp } from "./mcp";
+import { commandcodeMcpDefect, discoverMcpSurface, parseInlineCommandcodeMcp } from "./mcp";
+import { commandFiles } from "./claude";
+import { expandHome } from "./launch";
 import { hooksFromObject } from "./hooks";
-import { readFrontmatter, readJsonConfig } from "./shared";
+import { ancestorDirsInclusive, type ScanContext } from "./scan-context";
+import { readFrontmatter } from "./frontmatter";
+import { isFile, isRecord, listDir, readConfigFile, type ScanIO } from "./fs";
 
 export type CommandcodeSettingsKind = "local" | "project" | "user";
 
@@ -26,9 +30,7 @@ export type CommandcodeSettingsLayer = {
   path: string;
   kind: CommandcodeSettingsKind;
   skills?: string[];
-  model?: string;
   mcp?: unknown;
-  mods?: unknown;
   hooks?: unknown;
 };
 
@@ -38,29 +40,16 @@ const SETTINGS_LAYER_RANK: Record<CommandcodeSettingsKind, number> = {
   user: 1,
 };
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-export function pathInside(child: string, parent: string): boolean {
-  const c = resolve(child);
-  const p = resolve(parent);
-  return c === p || c.startsWith(`${p}${sep}`);
-}
-
 function readSettingsObject(
   filePath: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): Record<string, unknown> | undefined {
-  if (!existsSync(filePath)) {
-    return undefined;
-  }
-  const raw = readJsonConfig(filePath, errors);
+  const raw = readConfigFile(filePath, io, { optional: true });
   if (raw === undefined) {
     return undefined;
   }
-  if (!isObject(raw)) {
-    errors.push({
+  if (!isRecord(raw)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "settings file is not a JSON object",
@@ -79,14 +68,8 @@ function layerFromObject(
   if (Array.isArray(obj.skills) && obj.skills.every((item) => typeof item === "string")) {
     layer.skills = obj.skills as string[];
   }
-  if (typeof obj.model === "string" && obj.model.length > 0) {
-    layer.model = obj.model;
-  }
   if (obj.mcp !== undefined) {
     layer.mcp = obj.mcp;
-  }
-  if (obj.mods !== undefined) {
-    layer.mods = obj.mods;
   }
   if (obj.hooks !== undefined) {
     layer.hooks = obj.hooks;
@@ -96,7 +79,7 @@ function layerFromObject(
 
 export function readCommandcodeSettingsLayers(
   commandcodeProjectRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   includeGlobal: boolean,
 ): CommandcodeSettingsLayer[] {
   const layers: CommandcodeSettingsLayer[] = [];
@@ -104,11 +87,11 @@ export function readCommandcodeSettingsLayers(
     { path: join(commandcodeProjectRoot, ".commandcode", "settings.local.json"), kind: "local" },
     { path: join(commandcodeProjectRoot, ".commandcode", "settings.json"), kind: "project" },
     ...(includeGlobal
-      ? [{ path: join(homedir(), ".commandcode", "settings.json"), kind: "user" as const }]
+      ? [{ path: join(providerHome("commandcode"), "settings.json"), kind: "user" as const }]
       : []),
   ];
   for (const candidate of candidates) {
-    const obj = readSettingsObject(candidate.path, errors);
+    const obj = readSettingsObject(candidate.path, io);
     if (obj === undefined) {
       continue;
     }
@@ -117,7 +100,6 @@ export function readCommandcodeSettingsLayers(
   return layers;
 }
 
-/** Highest-precedence layer that defines `skills` wins (replace, not merge). */
 export function winningSkillsExtraDirs(
   layers: CommandcodeSettingsLayer[],
 ): string[] {
@@ -130,31 +112,14 @@ export function winningSkillsExtraDirs(
 }
 
 export function resolveSkillLocation(commandcodeProjectRoot: string, declared: string): string {
-  const trimmed = declared.trim();
-  if (trimmed.startsWith("~/")) {
-    return join(homedir(), trimmed.slice(2));
-  }
-  if (isAbsolute(trimmed)) {
-    return trimmed;
-  }
-  return join(commandcodeProjectRoot, trimmed);
-}
-
-export function winningCommandcodeModel(
-  layers: CommandcodeSettingsLayer[],
-): { model: string; source: string } | undefined {
-  for (const layer of layers) {
-    if (layer.model !== undefined) {
-      return { model: layer.model, source: layer.path };
-    }
-  }
-  return undefined;
+  const expanded = expandHome(declared.trim());
+  return isAbsolute(expanded) ? expanded : join(commandcodeProjectRoot, expanded);
 }
 
 export function discoverCommandcodeHooks(
   commandcodeProjectRoot: string,
   layers: CommandcodeSettingsLayer[],
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): HookFact[] {
   const facts: HookFact[] = [];
   for (const layer of layers) {
@@ -167,8 +132,8 @@ export function discoverCommandcodeHooks(
         layer.path,
         "settings",
         { project: commandcodeProjectRoot, own: dirname(layer.path) },
-        errors,
-        "commandcode",
+        io,
+        { sourceProvider: "commandcode", schemaProfile: "commandcode" },
       ).map((hook) => ({ ...hook, commandcodeSettingsLayer: layer.kind })),
     );
   }
@@ -178,7 +143,7 @@ export function discoverCommandcodeHooks(
 export function discoverCommandcodeInlineMcp(
   commandcodeProjectRoot: string,
   layers: CommandcodeSettingsLayer[],
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): McpFact[] {
   const facts: McpFact[] = [];
   for (const layer of layers) {
@@ -186,112 +151,80 @@ export function discoverCommandcodeInlineMcp(
       continue;
     }
     facts.push(
-      ...parseInlineCommandcodeMcp(layer.mcp, layer.path, commandcodeProjectRoot, errors),
+      ...parseInlineCommandcodeMcp(layer.mcp, layer.path, commandcodeProjectRoot, io),
     );
   }
   return facts;
 }
 
+/**
+ * Command Code project root: the nearest git root from the working directory
+ * up to the scan boundary, otherwise the working directory. A child `.cursor`
+ * / `.claude` must not hide `<git-root>/.commandcode/settings.json`; a
+ * `.agentscan-root` pin still stops the scan escaping into a parent checkout.
+ */
+export function resolveCommandcodeProjectRoot(
+  ctx: Pick<ScanContext, "startDir" | "scanBoundary">,
+): string {
+  return (
+    ancestorDirsInclusive(ctx.startDir, ctx.scanBoundary).find((dir) =>
+      existsSync(join(dir, ".git")),
+    ) ?? resolve(ctx.startDir)
+  );
+}
+
+/**
+ * Command Code also reads the shared `<project>/.mcp.json`; its servers there
+ * get Command Code transport defects. Other `.mcp.json` files are not its.
+ */
+export function applyCommandcodeMcpJsonDefects(
+  mcp: McpFact[],
+  commandcodeProjectRoot: string,
+): void {
+  const file = resolve(join(commandcodeProjectRoot, ".mcp.json"));
+  for (const fact of mcp) {
+    if (fact.schemaProfile !== "mcp-json" || resolve(fact.path) !== file) {
+      continue;
+    }
+    const defect = commandcodeMcpDefect("mcp-json", fact.transport, fact.hasCommand, fact.hasUrl);
+    if (defect !== undefined) {
+      fact.commandcodeDefect = defect;
+    }
+  }
+}
+
 export function discoverCommandcodeUserMcp(
   commandcodeProjectRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): McpFact[] {
-  return discoverMcp(commandcodeProjectRoot, [join(homedir(), ".commandcode", "mcp.json")], errors);
-}
-
-export function discoverCommandcodeMods(
-  layers: CommandcodeSettingsLayer[],
-): ModFact[] {
-  const out: ModFact[] = [];
-  for (const layer of layers) {
-    if (!isObject(layer.mods)) {
-      continue;
-    }
-    const paths = layer.mods.paths;
-    if (!Array.isArray(paths)) {
-      continue;
-    }
-    for (const item of paths) {
-      if (typeof item === "string" && item.length > 0) {
-        out.push({
-          path: item,
-          declaredFrom: layer.path,
-          sourceProvider: "commandcode",
-        });
-      }
-    }
-  }
-  return out;
-}
-
-function isFile(path: string): boolean {
-  try {
-    return statSync(path).isFile();
-  } catch {
-    return false;
-  }
-}
-
-function isDirectory(path: string): boolean {
-  try {
-    return statSync(path).isDirectory();
-  } catch {
-    return false;
-  }
-}
-
-function commandFiles(dir: string, errors: ConfigErrorFact[]): string[] {
-  let names: string[];
-  try {
-    names = readdirSync(dir);
-  } catch (err) {
-    errors.push({
-      path: dir,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return [];
-  }
-  const out: string[] = [];
-  for (const name of names) {
-    if (name.startsWith(".")) {
-      continue;
-    }
-    const abs = join(dir, name);
-    if (isDirectory(abs)) {
-      out.push(...commandFiles(abs, errors).map((rel) => join(name, rel)));
-      continue;
-    }
-    if (name.endsWith(".md") && isFile(abs)) {
-      out.push(name);
-    }
-  }
-  return out;
+  return discoverMcpSurface(
+    commandcodeProjectRoot,
+    [join(providerHome("commandcode"), "mcp.json")],
+    io,
+  );
 }
 
 export function discoverCommandcodeCommands(
   commandcodeProjectRoot: string,
   includeGlobal: boolean,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): SlashCommandFact[] {
   const facts: SlashCommandFact[] = [];
   const seen = new Set<string>();
   const projectDir = join(commandcodeProjectRoot, ".commandcode", "commands");
-  if (existsSync(projectDir)) {
-    seen.add(projectDir);
-    for (const rel of commandFiles(projectDir, errors)) {
-      facts.push({
-        name: basename(rel, ".md"),
-        path: join(projectDir, rel),
-        source: "project",
-        sourceProvider: "commandcode",
-      });
-    }
+  seen.add(projectDir);
+  for (const rel of commandFiles(projectDir, io)) {
+    facts.push({
+      name: basename(rel, ".md"),
+      path: join(projectDir, rel),
+      source: "project",
+      sourceProvider: "commandcode",
+    });
   }
   if (includeGlobal) {
-    const userDir = join(homedir(), ".commandcode", "commands");
-    if (existsSync(userDir) && !seen.has(userDir)) {
-      for (const rel of commandFiles(userDir, errors)) {
+    const userDir = join(providerHome("commandcode"), "commands");
+    if (!seen.has(userDir)) {
+      for (const rel of commandFiles(userDir, io)) {
         facts.push({
           name: basename(rel, ".md"),
           path: join(userDir, rel),
@@ -386,9 +319,9 @@ function commandcodeAgentDefects(
 function readCommandcodeAgent(
   filePath: string,
   stem: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): AgentFact {
-  const fm = readFrontmatter(filePath, errors);
+  const fm = readFrontmatter(filePath, io);
   const resolved = fm.name ?? stem;
   const classified = commandcodeAgentDefects(fm.fields, resolved);
   const fact: AgentFact = {
@@ -424,26 +357,12 @@ function readCommandcodeAgent(
   return fact;
 }
 
-export function discoverCommandcodeAgentsDir(
+function discoverCommandcodeAgentsDir(
   dir: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): AgentFact[] {
-  if (!existsSync(dir)) {
-    return [];
-  }
-  let names: string[];
-  try {
-    names = readdirSync(dir);
-  } catch (err) {
-    errors.push({
-      path: dir,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return [];
-  }
   const facts: AgentFact[] = [];
-  for (const name of names) {
+  for (const { name } of listDir(dir, io, { optional: true }) ?? []) {
     if (name.startsWith(".") || !name.endsWith(".md")) {
       continue;
     }
@@ -451,7 +370,7 @@ export function discoverCommandcodeAgentsDir(
     if (!isFile(filePath)) {
       continue;
     }
-    facts.push(readCommandcodeAgent(filePath, name.slice(0, -".md".length), errors));
+    facts.push(readCommandcodeAgent(filePath, name.slice(0, -".md".length), io));
   }
   return facts;
 }
@@ -459,20 +378,30 @@ export function discoverCommandcodeAgentsDir(
 export function discoverCommandcodeAgents(
   commandcodeProjectRoot: string,
   includeGlobal: boolean,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): AgentFact[] {
   const facts: AgentFact[] = [];
   facts.push(
     ...discoverCommandcodeAgentsDir(
       join(commandcodeProjectRoot, ".commandcode", "agents"),
-      errors,
+      io,
     ),
   );
   if (includeGlobal) {
     facts.push(
-      ...discoverCommandcodeAgentsDir(join(homedir(), ".commandcode", "agents"), errors),
+      ...discoverCommandcodeAgentsDir(join(providerHome("commandcode"), "agents"), io),
     );
   }
+  // A personal agent shadows a project agent of the same name.
+  const table: RankTable = [
+    [resolve(join(providerHome("commandcode"), "agents")), 1],
+    [resolve(join(commandcodeProjectRoot, ".commandcode", "agents")), 0],
+  ];
+  applyPrecedence(
+    facts,
+    (agent) => agent.name,
+    (agent) => rankIn(table, (dir) => isInside(agent.path, dir)),
+  );
   return facts;
 }
 
@@ -507,83 +436,40 @@ export function commandcodeAgentsSkillsRoots(
 }
 
 export function isCommandcodeSkillsRel(rel: string): boolean {
-  const normalized = rel.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
+  const normalized = toPosix(rel).replace(/^\.\//, "").replace(/\/+$/, "");
   return normalized === ".commandcode/skills";
 }
 
-function mcpCommandcodeScore(
-  entry: McpFact,
-  commandcodeProjectRoot: string,
-  home: string,
-): number | undefined {
-  if (entry.inventoryOnly === true) {
-    return undefined;
-  }
-  const p = resolve(entry.path);
-  const projectMcp = resolve(join(commandcodeProjectRoot, ".mcp.json"));
-  const userMcp = resolve(join(home, ".commandcode", "mcp.json"));
-  const localSettings = resolve(join(commandcodeProjectRoot, ".commandcode", "settings.local.json"));
-  const projectSettings = resolve(join(commandcodeProjectRoot, ".commandcode", "settings.json"));
-  const userSettings = resolve(join(home, ".commandcode", "settings.json"));
-  // Higher score wins. Band: settings (0) < user mcp.json (10) < project .mcp.json (20).
-  if (p === projectMcp) {
-    return 20;
-  }
-  if (p === userMcp) {
-    return 10;
-  }
-  if (p === localSettings) {
-    return 3;
-  }
-  if (p === projectSettings) {
-    return 2;
-  }
-  if (p === userSettings) {
-    return 1;
-  }
-  if (entry.schemaProfile === "commandcode-json") {
-    return 0;
-  }
-  return undefined;
+type RankTable = [string, number][];
+
+function rankIn(table: RankTable, matches: (path: string) => boolean): number | undefined {
+  return table.find(([dir]) => matches(dir))?.[1];
 }
 
+/** Settings (1-3) < user mcp.json (10) < project .mcp.json (20); other Command Code JSON is 0. */
 export function applyCommandcodeMcpPrecedence(
   mcp: McpFact[],
   commandcodeProjectRoot: string,
 ): void {
-  const home = homedir();
-  const ranked: { entry: McpFact; score: number }[] = [];
-  for (const entry of mcp) {
-    const score = mcpCommandcodeScore(entry, commandcodeProjectRoot, home);
-    if (score === undefined) {
-      if (entry.schemaProfile === "mcp-json") {
-        entry.commandcodeDefect = undefined;
+  const home = providerHome("commandcode");
+  const table: RankTable = [
+    [resolve(join(commandcodeProjectRoot, ".mcp.json")), 20],
+    [resolve(join(home, "mcp.json")), 10],
+    [resolve(join(commandcodeProjectRoot, ".commandcode", "settings.local.json")), 3],
+    [resolve(join(commandcodeProjectRoot, ".commandcode", "settings.json")), 2],
+    [resolve(join(home, "settings.json")), 1],
+  ];
+  applyPrecedence(
+    mcp,
+    (entry) => entry.name,
+    (entry) => {
+      if (entry.inventoryOnly === true) {
+        return undefined;
       }
-      continue;
-    }
-    ranked.push({ entry, score });
-  }
-  const best = new Map<string, number>();
-  for (const item of ranked) {
-    const current = best.get(item.entry.name);
-    if (current === undefined || item.score > current) {
-      best.set(item.entry.name, item.score);
-    }
-  }
-  const seenWinner = new Set<string>();
-  for (const item of ranked) {
-    const winning = best.get(item.entry.name) ?? item.score;
-    if (item.score === winning && !seenWinner.has(item.entry.name)) {
-      item.entry.commandcodeEffective = true;
-      seenWinner.add(item.entry.name);
-    } else {
-      item.entry.commandcodeEffective = false;
-    }
-  }
-}
-
-function hookEventKey(hook: HookFact): string {
-  return hook.event ?? hook.name;
+      const p = resolve(entry.path);
+      return rankIn(table, (path) => path === p) ?? (entry.schemaProfile === "commandcode-json" ? 0 : undefined);
+    },
+  );
 }
 
 /** Official hook docs: duplicate identity is the exact command string. */
@@ -614,7 +500,7 @@ export function applyCommandcodeHookPrecedence(hooks: HookFact[]): void {
     if (layer === "user") {
       continue;
     }
-    const event = hookEventKey(hook);
+    const event = hook.event;
     const rank = SETTINGS_LAYER_RANK[layer];
     const current = winningProjectFamilyRank.get(event);
     if (current === undefined || rank > current) {
@@ -631,10 +517,10 @@ export function applyCommandcodeHookPrecedence(hooks: HookFact[]): void {
     if (layer === "user") {
       continue;
     }
-    const event = hookEventKey(hook);
+    const event = hook.event;
     const rank = SETTINGS_LAYER_RANK[layer];
     const effective = winningProjectFamilyRank.get(event) === rank;
-    hook.commandcodeEffective = effective;
+    hook.effective = effective;
     if (!effective) {
       continue;
     }
@@ -658,39 +544,9 @@ export function applyCommandcodeHookPrecedence(hooks: HookFact[]): void {
       continue;
     }
     const identity = hookCommandIdentity(hook);
-    const eventCommands = effectiveProjectCommands.get(hookEventKey(hook));
-    hook.commandcodeEffective =
+    const eventCommands = effectiveProjectCommands.get(hook.event);
+    hook.effective =
       identity === undefined || eventCommands === undefined || !eventCommands.has(identity);
-  }
-}
-
-export function applyCommandcodeAgentPrecedence(
-  agents: AgentFact[],
-  commandcodeProjectRoot: string,
-): void {
-  const home = homedir();
-  const userDir = resolve(join(home, ".commandcode", "agents"));
-  const projectDir = resolve(join(commandcodeProjectRoot, ".commandcode", "agents"));
-  const personal: AgentFact[] = [];
-  const project: AgentFact[] = [];
-  for (const agent of agents) {
-    if (agent.sourceProvider !== "commandcode") {
-      continue;
-    }
-    if (pathInside(agent.path, userDir)) {
-      personal.push(agent);
-    } else if (pathInside(agent.path, projectDir)) {
-      project.push(agent);
-    }
-  }
-  const seen = new Set<string>();
-  for (const agent of [...personal, ...project]) {
-    if (seen.has(agent.name)) {
-      agent.commandcodeEffective = false;
-    } else {
-      seen.add(agent.name);
-      agent.commandcodeEffective = true;
-    }
   }
 }
 
@@ -703,56 +559,21 @@ export function applyCommandcodeSkillPrecedence(
     includeGlobal: boolean;
   },
 ): void {
-  const home = homedir();
   const projectCc = resolve(join(ctx.commandcodeProjectRoot, ".commandcode", "skills"));
-  const userCc = resolve(join(home, ".commandcode", "skills"));
-  const userAgents = resolve(join(home, ".agents", "skills"));
+  const userCc = resolve(join(providerHome("commandcode"), "skills"));
+  const userAgents = resolve(join(providerHome("agent-skills"), "skills"));
   const projectAgents = ctx.agentsSkillsRoots.map((dir) => resolve(dir));
   const extras = ctx.extraDirs.map((dir) => resolve(dir));
 
-  const rankOf = (skill: SkillFact): number | undefined => {
-    const p = resolve(skill.path);
-    if (pathInside(p, projectCc)) {
-      return 4;
-    }
-    if (projectAgents.some((dir) => pathInside(p, dir))) {
-      return 3;
-    }
-    if (ctx.includeGlobal && pathInside(p, userCc)) {
-      return 2;
-    }
-    if (ctx.includeGlobal && pathInside(p, userAgents)) {
-      return 1;
-    }
-    if (extras.some((dir) => pathInside(p, dir))) {
-      return 0;
-    }
-    return undefined;
-  };
-
-  const ranked: { skill: SkillFact; rank: number }[] = [];
-  for (const skill of skills) {
-    const rank = rankOf(skill);
-    if (rank === undefined) {
-      continue;
-    }
-    ranked.push({ skill, rank });
-  }
-  const best = new Map<string, number>();
-  for (const item of ranked) {
-    const current = best.get(item.skill.id);
-    if (current === undefined || item.rank > current) {
-      best.set(item.skill.id, item.rank);
-    }
-  }
-  const seenWinner = new Set<string>();
-  for (const item of ranked) {
-    const winning = best.get(item.skill.id) ?? item.rank;
-    if (item.rank === winning && !seenWinner.has(item.skill.id)) {
-      item.skill.commandcodeEffective = true;
-      seenWinner.add(item.skill.id);
-    } else {
-      item.skill.commandcodeEffective = false;
-    }
-  }
+  const table: RankTable = [
+    [projectCc, 4],
+    ...projectAgents.map((dir): [string, number] => [dir, 3]),
+    ...(ctx.includeGlobal ? ([[userCc, 2], [userAgents, 1]] satisfies RankTable) : []),
+    ...extras.map((dir): [string, number] => [dir, 0]),
+  ];
+  applyPrecedence(
+    skills,
+    (skill) => skill.id,
+    (skill) => rankIn(table, (dir) => isInside(resolve(skill.path), dir)),
+  );
 }

@@ -1,21 +1,29 @@
 import { describe, expect, test } from "bun:test";
 import type { Facts, HookFact, McpFact, SkillFact } from "../../src/facts/types";
 import { runChecks, STRUCTURAL_CHECKS } from "../../src/checks/index";
+import { secretLabelOf } from "../../src/discover/mcp";
+import { agentFact, hookFact, mcpFact, skillFact } from "../helpers/facts";
+import { defaultConfig, type Thresholds } from "../../src/config/schema";
+
+/** Run the listing and budget checks at the defaults, with these overrides. */
+const limits = (t: Partial<Thresholds> = {}) => ({ thresholds: { ...defaultConfig.thresholds, ...t } });
 
 function skill(partial: Partial<SkillFact> & Pick<SkillFact, "id">): SkillFact {
-  return {
+  return skillFact({
     path: `.claude/skills/${partial.id}`,
     source: "project",
-    sourceProvider: "claude",
     hasSkillMd: true,
     hasFrontmatter: true,
     ...partial,
-  };
+  });
 }
 
 function baseFacts(overrides: Partial<Facts> = {}): Facts {
   return {
     root: "/tmp/proj",
+    skillLockRoots: ["/tmp/proj"],
+    codexProjectDocMaxBytes: 32_768,
+    codexInstructionChain: [],
     packageManager: "bun",
     dependencies: {},
     devDependencies: {},
@@ -32,7 +40,7 @@ function baseFacts(overrides: Partial<Facts> = {}): Facts {
 }
 
 function ids(facts: Facts): string[] {
-  return runChecks(facts).map((f) => f.ruleId);
+  return runChecks(facts, limits()).map((f) => f.ruleId);
 }
 
 describe("config errors", () => {
@@ -46,7 +54,7 @@ describe("config errors", () => {
             detail: "Unexpected token }",
           },
         ],
-      }),
+      }), limits(),
     );
     expect(findings).toHaveLength(1);
     const f = findings[0]!;
@@ -62,44 +70,25 @@ describe("config errors", () => {
       skills: [skill({ id: "local" })],
       hasSkillsLock: true,
       skillsLockInvalid: true,
-    }));
+    }), limits());
     expect(findings.map((finding) => finding.ruleId)).not.toContain("skill.not-in-lock");
   });
 });
 
 describe("hook checks", () => {
   const hook = (partial: Partial<HookFact>): HookFact => ({
-    name: "PreToolUse",
     path: "/tmp/proj/.claude/settings.json",
     event: "PreToolUse",
+    sourceProvider: "claude",
+    schemaProfile: "claude",
     ...partial,
-  });
-
-  test("missing hook script is an error — the hook silently does nothing", () => {
-    const findings = runChecks(
-      baseFacts({
-        hooks: [
-          hook({
-            command: "node .claude/hooks/protect-env.js",
-            scriptPath: ".claude/hooks/protect-env.js",
-            scriptExists: false,
-          }),
-        ],
-      }),
-    );
-    expect(findings).toHaveLength(1);
-    const f = findings[0]!;
-    expect(f.ruleId).toBe("claude.hook.missing-script");
-    expect(f.severity).toBe("error");
-    expect(f.action).toBe("warn");
-    expect(f.subject).toBe("hook:PreToolUse:.claude/hooks/protect-env.js");
   });
 
   test("unknown event name is an error — the hook never fires", () => {
     const findings = runChecks(
       baseFacts({
-        hooks: [hook({ name: "PreToolUce", event: "PreToolUce" })],
-      }),
+        hooks: [hook({ event: "PreToolUce" })],
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["claude.hook.unknown-event"]);
     expect(findings[0]!.severity).toBe("error");
@@ -115,51 +104,9 @@ describe("hook checks", () => {
           hook({ event: "PreToolUce", command: "node b.js" }),
           hook({ event: "PreToolUce", command: "node c.js" }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings).toHaveLength(1);
-  });
-
-  test("every real event name is accepted", () => {
-    // The full set from https://code.claude.com/docs/en/hooks — an incomplete
-    // list here means reporting a working hook as dead, at severity error.
-    const events = [
-      "SessionStart",
-      "Setup",
-      "UserPromptSubmit",
-      "UserPromptExpansion",
-      "PreToolUse",
-      "PermissionRequest",
-      "PermissionDenied",
-      "PostToolUse",
-      "PostToolUseFailure",
-      "PostToolBatch",
-      "Notification",
-      "MessageDisplay",
-      "SubagentStart",
-      "SubagentStop",
-      "TaskCreated",
-      "TaskCompleted",
-      "Stop",
-      "StopFailure",
-      "TeammateIdle",
-      "InstructionsLoaded",
-      "ConfigChange",
-      "CwdChanged",
-      "DirectoryAdded",
-      "FileChanged",
-      "WorktreeCreate",
-      "WorktreeRemove",
-      "PreCompact",
-      "PostCompact",
-      "Elicitation",
-      "ElicitationResult",
-      "SessionEnd",
-    ];
-    const findings = runChecks(
-      baseFacts({ hooks: events.map((event) => hook({ event, name: event })) }),
-    );
-    expect(findings).toEqual([]);
   });
 
   test("existing script and unresolvable command produce nothing", () => {
@@ -170,7 +117,7 @@ describe("hook checks", () => {
           hook({ command: "rtk git status" }),
           hook({}),
         ],
-      }),
+      }), limits(),
     );
     expect(findings).toEqual([]);
   });
@@ -181,7 +128,7 @@ describe("skill structure checks", () => {
     const findings = runChecks(
       baseFacts({
         skills: [skill({ id: "grouping-folder", hasSkillMd: false, hasFrontmatter: false })],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.missing-skill-md"]);
     expect(findings[0]!.severity).toBe("warning");
@@ -189,7 +136,7 @@ describe("skill structure checks", () => {
 
   test("missing frontmatter reported once, not also as missing name", () => {
     const findings = runChecks(
-      baseFacts({ skills: [skill({ id: "context7-mcp", hasFrontmatter: false })] }),
+      baseFacts({ skills: [skill({ id: "context7-mcp", hasFrontmatter: false })] }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["claude.skill.missing-frontmatter"]);
   });
@@ -206,14 +153,14 @@ describe("skill structure checks", () => {
             description: "d",
           }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings).toEqual([]);
   });
 
   test("frontmatter with no name at all is not a finding", () => {
     const findings = runChecks(
-      baseFacts({ skills: [skill({ id: "s", description: "d" })] }),
+      baseFacts({ skills: [skill({ id: "s", description: "d" })] }), limits(),
     );
     expect(findings).toEqual([]);
   });
@@ -222,7 +169,7 @@ describe("skill structure checks", () => {
     const findings = runChecks(
       baseFacts({
         skills: [skill({ id: "seo", frontmatterName: "seo", description: "d" })],
-      }),
+      }), limits(),
     );
     expect(findings).toEqual([]);
   });
@@ -239,7 +186,7 @@ describe("skills-lock integrity", () => {
           skill({ id: "seo", frontmatterName: "seo", description: "seo help" }),
           skill({ id: "my-local", frontmatterName: "my-local", description: "local help" }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.not-in-lock"]);
     expect(findings[0]!.subject).toBe("skill:my-local");
@@ -252,7 +199,7 @@ describe("skills-lock integrity", () => {
         hasSkillsLock: true,
         lockedSkills: [{ id: "seo", source: "addyosmani/web-quality-skills" }],
         skills: [],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.locked-not-installed"]);
     expect(findings[0]!.severity).toBe("warning");
@@ -274,7 +221,7 @@ describe("skills-lock integrity", () => {
             description: "d",
           }),
         ],
-      }),
+      }), limits(),
     );
     // a project lockfile cannot pin a skill that lives in the user's home dir
     expect(findings).toEqual([]);
@@ -291,7 +238,7 @@ describe("skills-lock integrity", () => {
             hasFrontmatter: false,
           }),
         ],
-      }),
+      }), limits(),
     );
     // malformed is malformed wherever it lives
     expect(findings.map((f) => f.ruleId)).toEqual(["claude.skill.missing-frontmatter"]);
@@ -317,7 +264,7 @@ describe("skills-lock integrity", () => {
           }),
         ],
       }),
-      { requireLock: true },
+      { requireLock: true, ...limits() },
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.no-lockfile"]);
     expect(findings[0]!.message).toContain("1 skill ");
@@ -328,7 +275,7 @@ describe("skills-lock integrity", () => {
       baseFacts({
         hasSkillsLock: false,
         skills: [skill({ id: "whatever", frontmatterName: "whatever", description: "d" })],
-      }),
+      }), limits(),
     );
     expect(findings).toEqual([]);
   });
@@ -341,7 +288,7 @@ describe("skills-lock integrity", () => {
           skill({ id: `s${i}`, frontmatterName: `s${i}`, description: `d${i}` }),
         ),
       }),
-      { requireLock: true },
+      { requireLock: true, ...limits() },
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.no-lockfile"]);
     expect(findings[0]!.message).toContain("5");
@@ -360,7 +307,7 @@ describe("broken bundled references", () => {
             brokenReferences: ["references/gone.md", "scripts/also-gone.ts"],
           }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.broken-reference"]);
     expect(findings[0]!.severity).toBe("warning");
@@ -379,7 +326,7 @@ describe("broken bundled references", () => {
             brokenReferences: ["a/1.md", "a/2.md", "a/3.md", "a/4.md", "a/5.md"],
           }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings[0]!.message).toContain("+2 more");
   });
@@ -396,7 +343,7 @@ describe("broken bundled references", () => {
             brokenReferences: [],
           }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings).toEqual([]);
   });
@@ -406,17 +353,18 @@ describe("agent definitions", () => {
   const agent = (
     name: string,
     extra: { hasFrontmatter?: boolean; description?: string } = {},
-  ) => ({
-    name,
-    path: `.claude/agents/${name}.md`,
-    hasFrontmatter: true,
-    frontmatterName: name,
-    ...extra,
-  });
+  ) =>
+    agentFact({
+      name,
+      path: `.claude/agents/${name}.md`,
+      hasFrontmatter: true,
+      frontmatterName: name,
+      ...extra,
+    });
 
   test("no frontmatter block is an error", () => {
     const findings = runChecks(
-      baseFacts({ agents: [agent("reviewer", { hasFrontmatter: false })] }),
+      baseFacts({ agents: [agent("reviewer", { hasFrontmatter: false })] }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["claude.agent.missing-frontmatter"]);
     expect(findings[0]!.severity).toBe("error");
@@ -424,7 +372,7 @@ describe("agent definitions", () => {
   });
 
   test("frontmatter with no description is an error", () => {
-    const findings = runChecks(baseFacts({ agents: [agent("reviewer")] }));
+    const findings = runChecks(baseFacts({ agents: [agent("reviewer")] }), limits());
     expect(findings.map((f) => f.ruleId)).toEqual(["claude.agent.missing-description"]);
     expect(findings[0]!.severity).toBe("error");
   });
@@ -437,15 +385,15 @@ describe("agent definitions", () => {
     const findings = runChecks(
       baseFacts({
         agents: [
-          {
+          agentFact({
             name: "marketing-seo-specialist",
             path: ".claude/agents/marketing-seo-specialist.md",
             hasFrontmatter: true,
             frontmatterName: "SEO Specialist",
             description: "Optimises pages for search",
-          },
+          }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["claude.agent.invalid-name"]);
     expect(findings[0]!.severity).toBe("warning");
@@ -453,13 +401,13 @@ describe("agent definitions", () => {
 
   test("a complete agent produces nothing", () => {
     expect(
-      runChecks(baseFacts({ agents: [agent("reviewer", { description: "Reviews code" })] })),
+      runChecks(baseFacts({ agents: [agent("reviewer", { description: "Reviews code" })] }), limits()),
     ).toEqual([]);
   });
 
   test("missing frontmatter is reported once, not also as missing description", () => {
     const findings = runChecks(
-      baseFacts({ agents: [agent("x", { hasFrontmatter: false })] }),
+      baseFacts({ agents: [agent("x", { hasFrontmatter: false })] }), limits(),
     );
     expect(findings).toHaveLength(1);
   });
@@ -471,15 +419,15 @@ describe("agent definitions", () => {
     const findings = runChecks(
       baseFacts({
         agents: [
-          {
+          agentFact({
             name: "engineering-api-platform-engineer",
             path: ".claude/agents/engineering-api-platform-engineer.md",
             hasFrontmatter: true,
             frontmatterName: "api-platform-engineer",
             description: "Designs API platforms",
-          },
+          }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings).toEqual([]);
   });
@@ -493,7 +441,7 @@ describe("skills an agent cannot tell apart", () => {
     const findings = runChecks(
       baseFacts({
         skills: [desc("firebase-basics", "Firebase help"), desc("firebase-firestore", "Firebase help")],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.duplicate-description"]);
     expect(findings[0]!.subject).toBe("skills:firebase-basics firebase-firestore");
@@ -504,7 +452,7 @@ describe("skills an agent cannot tell apart", () => {
 
   test("three sharing one description stay one finding", () => {
     const findings = runChecks(
-      baseFacts({ skills: [desc("a", "same"), desc("b", "same"), desc("c", "same")] }),
+      baseFacts({ skills: [desc("a", "same"), desc("b", "same"), desc("c", "same")] }), limits(),
     );
     expect(findings).toHaveLength(1);
     expect(findings[0]!.subject).toBe("skills:a b c");
@@ -528,7 +476,7 @@ describe("skills an agent cannot tell apart", () => {
             description: "Audit accessibility",
           }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings.filter((f) => f.ruleId === "skill.duplicate-description")).toEqual([]);
   });
@@ -540,21 +488,21 @@ describe("skills an agent cannot tell apart", () => {
           skill({ id: "a11y-one", path: "app-a/.claude/skills/a11y-one", description: "Audit accessibility" }),
           skill({ id: "a11y-two", path: "app-a/.claude/skills/a11y-two", description: "Audit accessibility" }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.duplicate-description"]);
   });
 
   test("whitespace and case differences still collide", () => {
     const findings = runChecks(
-      baseFacts({ skills: [desc("a", "  Deploy   the App "), desc("b", "deploy the app")] }),
+      baseFacts({ skills: [desc("a", "  Deploy   the App "), desc("b", "deploy the app")] }), limits(),
     );
     expect(findings).toHaveLength(1);
   });
 
   test("different descriptions produce nothing", () => {
     expect(
-      runChecks(baseFacts({ skills: [desc("a", "one"), desc("b", "two")] })),
+      runChecks(baseFacts({ skills: [desc("a", "one"), desc("b", "two")] }), limits()),
     ).toEqual([]);
   });
 
@@ -564,7 +512,7 @@ describe("skills an agent cannot tell apart", () => {
         { ...desc("agents-skill", "same"), path: ".agents/skills/agents-skill" },
         { ...desc("claude-skill", "same"), path: ".claude/skills/claude-skill" },
       ],
-    }));
+    }), limits());
     expect(findings).toEqual([]);
   });
 
@@ -577,7 +525,7 @@ describe("skills an agent cannot tell apart", () => {
         hasFrontmatter: false,
         brokenReferences: ["references/missing.md"],
       })],
-    }));
+    }), limits());
     expect(findings.map((f) => f.ruleId)).toEqual([
       "agent-skills.skill.missing-frontmatter",
     ]);
@@ -593,7 +541,7 @@ describe("skills an agent cannot tell apart", () => {
         description: "Points at a missing file.",
         brokenReferences: ["references/missing.md"],
       })],
-    }));
+    }), limits());
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.broken-reference"]);
   });
 
@@ -606,27 +554,16 @@ describe("skills an agent cannot tell apart", () => {
         frontmatterName: "PDF-Processing",
         description: "Extract text from PDFs.",
       })],
-    }));
+    }), limits());
     expect(findings.map((f) => f.ruleId).sort()).toEqual([
       "agent-skills.skill.invalid-name",
       "agent-skills.skill.name-does-not-match-directory",
     ]);
   });
 
-  test("claude skills do not require name to match the directory", () => {
-    const findings = runChecks(baseFacts({
-      skills: [skill({
-        id: "deploy",
-        frontmatterName: "Deploy Helper",
-        description: "Deploy the app",
-      })],
-    }));
-    expect(findings.map((f) => f.ruleId)).toEqual([]);
-  });
-
   test("a skill with no description is left to claude.skill.missing-description", () => {
     const findings = runChecks(
-      baseFacts({ skills: [skill({ id: "a", frontmatterName: "a" }), skill({ id: "b", frontmatterName: "b" })] }),
+      baseFacts({ skills: [skill({ id: "a", frontmatterName: "a" }), skill({ id: "b", frontmatterName: "b" })] }), limits(),
     );
     expect(findings.map((f) => f.ruleId).sort()).toEqual([
       "claude.skill.missing-description",
@@ -638,7 +575,7 @@ describe("skills an agent cannot tell apart", () => {
     const findings = runChecks(
       baseFacts({
         skills: [desc("z1", "beta"), desc("a1", "alpha"), desc("a2", "alpha"), desc("z2", "beta")],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.subject)).toEqual([
       "skills:a1 a2",
@@ -652,7 +589,7 @@ describe("skills an agent cannot tell apart", () => {
       source: "global" as const,
       path: `/home/u/.claude/skills/${id}`,
     });
-    expect(runChecks(baseFacts({ skills: [g("a"), g("b")] }))).toEqual([]);
+    expect(runChecks(baseFacts({ skills: [g("a"), g("b")] }), limits())).toEqual([]);
   });
 });
 
@@ -663,7 +600,7 @@ describe("skill description budget", () => {
   test("under the ceiling produces nothing", () => {
     const findings = runChecks(
       baseFacts({ skills: [withDesc("a", 100)] }),
-      { skillListingChars: 1000 },
+      limits({ skillListingChars: 1000 }),
     );
     expect(findings).toEqual([]);
   });
@@ -671,7 +608,7 @@ describe("skill description budget", () => {
   test("over the ceiling is one info finding naming the totals", () => {
     const findings = runChecks(
       baseFacts({ skills: [withDesc("a", 600), withDesc("b", 601)] }),
-      { skillListingChars: 1000 },
+      limits({ skillListingChars: 1000 }),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.description-budget"]);
     expect(findings[0]!.severity).toBe("info");
@@ -688,7 +625,7 @@ describe("skill description budget", () => {
           skill({ id: "b", path: "app-b/.claude/skills/b", description: "x".repeat(601) }),
         ],
       }),
-      { skillListingChars: 1000 },
+      limits({ skillListingChars: 1000 }),
     );
     expect(split).toEqual([]);
   });
@@ -702,7 +639,7 @@ describe("skill description budget", () => {
           skill({ id: "c", path: "app-b/.claude/skills/c", description: "x".repeat(10) }),
         ],
       }),
-      { skillListingChars: 1000 },
+      limits({ skillListingChars: 1000 }),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.description-budget"]);
     expect(findings[0]!.subject).toBe(
@@ -718,40 +655,38 @@ describe("skill description budget", () => {
       path: "/home/u/.claude/skills/g",
     };
     expect(
-      runChecks(baseFacts({ skills: [g] }), { skillListingChars: 1000 }),
+      runChecks(baseFacts({ skills: [g] }), limits({ skillListingChars: 1000 })),
     ).toEqual([]);
   });
 
   test("no ceiling configured means no check", () => {
     expect(
-      runChecks(baseFacts({ skills: [withDesc("a", 99_999)] })),
+      runChecks(baseFacts({ skills: [withDesc("a", 99_999)] }), limits()),
     ).toEqual([]);
   });
 });
 
 describe("review regressions", () => {
   test("the same guard under two matchers is one finding", () => {
-    const h = (matcher: string) => ({
-      name: "PreToolUse",
+    const h = (matcher: string) => hookFact({
       path: `/p/.claude/settings.json#${matcher}`,
       event: "PreToolUse",
       command: "./scripts/guard.sh",
       scriptPath: "./scripts/guard.sh",
       scriptExists: false,
     });
-    expect(runChecks(baseFacts({ hooks: [h("Bash"), h("Write")] }))).toHaveLength(1);
+    expect(runChecks(baseFacts({ hooks: [h("Bash"), h("Write")] }), limits())).toHaveLength(1);
   });
 
   test("one MCP name in two files gives two distinct ids", () => {
-    const s = (path: string) => ({
+    const s = (path: string) => mcpFact({
       name: "db",
       path,
       hasCommand: false,
       hasUrl: false,
       literalEnvKeys: [] as string[],
-      raw: "{}",
     });
-    const f = runChecks(baseFacts({ mcp: [s("/p/.mcp.json"), s("/p/mcp.json")] }));
+    const f = runChecks(baseFacts({ mcp: [s("/p/.mcp.json"), s("/p/mcp.json")] }), limits());
     expect(f).toHaveLength(2);
     expect(new Set(f.map((x) => x.id)).size).toBe(2);
   });
@@ -761,16 +696,16 @@ describe("review regressions", () => {
       runChecks(
         baseFacts({
           mcp: [
-            {
+            mcpFact({
               name: "tk",
               path: "/p/.mcp.json",
               hasCommand: true,
               hasUrl: false,
               literalEnvKeys: [],
-              raw: '{"args":["--from","git+https://github.com/acme/sk-mcp-server-toolkit"]}',
-            },
+              secretLabel: secretLabelOf('{"args":["--from","git+https://github.com/acme/sk-mcp-server-toolkit"]}'),
+            }),
           ],
-        }),
+        }), limits(),
       ),
     ).toEqual([]);
   });
@@ -779,16 +714,16 @@ describe("review regressions", () => {
     const f = runChecks(
       baseFacts({
         mcp: [
-          {
+          mcpFact({
             name: "ai",
             path: "/p/.mcp.json",
             hasCommand: true,
             hasUrl: false,
             literalEnvKeys: [],
-            raw: '{"env":{"K":"sk-proj0123456789abcdefghij"}}',
-          },
+            secretLabel: secretLabelOf('{"env":{"K":"sk-proj0123456789abcdefghij"}}'),
+          }),
         ],
-      }),
+      }), limits(),
     );
     expect(f.map((x) => x.ruleId)).toEqual(["security.hardcoded-secret"]);
     expect(JSON.stringify(f)).not.toContain("proj0123456789");
@@ -800,7 +735,7 @@ describe("review regressions", () => {
     const f = runChecks(
       baseFacts({
         skills: [d("a+b", "Alpha"), d("c", "Alpha"), d("a", "Beta"), d("b+c", "Beta")],
-      }),
+      }), limits(),
     );
     expect(f).toHaveLength(2);
     expect(new Set(f.map((x) => x.id)).size).toBe(2);
@@ -818,7 +753,7 @@ describe("review regressions", () => {
           }),
         ],
       }),
-      { skillListingChars: 40 },
+      limits({ skillListingChars: 40 }),
     );
     expect(f.map((x) => x.ruleId)).toEqual(["skill.missing-skill-md"]);
   });
@@ -828,7 +763,7 @@ describe("review regressions", () => {
       baseFacts({
         skills: [skill({ id: "s", frontmatterName: "s", description: "x".repeat(20_000) })],
       }),
-      { skillListingChars: 8_000, skillListingMaxDescChars: 1_536 },
+      limits(),
     );
     expect(findings.map((f) => f.ruleId)).not.toContain("skill.description-budget");
   });
@@ -841,10 +776,7 @@ describe("review regressions", () => {
         description: `${String(i).padStart(2, "0")}${"x".repeat(1_534)}`,
       }),
     );
-    const findings = runChecks(baseFacts({ skills }), {
-      skillListingChars: 8_000,
-      skillListingMaxDescChars: 1_536,
-    });
+    const findings = runChecks(baseFacts({ skills }), limits());
     expect(findings.map((f) => f.ruleId)).toEqual(["skill.description-budget"]);
     expect(findings[0]!.message).toContain("per-entry cap 1536");
   });
@@ -854,32 +786,32 @@ describe("review regressions", () => {
       baseFacts({
         skills: [skill({ id: "s", frontmatterName: "s", description: "é".repeat(30) })],
       }),
-      { skillListingChars: 20 },
+      limits({ skillListingChars: 20 }),
     );
     expect(over.map((x) => x.ruleId)).toEqual(["skill.description-budget"]);
     const under = runChecks(
       baseFacts({
         skills: [skill({ id: "s", frontmatterName: "s", description: "é".repeat(30) })],
       }),
-      { skillListingChars: 40 },
+      limits({ skillListingChars: 40 }),
     );
     expect(under.map((x) => x.ruleId)).toEqual([]);
   });
 });
 
 describe("mcp checks", () => {
-  const mcp = (partial: Partial<McpFact> & Pick<McpFact, "name">): McpFact => ({
-    path: "/tmp/proj/.mcp.json",
-    hasCommand: true,
-    hasUrl: false,
-    literalEnvKeys: [],
-    raw: "{}",
-    ...partial,
-  });
+  const mcp = (partial: Partial<McpFact> & Pick<McpFact, "name">): McpFact =>
+    mcpFact({
+      path: "/tmp/proj/.mcp.json",
+      hasCommand: true,
+      hasUrl: false,
+      literalEnvKeys: [],
+      ...partial,
+    });
 
   test("server with neither command nor url is unlaunchable by schema", () => {
     const findings = runChecks(
-      baseFacts({ mcp: [mcp({ name: "broken", hasCommand: false })] }),
+      baseFacts({ mcp: [mcp({ name: "broken", hasCommand: false })] }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["claude.mcp.no-launch"]);
     expect(findings[0]!.severity).toBe("error");
@@ -896,7 +828,7 @@ describe("mcp checks", () => {
             commandExists: false,
           }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["mcp.command-missing"]);
     expect(findings[0]!.severity).toBe("error");
@@ -913,7 +845,7 @@ describe("mcp checks", () => {
             // discovery leaves commandExists unset for bare names
           }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).not.toContain("mcp.command-missing");
   });
@@ -929,7 +861,7 @@ describe("mcp checks", () => {
             transport: "http",
           }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings).toEqual([]);
   });
@@ -938,7 +870,7 @@ describe("mcp checks", () => {
     const findings = runChecks(
       baseFacts({
         mcp: [mcp({ name: "remote", hasCommand: false, hasUrl: true })],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["claude.mcp.url-without-type"]);
     expect(findings[0]!.severity).toBe("error");
@@ -950,10 +882,10 @@ describe("mcp checks", () => {
         mcp: [
           mcp({
             name: "gh",
-            raw: '{"env":{"GITHUB_TOKEN":"ghp_abcdefghij0123456789abcd"}}',
+            secretLabel: secretLabelOf('{"env":{"GITHUB_TOKEN":"ghp_abcdefghij0123456789abcd"}}'),
           }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["security.hardcoded-secret"]);
     expect(findings[0]!.severity).toBe("error");
@@ -968,10 +900,10 @@ describe("mcp checks", () => {
         mcp: [
           mcp({
             name: "svc",
-            raw: '{"env":{"K":"sk-ant-api03-ABCDEFGHIJKLMNOP"}}',
+            secretLabel: secretLabelOf('{"env":{"K":"sk-ant-api03-ABCDEFGHIJKLMNOP"}}'),
           }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings[0]!.ruleId).toBe("security.hardcoded-secret");
     // rotating at the wrong provider is the worst failure for this finding
@@ -984,7 +916,7 @@ describe("mcp checks", () => {
     const findings = runChecks(
       baseFacts({
         mcp: [mcp({ name: "svc", literalEnvKeys: ["API_KEY"] })],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["mcp.literal-env"]);
     expect(findings[0]!.message).toContain("API_KEY");
@@ -1000,10 +932,10 @@ describe("mcp checks", () => {
             hasUrl: true,
             schemaProfile: "cursor-json",
             literalCredentialFields: ["auth.CLIENT_SECRET", "headers.Authorization"],
-            raw: '{"auth":{"CLIENT_SECRET":"oauth-client-secret-value"}}',
+            secretLabel: secretLabelOf('{"auth":{"CLIENT_SECRET":"oauth-client-secret-value"}}'),
           }),
         ],
-      }),
+      }), limits(),
     );
     expect(findings.map((f) => f.ruleId)).toEqual(["mcp.literal-credential"]);
     expect(findings[0]!.severity).toBe("warning");
@@ -1016,8 +948,8 @@ describe("mcp checks", () => {
   test("${VAR} indirection produces nothing", () => {
     const findings = runChecks(
       baseFacts({
-        mcp: [mcp({ name: "svc", raw: '{"env":{"API_KEY":"${API_KEY}"}}' })],
-      }),
+        mcp: [mcp({ name: "svc", secretLabel: secretLabelOf('{"env":{"API_KEY":"${API_KEY}"}}') })],
+      }), limits(),
     );
     expect(findings).toEqual([]);
   });
@@ -1043,11 +975,11 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
         },
       ],
       agents: [
-        { name: "bare", path: ".claude/agents/bare.md", hasFrontmatter: false },
-        { name: "nodesc", path: ".claude/agents/nodesc.md", hasFrontmatter: true },
-        { name: "dup-a", path: ".claude/agents/dup-a.md", hasFrontmatter: true, frontmatterName: "duplicate", description: "d" },
-        { name: "dup-b", path: ".claude/agents/dup-b.md", hasFrontmatter: true, frontmatterName: "duplicate", description: "d" },
-        { name: "bad", path: ".claude/agents/bad.md", hasFrontmatter: true, frontmatterName: "Bad Name", description: "d" },
+        agentFact({ name: "bare", path: ".claude/agents/bare.md", hasFrontmatter: false }),
+        agentFact({ name: "nodesc", path: ".claude/agents/nodesc.md", hasFrontmatter: true }),
+        agentFact({ name: "dup-a", path: ".claude/agents/dup-a.md", hasFrontmatter: true, frontmatterName: "duplicate", description: "d" }),
+        agentFact({ name: "dup-b", path: ".claude/agents/dup-b.md", hasFrontmatter: true, frontmatterName: "duplicate", description: "d" }),
+        agentFact({ name: "bad", path: ".claude/agents/bad.md", hasFrontmatter: true, frontmatterName: "Bad Name", description: "d" }),
         {
           name: "explore",
           path: ".commandcode/agents/explore.md",
@@ -1076,95 +1008,85 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
         },
       ],
       hooks: [
-        {
-          name: "Nope",
+        hookFact({
           path: "/tmp/proj/.claude/settings.json",
           event: "Nope",
-        },
-        {
-          name: "PreToolUse",
+        }),
+        hookFact({
           path: "/tmp/proj/.claude/settings.json",
           event: "PreToolUse",
           command: "node gone.js",
           scriptPath: "./gone.js",
           scriptExists: false,
-        },
-        {
-          name: "NotVscode",
+        }),
+        hookFact({
           path: "/tmp/proj/.github/hooks/x.json",
           event: "NotVscode",
           source: "vscode-hooks",
           sourceProvider: "vscode",
-        },
-        {
-          name: "PreToolUse",
+          schemaProfile: "vscode-native",
+        }),
+        hookFact({
           path: "/tmp/proj/.github/hooks/x.json",
           event: "PreToolUse",
           source: "vscode-hooks",
           sourceProvider: "vscode",
+          schemaProfile: "vscode-native",
           handlerType: "command",
           command: "node gone.js",
           scriptPath: "./gone.js",
           scriptExists: false,
-        },
-        {
-          name: "PreToolUse",
+        }),
+        hookFact({
           path: "/tmp/proj/.claude/settings.json",
           event: "PreToolUse",
           defect: "invalid-group",
-        },
-        {
-          name: "PreToolUse",
+        }),
+        hookFact({
           path: "/tmp/proj/.claude/settings.json",
           event: "PreToolUse",
           handlerType: "command",
           defect: "command-without-command",
-        },
-        {
-          name: "PreToolUse",
+        }),
+        hookFact({
           path: "/tmp/proj/.claude/settings.json",
           event: "PreToolUse",
           handlerType: "http",
           defect: "http-without-url",
-        },
-        {
-          name: "PreToolUse",
+        }),
+        hookFact({
           path: "/tmp/proj/.claude/settings.json",
           event: "PreToolUse",
           handlerType: "mcp_tool",
           defect: "mcp-tool-without-server-or-tool",
-        },
-        {
-          name: "PreToolUse",
+        }),
+        hookFact({
           path: "/tmp/proj/.claude/settings.json",
           event: "PreToolUse",
           handlerType: "prompt",
           defect: "prompt-without-prompt",
-        },
-        {
-          name: "SessionStart",
+        }),
+        hookFact({
           path: "/tmp/proj/.claude/settings.json",
           event: "SessionStart",
           handlerType: "http",
           defect: "incompatible-handler",
-        },
-        {
-          name: "PreToolUse",
+        }),
+        hookFact({
           path: "/tmp/proj/.claude/settings.json",
           event: "PreToolUse",
           defect: "unknown-handler-type",
           unknownHandlerType: "widget",
-        },
-        {
-          name: "PreToolUse",
+        }),
+        hookFact({
           path: "/tmp/proj/.github/hooks/x.json",
           event: "PreToolUse",
           source: "vscode-hooks",
           sourceProvider: "vscode",
+          schemaProfile: "vscode-native",
           defect: "invalid-group",
-        },
+        }),
         {
-          name: "PreToolUse",
           path: "/tmp/proj/.github/hooks/x.json",
           event: "PreToolUse",
           source: "vscode-hooks",
@@ -1174,7 +1096,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "command-without-command",
         },
         {
-          name: "PreToolUse",
           path: "/tmp/proj/.github/hooks/x.json",
           event: "PreToolUse",
           source: "vscode-hooks",
@@ -1184,7 +1105,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           unknownHandlerType: "widget",
         },
         {
-          name: "notAnEvent",
           path: "/tmp/proj/.github/hooks/copilot.json",
           event: "notAnEvent",
           source: "vscode-hooks",
@@ -1192,7 +1112,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           schemaProfile: "copilot-cli",
         },
         {
-          name: "sessionStart",
           path: "/tmp/proj/.github/hooks/copilot.json",
           event: "sessionStart",
           source: "vscode-hooks",
@@ -1204,7 +1123,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           scriptExists: false,
         },
         {
-          name: "sessionStart",
           path: "/tmp/proj/.github/hooks/copilot.json",
           event: "sessionStart",
           source: "vscode-hooks",
@@ -1214,7 +1132,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "command-without-command",
         },
         {
-          name: "sessionStart",
           path: "/tmp/proj/.github/hooks/copilot.json",
           event: "sessionStart",
           source: "vscode-hooks",
@@ -1224,7 +1141,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "http-without-url",
         },
         {
-          name: "sessionStart",
           path: "/tmp/proj/.github/hooks/copilot.json",
           event: "sessionStart",
           source: "vscode-hooks",
@@ -1234,7 +1150,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "prompt-without-prompt",
         },
         {
-          name: "sessionStart",
           path: "/tmp/proj/.github/hooks/copilot.json",
           event: "sessionStart",
           source: "vscode-hooks",
@@ -1244,7 +1159,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           unknownHandlerType: "widget",
         },
         {
-          name: "preToolUse",
           path: "/tmp/proj/.github/hooks/copilot.json",
           event: "preToolUse",
           source: "vscode-hooks",
@@ -1253,57 +1167,56 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           handlerType: "prompt",
           defect: "incompatible-handler",
         },
-        {
-          name: "NopeCc",
+        hookFact({
           path: "/tmp/proj/.commandcode/settings.json",
           event: "NopeCc",
           sourceProvider: "commandcode",
-        },
-        {
-          name: "PreToolUse",
+          schemaProfile: "commandcode",
+        }),
+        hookFact({
           path: "/tmp/proj/.commandcode/settings.json",
           event: "PreToolUse",
           sourceProvider: "commandcode",
+          schemaProfile: "commandcode",
           handlerType: "command",
           command: "node gone.js",
           scriptPath: "./gone-cc.js",
           scriptExists: false,
-        },
-        {
-          name: "PreToolUse",
+        }),
+        hookFact({
           path: "/tmp/proj/.commandcode/settings.json",
           event: "PreToolUse",
           sourceProvider: "commandcode",
+          schemaProfile: "commandcode",
           defect: "invalid-group",
-        },
-        {
-          name: "PreToolUse",
+        }),
+        hookFact({
           path: "/tmp/proj/.commandcode/settings.json",
           event: "PreToolUse",
           sourceProvider: "commandcode",
+          schemaProfile: "commandcode",
           handlerType: "command",
           defect: "command-without-command",
-        },
-        {
-          name: "PreToolUse",
+        }),
+        hookFact({
           path: "/tmp/proj/.commandcode/settings.json",
           event: "PreToolUse",
           sourceProvider: "commandcode",
+          schemaProfile: "commandcode",
           defect: "unknown-handler-type",
           unknownHandlerType: "http",
-        },
-        {
-          name: "Stop",
+        }),
+        hookFact({
           path: "/tmp/proj/.commandcode/settings.json",
           event: "Stop",
           sourceProvider: "commandcode",
+          schemaProfile: "commandcode",
           handlerType: "command",
           command: "true",
           timeout: 601,
           timeoutOutOfBounds: true,
-        },
+        }),
         {
-          name: "NopeGrok",
           path: "/tmp/proj/.grok/hooks/x.json",
           event: "NopeGrok",
           source: "grok-hooks",
@@ -1311,7 +1224,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           schemaProfile: "grok",
         },
         {
-          name: "PreToolUse",
           path: "/tmp/proj/.grok/hooks/x.json",
           event: "PreToolUse",
           source: "grok-hooks",
@@ -1323,7 +1235,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           scriptExists: false,
         },
         {
-          name: "PreToolUse",
           path: "/tmp/proj/.grok/hooks/x.json",
           event: "PreToolUse",
           source: "grok-hooks",
@@ -1332,7 +1243,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "invalid-group",
         },
         {
-          name: "PreToolUse",
           path: "/tmp/proj/.grok/hooks/x.json",
           event: "PreToolUse",
           source: "grok-hooks",
@@ -1342,7 +1252,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "command-without-command",
         },
         {
-          name: "Notification",
           path: "/tmp/proj/.grok/hooks/x.json",
           event: "Notification",
           source: "grok-hooks",
@@ -1352,7 +1261,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "http-without-url",
         },
         {
-          name: "PreToolUse",
           path: "/tmp/proj/.grok/hooks/x.json",
           event: "PreToolUse",
           source: "grok-hooks",
@@ -1362,7 +1270,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           unknownHandlerType: "mcp_tool",
         },
         {
-          name: "nope",
           path: "/tmp/proj/.windsurf/hooks.json",
           event: "nope",
           source: "windsurf-hooks",
@@ -1370,7 +1277,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           schemaProfile: "windsurf",
         },
         {
-          name: "pre_read_code",
           path: "/tmp/proj/.windsurf/hooks.json",
           event: "pre_read_code",
           source: "windsurf-hooks",
@@ -1382,7 +1288,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           scriptExists: false,
         },
         {
-          name: "pre_write_code",
           path: "/tmp/proj/.windsurf/hooks.json",
           event: "pre_write_code",
           source: "windsurf-hooks",
@@ -1392,7 +1297,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "command-without-command",
         },
         {
-          name: "PreToolUse",
           path: "/tmp/proj/.gemini/settings.json",
           event: "PreToolUse",
           source: "gemini-settings",
@@ -1400,7 +1304,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           schemaProfile: "gemini",
         },
         {
-          name: "BeforeTool",
           path: "/tmp/proj/.gemini/settings.json",
           event: "BeforeTool",
           source: "gemini-settings",
@@ -1412,7 +1315,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           scriptExists: false,
         },
         {
-          name: "AfterTool",
           path: "/tmp/proj/.gemini/settings.json",
           event: "AfterTool",
           source: "gemini-settings",
@@ -1421,7 +1323,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "invalid-group",
         },
         {
-          name: "BeforeAgent",
           path: "/tmp/proj/.gemini/settings.json",
           event: "BeforeAgent",
           source: "gemini-settings",
@@ -1431,7 +1332,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "command-without-command",
         },
         {
-          name: "AfterAgent",
           path: "/tmp/proj/.gemini/settings.json",
           event: "AfterAgent",
           source: "gemini-settings",
@@ -1441,7 +1341,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           unknownHandlerType: "http",
         },
         {
-          name: "PreToolUse",
           path: "/tmp/proj/.cursor/hooks.json",
           event: "PreToolUse",
           source: "cursor-hooks",
@@ -1449,7 +1348,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           schemaProfile: "cursor",
         },
         {
-          name: "preToolUse",
           path: "/tmp/proj/.cursor/hooks.json",
           event: "preToolUse",
           source: "cursor-hooks",
@@ -1461,7 +1359,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           scriptExists: false,
         },
         {
-          name: "postToolUse",
           path: "/tmp/proj/.cursor/hooks.json",
           event: "postToolUse",
           source: "cursor-hooks",
@@ -1471,7 +1368,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "command-without-command",
         },
         {
-          name: "afterFileEdit",
           path: "/tmp/proj/.cursor/hooks.json",
           event: "afterFileEdit",
           source: "cursor-hooks",
@@ -1481,7 +1377,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           unknownHandlerType: "http",
         },
         {
-          name: "NotAKiroEvent",
           path: "/tmp/proj/.kiro/hooks/bad.json",
           event: "NotAKiroEvent",
           source: "kiro-hooks",
@@ -1489,7 +1384,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           schemaProfile: "kiro",
         },
         {
-          name: "PreToolUse",
           path: "/tmp/proj/.kiro/hooks/guard.json",
           event: "PreToolUse",
           source: "kiro-hooks",
@@ -1501,7 +1395,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           scriptExists: false,
         },
         {
-          name: "Stop",
           path: "/tmp/proj/.kiro/hooks/no-cmd.json",
           event: "Stop",
           source: "kiro-hooks",
@@ -1511,7 +1404,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "command-without-command",
         },
         {
-          name: "SessionStart",
           path: "/tmp/proj/.kiro/hooks/no-prompt.json",
           event: "SessionStart",
           source: "kiro-hooks",
@@ -1521,7 +1413,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "prompt-without-prompt",
         },
         {
-          name: "PostFileSave",
           path: "/tmp/proj/.kiro/hooks/bad-type.json",
           event: "PostFileSave",
           source: "kiro-hooks",
@@ -1531,14 +1422,13 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           unknownHandlerType: "http",
         },
         {
-          name: "(file)",
           path: "/tmp/proj/.kiro/hooks/no-version.json",
           event: "(file)",
           source: "kiro-hooks",
           sourceProvider: "kiro",
           schemaProfile: "kiro",
           defect: "invalid-group",
-          kiroInvalidGroup: "missing-version",
+          defectDetail: "missing-version",
         },
       ],
       rules: [
@@ -1556,7 +1446,7 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           byteLength: 12_001,
           charCount: 12_001,
           windsurfScope: "workspace",
-          windsurfHasTrigger: true,
+          windsurfTrigger: "yes",
         },
         {
           path: "/home/user/.codeium/windsurf/memories/global_rules.md",
@@ -1573,7 +1463,7 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           byteLength: 100,
           charCount: 100,
           windsurfScope: "workspace",
-          windsurfHasTrigger: false,
+          windsurfTrigger: "no",
         },
       ],
       hasSkillsLock: true,
@@ -1671,79 +1561,71 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
         }),
       ],
       mcp: [
-        {
+        mcpFact({
           name: "dead",
           path: "/tmp/proj/.mcp.json",
           schemaProfile: "claude-json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "dead-vscode",
           path: "/tmp/proj/.vscode/mcp.json",
           schemaProfile: "vscode-json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "dead-cursor",
           path: "/tmp/proj/.cursor/mcp.json",
           schemaProfile: "cursor-json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "dead-ag",
           path: "/tmp/proj/.agents/mcp_config.json",
           schemaProfile: "antigravity-json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "dead-codex",
           path: "/tmp/proj/.codex/config.toml",
           schemaProfile: "codex-toml",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "dead-gemini",
           path: "/tmp/proj/.gemini/settings.json",
           schemaProfile: "gemini-json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "my_server",
           path: "/tmp/proj/.gemini/settings.json",
           schemaProfile: "gemini-json",
           hasCommand: true,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "dead-opencode",
           path: "/tmp/proj/opencode.jsonc",
           schemaProfile: "opencode-json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "oc-no-type",
           path: "/tmp/proj/opencode.jsonc",
           schemaProfile: "opencode-json",
@@ -1751,9 +1633,8 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           hasUrl: false,
           opencodeDefect: "missing-type",
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "oc-local",
           path: "/tmp/proj/opencode.jsonc",
           schemaProfile: "opencode-json",
@@ -1762,9 +1643,8 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           transport: "local",
           opencodeDefect: "local-without-command",
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "oc-remote",
           path: "/tmp/proj/opencode.jsonc",
           schemaProfile: "opencode-json",
@@ -1773,9 +1653,8 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           transport: "remote",
           opencodeDefect: "remote-without-url",
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "oc-mismatch",
           path: "/tmp/proj/opencode.jsonc",
           schemaProfile: "opencode-json",
@@ -1784,9 +1663,8 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           transport: "local",
           opencodeDefect: "invalid-launch-for-type",
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "oc-string-cmd",
           path: "/tmp/proj/opencode.jsonc",
           schemaProfile: "opencode-json",
@@ -1795,18 +1673,16 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           opencodeSchema: "v2",
           opencodeDefect: "command-not-array",
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "dead-continue",
           path: "/tmp/proj/.continue/config.yaml",
           schemaProfile: "continue-yaml",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "block-yaml",
           path: "/tmp/proj/.continue/mcpServers/docs.yaml",
           schemaProfile: "continue-yaml",
@@ -1814,36 +1690,32 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           hasUrl: false,
           continueMissingMetadataKeys: ["name", "version", "schema"],
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "dead-cc",
           path: "/tmp/proj/.commandcode/mcp.json",
           schemaProfile: "commandcode-json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "dead-grok",
           path: "/tmp/proj/.grok/config.toml",
           schemaProfile: "grok-toml",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "dead-windsurf",
           path: "/home/user/.codeium/windsurf/mcp_config.json",
           schemaProfile: "windsurf-json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "cc-bad-transport",
           path: "/tmp/proj/.mcp.json",
           schemaProfile: "mcp-json",
@@ -1852,9 +1724,8 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           transport: "ftp",
           commandcodeDefect: "invalid-transport",
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "cc-http",
           path: "/tmp/proj/.mcp.json",
           schemaProfile: "mcp-json",
@@ -1863,9 +1734,8 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           transport: "http",
           commandcodeDefect: "http-without-url",
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "cc-stdio",
           path: "/tmp/proj/.mcp.json",
           schemaProfile: "mcp-json",
@@ -1874,9 +1744,8 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           transport: "stdio",
           commandcodeDefect: "stdio-without-command",
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "gone-cmd",
           path: "/tmp/proj/.mcp.json",
           hasCommand: true,
@@ -1884,17 +1753,15 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           command: "./bin/missing",
           commandExists: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "typeless",
           path: "/tmp/proj/.mcp.json",
           hasCommand: false,
           hasUrl: true,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "workspace",
           path: "/tmp/proj/.mcp.json",
           schemaProfile: "mcp-json",
@@ -1902,25 +1769,23 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           hasCommand: true,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "leaky",
           path: "/tmp/proj/.mcp.json",
           hasCommand: true,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: '{"env":{"T":"ghp_abcdefghij0123456789abcd"}}',
-        },
-        {
+          secretLabel: secretLabelOf('{"env":{"T":"ghp_abcdefghij0123456789abcd"}}'),
+        }),
+        mcpFact({
           name: "literal",
           path: "/tmp/proj/.mcp.json",
           hasCommand: true,
           hasUrl: false,
           literalEnvKeys: ["API_KEY"],
-          raw: "{}",
-        },
-        {
+        }),
+        mcpFact({
           name: "header-secret",
           path: "/tmp/proj/.cursor/mcp.json",
           schemaProfile: "cursor-json",
@@ -1928,8 +1793,7 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           hasUrl: true,
           literalEnvKeys: [],
           literalCredentialFields: ["auth.CLIENT_SECRET"],
-          raw: "{}",
-        },
+        }),
       ],
     });
 
@@ -1942,19 +1806,18 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
     // structural fixtures above deliberately keep small.
     const overBudget = baseFacts({
       packageManager: "bun",
-      agents: Array.from({ length: 9 }, (_, i) => ({
+      agents: Array.from({ length: 9 }, (_, i) => agentFact({
         name: `a${i}`,
         path: `/tmp/proj/.claude/agents/a${i}.md`,
         hasFrontmatter: true,
         description: "d",
       })),
-      mcp: Array.from({ length: 6 }, (_, i) => ({
+      mcp: Array.from({ length: 6 }, (_, i) => mcpFact({
         name: `s${i}`,
         path: "/tmp/proj/.mcp.json",
         hasCommand: true,
         hasUrl: false,
         literalEnvKeys: [],
-        raw: "{}",
       })),
       policyFiles: [
         {
@@ -1971,21 +1834,18 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
         },
         { path: "/tmp/proj/CLAUDE.md", text: "line\n".repeat(300), kind: "claude-md" },
       ],
+      // Discovery computes the chain; the override is the one file Codex loads here.
+      codexInstructionChain: [
+        { path: "/tmp/proj/AGENTS.override.md", text: "x".repeat(33_000), kind: "agents-md" },
+      ],
     });
 
     const emitted = new Set([
-      ...runChecks(withLock, { skillListingChars: 1_000 }).map(
+      ...runChecks(withLock, limits({ skillListingChars: 1_000 })).map(
         (f) => f.ruleId,
       ),
-      ...runChecks(noLock, { requireLock: true }).map((f) => f.ruleId),
-      ...runChecks(overBudget, {
-        budgets: {
-          agentsMdLines: 150,
-          claudeMdLines: 200,
-          agents: 8,
-          mcp: 5,
-        },
-      }).map((f) => f.ruleId),
+      ...runChecks(noLock, { requireLock: true, ...limits() }).map((f) => f.ruleId),
+      ...runChecks(overBudget, limits()).map((f) => f.ruleId),
     ]);
     const declared = new Set(STRUCTURAL_CHECKS.map((c) => c.id));
 
@@ -1997,12 +1857,6 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  test("every registered check has provenance and a verification date", () => {
-    for (const check of STRUCTURAL_CHECKS) {
-      expect(check.provenance).toBeString();
-      expect(check.lastVerified).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    }
-  });
 });
 
 describe("determinism", () => {
@@ -2015,18 +1869,17 @@ describe("determinism", () => {
         skill({ id: "a-local", frontmatterName: "wrong", description: "d" }),
       ],
       mcp: [
-        {
+        mcpFact({
           name: "x",
           path: "/tmp/proj/.mcp.json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
+        }),
       ],
     });
-    const first = runChecks(facts);
-    const second = runChecks(facts);
+    const first = runChecks(facts, limits());
+    const second = runChecks(facts, limits());
     expect(first).toEqual(second);
     expect(new Set(first.map((f) => f.id)).size).toBe(first.length);
     expect(ids(facts).length).toBeGreaterThan(2);

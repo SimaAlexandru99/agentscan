@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runChecks } from "../../src/checks/index";
 import { defaultConfig } from "../../src/config/schema";
-import { extractFacts } from "../../src/facts/extract";
+import { extractFacts } from "../../src/discover/extract";
+import { mkPinnedRoot, scanContext } from "../helpers/tmp";
 
 /**
  * A skill or subagent may declare hooks in its frontmatter, "in the same
@@ -29,7 +29,7 @@ Body.
 `;
 
 function project(): string {
-  const root = mkdtempSync(join(tmpdir(), "agentscan-fm-hooks-"));
+  const root = mkPinnedRoot("agentscan-fm-hooks-");
   writeFileSync(join(root, "package.json"), "{}");
   return root;
 }
@@ -49,7 +49,7 @@ function agent(root: string, name: string, command: string): void {
 
 function hookFindings(root: string) {
   return runChecks(
-    extractFacts(root, defaultConfig, { includeGlobal: false }),
+    extractFacts(scanContext(root), defaultConfig), { thresholds: defaultConfig.thresholds },
   ).filter((f) => f.ruleId === "claude.hook.missing-script");
 }
 
@@ -128,7 +128,7 @@ hooks:
 `,
     );
     const findings = runChecks(
-      extractFacts(root, defaultConfig, { includeGlobal: false }),
+      extractFacts(scanContext(root), defaultConfig), { thresholds: defaultConfig.thresholds },
     );
     expect(
       findings.filter((f) => f.ruleId === "claude.hook.unknown-event"),

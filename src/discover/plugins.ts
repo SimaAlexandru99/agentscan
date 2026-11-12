@@ -1,8 +1,7 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type {
   AgentFact,
-  ConfigErrorFact,
   HookFact,
   McpFact,
   SkillFact,
@@ -10,14 +9,11 @@ import type {
 } from "../facts/types";
 import { discoverClaudeAgentsDir } from "./agents";
 import { discoverClaudeCommandsInDir } from "./claude";
-import { hooksFromObject } from "./hooks";
+import { readHooksFile } from "./hooks";
 import { parseClaudePluginMcpFile } from "./mcp";
-import {
-  NESTED_DISCOVERY_MAX_DEPTH,
-  NESTED_DISCOVERY_SKIP,
-  readJsonConfig,
-} from "./shared";
+import { NESTED_DISCOVERY_MAX_DEPTH, NESTED_DISCOVERY_SKIP } from "./shared";
 import { discoverSkillAtDir, discoverSkillsInDir } from "./skills";
+import { listDir, type ScanIO } from "./fs";
 
 /**
  * Plugin roots inside the scanned tree.
@@ -34,7 +30,7 @@ import { discoverSkillAtDir, discoverSkillsInDir } from "./skills";
  */
 export function findPluginRoots(
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): string[] {
   const found: string[] = [];
   if (existsSync(join(root, "hooks", "hooks.json"))) {
@@ -42,18 +38,8 @@ export function findPluginRoots(
   }
 
   const walk = (dir: string, depth: number): void => {
-    let entries: import("node:fs").Dirent[];
-    try {
-      entries = readdirSync(dir, { withFileTypes: true });
-    } catch {
-      errors.push({
-        path: dir,
-        kind: "unreadable",
-        detail: "could not read directories while looking for plugins",
-      });
-      return;
-    }
-    for (const entry of entries) {
+    const entries = listDir(dir, io, { detail: "could not read directories while looking for plugins" });
+    for (const entry of entries ?? []) {
       if (!entry.isDirectory() || NESTED_DISCOVERY_SKIP.has(entry.name)) {
         continue;
       }
@@ -64,7 +50,6 @@ export function findPluginRoots(
       }
       const child = join(dir, entry.name);
       if (existsSync(join(child, ".claude-plugin", "plugin.json"))) {
-        // A plugin does not contain another plugin; stop descending.
         found.push(child);
         continue;
       }
@@ -89,46 +74,23 @@ export function findPluginRoots(
  */
 export function discoverPluginHooks(
   root: string,
-  errors: ConfigErrorFact[],
-  pluginRoots = findPluginRoots(root, errors),
+  io: ScanIO,
+  pluginRoots: string[],
 ): HookFact[] {
   const facts: HookFact[] = [];
   for (const pluginRoot of pluginRoots) {
-    const filePath = join(pluginRoot, "hooks", "hooks.json");
-    if (!existsSync(filePath)) {
-      continue;
-    }
-    const raw = readJsonConfig(filePath, errors);
-    if (raw === undefined) {
-      continue;
-    }
-    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-      errors.push({
-        path: filePath,
-        kind: "unexpected-shape",
-        detail: "hooks.json is not a JSON object",
-      });
-      continue;
-    }
     // `description` is a documented sibling of `hooks` and 10 of 17 real files
     // carry one; it is ignored rather than treated as an unexpected shape.
-    const hooks = (raw as Record<string, unknown>).hooks;
-    if (hooks === undefined) {
-      continue;
-    }
     facts.push(
-      ...hooksFromObject(hooks, filePath, "plugin", {
-        project: root,
-        plugin: pluginRoot,
-        own: pluginRoot,
-      }, errors),
+      ...readHooksFile(
+        join(pluginRoot, "hooks", "hooks.json"),
+        { source: "plugin", sourceProvider: "claude", profile: "claude" },
+        { project: root, plugin: pluginRoot, own: pluginRoot },
+        io,
+      ),
     );
   }
   return facts;
-}
-
-function asClaudeSkill(skill: SkillFact): SkillFact {
-  return skill.sourceProvider === "unknown" ? { ...skill, sourceProvider: "claude" } : skill;
 }
 
 /**
@@ -139,9 +101,9 @@ function asClaudeSkill(skill: SkillFact): SkillFact {
  */
 export function discoverPluginSurfaces(
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   configuredSkillRoots: Set<string>,
-  pluginRoots = findPluginRoots(root, errors),
+  pluginRoots: string[],
 ): { skills: SkillFact[]; agents: AgentFact[]; mcp: McpFact[]; commands: SlashCommandFact[] } {
   const skills: SkillFact[] = [];
   const agents: AgentFact[] = [];
@@ -152,19 +114,16 @@ export function discoverPluginSurfaces(
     if (!configuredSkillRoots.has(skillsDir)) {
       configuredSkillRoots.add(skillsDir);
       skills.push(
-        ...discoverSkillsInDir(join(pluginRoot, "skills"), "project", errors, root).map(asClaudeSkill),
+        ...discoverSkillsInDir(join(pluginRoot, "skills"), "project", io, root, "claude"),
       );
     }
-    const rootSkill = discoverSkillAtDir(pluginRoot, "project", errors, root);
+    const rootSkill = discoverSkillAtDir(pluginRoot, "project", io, root, "claude");
     if (rootSkill !== undefined) {
-      skills.push(asClaudeSkill(rootSkill));
+      skills.push(rootSkill);
     }
-    agents.push(...discoverClaudeAgentsDir(join(pluginRoot, "agents"), root, errors, false));
-    commands.push(...discoverClaudeCommandsInDir(join(pluginRoot, "commands"), "project", root, errors));
-    const mcpFile = join(pluginRoot, ".mcp.json");
-    if (existsSync(mcpFile)) {
-      mcp.push(...parseClaudePluginMcpFile(mcpFile, root, errors));
-    }
+    agents.push(...discoverClaudeAgentsDir(join(pluginRoot, "agents"), root, io, false));
+    commands.push(...discoverClaudeCommandsInDir(join(pluginRoot, "commands"), "project", root, io));
+    mcp.push(...parseClaudePluginMcpFile(join(pluginRoot, ".mcp.json"), root, io));
   }
   return { skills, agents, mcp, commands };
 }

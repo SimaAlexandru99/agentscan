@@ -1,7 +1,5 @@
-// Type-only, and `checks/provenance.ts` imports nothing — a leaf, so this is
-// erased at build time and adds no runtime edge back into the checks layer.
-import type { RuleProvenance, RuleSource } from "../checks/provenance";
-import type { HookSchemaProfile } from "./hook-schema";
+import type { HookFactSource, HookSchemaProfile } from "./hook-profiles";
+import type { HookDefect, HookDefectDetail } from "./hook-schema";
 import type {
   McpLaunchKind,
   McpSchemaProfile,
@@ -9,10 +7,8 @@ import type {
   SkillSchemaProfile,
 } from "./provider";
 
-export type Action = "keep" | "delete" | "add" | "refresh" | "warn" | "drift";
-export type Severity = "error" | "warning" | "info";
-
-export type { HookHandlerType, HookSchemaProfile } from "./hook-schema";
+export type { HookSchemaProfile } from "./hook-profiles";
+export type { HookDefect, HookDefectDetail, HookHandlerType } from "./hook-schema";
 export type {
   McpLaunchKind,
   McpSchemaProfile,
@@ -21,60 +17,38 @@ export type {
 } from "./provider";
 
 export type YamlScalarKind = "string" | "number" | "boolean" | "other";
-export type HookDefect =
-  | "invalid-group"
-  | "command-without-command"
-  | "http-without-url"
-  | "mcp-tool-without-server-or-tool"
-  | "prompt-without-prompt"
-  | "unknown-handler-type"
-  | "incompatible-handler";
 export type OsPlatform = "windows" | "linux" | "osx";
 
 export type SkillFact = {
   id: string;
-  /** Provider convention that owns this skill directory. */
-  sourceProvider?: Provider;
+  sourceProvider: Provider;
   /** File-schema contract. Distinct from product identity — `.cursor/skills` is Agent Skills. */
-  schemaProfile?: SkillSchemaProfile;
+  schemaProfile: SkillSchemaProfile;
   /** Stable path-qualified identity only when duplicate ids are present. */
   instanceId?: string;
   path: string;
   description?: string;
   source: "project" | "global";
-  /** SKILL.md present in the skill dir. */
   hasSkillMd: boolean;
-  /** Frontmatter present and parseable as a `---` block. */
   hasFrontmatter: boolean;
   /** SKILL.md exists but could not be read; frontmatter facts are unknown. */
   unreadable?: boolean;
   /** A `---` block exists but does not parse; its fields are unknown. */
   unparseableFrontmatter?: boolean;
-  /** Bundled files the body points at that resolve nowhere. */
   brokenReferences?: string[];
-  /** `name:` from frontmatter, when present as a string. */
   frontmatterName?: string;
-  /** YAML type of `name:` before any string coercion. */
   nameKind?: YamlScalarKind;
-  /** YAML type of `description:` before any string coercion. */
   descriptionKind?: YamlScalarKind;
-  /** Frontmatter `when_to_use`, when present as a string. */
   whenToUse?: string;
   /** First markdown paragraph after frontmatter, used when Claude omits description. */
   firstMarkdownParagraph?: string;
-  /** Whole-file line count of SKILL.md, when the file was readable. */
   bodyLines?: number;
-  /** Optional Agent Skills `compatibility` string, when present. */
   compatibility?: string;
   compatibilityKind?: YamlScalarKind;
-  /** True when `compatibility` is present but not a 1..500 character string. */
   compatibilityInvalid?: boolean;
-  /** True when `metadata` is present but is not map<string, string>. */
   metadataInvalid?: boolean;
-  /** Optional Agent Skills `allowed-tools` string, when present. */
   allowedTools?: string;
   allowedToolsKind?: YamlScalarKind;
-  /** True when `allowed-tools` is present but is not a string. */
   allowedToolsInvalid?: boolean;
   /**
    * Hooks declared in this file's own frontmatter, one of the seven documented
@@ -83,21 +57,19 @@ export type SkillFact = {
    */
   frontmatterHooks?: HookFact[];
   /**
-   * Command Code load rank. `true` is currently loaded; `false` is readable but
-   * shadowed by a higher-precedence source. Unset means this is not a Command
-   * Code-ranked skill.
+   * Layer precedence. `true` is currently loaded; `false` is readable but
+   * shadowed by a higher-precedence layer. Unset means the item is not ranked.
    */
-  commandcodeEffective?: boolean;
+  effective?: boolean;
 };
 
 export type McpFact = {
   name: string;
   path: string;
-  schemaProfile?: McpSchemaProfile;
-  sourceProvider?: Provider;
+  schemaProfile: McpSchemaProfile;
+  sourceProvider: Provider;
   /** Providers that honestly consume this path's schema. Shared `.mcp.json` lists both. */
   consumedBy?: Provider[];
-  /** Which JSON key supplied `transport`, when either is present. */
   transportField?: "transport" | "type";
   commandcodeDefect?: CommandcodeMcpDefect;
   /** Array item from `mcp.servers` with no `name` — inventoried, not schema-checked. */
@@ -106,9 +78,7 @@ export type McpFact = {
   /** Continue registry block, e.g. `continuedev/continue-docs-mcp`. */
   uses?: string;
   platform?: OsPlatform;
-  /** Declared working directory when present. */
   cwd?: string;
-  /** OpenCode V1 vs V2 map that produced this entry. */
   opencodeSchema?: "v1" | "v2";
   /**
    * V1 `{ enabled }` override that may inherit a server defined outside this
@@ -131,7 +101,6 @@ export type McpFact = {
   hasUrl: boolean;
   hasServerUrl?: boolean;
   hasHttpUrl?: boolean;
-  /** Declared `command` string when present (stdio servers). */
   command?: string;
   /**
    * false only when `command` was a resolvable path-like value and that path
@@ -149,19 +118,14 @@ export type McpFact = {
    * See docs/spec/mcp.md and `mcp.literal-credential`.
    */
   literalCredentialFields?: string[];
-  /** Raw entry text, for secret pattern matching. */
-  raw: string;
+  /** Label of the first secret shape found in the entry (never the value). */
+  secretLabel?: string;
   /**
-   * Command Code MCP load rank among settings / user mcp.json / project
-   * `.mcp.json`. Unset means this is not a Command Code-ranked MCP source
-   * (nested `.mcp.json` is Claude's file, not Command Code project MCP).
+   * Layer precedence: Command Code ranks settings / user mcp.json / project
+   * `.mcp.json` (nested `.mcp.json` is Claude's file, unranked); Grok ranks
+   * walked `.grok/config.toml` files and the user file. `false` is shadowed.
    */
-  commandcodeEffective?: boolean;
-  /**
-   * Grok MCP load rank among walked `.grok/config.toml` files and the user
-   * file. Unset means this is not a Grok-ranked MCP source.
-   */
-  grokEffective?: boolean;
+  effective?: boolean;
   /**
    * Claude `~/.claude.json` layer. Top-level `mcpServers` is user scope;
    * `projects.<path>.mcpServers` is local scope for one project.
@@ -171,9 +135,8 @@ export type McpFact = {
 };
 
 export type HookFact = {
-  name: string;
   path: string;
-  event?: string;
+  event: string;
   command?: string;
   /**
    * Which of the documented hook locations declared it. A finding has to name
@@ -182,44 +145,21 @@ export type HookFact = {
    *
    * See docs/spec/hook-sources.md.
    */
-  source?:
-    | "settings"
-    | "plugin"
-    | "skill"
-    | "agent"
-    | "vscode-hooks"
-    | "grok-hooks"
-    | "windsurf-hooks"
-    | "gemini-settings"
-    | "cursor-hooks"
-    | "kiro-hooks"
-    | "copilot-settings";
-  sourceProvider?: Provider;
-  schemaProfile?: HookSchemaProfile;
+  source?: HookFactSource;
+  sourceProvider: Provider;
+  schemaProfile: HookSchemaProfile;
   handlerType?: "command" | "http" | "mcp_tool" | "prompt" | "agent";
   defect?: HookDefect;
-  /** Declared timeout in seconds, when present and numeric. */
+  defectDetail?: HookDefectDetail;
   timeout?: number;
   timeoutOutOfBounds?: boolean;
   unknownHandlerType?: string;
   platform?: OsPlatform;
-  /** Declared working directory when present. */
   cwd?: string;
-  /** Script path parsed out of `command`, resolved against the project root. */
   scriptPath?: string;
-  /** false only when scriptPath was extracted and does not exist on disk. */
   scriptExists?: boolean;
-  /** Settings layer that declared this Command Code hook. */
   commandcodeSettingsLayer?: "local" | "project" | "user";
-  commandcodeEffective?: boolean;
-  /** `matcher` was present but was not a string. */
-  commandcodeInvalidMatcher?: boolean;
-  /**
-   * Why a Kiro file or entry is `invalid-group`. File-level facts use a
-   * synthetic event name, so the message must not claim a missing `hooks`
-   * array when the array is present. See docs/spec/kiro-hooks.md.
-   */
-  kiroInvalidGroup?: "missing-version" | "missing-hooks" | "missing-version-and-hooks" | "entry";
+  effective?: boolean;
 };
 
 export type AgentSchemaProfile = "claude-md" | "vscode-agent-md" | "commandcode-md";
@@ -237,12 +177,11 @@ export type CommandcodeMcpDefect =
 export type AgentFact = {
   name: string;
   path: string;
-  sourceProvider?: Provider;
+  sourceProvider: Provider;
   schemaProfile?: AgentSchemaProfile;
   /** One `.claude/agents` (or provider) directory — duplicates are scoped here. */
   namespace?: string;
   nameSource?: "frontmatter" | "filename";
-  /** Frontmatter present and parseable as a `---` block. */
   hasFrontmatter: boolean;
   /** File exists but could not be read; its fields are unknown, not absent. */
   unreadable?: boolean;
@@ -260,7 +199,7 @@ export type AgentFact = {
   permissionMode?: string;
   commandcodeDefects?: CommandcodeAgentDefect[];
   invalidField?: string;
-  commandcodeEffective?: boolean;
+  effective?: boolean;
 };
 
 /** Custom slash command markdown. Inventory for Command Code and Claude. */
@@ -271,13 +210,6 @@ export type SlashCommandFact = {
   sourceProvider: Provider;
   /** Claude command files use the skill hook shape. See docs/spec/skills.md. */
   frontmatterHooks?: HookFact[];
-};
-
-/** Declared mod path. Experimental inventory — never executed. */
-export type ModFact = {
-  path: string;
-  declaredFrom: string;
-  sourceProvider: Provider;
 };
 
 /** A config file agentscan could not read — itself a finding, never swallowed. */
@@ -298,7 +230,6 @@ export type LockedSkillFact = {
   source?: string;
   skillPath?: string;
   computedHash?: string;
-  /** Directory that contains the lockfile governing this entry. */
   lockRoot?: string;
   lockPath?: string;
 };
@@ -323,76 +254,39 @@ export type RuleFact = {
   /** UTF-16 code units of the scanned prefix. Windsurf budgets are character counts. */
   charCount: number;
   windsurfScope?: WindsurfRuleScope;
-  /** Workspace `.devin` / `.windsurf` rules only. True when frontmatter `trigger` is set. */
-  windsurfHasTrigger?: boolean;
-  /** Frontmatter existed but YAML did not parse; do not claim trigger is missing. */
-  windsurfTriggerUnreadable?: boolean;
+  /**
+   * Workspace `.devin` / `.windsurf` rules only: whether frontmatter sets
+   * `trigger`. `unreadable` means the YAML did not parse, so do not claim it is missing.
+   */
+  windsurfTrigger?: "yes" | "no" | "unreadable";
 };
 
-export type Facts = {
-  root: string;
-  /** Directory the user asked to scan; walk-up discovery starts here. */
-  startDir?: string;
-  /** Farthest ancestor this scan may walk. A child `.cursor` does not shrink it. */
-  scanBoundary?: string;
-  /**
-   * Command Code project root (git root, or the working directory outside a
-   * git repo). Settings, hooks path bases, inline MCP, extra skills, and
-   * model/mod settings resolve against this, not the generic `projectRoot`.
-   */
-  commandcodeProjectRoot?: string;
-  /** Codex `project_doc_max_bytes` when declared in `.codex/config.toml`. */
-  codexProjectDocMaxBytes?: number;
-  /** Codex `project_doc_fallback_filenames` from `.codex/config.toml`. */
-  codexProjectDocFallbackFilenames?: string[];
-  /**
-   * Codex `project_root_markers` from `.codex/config.toml`. `undefined` means
-   * the documented default (`.git`). An empty array means cwd is the project
-   * root. See docs/spec/codex-agents-md.md.
-   */
-  codexProjectRootMarkers?: string[];
-  /** Resolved Codex project root for the root→cwd instruction chain. */
-  codexProjectRoot?: string;
-  packageManager: "bun" | "npm" | "pnpm" | "yarn" | "unknown";
-  dependencies: Record<string, string>;
-  devDependencies: Record<string, string>;
+/** Everything discovery reads from the agent configuration of one scan. */
+export type AgentSurface = {
   skills: SkillFact[];
   agents: AgentFact[];
   hooks: HookFact[];
   mcp: McpFact[];
   policyFiles: PolicyFileFact[];
   rules?: RuleFact[];
-  slashCommands?: SlashCommandFact[];
-  mods?: ModFact[];
-  /** Winning Command Code settings `model`, when a settings file declares one. */
-  commandcodeModel?: string;
-  commandcodeModelSource?: string;
-  /** skills-lock.json entries; empty when the project has no lockfile. */
   lockedSkills: LockedSkillFact[];
   hasSkillsLock: boolean;
   skillsLockInvalid?: boolean;
-  /** Directories that own a readable skills-lock.json in this scan. */
-  skillLockRoots?: string[];
+  /** Dirs of the valid skills-lock.json files; each governs the skills under it. */
+  skillLockRoots: string[];
   configErrors: ConfigErrorFact[];
+  codexProjectDocMaxBytes: number;
+  /**
+   * The instruction files Codex concatenates from its project root down to
+   * cwd, at most one per directory. See docs/spec/codex-agents-md.md.
+   */
+  codexInstructionChain: PolicyFileFact[];
 };
 
-export type Finding = {
-  id: string; // stable: `${ruleId}:${subject}`
-  ruleId: string;
-  action: Action;
-  severity: Severity;
-  subject: string; // e.g. skill:next-cache-components
-  message: string;
-  reason: string;
-  evidence: { kind: string; value: string }[];
-  suggest?: string;
-  /**
-   * Copied from the rule's registry entry by `make()`. Carried on the finding
-   * rather than looked up per renderer so that a finding piped anywhere — the
-   * prompt handoff, a `--json` consumer, one line of a report — still says
-   * where its assertion comes from.
-   */
-  provenance: RuleProvenance;
-  source: RuleSource;
-  lastVerified: string;
+/** The scan snapshot every check reads: package facts plus the agent surface. */
+export type Facts = AgentSurface & {
+  root: string;
+  packageManager: "bun" | "npm" | "pnpm" | "yarn" | "unknown";
+  dependencies: Record<string, string>;
+  devDependencies: Record<string, string>;
 };

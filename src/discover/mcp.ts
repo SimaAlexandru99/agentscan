@@ -1,39 +1,57 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, isAbsolute, join, resolve } from "node:path";
-import { normalizeClaudeProjectKey } from "../facts/claude";
-import { parse as parseToml } from "smol-toml";
-import { parse as parseYaml } from "yaml";
+import { MCP_PROFILES } from "../facts/mcp-profiles";
+import { providerHome } from "../facts/providers";
+import { toPosix } from "../facts/paths";
 import {
-  consumedByForMcpProfile,
   mcpProfileFromPath,
-  sourceProviderForMcpProfile,
   type McpLaunchKind,
   type McpSchemaProfile,
 } from "../facts/provider";
-import type { ConfigErrorFact, McpFact } from "../facts/types";
+import { INTERPOLATED } from "../facts/text";
+import type { McpFact } from "../facts/types";
 import {
   CLAUDE_MCP_TRANSPORTS,
   COMMANDCODE_MCP_TRANSPORTS,
   COMMANDCODE_TOLERATED_MCP_TRANSPORTS,
 } from "../facts/commandcode";
-import { parseJsonc } from "./jsonc";
 import {
+  checkLaunchScript,
   formatLaunch,
+  isProjectDirPlaceholder,
   launchesFromEntry,
-  resolveLaunchCwd,
-  scriptCandidateFromLaunch,
-  skipLaunchExistenceCheck,
+  looksLikePath,
+  SHELL_METACHARS,
 } from "./launch";
-import { NESTED_DISCOVERY_MAX_DEPTH, readJsonConfig, walkFiles } from "./shared";
+import { NESTED_DISCOVERY_MAX_DEPTH, walkFiles } from "./shared";
+import { isDirectory, isRecord, listDir, readConfigFile, reportRootShapeOnce, type ScanIO } from "./fs";
 
-/** Anything that makes the command a shell program rather than one path. */
-const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&|\s/;
+/**
+ * Token shapes worth failing a build over. Deliberately narrow — no entropy
+ * guessing.
+ *
+ * ORDER IS SIGNIFICANT: the caller uses `.find()`, so a more specific prefix
+ * must come before any pattern that also matches it. `sk-ant-` is a subset of
+ * `sk-`, and reporting the wrong provider on a "rotate this key" finding sends
+ * the user to the wrong dashboard.
+ */
+const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
+  { label: "Anthropic key", re: /\bsk-ant-[A-Za-z0-9_-]{16,}/ },
+  { label: "OpenAI project key", re: /\bsk-proj-[A-Za-z0-9_-]{16,}/ },
+  { label: "OpenAI service-account key", re: /\bsk-svcacct-[A-Za-z0-9_-]{16,}/ },
+  { label: "OpenAI-style key", re: /\bsk-[A-Za-z0-9_]{20,}\b/ },
+  { label: "GitHub token", re: /\bgh[pousr]_[A-Za-z0-9]{20,}/ },
+  { label: "Google API key", re: /\bAIza[A-Za-z0-9_-]{20,}/ },
+  { label: "Slack token", re: /\bxox[baprs]-[A-Za-z0-9-]{10,}/ },
+  { label: "AWS access key id", re: /\bAKIA[0-9A-Z]{16}\b/ },
+];
 
-// `%VAR%` is Gemini CLI's documented Windows-only env syntax (docs/spec/gemini-mcp.md).
-// `{{var}}` is Grok's documented header / env interpolation (docs/spec/grok-mcp.md).
-const INTERPOLATED =
-  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$\{(?:userHome|workspaceFolder|workspaceFolderBasename|pathSeparator|\/)\}|\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{\{\s*secrets\.[A-Za-z0-9_.]+\s*\}\}|\{\{[^{}]+\}\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%/;
+/** Label of the first secret shape in a raw server entry; interpolated refs never count. */
+export function secretLabelOf(raw: string): string | undefined {
+  const text = raw.replace(new RegExp(INTERPOLATED.source, "g"), "");
+  return SECRET_PATTERNS.find((p) => p.re.test(text))?.label;
+}
+
 
 const SECRET_NAMED_KEY = /(?:TOKEN|SECRET|KEY|PASSWORD|PASSWD|CREDENTIAL)S?$/i;
 const AUTH_HEADER_NAME = /^(authorization|proxy-authorization)$/i;
@@ -46,60 +64,17 @@ const AUTH_HEADER_NAME = /^(authorization|proxy-authorization)$/i;
  */
 export function mcpCommandPath(command: string): string | undefined {
   const trimmed = command.trim();
-  if (trimmed.length === 0 || SHELL_METACHARS.test(trimmed)) {
+  // Stricter than a hook command: any whitespace means more than one path.
+  if (SHELL_METACHARS.test(trimmed) || /\s/.test(trimmed)) {
     return undefined;
   }
   if (/^[A-Za-z]:[/\\]/.test(trimmed)) {
     return undefined;
   }
   if (trimmed.startsWith("$")) {
-    return /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\}|COMMANDCODE_PROJECT_DIR\b|\{COMMANDCODE_PROJECT_DIR\}|COMMANDCODE_CWD\b|\{COMMANDCODE_CWD\})/.test(
-      trimmed,
-    )
-      ? trimmed
-      : undefined;
+    return isProjectDirPlaceholder(trimmed) ? trimmed : undefined;
   }
-  if (trimmed === "." || trimmed === "..") {
-    return undefined;
-  }
-  if (
-    trimmed.startsWith("/") ||
-    trimmed.startsWith("./") ||
-    trimmed.startsWith("../") ||
-    trimmed.startsWith("~/") ||
-    trimmed.startsWith(".")
-  ) {
-    return trimmed;
-  }
-  if (trimmed.includes("/")) {
-    return trimmed;
-  }
-  return undefined;
-}
-
-function resolveMcpCommand(
-  root: string,
-  raw: string,
-): { command: string; exists: boolean } | undefined {
-  const extracted = mcpCommandPath(raw);
-  if (extracted === undefined) {
-    return undefined;
-  }
-  let expanded = extracted;
-  if (expanded.startsWith("~/")) {
-    expanded = join(homedir(), expanded.slice(2));
-  } else if (expanded.startsWith("$")) {
-    expanded = expanded.replace(
-      /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\}|COMMANDCODE_PROJECT_DIR|\{COMMANDCODE_PROJECT_DIR\}|COMMANDCODE_CWD|\{COMMANDCODE_CWD\})\/?/,
-      "",
-    );
-  }
-  const abs = isAbsolute(expanded) ? expanded : join(root, expanded);
-  try {
-    return { command: extracted, exists: statSync(abs).isFile() };
-  } catch {
-    return { command: extracted, exists: false };
-  }
+  return looksLikePath(trimmed) ? trimmed : undefined;
 }
 
 function commandFactsFromEntry(
@@ -118,24 +93,13 @@ function commandFactsFromEntry(
     return [{ hasCommand: false }];
   }
   return launches.map((launch) => {
-    const candidate = scriptCandidateFromLaunch(launch);
-    const display = candidate ?? formatLaunch(launch);
-    const cwd = resolveLaunchCwd(launch.cwd, root, hostPlatform);
-    if (candidate === undefined || skipLaunchExistenceCheck(launch, cwd, candidate, hostPlatform)) {
-      return {
-        hasCommand: true,
-        command: formatLaunch(launch),
-        ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
-        ...(launch.platform === undefined ? {} : { platform: launch.platform }),
-      };
-    }
-    const base = cwd.status === "ok" ? cwd.abs : root;
-    const resolved = resolveMcpCommand(base, candidate);
+    const script = checkLaunchScript(launch, { project: root }, hostPlatform);
+    const checked = script !== undefined && mcpCommandPath(script.scriptPath) !== undefined;
     return {
       hasCommand: true,
-      command: display,
+      command: script?.scriptPath ?? formatLaunch(launch),
       ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
-      ...(resolved === undefined ? {} : { commandExists: resolved.exists }),
+      ...(checked ? { commandExists: script.exists } : {}),
       ...(launch.platform === undefined ? {} : { platform: launch.platform }),
     };
   });
@@ -151,7 +115,7 @@ function isLiteralCredentialValue(val: unknown): boolean {
 
 function literalEnvKeysFrom(entry: Record<string, unknown>): string[] {
   const env = entry.env;
-  if (env === null || typeof env !== "object" || Array.isArray(env)) {
+  if (!isRecord(env)) {
     return [];
   }
   const keys: string[] = [];
@@ -164,7 +128,7 @@ function literalEnvKeysFrom(entry: Record<string, unknown>): string[] {
 }
 
 function literalFieldsFromMap(obj: unknown, prefix: string): string[] {
-  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
+  if (!isRecord(obj)) {
     return [];
   }
   const fields: string[] = [];
@@ -192,7 +156,7 @@ function looksLikeServerEntry(
   value: unknown,
   profile: McpSchemaProfile,
 ): boolean {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (!isRecord(value)) {
     return false;
   }
   const entry = value as Record<string, unknown>;
@@ -214,18 +178,13 @@ function serversFromObject(
   obj: Record<string, unknown>,
   profile: McpSchemaProfile,
   filePath: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): Record<string, unknown> | undefined {
   if (profile === "vscode-json") {
-    if (
-      "servers" in obj &&
-      obj.servers !== null &&
-      typeof obj.servers === "object" &&
-      !Array.isArray(obj.servers)
-    ) {
-      return obj.servers as Record<string, unknown>;
+    if (isRecord(obj.servers)) {
+      return obj.servers;
     }
-    errors.push({
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "no usable `servers` object",
@@ -233,13 +192,8 @@ function serversFromObject(
     return undefined;
   }
 
-  if (
-    "mcpServers" in obj &&
-    obj.mcpServers !== null &&
-    typeof obj.mcpServers === "object" &&
-    !Array.isArray(obj.mcpServers)
-  ) {
-    return obj.mcpServers as Record<string, unknown>;
+  if (isRecord(obj.mcpServers)) {
+    return obj.mcpServers;
   }
 
   if (
@@ -250,7 +204,7 @@ function serversFromObject(
     return obj;
   }
 
-  errors.push({
+  io.errors.push({
     path: filePath,
     kind: "unexpected-shape",
     detail: "no usable `mcpServers` object and the root is not a server map",
@@ -271,15 +225,17 @@ function transportFromEntry(entry: Record<string, unknown>): {
   return {};
 }
 
-function commandcodeMcpDefect(
-  profile: McpSchemaProfile,
+/**
+ * Command Code's verdict on one server's transport. Applied to every
+ * `commandcode-json` server here, and by the Command Code source to the shared
+ * `.mcp.json` servers only on the files Command Code reads.
+ */
+export function commandcodeMcpDefect(
+  profile: "commandcode-json" | "mcp-json",
   declared: string | undefined,
   hasCommand: boolean,
   hasUrl: boolean,
 ): McpFact["commandcodeDefect"] {
-  if (profile !== "mcp-json" && profile !== "commandcode-json") {
-    return undefined;
-  }
   if (declared !== undefined) {
     if (COMMANDCODE_MCP_TRANSPORTS.has(declared)) {
       if (declared === "http" && !hasUrl) {
@@ -305,27 +261,24 @@ function parseMcpServers(
   raw: unknown,
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   profile: McpSchemaProfile,
 ): McpFact[] {
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    errors.push({
-      path: filePath,
-      kind: "unexpected-shape",
-      detail: "MCP config root is not an object",
-    });
+  if (!isRecord(raw)) {
+    reportRootShapeOnce(filePath, io, "MCP config root is not an object");
     return [];
   }
   const obj = raw as Record<string, unknown>;
-  const servers = serversFromObject(obj, profile, filePath, errors);
+  const servers = serversFromObject(obj, profile, filePath, io);
   if (servers === undefined) {
     return [];
   }
 
   const facts: McpFact[] = [];
-  const sourceProvider = sourceProviderForMcpProfile(profile);
-  const consumedBy = consumedByForMcpProfile(profile);
+  const sourceProvider = MCP_PROFILES[profile].sourceProvider;
+  const consumedBy = [...MCP_PROFILES[profile].consumedBy];
   for (const [name, value] of Object.entries(servers)) {
+    const secretLabel = secretLabelOf(JSON.stringify(value));
     let hasUrl = false;
     let hasServerUrl = false;
     let hasHttpUrl = false;
@@ -335,7 +288,7 @@ function parseMcpServers(
     let literalCredentialFields: string[] = [];
     let uses: string | undefined;
     let commandVariants: ReturnType<typeof commandFactsFromEntry> = [{ hasCommand: false }];
-    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    if (isRecord(value)) {
       const entry = value as Record<string, unknown>;
       commandVariants = commandFactsFromEntry(entry, root);
       hasUrl = typeof entry.url === "string" && entry.url.length > 0;
@@ -365,7 +318,10 @@ function parseMcpServers(
         : [{ hasCommand: false as const }];
     for (const variant of variants) {
       const hasCommand = variant.hasCommand;
-      const defect = commandcodeMcpDefect(profile, transport, hasCommand, hasUrl);
+      const defect =
+        profile === "commandcode-json"
+          ? commandcodeMcpDefect(profile, transport, hasCommand, hasUrl)
+          : undefined;
       facts.push({
         name,
         path: filePath,
@@ -387,11 +343,29 @@ function parseMcpServers(
         ...(defect === undefined ? {} : { commandcodeDefect: defect }),
         literalEnvKeys,
         ...(literalCredentialFields.length === 0 ? {} : { literalCredentialFields }),
-        raw: JSON.stringify(value),
+        ...(secretLabel === undefined ? {} : { secretLabel }),
       });
     }
   }
   return facts;
+}
+
+function mcpKey(fact: McpFact): string {
+  const platform = fact.platform === undefined ? "" : `:${fact.platform}`;
+  const layer = fact.claudeMcpLayer === undefined ? "" : `:${fact.claudeMcpLayer}`;
+  return `${fact.name}@${fact.path}${platform}${layer}`;
+}
+
+/** Push each fact of `batch` whose server key is not in `seen` yet; first one wins. */
+export function addUniqueMcp(out: McpFact[], seen: Set<string>, batch: McpFact[]): void {
+  for (const fact of batch) {
+    const key = mcpKey(fact);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(fact);
+  }
 }
 
 function withClaudeMcpLayer(facts: McpFact[], layer: NonNullable<McpFact["claudeMcpLayer"]>): McpFact[] {
@@ -402,11 +376,11 @@ function claudeMcpServersFromValue(
   servers: unknown,
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   detail: string,
 ): McpFact[] {
-  if (servers === null || typeof servers !== "object" || Array.isArray(servers)) {
-    errors.push({
+  if (!isRecord(servers)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail,
@@ -417,9 +391,15 @@ function claudeMcpServersFromValue(
     { mcpServers: servers as Record<string, unknown> },
     filePath,
     root,
-    errors,
+    io,
     "claude-json",
   );
+}
+
+/** `~/.claude.json` project keys compare as `/`-separated paths without a trailing slash. */
+function claudeProjectKey(path: string): string {
+  const trimmed = toPosix(path).replace(/\/+$/, "");
+  return trimmed.length === 0 ? "/" : trimmed;
 }
 
 function localMcpFromProjects(
@@ -427,20 +407,20 @@ function localMcpFromProjects(
   filePath: string,
   root: string,
   projectPaths: string[],
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): McpFact[] {
-  if (projects === null || typeof projects !== "object" || Array.isArray(projects)) {
+  if (!isRecord(projects)) {
     return [];
   }
   const wanted = new Set(
-    projectPaths.map((path) => normalizeClaudeProjectKey(resolve(path))),
+    projectPaths.map((path) => claudeProjectKey(resolve(path))),
   );
   const facts: McpFact[] = [];
   for (const [key, value] of Object.entries(projects as Record<string, unknown>)) {
-    if (!wanted.has(normalizeClaudeProjectKey(resolve(key)))) {
+    if (!wanted.has(claudeProjectKey(resolve(key)))) {
       continue;
     }
-    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    if (!isRecord(value)) {
       continue;
     }
     const servers = (value as Record<string, unknown>).mcpServers;
@@ -453,7 +433,7 @@ function localMcpFromProjects(
           servers,
           filePath,
           root,
-          errors,
+          io,
           "`projects.*.mcpServers` is not an object",
         ),
         "local",
@@ -471,15 +451,15 @@ function localMcpFromProjects(
  * Never pass the raw root to `parseMcpServers` / `parseMcpFile`.
  * See docs/spec/mcp.md.
  */
-export function parseClaudeUserJsonMcp(
+function parseClaudeUserJsonMcp(
   raw: unknown,
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   projectPaths: string[] = [],
 ): McpFact[] {
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    errors.push({
+  if (!isRecord(raw)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "Claude user config is not a JSON object",
@@ -495,14 +475,14 @@ export function parseClaudeUserJsonMcp(
           obj.mcpServers,
           filePath,
           root,
-          errors,
+          io,
           "`mcpServers` is not an object",
         ),
         "user",
       ),
     );
   }
-  facts.push(...localMcpFromProjects(obj.projects, filePath, root, projectPaths, errors));
+  facts.push(...localMcpFromProjects(obj.projects, filePath, root, projectPaths, io));
   return facts;
 }
 
@@ -511,33 +491,29 @@ export function parseClaudeUserJsonMcp(
  * See docs/spec/mcp.md.
  */
 export function discoverClaudeUserMcp(
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   projectPaths: string[] = [],
 ): McpFact[] {
   const home = homedir();
   const filePath = join(home, ".claude.json");
-  if (!existsSync(filePath)) {
-    return [];
-  }
-  const raw = readJsonConfig(filePath, errors);
+  const raw = readConfigFile(filePath, io, { optional: true });
   if (raw === undefined) {
     return [];
   }
-  return parseClaudeUserJsonMcp(raw, filePath, home, errors, projectPaths);
+  return parseClaudeUserJsonMcp(raw, filePath, home, io, projectPaths);
 }
 
-/** Claude-only MCP file (in-tree plugin `.mcp.json`). */
 export function parseClaudePluginMcpFile(
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): McpFact[] {
-  const raw = readJsonConfig(filePath, errors);
+  const raw = readConfigFile(filePath, io, { optional: true });
   if (raw === undefined) {
     return [];
   }
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    errors.push({
+  if (!isRecord(raw)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "plugin MCP config is not a JSON object",
@@ -552,7 +528,7 @@ export function parseClaudePluginMcpFile(
     servers,
     filePath,
     root,
-    errors,
+    io,
     "`mcpServers` is not an object",
   );
 }
@@ -561,13 +537,13 @@ export function parseInlineCommandcodeMcp(
   mcpValue: unknown,
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): McpFact[] {
   if (mcpValue === undefined) {
     return [];
   }
-  if (mcpValue === null || typeof mcpValue !== "object" || Array.isArray(mcpValue)) {
-    errors.push({
+  if (!isRecord(mcpValue)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "`mcp` is not an object",
@@ -582,7 +558,7 @@ export function parseInlineCommandcodeMcp(
     const map: Record<string, unknown> = {};
     const unnamed = new Set<string>();
     for (const [i, item] of servers.entries()) {
-      if (item === null || typeof item !== "object" || Array.isArray(item)) {
+      if (!isRecord(item)) {
         continue;
       }
       const entry = item as Record<string, unknown>;
@@ -594,23 +570,23 @@ export function parseInlineCommandcodeMcp(
         map[key] = entry;
       }
     }
-    return parseMcpServers({ mcpServers: map }, filePath, root, errors, "commandcode-json").map(
+    return parseMcpServers({ mcpServers: map }, filePath, root, io, "commandcode-json").map(
       (fact) =>
         unnamed.has(fact.name)
           ? { ...fact, inventoryOnly: true, commandcodeDefect: undefined }
           : fact,
     );
   }
-  if (servers !== null && typeof servers === "object") {
+  if (isRecord(servers)) {
     return parseMcpServers(
       { mcpServers: servers },
       filePath,
       root,
-      errors,
+      io,
       "commandcode-json",
     );
   }
-  errors.push({
+  io.errors.push({
     path: filePath,
     kind: "unexpected-shape",
     detail: "`mcp.servers` is not an array or object",
@@ -618,70 +594,16 @@ export function parseInlineCommandcodeMcp(
   return [];
 }
 
-function readTomlConfig(
-  path: string,
-  errors: ConfigErrorFact[],
-): unknown | undefined {
-  let text: string;
-  try {
-    text = readFileSync(path, "utf8");
-  } catch (err) {
-    errors.push({
-      path,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return undefined;
-  }
-  try {
-    return parseToml(text);
-  } catch (err) {
-    errors.push({
-      path,
-      kind: "unexpected-shape",
-      detail: err instanceof Error ? err.message.split("\n")[0] ?? err.message : String(err),
-    });
-    return undefined;
-  }
-}
-
-function readVscodeConfig(
-  path: string,
-  errors: ConfigErrorFact[],
-): unknown | undefined {
-  let text: string;
-  try {
-    text = readFileSync(path, "utf8");
-  } catch (err) {
-    errors.push({
-      path,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return undefined;
-  }
-  try {
-    return parseJsonc(text);
-  } catch (err) {
-    errors.push({
-      path,
-      kind: "invalid-json",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return undefined;
-  }
-}
-
 function parseTomlMcpServers(
   raw: unknown,
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   profile: Extract<McpSchemaProfile, "codex-toml" | "grok-toml">,
 ): McpFact[] {
   const owner = profile === "codex-toml" ? "Codex" : "Grok";
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    errors.push({
+  if (!isRecord(raw)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: `${owner} config root is not a TOML table`,
@@ -693,8 +615,8 @@ function parseTomlMcpServers(
   if (servers === undefined) {
     return [];
   }
-  if (servers === null || typeof servers !== "object" || Array.isArray(servers)) {
-    errors.push({
+  if (!isRecord(servers)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "`mcp_servers` is not a TOML table",
@@ -705,65 +627,58 @@ function parseTomlMcpServers(
     { mcpServers: servers },
     filePath,
     root,
-    errors,
+    io,
     profile,
   );
 }
 
-function parseCodexToml(
-  raw: unknown,
-  filePath: string,
-  root: string,
-  errors: ConfigErrorFact[],
-): McpFact[] {
-  return parseTomlMcpServers(raw, filePath, root, errors, "codex-toml");
-}
-
-/** MCP servers only — does not extract `project_doc_*` knobs. */
 export function parseCodexTomlFile(
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
+  opts: { optional?: boolean } = {},
 ): McpFact[] {
-  const raw = readTomlConfig(filePath, errors);
+  const raw = readConfigFile(filePath, io, opts);
   if (raw === undefined) {
     return [];
   }
-  return parseCodexToml(raw, filePath, root, errors);
+  return parseTomlMcpServers(raw, filePath, root, io, "codex-toml");
 }
 
 export function parseGrokTomlFile(
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
+  opts: { optional?: boolean } = {},
 ): McpFact[] {
-  const raw = readTomlConfig(filePath, errors);
+  const raw = readConfigFile(filePath, io, opts);
   if (raw === undefined) {
     return [];
   }
-  return parseTomlMcpServers(raw, filePath, root, errors, "grok-toml");
+  return parseTomlMcpServers(raw, filePath, root, io, "grok-toml");
 }
 
 export function parseWindsurfJsonFile(
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
+  opts: { optional?: boolean } = {},
 ): McpFact[] {
-  const raw = readJsonConfig(filePath, errors);
+  const raw = readConfigFile(filePath, io, opts);
   if (raw === undefined) {
     return [];
   }
-  return parseMcpServers(raw, filePath, root, errors, "windsurf-json");
+  return parseMcpServers(raw, filePath, root, io, "windsurf-json");
 }
 
 function parseOpenCode(
   raw: unknown,
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): McpFact[] {
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    errors.push({
+  if (!isRecord(raw)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "OpenCode config root is not an object",
@@ -774,8 +689,8 @@ function parseOpenCode(
   if (mcp === undefined) {
     return [];
   }
-  if (mcp === null || typeof mcp !== "object" || Array.isArray(mcp)) {
-    errors.push({
+  if (!isRecord(mcp)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "`mcp` is not an object",
@@ -785,8 +700,8 @@ function parseOpenCode(
   const table = mcp as Record<string, unknown>;
   const v2 = table.servers;
   if (v2 !== undefined) {
-    if (v2 === null || typeof v2 !== "object" || Array.isArray(v2)) {
-      errors.push({
+    if (!isRecord(v2)) {
+      io.errors.push({
         path: filePath,
         kind: "unexpected-shape",
         detail: "`mcp.servers` is not an object",
@@ -795,7 +710,7 @@ function parseOpenCode(
     }
     const servers = normalizeOpenCodeServers(v2);
     return annotateOpenCode(
-      parseMcpServers({ mcpServers: servers }, filePath, root, errors, "opencode-json"),
+      parseMcpServers({ mcpServers: servers }, filePath, root, io, "opencode-json"),
       servers,
       "v2",
     );
@@ -805,20 +720,16 @@ function parseOpenCode(
     if (name === "timeout") {
       continue;
     }
-    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    if (isRecord(value)) {
       v1[name] = value;
     }
   }
   const servers = normalizeOpenCodeServers(v1);
   return annotateOpenCode(
-    parseMcpServers({ mcpServers: servers }, filePath, root, errors, "opencode-json"),
+    parseMcpServers({ mcpServers: servers }, filePath, root, io, "opencode-json"),
     servers,
     "v1",
   );
-}
-
-function entryHasCommand(entry: Record<string, unknown>): boolean {
-  return launchesFromEntry(entry).length > 0;
 }
 
 function classifyOpenCodeEntry(
@@ -826,7 +737,7 @@ function classifyOpenCodeEntry(
   schema: "v1" | "v2",
 ): Pick<McpFact, "opencodeSchema" | "opencodeInherit" | "opencodeDefect"> {
   const type = typeof entry.type === "string" ? entry.type : undefined;
-  const hasCommand = entryHasCommand(entry);
+  const hasCommand = launchesFromEntry(entry).length > 0;
   const hasUrl = typeof entry.url === "string" && entry.url.length > 0;
   const commandIsArray = Array.isArray(entry.command);
 
@@ -866,7 +777,7 @@ function annotateOpenCode(
   return facts.map((fact) => {
     const raw = servers[fact.name];
     const entry =
-      raw !== null && typeof raw === "object" && !Array.isArray(raw)
+      isRecord(raw)
         ? (raw as Record<string, unknown>)
         : {};
     return { ...fact, ...classifyOpenCodeEntry(entry, schema) };
@@ -875,11 +786,11 @@ function annotateOpenCode(
 
 function normalizeOpenCodeServers(servers: unknown): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  if (servers === null || typeof servers !== "object" || Array.isArray(servers)) {
+  if (!isRecord(servers)) {
     return out;
   }
   for (const [name, value] of Object.entries(servers as Record<string, unknown>)) {
-    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    if (!isRecord(value)) {
       out[name] = value;
       continue;
     }
@@ -895,7 +806,7 @@ function normalizeOpenCodeServers(servers: unknown): Record<string, unknown> {
 function continueServersFromList(list: unknown[]): Record<string, unknown> {
   const mapped: Record<string, unknown> = {};
   for (const [i, item] of list.entries()) {
-    if (item === null || typeof item !== "object" || Array.isArray(item)) {
+    if (!isRecord(item)) {
       continue;
     }
     const entry = item as Record<string, unknown>;
@@ -923,7 +834,7 @@ function parseContinueDocument(
   raw: unknown,
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): McpFact[] {
   const standaloneYaml = isContinueStandaloneYaml(filePath);
   const annotate = (facts: McpFact[], doc: Record<string, unknown> | undefined): McpFact[] => {
@@ -941,12 +852,12 @@ function parseContinueDocument(
       { mcpServers: continueServersFromList(raw) },
       filePath,
       root,
-      errors,
+      io,
       "continue-yaml",
     );
   }
-  if (raw === null || typeof raw !== "object") {
-    errors.push({
+  if (!isRecord(raw)) {
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "Continue config root is not a mapping",
@@ -961,14 +872,14 @@ function parseContinueDocument(
         { mcpServers: continueServersFromList(list) },
         filePath,
         root,
-        errors,
+        io,
         "continue-yaml",
       ),
       obj,
     );
   }
   if (list !== undefined) {
-    errors.push({
+    io.errors.push({
       path: filePath,
       kind: "unexpected-shape",
       detail: "`mcpServers` is not an array",
@@ -985,7 +896,7 @@ function parseContinueDocument(
         ? obj.name
         : basename(filePath).replace(/\.(ya?ml|jsonc?)$/i, "");
     return annotate(
-      parseMcpServers({ mcpServers: { [name]: obj } }, filePath, root, errors, "continue-yaml"),
+      parseMcpServers({ mcpServers: { [name]: obj } }, filePath, root, io, "continue-yaml"),
       obj,
     );
   }
@@ -993,46 +904,11 @@ function parseContinueDocument(
 }
 
 function isContinueStandaloneYaml(filePath: string): boolean {
-  const normalized = filePath.replaceAll("\\", "/");
+  const normalized = toPosix(filePath);
   if (!normalized.includes("/.continue/mcpServers/")) {
     return false;
   }
   return /\.ya?ml$/i.test(normalized);
-}
-
-function readYamlConfig(
-  path: string,
-  errors: ConfigErrorFact[],
-): unknown | undefined {
-  let text: string;
-  try {
-    text = readFileSync(path, "utf8");
-  } catch (err) {
-    errors.push({
-      path,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return undefined;
-  }
-  try {
-    return parseYaml(text) as unknown;
-  } catch (err) {
-    errors.push({
-      path,
-      kind: "unexpected-shape",
-      detail: err instanceof Error ? err.message.split("\n")[0] ?? err.message : String(err),
-    });
-    return undefined;
-  }
-}
-
-function isDirectory(path: string): boolean {
-  try {
-    return statSync(path).isDirectory();
-  } catch {
-    return false;
-  }
 }
 
 function continueMcpFilename(name: string): boolean {
@@ -1042,110 +918,37 @@ function continueMcpFilename(name: string): boolean {
 export function parseMcpFile(
   filePath: string,
   root: string,
-  errors: ConfigErrorFact[],
-): {
-  facts: McpFact[];
-  projectDocMaxBytes?: number;
-  projectDocFallbackFilenames?: string[];
-  projectRootMarkers?: string[];
-} {
+  io: ScanIO,
+  opts: { optional?: boolean } = {},
+): McpFact[] {
   const profile = mcpProfileFromPath(filePath);
-  if (profile === "codex-toml") {
-    const raw = readTomlConfig(filePath, errors);
-    if (raw === undefined) {
-      return { facts: [] };
-    }
-    const knobs = projectDocSettingsFromToml(raw);
-    return {
-      facts: parseCodexToml(raw, filePath, root, errors),
-      ...knobs,
-    };
-  }
   if (profile === "grok-toml") {
-    return { facts: parseGrokTomlFile(filePath, root, errors) };
+    return parseGrokTomlFile(filePath, root, io, opts);
+  }
+  const raw = readConfigFile(filePath, io, opts);
+  if (raw === undefined) {
+    return [];
+  }
+  if (profile === "codex-toml") {
+    return parseTomlMcpServers(raw, filePath, root, io, "codex-toml");
   }
   if (profile === "continue-yaml") {
-    const raw = filePath.endsWith(".json") || filePath.endsWith(".jsonc")
-      ? readVscodeConfig(filePath, errors)
-      : readYamlConfig(filePath, errors);
-    if (raw === undefined) {
-      return { facts: [] };
-    }
-    return { facts: parseContinueDocument(raw, filePath, root, errors) };
+    return parseContinueDocument(raw, filePath, root, io);
   }
   if (profile === "opencode-json") {
-    const raw = readVscodeConfig(filePath, errors);
-    if (raw === undefined) {
-      return { facts: [] };
-    }
-    return { facts: parseOpenCode(raw, filePath, root, errors) };
+    return parseOpenCode(raw, filePath, root, io);
   }
-  const raw =
-    profile === "vscode-json" || profile === "cursor-json" || profile === "gemini-json"
-      ? readVscodeConfig(filePath, errors)
-      : readJsonConfig(filePath, errors);
-  if (raw === undefined) {
-    return { facts: [] };
-  }
-  return { facts: parseMcpServers(raw, filePath, root, errors, profile) };
-}
-
-function projectDocSettingsFromToml(raw: unknown): {
-  projectDocMaxBytes?: number;
-  projectDocFallbackFilenames?: string[];
-  projectRootMarkers?: string[];
-} {
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    return {};
-  }
-  const obj = raw as Record<string, unknown>;
-  const out: {
-    projectDocMaxBytes?: number;
-    projectDocFallbackFilenames?: string[];
-    projectRootMarkers?: string[];
-  } = {};
-  const maxBytes = obj.project_doc_max_bytes;
-  if (typeof maxBytes === "number" && Number.isFinite(maxBytes) && maxBytes > 0) {
-    out.projectDocMaxBytes = Math.floor(maxBytes);
-  }
-  const fallbacks = stringArray(obj.project_doc_fallback_filenames);
-  if (fallbacks !== undefined) {
-    out.projectDocFallbackFilenames = fallbacks;
-  }
-  if ("project_root_markers" in obj) {
-    const markers = stringArray(obj.project_root_markers);
-    out.projectRootMarkers = markers ?? [];
-  }
-  return out;
-}
-
-function stringArray(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-  const out = value.filter((item): item is string => typeof item === "string" && item.length > 0);
-  return out;
+  return parseMcpServers(raw, filePath, root, io, profile);
 }
 
 function discoverContinueMcpDir(
   dir: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   seen: Set<string>,
 ): McpFact[] {
-  let names: string[];
-  try {
-    names = readdirSync(dir);
-  } catch (err) {
-    errors.push({
-      path: dir,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return [];
-  }
   const facts: McpFact[] = [];
-  for (const name of names) {
+  for (const { name } of listDir(dir, io) ?? []) {
     if (!continueMcpFilename(name)) {
       continue;
     }
@@ -1153,99 +956,47 @@ function discoverContinueMcpDir(
     if (isDirectory(filePath)) {
       continue;
     }
-    for (const fact of parseMcpFile(filePath, root, errors).facts) {
-      const key = `${fact.name}@${fact.path}${fact.platform === undefined ? "" : `:${fact.platform}`}`;
-      if (seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      facts.push(fact);
-    }
+    addUniqueMcp(facts, seen, parseMcpFile(filePath, root, io));
   }
   return facts;
+}
+
+/** User Gemini MCP. Only called under `--global`. Settings and `mcp_config.json` together. */
+export function discoverGeminiUserMcp(root: string, io: ScanIO): McpFact[] {
+  const home = providerHome("gemini");
+  return [join(home, "settings.json"), join(home, "config", "mcp_config.json")].flatMap((path) =>
+    parseMcpFile(path, root, io, { optional: true }),
+  );
 }
 
 export function discoverMcpSurface(
   root: string,
   mcpPaths: string[],
-  errors: ConfigErrorFact[],
-): {
-  facts: McpFact[];
-  codexProjectDocMaxBytes?: number;
-  codexProjectDocFallbackFilenames?: string[];
-  codexProjectRootMarkers?: string[];
-} {
+  io: ScanIO,
+): McpFact[] {
   const facts: McpFact[] = [];
   const seen = new Set<string>();
-  let codexProjectDocMaxBytes: number | undefined;
-  let codexProjectDocFallbackFilenames: string[] | undefined;
-  let codexProjectRootMarkers: string[] | undefined;
   for (const rel of mcpPaths) {
     const filePath = isAbsolute(rel) ? rel : join(root, rel);
-    if (!existsSync(filePath)) {
+    if (toPosix(rel).endsWith(".continue/mcpServers") && isDirectory(filePath)) {
+      facts.push(...discoverContinueMcpDir(filePath, root, io, seen));
       continue;
     }
-    if (rel.replaceAll("\\", "/").endsWith(".continue/mcpServers") && isDirectory(filePath)) {
-      facts.push(...discoverContinueMcpDir(filePath, root, errors, seen));
-      continue;
-    }
-    const parsed = parseMcpFile(filePath, root, errors);
-    if (parsed.projectDocMaxBytes !== undefined) {
-      codexProjectDocMaxBytes = parsed.projectDocMaxBytes;
-    }
-    if (parsed.projectDocFallbackFilenames !== undefined) {
-      codexProjectDocFallbackFilenames = parsed.projectDocFallbackFilenames;
-    }
-    if (parsed.projectRootMarkers !== undefined) {
-      codexProjectRootMarkers = parsed.projectRootMarkers;
-    }
-    for (const fact of parsed.facts) {
-      const key = `${fact.name}@${fact.path}${fact.platform === undefined ? "" : `:${fact.platform}`}`;
-      if (seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      facts.push(fact);
-    }
+    addUniqueMcp(facts, seen, parseMcpFile(filePath, root, io, { optional: true }));
   }
-  return {
-    facts,
-    ...(codexProjectDocMaxBytes === undefined ? {} : { codexProjectDocMaxBytes }),
-    ...(codexProjectDocFallbackFilenames === undefined
-      ? {}
-      : { codexProjectDocFallbackFilenames }),
-    ...(codexProjectRootMarkers === undefined ? {} : { codexProjectRootMarkers }),
-  };
+  return facts;
 }
 
-export function discoverMcp(
-  root: string,
-  mcpPaths: string[],
-  errors: ConfigErrorFact[],
-): McpFact[] {
-  return discoverMcpSurface(root, mcpPaths, errors).facts;
-}
-
-export function discoverNestedContinueMcp(
-  root: string,
-  errors: ConfigErrorFact[],
-  seen: Set<string>,
-): McpFact[] {
+export function discoverNestedContinueMcp(root: string, io: ScanIO): McpFact[] {
   const facts: McpFact[] = [];
+  const seen = new Set<string>();
   for (const abs of walkFiles(root, {
     maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
     match: (path, name) =>
-      path.replaceAll("\\", "/").includes("/.continue/mcpServers/") && continueMcpFilename(name),
-    errors,
+      toPosix(path).includes("/.continue/mcpServers/") && continueMcpFilename(name),
+    io,
   })) {
-    for (const fact of parseMcpFile(abs, root, errors).facts) {
-      const key = `${fact.name}@${fact.path}${fact.platform === undefined ? "" : `:${fact.platform}`}`;
-      if (seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      facts.push(fact);
-    }
+    addUniqueMcp(facts, seen, parseMcpFile(abs, root, io));
   }
   return facts;
 }

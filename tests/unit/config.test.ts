@@ -5,13 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "../../src/config/load";
 import { defaultConfig } from "../../src/config/schema";
+import { mkPinnedRoot } from "../helpers/tmp";
 
 describe("ignoreFindings", () => {
-  test("defaults to empty", () => {
-    const dir = mkdtempSync(join(tmpdir(), "agentscan-cfg-"));
-    expect(loadConfig(dir).ignoreFindings).toEqual([]);
-  });
-
   test("round-trips from the config file", () => {
     const dir = mkdtempSync(join(tmpdir(), "agentscan-cfg-"));
     writeFileSync(
@@ -27,7 +23,7 @@ describe("ignoreFindings", () => {
 
 describe("loadConfig", () => {
   test("returns defaults when no rc file", () => {
-    const root = mkdtempSync(join(tmpdir(), "agentscan-"));
+    const root = mkPinnedRoot("agentscan-");
     const cfg = loadConfig(root);
     expect(cfg.failOn).toBe("never");
     expect(cfg.skillPaths).toEqual(defaultConfig.skillPaths);
@@ -36,7 +32,7 @@ describe("loadConfig", () => {
   });
 
   test("merges .agentscanrc.json", () => {
-    const root = mkdtempSync(join(tmpdir(), "agentscan-"));
+    const root = mkPinnedRoot("agentscan-");
     writeFileSync(
       join(root, ".agentscanrc.json"),
       JSON.stringify({ ignoreSkills: ["keep-me"], failOn: "warning" }),
@@ -47,7 +43,7 @@ describe("loadConfig", () => {
   });
 
   test("rejects unknown root keys but accepts legacy skills threshold", () => {
-    const root = mkdtempSync(join(tmpdir(), "agentscan-"));
+    const root = mkPinnedRoot("agentscan-");
     writeFileSync(join(root, ".agentscanrc.json"), JSON.stringify({
       failon: "warning",
       thresholds: { skills: 30 },
@@ -57,5 +53,40 @@ describe("loadConfig", () => {
       thresholds: { skills: 30 },
     }));
     expect(loadConfig(root).thresholds.skills).toBe(30);
+  });
+});
+
+describe("config errors", () => {
+  test("an explicit config path that does not exist throws; the implicit one is silent", () => {
+    const root = mkPinnedRoot("agentscan-");
+    const missing = join(root, "nope.json");
+    expect(() => loadConfig(root, missing)).toThrow(`config file not found: ${missing}`);
+    expect(loadConfig(root)).toEqual(defaultConfig);
+  });
+
+  test("a schema violation names the file and the key", () => {
+    const root = mkPinnedRoot("agentscan-");
+    writeFileSync(join(root, ".agentscanrc.json"), JSON.stringify({ thresholds: { mcp: -1 } }));
+    expect(() => loadConfig(root)).toThrow(`Invalid config at ${join(root, ".agentscanrc.json")}: thresholds.mcp:`);
+  });
+});
+
+describe("deprecated thresholds.skillDescriptionBytes", () => {
+  const load = (thresholds: object) => {
+    const root = mkPinnedRoot("agentscan-");
+    writeFileSync(join(root, ".agentscanrc.json"), JSON.stringify({ thresholds }));
+    return loadConfig(root).thresholds.skillListingChars;
+  };
+
+  test("applies when skillListingChars is not set", () => {
+    expect(load({ skillDescriptionBytes: 1234 })).toBe(1234);
+  });
+
+  test("loses to an explicit skillListingChars", () => {
+    expect(load({ skillDescriptionBytes: 1234, skillListingChars: 99 })).toBe(99);
+  });
+
+  test("absent leaves the default", () => {
+    expect(load({})).toBe(defaultConfig.thresholds.skillListingChars);
   });
 });

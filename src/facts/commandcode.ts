@@ -1,6 +1,8 @@
 /** Official Command Code values. See docs/spec/commandcode-*.md (read 2026-08-31). */
 
 import type { Provider } from "./provider";
+import { isShadowed } from "./precedence";
+import { isPortableSkillProvider } from "./providers";
 
 export const COMMANDCODE_HOOK_EVENTS = new Set([
   "PreToolUse",
@@ -8,8 +10,6 @@ export const COMMANDCODE_HOOK_EVENTS = new Set([
   "Stop",
   "SessionStart",
 ]);
-
-export const COMMANDCODE_HOOK_HANDLER_TYPES = new Set(["command"]);
 
 export const COMMANDCODE_RESERVED_AGENT_NAMES = new Set([
   "explore",
@@ -59,25 +59,16 @@ export const COMMANDCODE_PROJECT_DIR =
  */
 export const COMMANDCODE_AGENTS_SKILLS_MAX_HOPS = 10;
 
-/** Shadowed Command Code config is inventoried but is not currently loaded. */
-export function isShadowedCommandcode(effective: boolean | undefined): boolean {
-  return effective === false;
-}
-
 /**
  * Spec/runtime skill checks. Shadowed Command Code sources (`.commandcode` and
  * extras) are skipped. Portable `.agents` / Cursor / Codex skills still check.
  */
 export function shouldCheckSkillRuntime(skill: {
-  commandcodeEffective?: boolean;
+  effective?: boolean;
   sourceProvider?: Provider;
 }): boolean {
-  if (skill.commandcodeEffective !== false) {
+  if (!isShadowed(skill)) {
     return true;
   }
-  return (
-    skill.sourceProvider === "agent-skills" ||
-    skill.sourceProvider === "cursor" ||
-    skill.sourceProvider === "codex"
-  );
+  return isPortableSkillProvider(skill.sourceProvider);
 }

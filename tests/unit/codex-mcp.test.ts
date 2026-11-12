@@ -1,26 +1,10 @@
-import { describe, expect, spyOn, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { describe, expect, test } from "bun:test";
+import { mkdtempSync } from "node:fs";
 import * as os from "node:os";
 import { join } from "node:path";
-import { mkPinnedProject } from "../helpers/tmp";
-import { runChecks } from "../../src/checks/index";
-import { defaultConfig } from "../../src/config/schema";
-import { extractFacts } from "../../src/facts/extract";
-
-function tmpProject(prefix: string): string {
-  return mkPinnedProject(prefix, "codex-mcp");
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
-
-function findingsFor(root: string, includeGlobal = false) {
-  const facts = extractFacts(root, defaultConfig, { includeGlobal });
-  return { facts, findings: runChecks(facts) };
-}
+import { tmpProject, write } from "../helpers/tmp";
+import { findingsFor } from "../helpers/scan";
+import { withEnv, withHome } from "../helpers/env";
 
 describe("Codex user MCP is --global only", () => {
   test("project .codex/config.toml still parses as codex-toml", () => {
@@ -54,13 +38,10 @@ url = "https://example.com/mcp"
 url = "https://example.com/mcp"
 `,
     );
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       const { facts } = findingsFor(root, false);
       expect(facts.mcp.some((s) => s.name === "fromhome")).toBe(false);
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 
   test("with --global, stdio + url parse as codex-toml without claude url-without-type", () => {
@@ -77,16 +58,13 @@ command = "npx"
 url = "https://example.com/mcp"
 `,
     );
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       const { facts, findings } = findingsFor(root, true);
       const user = facts.mcp.filter((s) => s.path.includes(tmpHome));
       expect(user.map((s) => s.schemaProfile).sort()).toEqual(["codex-toml", "codex-toml"]);
       expect(user.every((s) => s.consumedBy?.[0] === "codex")).toBe(true);
       expect(findings.map((f) => f.ruleId)).not.toContain("claude.mcp.url-without-type");
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 
   test("empty user server table is codex.mcp.no-launch", () => {
@@ -94,15 +72,12 @@ url = "https://example.com/mcp"
     write(root, "AGENTS.md", "keep scanable\n");
     const tmpHome = mkdtempSync(join(os.tmpdir(), "agentscan-codex-home-"));
     write(tmpHome, ".codex/config.toml", "[mcp_servers.orphan]\n");
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       expect(findingsFor(root, true).findings.map((f) => f.ruleId)).toContain("codex.mcp.no-launch");
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 
-  test("same name in project and user both stay; secrets still inspect user raw", () => {
+  test("same name in project and user both stay", () => {
     const root = tmpProject("agentscan-codex-mcp-both-");
     write(
       root,
@@ -120,18 +95,14 @@ command = "npx"
 env = { ANTHROPIC_API_KEY = "sk-ant-abcdefghijklmnop" }
 `,
     );
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       const { facts, findings } = findingsFor(root, true);
       const pair = facts.mcp.filter((s) => s.name === "docs" && s.schemaProfile === "codex-toml");
       expect(pair).toHaveLength(2);
-      expect(pair.every((s) => s.grokEffective === undefined)).toBe(true);
+      expect(pair.every((s) => s.effective === undefined)).toBe(true);
       expect(pair.every((s) => !("codexEffective" in s))).toBe(true);
-      expect(findings.map((f) => f.ruleId)).toContain("security.hardcoded-secret");
       expect(findings.map((f) => f.ruleId)).not.toContain("codex.mcp.no-launch");
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 
   test("CODEX_HOME overrides ~/.codex under --global", () => {
@@ -145,19 +116,11 @@ env = { ANTHROPIC_API_KEY = "sk-ant-abcdefghijklmnop" }
 url = "https://example.com/mcp"
 `,
     );
-    const previous = process.env.CODEX_HOME;
-    process.env.CODEX_HOME = altHome;
-    try {
+    withEnv({ CODEX_HOME: altHome }, () => {
       const { facts } = findingsFor(root, true);
       expect(facts.mcp.some((s) => s.name === "fromhome" && s.schemaProfile === "codex-toml")).toBe(
         true,
       );
-    } finally {
-      if (previous === undefined) {
-        delete process.env.CODEX_HOME;
-      } else {
-        process.env.CODEX_HOME = previous;
-      }
-    }
+    });
   });
 });

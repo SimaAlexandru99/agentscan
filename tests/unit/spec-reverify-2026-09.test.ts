@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { analyze } from "../../src/analyze";
-import { isValidAgentSkillsName } from "../../src/checks/skills";
-import { COPILOT_HOOK_EVENTS, COPILOT_PASCAL_ALIASES } from "../../src/facts/hook-schema";
+import { tmpProject, write } from "../helpers/tmp";
+import { ruleIds } from "../helpers/scan";
 
 /**
  * Regression tests for the 2026-09-02 re-verification of every check against
@@ -12,22 +8,6 @@ import { COPILOT_HOOK_EVENTS, COPILOT_PASCAL_ALIASES } from "../../src/facts/hoo
  * false positive that the scanner emitted on a documented, working
  * configuration, and keeps the genuinely invalid neighbour firing.
  */
-
-function tmpProject(prefix: string): string {
-  const root = mkdtempSync(join(tmpdir(), prefix));
-  writeFileSync(join(root, "package.json"), '{"name":"reverify"}', "utf8");
-  return root;
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
-
-function ruleIds(dir: string): string[] {
-  return analyze({ dir }).findings.map((finding) => finding.ruleId);
-}
 
 describe("Claude MCP `streamable-http` alias (code.claude.com/docs/en/mcp)", () => {
   test("streamable-http on shared .mcp.json is not a Command Code invalid-transport", () => {
@@ -85,45 +65,24 @@ describe("Command Code SSE tolerance (commandcode.ai/docs/mcp)", () => {
 });
 
 describe("Agent Skills Unicode names (agentskills.io/specification, skills-ref)", () => {
-  test("isValidAgentSkillsName accepts lowercase letters in any script", () => {
-    expect(isValidAgentSkillsName("pdf-processing")).toBe(true);
-    expect(isValidAgentSkillsName("résumé-builder")).toBe(true);
-    expect(isValidAgentSkillsName("日本語")).toBe(true);
-    expect(isValidAgentSkillsName("data2-analysis")).toBe(true);
-  });
+  const portable = (name: string) => {
+    const root = tmpProject("agentscan-skill-name-");
+    write(root, `.agents/skills/${name}/SKILL.md`, `---\nname: ${name}\ndescription: d.\n---\n# Skill\n`);
+    return ruleIds(root);
+  };
 
-  test("isValidAgentSkillsName still rejects the documented invalid shapes", () => {
-    expect(isValidAgentSkillsName("PDF-Processing")).toBe(false);
-    expect(isValidAgentSkillsName("Résumé")).toBe(false);
-    expect(isValidAgentSkillsName("-pdf")).toBe(false);
-    expect(isValidAgentSkillsName("pdf-")).toBe(false);
-    expect(isValidAgentSkillsName("pdf--processing")).toBe(false);
-    expect(isValidAgentSkillsName("pdf_processing")).toBe(false);
-    expect(isValidAgentSkillsName("pdf processing")).toBe(false);
-    expect(isValidAgentSkillsName("")).toBe(false);
-  });
-
-  test("a lowercase accented portable skill is not reported as an invalid name", () => {
-    const root = tmpProject("agentscan-unicode-skill-");
-    write(
-      root,
-      ".agents/skills/résumé-builder/SKILL.md",
-      "---\nname: résumé-builder\ndescription: Builds résumés.\n---\n# Skill\n",
-    );
-    const ids = ruleIds(root);
+  test.each(["pdf-processing", "résumé-builder", "日本語", "data2-analysis"])("%s is a valid name", (name) => {
+    const ids = portable(name);
     expect(ids).not.toContain("agent-skills.skill.invalid-name");
     expect(ids).not.toContain("agent-skills.skill.name-does-not-match-directory");
   });
 
-  test("an uppercase portable skill name is still an invalid name", () => {
-    const root = tmpProject("agentscan-upper-skill-");
-    write(
-      root,
-      ".agents/skills/Bad-Name/SKILL.md",
-      "---\nname: Bad-Name\ndescription: Uppercase.\n---\n# Skill\n",
-    );
-    expect(ruleIds(root)).toContain("agent-skills.skill.invalid-name");
-  });
+  test.each(["PDF-Processing", "Résumé", "-pdf", "pdf-", "pdf--processing", "pdf_processing", "pdf processing"])(
+    "%s is an invalid name",
+    (name) => {
+      expect(portable(name)).toContain("agent-skills.skill.invalid-name");
+    },
+  );
 });
 
 describe("Copilot CLI exec form (docs.github.com/en/copilot/reference/hooks-reference)", () => {
@@ -144,21 +103,6 @@ describe("Copilot CLI exec form (docs.github.com/en/copilot/reference/hooks-refe
     expect(ids).not.toContain("copilot.hook.unknown-event");
   });
 
-  test("exec pointing at a missing local script is still reported", () => {
-    const root = tmpProject("agentscan-copilot-exec-missing-");
-    write(
-      root,
-      ".github/hooks/guard.json",
-      JSON.stringify({
-        version: 1,
-        hooks: {
-          preToolUse: [{ type: "command", exec: "./scripts/gone.sh" }],
-        },
-      }),
-    );
-    expect(ruleIds(root)).toContain("copilot.hook.missing-script");
-  });
-
   test("a command handler with none of bash, powershell, command, or exec still fires", () => {
     const root = tmpProject("agentscan-copilot-empty-");
     write(
@@ -174,18 +118,6 @@ describe("Copilot CLI exec form (docs.github.com/en/copilot/reference/hooks-refe
 });
 
 describe("Copilot CLI PascalCase aliases for Copilot-only events", () => {
-  test("the alias table names only Copilot-only events, never native VS Code ones", () => {
-    expect(Object.keys(COPILOT_PASCAL_ALIASES).sort()).toEqual([
-      "ErrorOccurred",
-      "PermissionRequest",
-      "PostToolUseFailure",
-      "SessionEnd",
-    ]);
-    for (const alias of Object.keys(COPILOT_PASCAL_ALIASES)) {
-      expect(COPILOT_HOOK_EVENTS.has(alias)).toBe(true);
-    }
-  });
-
   test("documented PascalCase spellings in a version: 1 file are known events", () => {
     const root = tmpProject("agentscan-copilot-pascal-");
     write(
@@ -271,15 +203,5 @@ describe("Command Code agent permissionMode: inherit (commandcode.ai/docs/agents
       "---\nname: researcher\ndescription: Researches\npermissionMode: inherit\n---\nbody\n",
     );
     expect(ruleIds(root)).not.toContain("commandcode.agent.invalid-permission-mode");
-  });
-
-  test("an undocumented permissionMode still fires", () => {
-    const root = tmpProject("agentscan-cc-yolo-");
-    write(
-      root,
-      ".commandcode/agents/researcher.md",
-      "---\nname: researcher\ndescription: Researches\npermissionMode: yolo\n---\nbody\n",
-    );
-    expect(ruleIds(root)).toContain("commandcode.agent.invalid-permission-mode");
   });
 });

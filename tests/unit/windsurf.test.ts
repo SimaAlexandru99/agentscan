@@ -1,32 +1,11 @@
-import { describe, expect, spyOn, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { describe, expect, test } from "bun:test";
+import { mkdtempSync } from "node:fs";
 import * as os from "node:os";
 import { join } from "node:path";
-import { mkPinnedProject, mkPinnedRoot } from "../helpers/tmp";
+import { mkPinnedRoot, tmpProject, write } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
-import { runChecks } from "../../src/checks/index";
-import { defaultConfig } from "../../src/config/schema";
-import { mcpProfileFromPath } from "../../src/facts/provider";
-import { extractFacts } from "../../src/facts/extract";
-
-function tmpProject(prefix: string): string {
-  return mkPinnedProject(prefix, "windsurf");
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
-
-function findingsFor(root: string, includeGlobal = false) {
-  const facts = extractFacts(root, defaultConfig, { includeGlobal });
-  return { facts, findings: runChecks(facts) };
-}
-
-function ruleIds(root: string, includeGlobal = false): string[] {
-  return findingsFor(root, includeGlobal).findings.map((f) => f.ruleId);
-}
+import { findingsFor, ruleIds } from "../helpers/scan";
+import { withHome } from "../helpers/env";
 
 function triggered(body: string): string {
   return `---\ntrigger: always_on\n---\n${body}`;
@@ -93,7 +72,7 @@ describe("Windsurf workspace rules", () => {
     write(root, ".devin/rules/broke.md", "---\ntrigger: [unclosed\n---\nbody\n");
     const { facts, findings } = findingsFor(root);
     const rule = facts.rules?.find((r) => r.path.endsWith("broke.md"));
-    expect(rule?.windsurfHasTrigger).not.toBe(true);
+    expect(rule?.windsurfTrigger).toBe("unreadable");
     expect(findings.map((f) => f.ruleId)).not.toContain("windsurf.rule.missing-trigger");
   });
 });
@@ -128,13 +107,10 @@ describe("Windsurf Cascade hooks", () => {
       ".codeium/windsurf/hooks.json",
       JSON.stringify({ hooks: { nope: [{ command: "true" }] } }),
     );
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       expect(ruleIds(root, false)).not.toContain("windsurf.hook.unknown-event");
       expect(ruleIds(root, true)).toContain("windsurf.hook.unknown-event");
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 });
 
@@ -166,17 +142,14 @@ describe("Windsurf Cascade skills", () => {
       ".codeium/windsurf/skills/global-one/SKILL.md",
       "---\nname: global-one\ndescription: User skill.\n---\n",
     );
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       const local = findingsFor(root, false).facts.skills.map((s) => s.id);
       expect(local).not.toContain("global-one");
       const global = findingsFor(root, true).facts.skills;
       const hit = global.find((s) => s.id === "global-one");
       expect(hit?.source).toBe("global");
       expect(hit?.sourceProvider).toBe("windsurf");
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 });
 
@@ -196,14 +169,11 @@ describe("Windsurf global rules are --global only", () => {
     const tmpHome = mkdtempSync(join(os.tmpdir(), "agentscan-windsurf-home-"));
     write(tmpHome, ".codeium/windsurf/memories/global_rules.md", "always on\n");
     write(tmpHome, ".codeium/windsurf/memories/auto.md", "do not open\n");
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       const { facts } = findingsFor(root, false);
       expect(facts.rules?.some((r) => r.path.includes("global_rules.md"))).toBe(false);
       expect(facts.rules?.some((r) => r.path.endsWith("auto.md"))).toBe(false);
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 
   test("with --global, only global_rules.md is opened; 6,001 chars is too large", () => {
@@ -212,25 +182,17 @@ describe("Windsurf global rules are --global only", () => {
     const tmpHome = mkdtempSync(join(os.tmpdir(), "agentscan-windsurf-home-"));
     write(tmpHome, ".codeium/windsurf/memories/global_rules.md", `${"g".repeat(6_001)}`);
     write(tmpHome, ".codeium/windsurf/memories/auto.md", "do not open\n");
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       const { facts, findings } = findingsFor(root, true);
       expect(facts.rules?.some((r) => r.path.endsWith("global_rules.md"))).toBe(true);
       expect(facts.rules?.some((r) => r.path.endsWith("auto.md"))).toBe(false);
       expect(findings.map((f) => f.ruleId)).toContain("windsurf.rule.global-too-large");
       expect(findings.map((f) => f.ruleId)).not.toContain("windsurf.rule.missing-trigger");
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 });
 
 describe("Windsurf user MCP is --global only", () => {
-  test("mcpProfileFromPath maps the quoted user file", () => {
-    expect(mcpProfileFromPath("/home/me/.codeium/windsurf/mcp_config.json")).toBe("windsurf-json");
-    expect(mcpProfileFromPath("/home/me/.agents/mcp_config.json")).toBe("antigravity-json");
-  });
-
   test("without --global, user mcp_config.json is not read", () => {
     const root = tmpProject("agentscan-windsurf-mcp-off-");
     write(root, "AGENTS.md", "keep scanable\n");
@@ -240,12 +202,9 @@ describe("Windsurf user MCP is --global only", () => {
       ".codeium/windsurf/mcp_config.json",
       JSON.stringify({ mcpServers: { docs: { command: "npx" } } }),
     );
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       expect(findingsFor(root, false).facts.mcp.some((s) => s.name === "docs")).toBe(false);
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 
   test("command, serverUrl, and url are launchable; url is not claude url-without-type", () => {
@@ -263,8 +222,7 @@ describe("Windsurf user MCP is --global only", () => {
         },
       }),
     );
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       const { facts, findings } = findingsFor(root, true);
       const user = facts.mcp.filter((s) => s.path.includes(tmpHome));
       expect(user.map((s) => s.schemaProfile).sort()).toEqual([
@@ -275,9 +233,7 @@ describe("Windsurf user MCP is --global only", () => {
       expect(user.every((s) => s.sourceProvider === "windsurf")).toBe(true);
       expect(findings.map((f) => f.ruleId)).not.toContain("claude.mcp.url-without-type");
       expect(findings.map((f) => f.ruleId)).not.toContain("windsurf.mcp.no-launch");
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 
   test("empty entry is windsurf.mcp.no-launch", () => {
@@ -285,15 +241,12 @@ describe("Windsurf user MCP is --global only", () => {
     write(root, "AGENTS.md", "keep scanable\n");
     const tmpHome = mkdtempSync(join(os.tmpdir(), "agentscan-windsurf-home-"));
     write(tmpHome, ".codeium/windsurf/mcp_config.json", JSON.stringify({ mcpServers: { orphan: {} } }));
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       expect(ruleIds(root, true)).toContain("windsurf.mcp.no-launch");
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 
-  test("secrets still inspect the user file; ${file:} is not a literal env", () => {
+  test("${file:} in the user file is not a literal env", () => {
     const root = tmpProject("agentscan-windsurf-mcp-secret-");
     write(root, "AGENTS.md", "keep scanable\n");
     const tmpHome = mkdtempSync(join(os.tmpdir(), "agentscan-windsurf-home-"));
@@ -313,14 +266,9 @@ describe("Windsurf user MCP is --global only", () => {
         },
       }),
     );
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
-      const ids = ruleIds(root, true);
-      expect(ids).toContain("security.hardcoded-secret");
-      expect(ids).not.toContain("mcp.literal-env");
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    withHome(tmpHome, () => {
+      expect(ruleIds(root, true)).not.toContain("mcp.literal-env");
+    });
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { skillReferences } from "../../src/discover/index";
+import { skillReferences } from "../../src/discover/skills";
 
 /**
  * A false "this skill points at a missing file" is as damaging as missing a

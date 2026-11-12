@@ -164,7 +164,7 @@ bunx agentscan check                 # text report (cwd)
 bunx agentscan check ./my-app        # explicit root
 bunx agentscan check --json          # machine-readable
 bunx agentscan check --quiet         # summary only
-bunx agentscan check --verbose       # include KEEP, info findings, and each finding's id
+bunx agentscan check --verbose       # include info findings and each finding's id
 bunx agentscan check --fail-on warning
 bunx agentscan check --global        # also scan global skill dirs
 
@@ -183,7 +183,7 @@ Flags for `check`:
 | `--copy` | Also copy the report to the system clipboard |
 | `--no-color` | Never colour, even on a terminal (`NO_COLOR=1` does the same) |
 | `--quiet` | Summary line only |
-| `--verbose` | Show KEEP + info-severity findings, and print each finding's id |
+| `--verbose` | Show info-severity findings, and print each finding's id |
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
 | `--global` | Also scan user skills (`$CLAUDE_CONFIG_DIR/skills` or `~/.claude/skills`, `~/.codex/skills`, `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills`, `~/.codeium/windsurf/skills`), Claude user settings / agents / `CLAUDE.md` / rules / commands and `~/.claude.json` (user + matching local `mcpServers`), Copilot `$COPILOT_HOME` / `~/.copilot/hooks` and `settings.json`, Codex `$CODEX_HOME` / `~/.codex/config.toml`, Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user MCP/agents/memory, and Windsurf `~/.codeium/windsurf` MCP + `global_rules.md` + `hooks.json` (see below) |
@@ -452,7 +452,7 @@ ERROR   rule:cursor.hook.missing-script
         internal-consistency · no vendor page · agentscan inference
 ```
 
-`agentscan rules` lists every rule with its provenance and source;
+`agentscan rules` lists every rule with its severity, provenance and source;
 `agentscan rules --json` adds the full URL and the `docs/spec` capture holding
 the quoted lines; `agentscan explain <id>` prints both for one finding, and
 `--json` carries them on every finding. Every cited page is one
@@ -509,7 +509,7 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `claude.agent.missing-description` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Claude agent frontmatter has no `description` |
 | `claude.agent.missing-name` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Claude agent frontmatter has no `name` |
 | `claude.agent.duplicate-name` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Multiple Claude agent files declare the same name |
-| `claude.agent.invalid-name` | warning | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Claude agent name is not lowercase letters and hyphens (error if it starts with `-` or contains `:`; filename is not compared) |
+| `claude.agent.invalid-name` | warning/error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Claude agent name is not lowercase letters and hyphens (error if it starts with `-` or contains `:`; filename is not compared) |
 | `claude.mcp.no-launch` | error | spec-required | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | A Claude MCP server with neither `command` nor `url` |
 | `vscode.mcp.no-launch` | error | spec-required | [code.visualstudio.com/docs/copilot/customization/mcp-servers](https://code.visualstudio.com/docs/copilot/customization/mcp-servers) | A VS Code MCP server (`servers`) with neither `command` nor `url` |
 | `cursor.mcp.no-launch` | error | spec-required | [cursor.com/docs/context/mcp](https://cursor.com/docs/context/mcp) | A Cursor MCP server with neither `command` nor `url` |
@@ -545,7 +545,7 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `grok.hook.command-without-command` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | A Grok `type: command` hook with no `command` |
 | `grok.hook.http-without-url` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | A Grok `type: http` hook with no `url` |
 | `grok.hook.unknown-handler-type` | error | spec-required | [docs.x.ai/build/features/hooks](https://docs.x.ai/build/features/hooks) | A Grok hook whose `type` is missing or not `command` / `http` |
-| `grok.skill.missing-frontmatter` | warning | spec-required | [docs.x.ai/build/features/skills-plugins-marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces) | Grok `SKILL.md` with no `---` block |
+| `grok.skill.missing-frontmatter` | error | spec-required | [docs.x.ai/build/features/skills-plugins-marketplaces](https://docs.x.ai/build/features/skills-plugins-marketplaces) | Grok `SKILL.md` with no `---` block |
 | `mcp.command-missing` | error | internal-consistency | _cross-provider path assertion; docs/spec/mcp.md calls it internal-consistency_ | An MCP `command` that is a path-like value whose file does not exist on disk |
 | `claude.mcp.url-without-type` | error | spec-required | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | A Claude remote MCP server with a `url` but no `type` — read as stdio and skipped. On shared `.mcp.json`, a Command Code `transport` field satisfies the other consumer and this check does not fire |
 | `claude.mcp.reserved-name` | error | spec-required | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | A Claude-consumed MCP server named with a reserved identifier (`workspace`, `claude-in-chrome`, `computer-use`, `Claude Preview`, `Claude Browser`) — skipped at load |
@@ -701,8 +701,8 @@ first.
   should add a `next-*` skill". That needed a hand-maintained registry, and the
   version that existed fired on none of the 17 projects measured, so it was
   removed. Skill provenance comes from `skills-lock.json` instead.
-- **No rule produces `refresh` or `keep`.** Comparing a skill's content against
-  the `computedHash` in `skills-lock.json` is the obvious `refresh` source; the
+- **No skill-content hash check.** Comparing a skill's content against
+  the `computedHash` in `skills-lock.json` is the obvious source of one; the
   hash algorithm used by the installing tool is not documented here, and it is
   not reproducible from `SKILL.md` bytes alone, so it is not implemented.
 - **Runtime split.** Source development and the composite Action use Bun; the
@@ -730,7 +730,8 @@ first.
   is keyed by a working-directory slug that the sessions page does not publish.
   Until it does, that path is skipped rather than guessed. Bundled Command Code
   skills and `--skill` launch flags are not project files and are not scanned.
-  `mods.paths` are inventoried; the TypeScript is never executed or imported.
+  Command Code `mods` settings are not read, and mod TypeScript is never
+  executed or imported.
   `auth.json` and `mcp-tokens.json` are never opened. Command Code project
   root is the git root (or cwd outside a git repo); a child `.cursor` does
   not hide `<git-root>/.commandcode/`. Spec/runtime Command Code checks skip

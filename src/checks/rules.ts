@@ -1,66 +1,11 @@
-import { assertNever, type Provider } from "../facts/provider";
-import type { Facts, Finding, RuleFact } from "../facts/types";
+import type { Provider } from "../facts/provider";
+import type { Facts, RuleFact } from "../facts/types";
+import type { Finding } from "../findings";
 import { make } from "./make";
 
 const CURSOR_RULE_LINE_LIMIT = 500;
 const WINDSURF_WORKSPACE_CHAR_LIMIT = 12_000;
 const WINDSURF_GLOBAL_CHAR_LIMIT = 6_000;
-
-function lineLimitFor(provider: Provider): number | undefined {
-  switch (provider) {
-    case "cursor":
-      return CURSOR_RULE_LINE_LIMIT;
-    case "agent-skills":
-    case "claude":
-    case "codex":
-    case "vscode":
-    case "grok":
-    case "antigravity":
-    case "gemini":
-    case "windsurf":
-    case "kiro":
-    case "cline":
-    case "roo":
-    case "kilo":
-    case "opencode":
-    case "junie":
-    case "continue":
-    case "commandcode":
-    case "unknown":
-      return undefined;
-    default: {
-      return assertNever(provider, `unhandled rules provider: ${provider}`);
-    }
-  }
-}
-
-function tooLargeRuleId(provider: Provider): string | undefined {
-  switch (provider) {
-    case "cursor":
-      return "cursor.rule.too-large";
-    case "agent-skills":
-    case "claude":
-    case "codex":
-    case "vscode":
-    case "grok":
-    case "antigravity":
-    case "gemini":
-    case "windsurf":
-    case "kiro":
-    case "cline":
-    case "roo":
-    case "kilo":
-    case "opencode":
-    case "junie":
-    case "continue":
-    case "commandcode":
-    case "unknown":
-      return undefined;
-    default: {
-      return assertNever(provider, `unhandled rules provider: ${provider}`);
-    }
-  }
-}
 
 /**
  * Vendor rule-file size checks. Only limits quoted in docs/spec/ are emitted.
@@ -82,18 +27,22 @@ export function checkRules(facts: Facts): Finding[] {
   return out;
 }
 
+/** Providers with a quoted size budget; every other provider has none. */
+const TOO_LARGE: Partial<Record<Provider, (rule: RuleFact) => Finding | undefined>> = {
+  cursor: cursorTooLargeFinding,
+  windsurf: windsurfTooLargeFinding,
+};
+
 function tooLargeFinding(rule: RuleFact): Finding | undefined {
-  if (rule.sourceProvider === "windsurf") {
-    return windsurfTooLargeFinding(rule);
-  }
-  const limit = lineLimitFor(rule.sourceProvider);
-  const ruleId = tooLargeRuleId(rule.sourceProvider);
-  if (limit === undefined || ruleId === undefined || rule.lineCount <= limit) {
+  return TOO_LARGE[rule.sourceProvider]?.(rule);
+}
+
+function cursorTooLargeFinding(rule: RuleFact): Finding | undefined {
+  const limit = CURSOR_RULE_LINE_LIMIT;
+  if (rule.lineCount <= limit) {
     return undefined;
   }
-  return make(ruleId, `rule:${rule.path}`, {
-    action: "warn",
-    severity: "info",
+  return make("cursor.rule.too-large", `rule:${rule.path}`, {
     message: `Cursor rule is long (${rule.lineCount} lines > ${limit})`,
     reason:
       "Cursor's rules reference asks authors to keep project rules under 500 lines. That is a vendor recommendation, not a load failure. See docs/spec/cursor-rules.md.",
@@ -114,8 +63,6 @@ function windsurfTooLargeFinding(rule: RuleFact): Finding | undefined {
   }
   const ruleId = global ? "windsurf.rule.global-too-large" : "windsurf.rule.too-large";
   return make(ruleId, `rule:${rule.path}`, {
-    action: "warn",
-    severity: "info",
     message: global
       ? `Windsurf global rules file is long (${rule.charCount} characters > ${limit})`
       : `Windsurf workspace rule is long (${rule.charCount} characters > ${limit})`,
@@ -137,15 +84,10 @@ function missingTriggerFinding(rule: RuleFact): Finding | undefined {
   if (rule.sourceProvider !== "windsurf" || rule.windsurfScope !== "workspace") {
     return undefined;
   }
-  if (rule.windsurfTriggerUnreadable === true) {
-    return undefined;
-  }
-  if (rule.windsurfHasTrigger === true) {
+  if (rule.windsurfTrigger === "yes" || rule.windsurfTrigger === "unreadable") {
     return undefined;
   }
   return make("windsurf.rule.missing-trigger", `rule:${rule.path}`, {
-    action: "warn",
-    severity: "warning",
     message: "Windsurf workspace rule is missing a frontmatter trigger",
     reason:
       "Each workspace rule declares an activation mode in its frontmatter via the `trigger` field (`always_on`, `glob`, `model_decision`, or `manual`). See docs/spec/windsurf-rules.md.",

@@ -1,6 +1,6 @@
-import type { Facts, Finding } from "../facts/types";
-import { score } from "./score";
-import { sortFindings } from "./sort";
+import type { Facts } from "../facts/types";
+import type { Finding } from "../findings";
+import { summarize } from "./summary";
 
 export function renderJson(args: {
   version: string;
@@ -9,7 +9,8 @@ export function renderJson(args: {
   findings: Finding[];
   resolvedFrom?: string;
 }): string {
-  const { version, root, facts, findings } = args;
+  const { version, root, facts } = args;
+  const summary = summarize(args.findings, { verbose: true });
   const depCount =
     Object.keys(facts.dependencies).length +
     Object.keys(facts.devDependencies).length;
@@ -28,8 +29,8 @@ export function renderJson(args: {
         .length,
     },
     // max(0, 100 - 10*errors - 3*warnings); see src/report/score.ts
-    score: score(findings),
-    findings: sortFindings(findings),
+    score: summary.score,
+    findings: summary.sorted,
   };
 
   return `${JSON.stringify(payload, null, 2)}\n`;

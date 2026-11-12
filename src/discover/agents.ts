@@ -1,35 +1,22 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { isFile, listDir, type ScanIO } from "./fs";
 import { dirname, join } from "node:path";
-import { claudeConfigDir } from "../facts/claude";
-import type { AgentFact, ConfigErrorFact } from "../facts/types";
+import { providerHome } from "../facts/providers";
+import type { AgentFact } from "../facts/types";
 import { discoverCommandcodeAgents } from "./commandcode";
-import { ancestorDirsInclusive } from "./shared";
+import { ancestorDirsInclusive } from "./scan-context";
 import { hooksFromObject } from "./hooks";
-import { readFrontmatter } from "./shared";
+import { readFrontmatter } from "./frontmatter";
 
 /** Agent definitions nest, so a one-level scan misses `agents/review/x.md`. */
-function agentFiles(dir: string, errors: ConfigErrorFact[]): string[] {
-  let entries: string[];
-  try {
-    entries = readdirSync(dir, { withFileTypes: true }).map((e) =>
-      e.isDirectory() ? `${e.name}/` : e.name,
-    );
-  } catch (err) {
-    errors.push({
-      path: dir,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return [];
-  }
+function agentFiles(dir: string, io: ScanIO): string[] {
   const out: string[] = [];
-  for (const entry of entries) {
+  for (const entry of (listDir(dir, io, { optional: true }) ?? []).map((e) => (e.isDirectory() ? `${e.name}/` : e.name))) {
     if (entry.startsWith(".")) {
       continue;
     }
     if (entry.endsWith("/")) {
       out.push(
-        ...agentFiles(join(dir, entry.slice(0, -1)), errors).map((p) =>
+        ...agentFiles(join(dir, entry.slice(0, -1)), io).map((p) =>
           join(entry.slice(0, -1), p),
         ),
       );
@@ -45,10 +32,10 @@ function readClaudeAgent(
   name: string,
   root: string,
   namespace: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   includeFrontmatterHooks = true,
 ): AgentFact {
-  const fm = readFrontmatter(filePath, errors);
+  const fm = readFrontmatter(filePath, io);
   const fact: AgentFact = {
     name: name.slice(0, -".md".length),
     path: filePath,
@@ -74,9 +61,9 @@ function readClaudeAgent(
     const hooks = hooksFromObject(fm.hooks, filePath, "agent", {
       project: root,
       own: dirname(filePath),
-    }, errors);
+    }, io, { sourceProvider: "claude", schemaProfile: "claude" });
     if (hooks.length > 0) {
-      fact.frontmatterHooks = hooks.map((h) => ({ ...h, sourceProvider: "claude" }));
+      fact.frontmatterHooks = hooks;
     }
   }
   return fact;
@@ -90,50 +77,28 @@ function readClaudeAgent(
 export function discoverClaudeAgentsDir(
   dir: string,
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   includeFrontmatterHooks = true,
 ): AgentFact[] {
-  if (!existsSync(dir)) {
-    return [];
-  }
-  const entries = agentFiles(dir, errors);
+  const entries = agentFiles(dir, io);
   const facts: AgentFact[] = [];
   for (const name of entries) {
     if (!name.endsWith(".md")) {
       continue;
     }
     const filePath = join(dir, name);
-    try {
-      const st = statSync(filePath);
-      if (!st.isFile()) {
-        continue;
-      }
-    } catch {
+    if (!isFile(filePath)) {
       continue;
     }
-    facts.push(readClaudeAgent(filePath, name, root, dir, errors, includeFrontmatterHooks));
+    facts.push(readClaudeAgent(filePath, name, root, dir, io, includeFrontmatterHooks));
   }
   return facts;
 }
 
-function discoverVscodeAgents(root: string, errors: ConfigErrorFact[]): AgentFact[] {
+function discoverVscodeAgents(root: string, io: ScanIO): AgentFact[] {
   const dir = join(root, ".github", "agents");
-  if (!existsSync(dir)) {
-    return [];
-  }
   const facts: AgentFact[] = [];
-  let names: string[];
-  try {
-    names = readdirSync(dir);
-  } catch (err) {
-    errors.push({
-      path: dir,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return [];
-  }
-  for (const name of names) {
+  for (const { name } of listDir(dir, io, { optional: true }) ?? []) {
     if (name.startsWith(".")) {
       continue;
     }
@@ -141,14 +106,10 @@ function discoverVscodeAgents(root: string, errors: ConfigErrorFact[]): AgentFac
       continue;
     }
     const filePath = join(dir, name);
-    try {
-      if (!statSync(filePath).isFile()) {
-        continue;
-      }
-    } catch {
+    if (!isFile(filePath)) {
       continue;
     }
-    const fm = readFrontmatter(filePath, errors);
+    const fm = readFrontmatter(filePath, io);
     const stem = name.endsWith(".agent.md")
       ? name.slice(0, -".agent.md".length)
       : name.slice(0, -".md".length);
@@ -179,10 +140,8 @@ function discoverVscodeAgents(root: string, errors: ConfigErrorFact[]): AgentFac
         filePath,
         "agent",
         { project: root, own: dirname(filePath) },
-        errors,
-        "vscode",
-        process.platform,
-        "vscode-native",
+        io,
+        { sourceProvider: "vscode", schemaProfile: "vscode-native" },
       );
       if (hooks.length > 0) {
         fact.frontmatterHooks = hooks;
@@ -202,7 +161,7 @@ function discoverVscodeAgents(root: string, errors: ConfigErrorFact[]): AgentFac
  */
 export function discoverAgents(
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   startDir = root,
   includeGlobal = false,
   commandcodeProjectRoot = root,
@@ -215,12 +174,12 @@ export function discoverAgents(
       continue;
     }
     seenDirs.add(agentsDir);
-    facts.push(...discoverClaudeAgentsDir(agentsDir, root, errors));
-    facts.push(...discoverVscodeAgents(dir, errors));
+    facts.push(...discoverClaudeAgentsDir(agentsDir, root, io));
+    facts.push(...discoverVscodeAgents(dir, io));
   }
-  facts.push(...discoverCommandcodeAgents(commandcodeProjectRoot, includeGlobal, errors));
+  facts.push(...discoverCommandcodeAgents(commandcodeProjectRoot, includeGlobal, io));
   if (includeGlobal) {
-    facts.push(...discoverClaudeAgentsDir(join(claudeConfigDir(), "agents"), root, errors));
+    facts.push(...discoverClaudeAgentsDir(join(providerHome("claude"), "agents"), root, io));
   }
   return facts;
 }

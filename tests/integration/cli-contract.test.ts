@@ -75,6 +75,22 @@ describe("built CLI contract", () => {
     );
   });
 
+  test("an explicit --config that does not exist or fails the schema exits 2", () => {
+    const dir = join(fixturesRoot, "clean-repo");
+    const missing = join(dir, "no-such-config.json");
+    const result = runCli("check", dir, "--config", missing);
+    expect(result.status).toBe(2);
+    expect(result.stderr).toBe(`config file not found: ${missing}\n`);
+    expect(result.stdout).toBe("");
+
+    const root = mkPinnedRoot("agentscan-cli-config-");
+    writeFileSync(join(root, "package.json"), '{"name":"x"}', "utf8");
+    writeFileSync(join(root, ".agentscanrc.json"), '{"failOn":"sometimes"}', "utf8");
+    const invalid = runCli("check", root);
+    expect(invalid.status).toBe(2);
+    expect(invalid.stderr).toStartWith(`Invalid config at ${join(root, ".agentscanrc.json")}: failOn:`);
+  });
+
   test("unknown options return the CLI usage error code", () => {
     const result = runCli("--bogus");
     expect(result.status).toBe(2);

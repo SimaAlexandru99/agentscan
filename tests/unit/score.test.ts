@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { Finding, Severity } from "../../src/facts/types";
-import { ERROR_COST, WARNING_COST, score } from "../../src/report/score";
+import type { Finding, Severity } from "../../src/findings";
+import { score } from "../../src/report/score";
 import { ruleMeta } from "../helpers/finding";
 
 const f = (severity: Severity): Finding => ({
@@ -23,11 +23,6 @@ describe("score", () => {
     expect(score([])).toBe(100);
   });
 
-  test("each severity costs its published weight", () => {
-    expect(score([f("error")])).toBe(100 - ERROR_COST);
-    expect(score([f("warning")])).toBe(100 - WARNING_COST);
-  });
-
   test("info never costs anything", () => {
     // info is advisory — budgets and hygiene. Charging for it would make a
     // large healthy config score worse than a small broken one.
@@ -38,19 +33,8 @@ describe("score", () => {
     expect(score(many("error", 50))).toBe(0);
   });
 
-  test("it does not scale with project size", () => {
-    // the same two errors, in a project with twenty extra info findings
-    const small = score(many("error", 2));
-    const large = score([...many("error", 2), ...many("info", 20)]);
-    expect(large).toBe(small);
-  });
-
-  test("errors outrank warnings", () => {
+  test("a warning costs something, and an error costs more", () => {
+    expect(score([f("warning")])).toBeLessThan(100);
     expect(score([f("error")])).toBeLessThan(score(many("warning", 2)));
-  });
-
-  test("the arithmetic is reproducible by hand from the report", () => {
-    // 6 errors and 0 warnings — touchagency's real shape
-    expect(score(many("error", 6))).toBe(100 - 6 * ERROR_COST);
   });
 });

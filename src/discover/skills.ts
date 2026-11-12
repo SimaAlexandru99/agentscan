@@ -1,9 +1,12 @@
-import { existsSync, lstatSync, readdirSync, statSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { providerFromSkillsDir, schemaProfileFromSkillsDir } from "../facts/provider";
-import type { ConfigErrorFact, SkillFact } from "../facts/types";
+import type { Provider } from "../facts/provider";
+import { isInside } from "../facts/paths";
+import { providerFromSkillsDir, SKILL_DOT_DIRS, skillSchemaFor } from "../facts/providers";
+import type { SkillFact, SkillSchemaProfile } from "../facts/types";
 import { hooksFromObject } from "./hooks";
-import { NESTED_DISCOVERY_MAX_DEPTH, NESTED_DISCOVERY_SKIP, readFrontmatter } from "./shared";
+import { NESTED_DISCOVERY_MAX_DEPTH, NESTED_DISCOVERY_SKIP } from "./shared";
+import { readFrontmatter } from "./frontmatter";
+import { isFile, isRealDirectory, isRecord, listDir, type ScanIO } from "./fs";
 
 const BUNDLED = "scripts|references|assets|templates|examples";
 const REFERENCE_RE = new RegExp(
@@ -16,15 +19,10 @@ const REFERENCE_RE = new RegExp(
 /**
  * Code-block fences, anchored to line start.
  *
- * Three or more backticks or tildes, per CommonMark. The previous version
- * matched an unanchored ``` anywhere, so a mid-line backtick run swallowed the
- * rest of the document and hid real references; and it knew nothing of `~~~` or
- * four-backtick fences, so examples inside those were reported as broken.
+ * Three or more backticks or tildes, per CommonMark.
  */
 const FENCE_BLOCK = /^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[ \t]*$|(?![\s\S]))/gm;
-/** Inline code may point at a bundled file; ordinary prose remains ignored. */
 const INLINE_CODE = /`[^`\n]*`/g;
-/** A URL swallows any path inside it, including one in a query string. */
 const URLS = /\b[a-z][a-z0-9+.-]*:\/\/\S+/gi;
 
 /**
@@ -80,51 +78,15 @@ function brokenReferences(
   root: string,
   skillRootOnly: boolean,
 ): string[] {
-  const isFilePath = (p: string): boolean => {
-    try {
-      return statSync(p).isFile();
-    } catch {
-      return false;
-    }
-  };
   return skillReferences(body).filter((rel) => {
-    if (isFilePath(join(skillDir, rel))) {
+    if (isFile(join(skillDir, rel))) {
       return false;
     }
     if (skillRootOnly) {
       return true;
     }
-    return !isFilePath(join(root, rel));
+    return !isFile(join(root, rel));
   });
-}
-
-function readDirNames(dir: string, errors: ConfigErrorFact[]): string[] | undefined {
-  try {
-    return readdirSync(dir);
-  } catch (err) {
-    errors.push({
-      path: dir,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return undefined;
-  }
-}
-
-function isDirectory(path: string): boolean {
-  try {
-    return lstatSync(path).isDirectory();
-  } catch {
-    return false;
-  }
-}
-
-function isFile(path: string): boolean {
-  try {
-    return statSync(path).isFile();
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -133,10 +95,10 @@ function isFile(path: string): boolean {
  */
 function findSkillMdDirs(
   dir: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   depth = 0,
 ): string[] {
-  const names = readDirNames(dir, errors);
+  const names = listDir(dir, io)?.map((entry) => entry.name);
   if (names === undefined) {
     return [];
   }
@@ -148,14 +110,14 @@ function findSkillMdDirs(
   }
   const out: string[] = [];
   for (const name of names) {
-    if (name.startsWith(".") || name === "node_modules" || NESTED_DISCOVERY_SKIP.has(name)) {
+    if (name.startsWith(".") || NESTED_DISCOVERY_SKIP.has(name)) {
       continue;
     }
     const child = join(dir, name);
-    if (!isDirectory(child)) {
+    if (!isRealDirectory(child)) {
       continue;
     }
-    out.push(...findSkillMdDirs(child, errors, depth + 1));
+    out.push(...findSkillMdDirs(child, io, depth + 1));
   }
   return out;
 }
@@ -185,7 +147,7 @@ function applyAgentSkillsOptionalFields(
   }
   if ("metadata" in fields) {
     const value = fields.metadata;
-    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    if (!isRecord(value)) {
       fact.metadataInvalid = true;
     } else {
       const entries = Object.values(value as Record<string, unknown>);
@@ -216,16 +178,21 @@ function skillFactFromDir(
   skillDir: string,
   source: "project" | "global",
   skillsRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   root: string,
-  opts: { hasSkillMd: boolean; unreadable?: boolean },
+  opts: {
+    hasSkillMd: boolean;
+    unreadable?: boolean;
+    provider?: Provider;
+    profile?: SkillSchemaProfile;
+  },
 ): SkillFact {
-  const normalizedRoot = skillsRoot.replaceAll("\\", "/");
-  const sourceProvider = providerFromSkillsDir(normalizedRoot);
-  const schemaProfile = schemaProfileFromSkillsDir(normalizedRoot);
+  // An env-relocated home (`CODEX_HOME`) has no provider marker in its path.
+  const sourceProvider = opts.provider ?? providerFromSkillsDir(skillsRoot);
+  const schemaProfile = opts.profile ?? skillSchemaFor(sourceProvider);
   const skillMd = join(skillDir, "SKILL.md");
   const fm = opts.hasSkillMd
-    ? readFrontmatter(skillMd, errors)
+    ? readFrontmatter(skillMd, io)
     : { hasFrontmatter: false as const };
   const fact: SkillFact = {
     id: basename(skillDir),
@@ -282,7 +249,7 @@ function skillFactFromDir(
     const hooks = hooksFromObject(fm.hooks, skillMd, "skill", {
       project: root,
       own: skillDir,
-    }, errors);
+    }, io, { sourceProvider: "claude", schemaProfile: "claude" });
     if (hooks.length > 0) {
       fact.frontmatterHooks = hooks;
     }
@@ -297,64 +264,54 @@ function skillFactFromDir(
 export function discoverSkillAtDir(
   skillDir: string,
   source: "project" | "global",
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   root: string,
+  provider: Provider,
 ): SkillFact | undefined {
   const skillMd = join(skillDir, "SKILL.md");
   if (!isFile(skillMd)) {
     return undefined;
   }
-  return skillFactFromDir(skillDir, source, skillDir, errors, root, { hasSkillMd: true });
+  return skillFactFromDir(skillDir, source, skillDir, io, root, { hasSkillMd: true, provider });
 }
 
 export function discoverSkillsInDir(
   dir: string,
   source: "project" | "global",
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   root: string,
+  provider?: Provider,
+  profile?: SkillSchemaProfile,
 ): SkillFact[] {
-  if (!existsSync(dir)) {
-    return [];
-  }
-  const names = readDirNames(dir, errors);
+  const names = listDir(dir, io, { optional: true })?.map((entry) => entry.name);
   if (names === undefined) {
     return [];
   }
 
-  const found = findSkillMdDirs(dir, errors);
-  const foundSet = new Set(found.map((path) => resolve(path)));
+  const found = findSkillMdDirs(dir, io);
   const skills = found.map((skillDir) =>
-    skillFactFromDir(skillDir, source, dir, errors, root, { hasSkillMd: true }),
+    skillFactFromDir(skillDir, source, dir, io, root, { hasSkillMd: true, provider, profile }),
   );
 
   for (const name of names) {
     // `.system` under ~/.codex/skills is a container holding six real skills,
     // not a skill — reporting it suggested deleting them.
-    if (name.startsWith(".") || name === "node_modules") {
+    if (name.startsWith(".") || NESTED_DISCOVERY_SKIP.has(name)) {
       continue;
     }
     const child = join(dir, name);
-    if (!isDirectory(child)) {
+    if (!isRealDirectory(child)) {
       continue;
     }
-    const resolved = resolve(child);
-    if (foundSet.has(resolved) || found.some((path) => resolve(path).startsWith(`${resolved}/`))) {
+    if (found.some((path) => isInside(path, child))) {
       continue;
     }
-    let dirReadable = true;
-    try {
-      readdirSync(child);
-    } catch (err) {
-      dirReadable = false;
-      errors.push({
-        path: child,
-        kind: "unreadable",
-        detail: err instanceof Error ? err.message : String(err),
-      });
-    }
+    const dirReadable = listDir(child, io) !== undefined;
     skills.push(
-      skillFactFromDir(child, source, dir, errors, root, {
+      skillFactFromDir(child, source, dir, io, root, {
         hasSkillMd: false,
+        provider,
+        profile,
         ...(dirReadable ? {} : { unreadable: true }),
       }),
     );
@@ -367,23 +324,17 @@ type NestedDiscoveryOptions = {
   onDirectoryRead?: () => void;
 };
 
-const NESTED_SKILL_PARENTS = new Set([".claude", ".cursor", ".agents", ".codex", ".windsurf"]);
 
 export function discoverNestedClaudeSkills(
   root: string,
   configuredRoots: Set<string>,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   options: NestedDiscoveryOptions = {},
 ): SkillFact[] {
   const out: SkillFact[] = [];
   const read = (dir: string): import("node:fs").Dirent[] | undefined => {
     options.onDirectoryRead?.();
-    try {
-      return readdirSync(dir, { withFileTypes: true });
-    } catch {
-      errors.push({ path: dir, kind: "unreadable", detail: "could not read nested skill directories" });
-      return undefined;
-    }
+    return listDir(dir, io, { detail: "could not read nested skill directories" });
   };
   const inspectSkillsParent = (dir: string): void => {
     const entries = read(dir);
@@ -392,7 +343,7 @@ export function discoverNestedClaudeSkills(
       if (!entry.isDirectory() || entry.name !== "skills") continue;
       const child = join(dir, entry.name);
       if (configuredRoots.has(resolve(child))) continue;
-      out.push(...discoverSkillsInDir(child, "project", errors, root));
+      out.push(...discoverSkillsInDir(child, "project", io, root));
     }
   };
   const walk = (dir: string, depth: number): void => {
@@ -400,9 +351,9 @@ export function discoverNestedClaudeSkills(
     if (entries === undefined) return;
     for (const entry of entries) {
       if (!entry.isDirectory() || NESTED_DISCOVERY_SKIP.has(entry.name)) continue;
-      if (entry.name.startsWith(".") && !NESTED_SKILL_PARENTS.has(entry.name)) continue;
+      if (entry.name.startsWith(".") && !SKILL_DOT_DIRS.has(entry.name)) continue;
       const child = join(dir, entry.name);
-      if (NESTED_SKILL_PARENTS.has(entry.name)) {
+      if (SKILL_DOT_DIRS.has(entry.name)) {
         // A provider directory is a container, not another tree to recurse.
         // This also excludes .claude/worktrees snapshots by construction.
         inspectSkillsParent(child);

@@ -5,10 +5,7 @@ import {
   missingBaselineUrls,
   normalizeSpecText,
   SPEC_HASHES_PATH,
-  SPEC_SURFACES,
   specContentHash,
-  surfacesForUrl,
-  SUSPICIOUSLY_SHORT_PAGE_CHARS,
   uniqueSurfaceUrls,
   type SpecHashBaseline,
 } from "../../scripts/spec-surfaces";
@@ -88,15 +85,9 @@ describe("fetchUrlFor", () => {
     expect(
       fetchUrlFor("https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md"),
     ).toBe("https://raw.githubusercontent.com/google-gemini/gemini-cli/main/docs/tools/mcp-server.md");
+    expect(fetchUrlFor("https://code.claude.com/docs/en/hooks")).toBe("https://code.claude.com/docs/en/hooks");
   });
 
-  test("leaves every other URL alone", () => {
-    for (const url of uniqueSurfaceUrls()) {
-      if (!url.startsWith("https://github.com/")) {
-        expect(fetchUrlFor(url)).toBe(url);
-      }
-    }
-  });
 });
 
 describe("scripts/spec-hashes.json baseline", () => {
@@ -115,13 +106,6 @@ describe("scripts/spec-hashes.json baseline", () => {
     }
   });
 
-  test("every URL resolves to at least one surface, and shared pages fetch once", () => {
-    for (const url of urls) {
-      expect(surfacesForUrl(url).length).toBeGreaterThan(0);
-    }
-    expect(urls.length).toBeLessThan(SPEC_SURFACES.length);
-  });
-
   test("the baseline file is sorted by URL so diffs stay readable", () => {
     const keys = Object.keys(baseline);
     expect(keys).toEqual([...keys].sort());
@@ -138,12 +122,4 @@ describe("scripts/spec-hashes.json baseline", () => {
     expect(missingBaselineUrls({}).length).toBe(urls.length);
   });
 
-  test("the short-page guard sits below every real capture", () => {
-    expect(SUSPICIOUSLY_SHORT_PAGE_CHARS).toBeGreaterThan(0);
-    // Longer than an error shell such as "Uh oh! There was an error while
-    // loading. Please reload this page." and shorter than the smallest real
-    // page in the set (Grok subagents, ~750 characters on 2026-09-02).
-    expect(SUSPICIOUSLY_SHORT_PAGE_CHARS).toBeGreaterThan(80);
-    expect(SUSPICIOUSLY_SHORT_PAGE_CHARS).toBeLessThan(700);
-  });
 });

@@ -82,7 +82,7 @@ MCP precedence (low → high), quoted from settings:
 Settings layers among themselves: `settings.local.json` > project
 `settings.json` > user `settings.json`.
 
-agentscan inventories each readable source and sets `commandcodeEffective`.
+agentscan inventories each readable source and sets `effective`.
 Spec/runtime error checks (`commandcode.mcp.*`, `commandcode.mcp.no-launch`,
 `mcp.command-missing`, `claude.mcp.no-launch` / `claude.mcp.url-without-type`
 on a Command Code-ranked entry) do not claim a shadowed definition is

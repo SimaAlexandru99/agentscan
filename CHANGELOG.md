@@ -104,8 +104,21 @@ intermediate commit that this train does not cut.
   published release's count; the test only forbids the site advertising more
   checks than the registry holds.
 
+### Changed
+
+- An explicit `--config <path>` that does not exist now exits 2 with
+  `config file not found: <path>` instead of silently scanning with defaults.
+  A missing implicit `.agentscanrc.json` still means defaults. A config that
+  parses as JSON but breaks the schema exits 2 with
+  `Invalid config at <path>: <key>: <problem>` instead of a raw zod dump.
+
 ### Fixed
 
+- The deprecated `thresholds.skillDescriptionBytes` alias was never read: the
+  `skillListingChars` default always won. It now applies when
+  `skillListingChars` is not set.
+- `ignoreFindings` accepts legacy rule-id prefixes
+  (`skill.missing-frontmatter:skill:a`), as `ignoreRules` and `explain` do.
 - 54 rules recorded a `lastVerified` older than the `**Read:**` date of the
   capture they rest on: the 2026-09-03 re-read of those pages never reached the
   registry. Synced, with a test that keeps the two in step.

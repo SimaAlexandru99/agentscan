@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { mkPinnedProject } from "../helpers/tmp";
+import { tmpProject, write } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import {
   cwdSkipsExistenceCheck,
@@ -10,20 +8,7 @@ import {
   pathSkipsExistenceCheck,
   resolveLaunchCwd,
 } from "../../src/discover/launch";
-
-function tmpProject(prefix: string): string {
-  return mkPinnedProject(prefix, "launch-cwd");
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
-
-function ruleIds(dir: string): string[] {
-  return analyze({ dir }).findings.map((finding) => finding.ruleId);
-}
+import { ruleIds } from "../helpers/scan";
 
 describe("launch cwd resolution", () => {
   test("hook command + args + cwd resolves the script against cwd", () => {

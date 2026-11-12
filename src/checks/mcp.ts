@@ -1,257 +1,16 @@
-import { isShadowedCommandcode } from "../facts/commandcode";
-import { isShadowedGrok } from "../facts/grok";
-import { assertNever, type McpSchemaProfile } from "../facts/provider";
-import type { Facts, Finding, McpFact } from "../facts/types";
+import { isShadowed } from "../facts/precedence";
+import {
+  COMMANDCODE_MCP_DEFECTS,
+  MCP_PROFILES,
+  mcpNoLaunchRuleId,
+  OPENCODE_MCP_DEFECTS,
+} from "../facts/mcp-profiles";
+import type { Facts, McpFact } from "../facts/types";
+import type { Evidence, Finding } from "../findings";
 import { make } from "./make";
 
-/**
- * Token shapes worth failing a build over. Deliberately narrow — no entropy
- * guessing.
- *
- * ORDER IS SIGNIFICANT: the caller uses `.find()`, so a more specific prefix
- * must come before any pattern that also matches it. `sk-ant-` is a subset of
- * `sk-`, and reporting the wrong provider on a "rotate this key" finding sends
- * the user to the wrong dashboard.
- */
-const SECRET_PATTERNS: { label: string; re: RegExp }[] = [
-  { label: "Anthropic key", re: /\bsk-ant-[A-Za-z0-9_-]{16,}/ },
-  { label: "OpenAI project key", re: /\bsk-proj-[A-Za-z0-9_-]{16,}/ },
-  { label: "OpenAI service-account key", re: /\bsk-svcacct-[A-Za-z0-9_-]{16,}/ },
-  { label: "OpenAI-style key", re: /\bsk-[A-Za-z0-9_]{20,}\b/ },
-  { label: "GitHub token", re: /\bgh[pousr]_[A-Za-z0-9]{20,}/ },
-  { label: "Google API key", re: /\bAIza[A-Za-z0-9_-]{20,}/ },
-  { label: "Slack token", re: /\bxox[baprs]-[A-Za-z0-9-]{10,}/ },
-  { label: "AWS access key id", re: /\bAKIA[0-9A-Z]{16}\b/ },
-];
-
-const INTERPOLATED =
-  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%|\{\{[^{}]+\}\}/;
-
-function profileOf(server: McpFact): McpSchemaProfile {
-  return server.schemaProfile ?? "claude-json";
-}
-
 function isLaunchable(server: McpFact): boolean {
-  if (server.launchKind === "registry-reference") {
-    return true;
-  }
-  const profile = profileOf(server);
-  switch (profile) {
-    case "antigravity-json":
-      return server.hasCommand || server.hasServerUrl === true;
-    case "windsurf-json":
-      return server.hasCommand || server.hasUrl || server.hasServerUrl === true;
-    case "claude-json":
-    case "mcp-json":
-    case "commandcode-json":
-    case "vscode-json":
-    case "cursor-json":
-    case "codex-toml":
-    case "grok-toml":
-    case "opencode-json":
-    case "continue-yaml":
-      return server.hasCommand || server.hasUrl;
-    case "gemini-json":
-      return server.hasCommand || server.hasUrl || server.hasHttpUrl === true;
-    default: {
-      return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
-    }
-  }
-}
-
-function noLaunchId(profile: McpSchemaProfile): string {
-  switch (profile) {
-    case "claude-json":
-    case "mcp-json":
-      // Shared `.mcp.json` still needs a launch field for Claude. Command Code
-      // transport defects fire first when `transport`/`type` is present.
-      return "claude.mcp.no-launch";
-    case "commandcode-json":
-      return "commandcode.mcp.no-launch";
-    case "vscode-json":
-      return "vscode.mcp.no-launch";
-    case "cursor-json":
-      return "cursor.mcp.no-launch";
-    case "antigravity-json":
-      return "antigravity.mcp.no-launch";
-    case "codex-toml":
-      return "codex.mcp.no-launch";
-    case "grok-toml":
-      return "grok.mcp.no-launch";
-    case "gemini-json":
-      return "gemini.mcp.no-launch";
-    case "opencode-json":
-      return "opencode.mcp.no-launch";
-    case "continue-yaml":
-      return "continue.mcp.no-launch";
-    case "windsurf-json":
-      return "windsurf.mcp.no-launch";
-    default: {
-      return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
-    }
-  }
-}
-
-function noLaunchMessage(server: McpFact): string {
-  const profile = profileOf(server);
-  switch (profile) {
-    case "antigravity-json":
-      return `MCP server "${server.name}" declares neither command nor serverUrl`;
-    case "windsurf-json":
-      return `MCP server "${server.name}" declares neither command, serverUrl, nor url`;
-    case "gemini-json":
-      return `MCP server "${server.name}" declares neither command, url, nor httpUrl`;
-    case "continue-yaml":
-      return `MCP server "${server.name}" declares neither command, url, nor uses`;
-    case "claude-json":
-    case "mcp-json":
-    case "commandcode-json":
-    case "vscode-json":
-    case "cursor-json":
-    case "codex-toml":
-    case "grok-toml":
-    case "opencode-json":
-      return `MCP server "${server.name}" declares neither command nor url`;
-    default: {
-      return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
-    }
-  }
-}
-
-function noLaunchSuggest(server: McpFact): string {
-  const profile = profileOf(server);
-  switch (profile) {
-    case "antigravity-json":
-      return `Add a command (or serverUrl) for "${server.name}", or remove it`;
-    case "windsurf-json":
-      return `Add a command, serverUrl, or url for "${server.name}", or remove it`;
-    case "gemini-json":
-      return `Add a command, url, or httpUrl for "${server.name}", or remove it`;
-    case "continue-yaml":
-      return `Add a command, url, or uses: block for "${server.name}", or remove it`;
-    case "claude-json":
-    case "mcp-json":
-    case "commandcode-json":
-    case "vscode-json":
-    case "cursor-json":
-    case "codex-toml":
-    case "grok-toml":
-    case "opencode-json":
-      return `Add a command or url for "${server.name}", or remove it`;
-    default: {
-      return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
-    }
-  }
-}
-
-function redactInterpolated(raw: string): string {
-  return raw.replace(INTERPOLATED, "");
-}
-
-function openCodeDefectRule(
-  defect: NonNullable<McpFact["opencodeDefect"]>,
-): string {
-  switch (defect) {
-    case "missing-type":
-      return "opencode.mcp.missing-type";
-    case "local-without-command":
-      return "opencode.mcp.local-without-command";
-    case "remote-without-url":
-      return "opencode.mcp.remote-without-url";
-    case "invalid-launch-for-type":
-      return "opencode.mcp.invalid-launch-for-type";
-    case "command-not-array":
-      return "opencode.mcp.command-not-array";
-    default: {
-      return assertNever(defect, `unhandled OpenCode MCP defect: ${defect}`);
-    }
-  }
-}
-
-function openCodeDefectMessage(server: McpFact, defect: NonNullable<McpFact["opencodeDefect"]>): string {
-  switch (defect) {
-    case "missing-type":
-      return `OpenCode MCP server "${server.name}" is missing a valid type ("local" or "remote")`;
-    case "local-without-command":
-      return `OpenCode MCP server "${server.name}" is type local but declares no command`;
-    case "remote-without-url":
-      return `OpenCode MCP server "${server.name}" is type remote but declares no url`;
-    case "invalid-launch-for-type":
-      return `OpenCode MCP server "${server.name}" declares a launch field that does not match type "${server.transport ?? "unknown"}"`;
-    case "command-not-array":
-      return `OpenCode MCP server "${server.name}" is type local but command is not an argv array`;
-    default: {
-      return assertNever(defect, `unhandled OpenCode MCP defect: ${defect}`);
-    }
-  }
-}
-
-function openCodeDefectSuggest(server: McpFact, defect: NonNullable<McpFact["opencodeDefect"]>): string {
-  switch (defect) {
-    case "missing-type":
-      return `Set "type": "local" with command, or "type": "remote" with url, on "${server.name}"`;
-    case "local-without-command":
-      return `Add a command array for "${server.name}", or change type to remote`;
-    case "remote-without-url":
-      return `Add a url for "${server.name}", or change type to local`;
-    case "invalid-launch-for-type":
-      return `Keep only the launch field that matches type on "${server.name}"`;
-    case "command-not-array":
-      return `Set "command" to an argv array on "${server.name}"`;
-    default: {
-      return assertNever(defect, `unhandled OpenCode MCP defect: ${defect}`);
-    }
-  }
-}
-
-function commandcodeDefectRule(
-  defect: NonNullable<McpFact["commandcodeDefect"]>,
-): string {
-  switch (defect) {
-    case "invalid-transport":
-      return "commandcode.mcp.invalid-transport";
-    case "http-without-url":
-      return "commandcode.mcp.http-without-url";
-    case "stdio-without-command":
-      return "commandcode.mcp.stdio-without-command";
-    default: {
-      return assertNever(defect, `unhandled Command Code MCP defect: ${defect}`);
-    }
-  }
-}
-
-function commandcodeDefectMessage(
-  server: McpFact,
-  defect: NonNullable<McpFact["commandcodeDefect"]>,
-): string {
-  switch (defect) {
-    case "invalid-transport":
-      return `MCP server "${server.name}" has invalid transport "${server.transport ?? "unknown"}" (want "http" or "stdio")`;
-    case "http-without-url":
-      return `MCP server "${server.name}" is HTTP transport but declares no url`;
-    case "stdio-without-command":
-      return `MCP server "${server.name}" is stdio transport but declares no command`;
-    default: {
-      return assertNever(defect, `unhandled Command Code MCP defect: ${defect}`);
-    }
-  }
-}
-
-function commandcodeDefectSuggest(
-  server: McpFact,
-  defect: NonNullable<McpFact["commandcodeDefect"]>,
-): string {
-  switch (defect) {
-    case "invalid-transport":
-      return `Set "transport": "http" with url, or "transport": "stdio" with command, on "${server.name}"`;
-    case "http-without-url":
-      return `Add a url for "${server.name}", or change transport to stdio`;
-    case "stdio-without-command":
-      return `Add a command for "${server.name}", or change transport to http`;
-    default: {
-      return assertNever(defect, `unhandled Command Code MCP defect: ${defect}`);
-    }
-  }
+  return server.launchKind === "registry-reference" || MCP_PROFILES[server.schemaProfile].launchable(server);
 }
 
 const CLAUDE_RESERVED_MCP_NAMES = new Set([
@@ -263,28 +22,22 @@ const CLAUDE_RESERVED_MCP_NAMES = new Set([
 ]);
 
 function claudeConsumes(server: McpFact): boolean {
-  if (server.consumedBy !== undefined) {
-    return server.consumedBy.includes("claude");
-  }
-  const profile = profileOf(server);
-  return profile === "claude-json" || profile === "mcp-json";
+  return MCP_PROFILES[server.schemaProfile].consumedBy.includes("claude");
 }
 
 function claudeUrlNeedsType(server: McpFact): boolean {
-  if (server.inventoryOnly === true || !server.hasUrl) {
+  if (server.inventoryOnly === true || !server.hasUrl || !claudeConsumes(server)) {
     return false;
   }
-  const profile = profileOf(server);
-  if (profile === "claude-json") {
-    if (server.transportField === "transport") {
-      return true;
-    }
-    return server.transport === undefined;
+  // `transport` is Command Code's field: it satisfies a consumer only on shared `.mcp.json`.
+  if (server.schemaProfile === "claude-json" && server.transportField === "transport") {
+    return true;
   }
-  if (profile === "mcp-json") {
-    return server.transport === undefined;
-  }
-  return false;
+  return server.transport === undefined;
+}
+
+function mcpEvidence(server: McpFact): Evidence {
+  return { kind: "mcp", value: `${server.name} @ ${server.path}` };
 }
 
 function mcpSubject(server: McpFact): string {
@@ -293,167 +46,150 @@ function mcpSubject(server: McpFact): string {
   return `mcp:${server.name}@${server.path}${layer}${platform}`;
 }
 
+function mcpRuntimeFindings(server: McpFact, subject: string): Finding[] {
+  const out: Finding[] = [];
+  if (server.inventoryOnly === true) {
+    // Unnamed inline mcp.servers item — present in the inventory only.
+  } else if (server.opencodeInherit === true) {
+    // V1 enabled-only override — launch data may live in an external file.
+  } else if (server.opencodeDefect !== undefined) {
+    const defect = server.opencodeDefect;
+    out.push(
+      make(`opencode.mcp.${defect}`, subject, {
+        message: OPENCODE_MCP_DEFECTS[defect].message(server),
+        reason:
+          "OpenCode V2 requires type local+command array or remote+url. V1 uses the same pair on servers listed directly under mcp. See docs/spec/opencode-mcp.md.",
+        evidence: [mcpEvidence(server)],
+        suggest: OPENCODE_MCP_DEFECTS[defect].suggest(server),
+      }),
+    );
+  } else if (server.commandcodeDefect !== undefined) {
+    const defect = server.commandcodeDefect;
+    out.push(
+      make(`commandcode.mcp.${defect}`, subject, {
+        message: COMMANDCODE_MCP_DEFECTS[defect].message(server),
+        reason:
+          "Command Code MCP transports are http (url) or stdio (command). `type` is an alias for `transport`. On shared `.mcp.json`, Claude's sse/ws types are left alone. See docs/spec/commandcode-mcp.md.",
+        evidence: [mcpEvidence(server)],
+        suggest: COMMANDCODE_MCP_DEFECTS[defect].suggest(server),
+      }),
+    );
+  } else if (!isLaunchable(server)) {
+    out.push(
+      make(mcpNoLaunchRuleId(server.schemaProfile), subject, {
+        message: `MCP server "${server.name}" declares ${MCP_PROFILES[server.schemaProfile].noLaunchDeclares}`,
+        reason:
+          "Without a launch field the entry is not a launchable MCP server by its provider schema — its tools will not be available. See the matching docs/spec/*-mcp.md file.",
+        evidence: [mcpEvidence(server)],
+        suggest: `Add ${MCP_PROFILES[server.schemaProfile].noLaunchAdd} for "${server.name}", or remove it`,
+      }),
+    );
+  }
+
+  if (server.command !== undefined && server.commandExists === false) {
+    out.push(
+      make("mcp.command-missing", subject, {
+        message: `MCP server "${server.name}" points at a command path that does not exist: ${server.command}`,
+        reason:
+          "The server declares a filesystem command, but that path is not a file on disk, so the entry is not launchable as configured. Bare PATH binaries are not checked — only path-like values this tool can resolve honestly.",
+        evidence: [
+          mcpEvidence(server),
+          { kind: "command", value: server.command },
+        ],
+        suggest: `Restore ${server.command} or fix the command path for "${server.name}"`,
+      }),
+    );
+  }
+
+  if (claudeUrlNeedsType(server)) {
+    out.push(
+      make("claude.mcp.url-without-type", subject, {
+        message: `MCP server "${server.name}" has a url but no transport type`,
+        reason:
+          "An entry with no `type` is read as a stdio server, so a remote server declared this way is misconfigured by schema and is skipped — its tools never appear. On shared `.mcp.json`, a Command Code `transport` field satisfies the other consumer and this check does not fire. See docs/spec/mcp.md and docs/spec/commandcode-mcp.md.",
+        evidence: [mcpEvidence(server)],
+        suggest: `Add "type": "http" (or "sse" / "ws") to "${server.name}"`,
+      }),
+    );
+  }
+
+  if (
+    server.continueMissingMetadataKeys !== undefined &&
+    server.continueMissingMetadataKeys.length > 0
+  ) {
+    out.push(
+      make("continue.mcp.missing-block-metadata", subject, {
+        message: `Continue YAML MCP block is missing ${server.continueMissingMetadataKeys.join(", ")}`,
+        reason:
+          "Standalone YAML files under `.continue/mcpServers/` require block metadata `name`, `version`, and `schema`. Copied JSON MCP configs in that directory are not subject to these fields. See docs/spec/continue-mcp.md.",
+        evidence: [
+          mcpEvidence(server),
+          { kind: "missing", value: server.continueMissingMetadataKeys.join(",") },
+        ],
+        suggest: `Add name, version, and schema to ${server.path}`,
+      }),
+    );
+  }
+
+  if (claudeConsumes(server) && CLAUDE_RESERVED_MCP_NAMES.has(server.name)) {
+    out.push(
+      make("claude.mcp.reserved-name", subject, {
+        message: `MCP server "${server.name}" uses a reserved name that Claude skips`,
+        reason:
+          "Claude Code skips MCP servers named with reserved identifiers, including `workspace`. The server never loads. See docs/spec/mcp.md.",
+        evidence: [mcpEvidence(server)],
+        suggest: `Rename "${server.name}" — reserved names include workspace, claude-in-chrome, computer-use, Claude Preview, and Claude Browser`,
+      }),
+    );
+  }
+
+  if (server.schemaProfile === "gemini-json" && server.name.includes("_")) {
+    out.push(
+      make("gemini.mcp.underscore-alias", subject, {
+        message: `Gemini MCP server alias "${server.name}" contains an underscore`,
+        reason:
+          "Official Gemini CLI docs warn that underscores in MCP server names can make policies fail silently, because fully-qualified tool names split on the first underscore after `mcp_`. See docs/spec/gemini-mcp.md.",
+        evidence: [mcpEvidence(server)],
+        suggest: `Rename "${server.name}" to use hyphens instead of underscores`,
+      }),
+    );
+  }
+  return out;
+}
+
 export function checkMcp(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const server of facts.mcp) {
     const subject = mcpSubject(server);
-    const shadowed =
-      isShadowedCommandcode(server.commandcodeEffective) || isShadowedGrok(server.grokEffective);
-    if (shadowed) {
-      // Inventoried but not currently loaded. Schema/runtime errors would
-      // claim a shadowed definition is breaking the runtime. Secrets still
-      // apply to every readable file.
-    } else if (server.inventoryOnly === true) {
-      // Unnamed inline mcp.servers item — present in the inventory only.
-    } else if (server.opencodeInherit === true) {
-      // V1 enabled-only override — launch data may live in an external file.
-    } else if (server.opencodeDefect !== undefined) {
-      const defect = server.opencodeDefect;
-      out.push(
-        make(openCodeDefectRule(defect), subject, {
-          action: "warn",
-          severity: "error",
-          message: openCodeDefectMessage(server, defect),
-          reason:
-            "OpenCode V2 requires type local+command array or remote+url. V1 uses the same pair on servers listed directly under mcp. See docs/spec/opencode-mcp.md.",
-          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
-          suggest: openCodeDefectSuggest(server, defect),
-        }),
-      );
-    } else if (server.commandcodeDefect !== undefined) {
-      const defect = server.commandcodeDefect;
-      out.push(
-        make(commandcodeDefectRule(defect), subject, {
-          action: "warn",
-          severity: "error",
-          message: commandcodeDefectMessage(server, defect),
-          reason:
-            "Command Code MCP transports are http (url) or stdio (command). `type` is an alias for `transport`. On shared `.mcp.json`, Claude's sse/ws types are left alone. See docs/spec/commandcode-mcp.md.",
-          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
-          suggest: commandcodeDefectSuggest(server, defect),
-        }),
-      );
-    } else if (!isLaunchable(server)) {
-      out.push(
-        make(noLaunchId(profileOf(server)), subject, {
-          action: "warn",
-          severity: "error",
-          message: noLaunchMessage(server),
-          reason:
-            "Without a launch field the entry is not a launchable MCP server by its provider schema — its tools will not be available. See the matching docs/spec/*-mcp.md file.",
-          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
-          suggest: noLaunchSuggest(server),
-        }),
-      );
+    if (!isShadowed(server)) {
+      // Shadowed config is inventoried but not loaded: schema/runtime errors
+      // would blame it for the runtime. Secrets still apply to every file.
+      out.push(...mcpRuntimeFindings(server, subject));
     }
 
-    if (!shadowed && server.command !== undefined && server.commandExists === false) {
-      out.push(
-        make("mcp.command-missing", subject, {
-          action: "warn",
-          severity: "error",
-          message: `MCP server "${server.name}" points at a command path that does not exist: ${server.command}`,
-          reason:
-            "The server declares a filesystem command, but that path is not a file on disk, so the entry is not launchable as configured. Bare PATH binaries are not checked — only path-like values this tool can resolve honestly.",
-          evidence: [
-            { kind: "mcp", value: `${server.name} @ ${server.path}` },
-            { kind: "command", value: server.command },
-          ],
-          suggest: `Restore ${server.command} or fix the command path for "${server.name}"`,
-        }),
-      );
-    }
-
-    if (!shadowed && claudeUrlNeedsType(server)) {
-      out.push(
-        make("claude.mcp.url-without-type", subject, {
-          action: "warn",
-          severity: "error",
-          message: `MCP server "${server.name}" has a url but no transport type`,
-          reason:
-            "An entry with no `type` is read as a stdio server, so a remote server declared this way is misconfigured by schema and is skipped — its tools never appear. On shared `.mcp.json`, a Command Code `transport` field satisfies the other consumer and this check does not fire. See docs/spec/mcp.md and docs/spec/commandcode-mcp.md.",
-          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
-          suggest: `Add "type": "http" (or "sse" / "ws") to "${server.name}"`,
-        }),
-      );
-    }
-
-    if (
-      !shadowed &&
-      server.continueMissingMetadataKeys !== undefined &&
-      server.continueMissingMetadataKeys.length > 0
-    ) {
-      out.push(
-        make("continue.mcp.missing-block-metadata", subject, {
-          action: "warn",
-          severity: "error",
-          message: `Continue YAML MCP block is missing ${server.continueMissingMetadataKeys.join(", ")}`,
-          reason:
-            "Standalone YAML files under `.continue/mcpServers/` require block metadata `name`, `version`, and `schema`. Copied JSON MCP configs in that directory are not subject to these fields. See docs/spec/continue-mcp.md.",
-          evidence: [
-            { kind: "mcp", value: `${server.name} @ ${server.path}` },
-            { kind: "missing", value: server.continueMissingMetadataKeys.join(",") },
-          ],
-          suggest: `Add name, version, and schema to ${server.path}`,
-        }),
-      );
-    }
-
-    if (!shadowed && claudeConsumes(server) && CLAUDE_RESERVED_MCP_NAMES.has(server.name)) {
-      out.push(
-        make("claude.mcp.reserved-name", subject, {
-          action: "warn",
-          severity: "error",
-          message: `MCP server "${server.name}" uses a reserved name that Claude skips`,
-          reason:
-            "Claude Code skips MCP servers named with reserved identifiers, including `workspace`. The server never loads. See docs/spec/mcp.md.",
-          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
-          suggest: `Rename "${server.name}" — reserved names include workspace, claude-in-chrome, computer-use, Claude Preview, and Claude Browser`,
-        }),
-      );
-    }
-
-    if (!shadowed && profileOf(server) === "gemini-json" && server.name.includes("_")) {
-      out.push(
-        make("gemini.mcp.underscore-alias", subject, {
-          action: "warn",
-          severity: "warning",
-          message: `Gemini MCP server alias "${server.name}" contains an underscore`,
-          reason:
-            "Official Gemini CLI docs warn that underscores in MCP server names can make policies fail silently, because fully-qualified tool names split on the first underscore after `mcp_`. See docs/spec/gemini-mcp.md.",
-          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
-          suggest: `Rename "${server.name}" to use hyphens instead of underscores`,
-        }),
-      );
-    }
-
-    const hit = SECRET_PATTERNS.find((p) => p.re.test(redactInterpolated(server.raw)));
-    if (hit !== undefined) {
+    if (server.secretLabel !== undefined) {
       out.push(
         make("security.hardcoded-secret", subject, {
-          action: "warn",
-          severity: "error",
-          message: `MCP server "${server.name}" contains what looks like a hardcoded credential (${hit.label})`,
+          message: `MCP server "${server.name}" contains what looks like a hardcoded credential (${server.secretLabel})`,
           reason:
             "Credentials in a config file get committed, shared and cached. Treat it as leaked: rotate the key, then reference it through an environment variable.",
-          evidence: [{ kind: "mcp", value: `${server.name} @ ${server.path}` }],
+          evidence: [mcpEvidence(server)],
           suggest:
             "Rotate the credential, then replace the literal with an interpolated reference",
         }),
       );
+      // One server-level error is enough; literal-env/credential would re-flag the same leak as warnings.
       continue;
     }
 
     if (server.literalEnvKeys.length > 0) {
       out.push(
         make("mcp.literal-env", subject, {
-          action: "warn",
-          severity: "warning",
           message: `MCP server "${server.name}" has literal env values: ${server.literalEnvKeys.join(", ")}`,
           reason:
             "Secret-named env keys (TOKEN, SECRET, KEY, PASSWORD) with a non-interpolated value are usually credentials that should be referenced through ${VAR}, ${env:VAR}, or ${input:id} so they are never committed.",
           evidence: [
-            { kind: "mcp", value: `${server.name} @ ${server.path}` },
+            mcpEvidence(server),
             { kind: "env", value: server.literalEnvKeys.join(",") },
           ],
           suggest: "Replace the literals with interpolated environment references",
@@ -465,13 +201,11 @@ export function checkMcp(facts: Facts): Finding[] {
     if (credentialFields.length > 0) {
       out.push(
         make("mcp.literal-credential", subject, {
-          action: "warn",
-          severity: "warning",
           message: `MCP server "${server.name}" has literal credential fields: ${credentialFields.join(", ")}`,
           reason:
             "Secret-named headers, http_headers, or auth values (TOKEN, SECRET, KEY, PASSWORD, Authorization) that are not interpolated are usually credentials that should be referenced through ${VAR}, ${env:VAR}, ${input:id}, or {{var}} so they are never committed. See docs/spec/mcp.md.",
           evidence: [
-            { kind: "mcp", value: `${server.name} @ ${server.path}` },
+            mcpEvidence(server),
             { kind: "field", value: credentialFields.join(",") },
           ],
           suggest: "Replace the literals with interpolated environment or secret references",

@@ -13,7 +13,6 @@ import { delimiter, join } from "node:path";
  * shell cannot do portably, which is why it is the one thing built here.
  */
 
-/** Ordered by preference; each entry is argv for a tool that reads stdin. */
 const TOOLS: readonly (readonly string[])[] = [
   ["wl-copy"],
   // xclip and xsel write to the PRIMARY selection unless told otherwise, and
@@ -67,13 +66,11 @@ function resolve(name: string): string | null {
       accessSync(candidate, constants.X_OK);
       return candidate;
     } catch {
-      // not here, or not executable — keep looking
     }
   }
   return null;
 }
 
-/** Try each installed tool until one exits 0. */
 export async function copyToClipboard(text: string): Promise<CopyResult> {
   const candidates = clipboardCandidates();
   if (candidates.length === 0) {
@@ -103,7 +100,6 @@ export async function copyToClipboard(text: string): Promise<CopyResult> {
   return { ok: false, reason: `clipboard tool failed: ${failures.join(", ")}` };
 }
 
-/** Feed `text` to a tool's stdin; resolve its exit code, or null if it failed. */
 function runTool(
   bin: string,
   args: string[],

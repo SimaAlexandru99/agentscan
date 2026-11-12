@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import type { Facts, Finding } from "../../src/facts/types";
+import type { Facts } from "../../src/facts/types";
+import type { Finding } from "../../src/findings";
 import { renderPrompt } from "../../src/report/prompt";
 import { ruleMeta } from "../helpers/finding";
 
@@ -20,6 +21,9 @@ function finding(partial: Partial<Finding> & Pick<Finding, "id">): Finding {
 function facts(): Facts {
   return {
     root: "/tmp/my-app",
+    skillLockRoots: ["/tmp/my-app"],
+    codexProjectDocMaxBytes: 32_768,
+    codexInstructionChain: [],
     packageManager: "bun",
     dependencies: {},
     devDependencies: {},

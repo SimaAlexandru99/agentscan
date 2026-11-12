@@ -1,24 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { hasAgentConfigSignal, resolveRoot, resolveScanContext } from "../../src/discover/index";
+import { resolveCommandcodeProjectRoot } from "../../src/discover/commandcode";
+import { hasAgentConfigSignal, resolveRoot, resolveScanContext } from "../../src/discover/scan-context";
 import { mkPinnedRoot } from "../helpers/tmp";
 
 describe("resolveRoot", () => {
-  test("uses package.json when present", () => {
-    const root = mkPinnedRoot("agentscan-root-pkg-");
-    writeFileSync(join(root, "package.json"), '{"name":"x"}', "utf8");
-    const nested = join(root, "a", "b");
-    mkdirSync(nested, { recursive: true });
-    expect(resolveRoot(nested)).toBe(root);
-  });
-
-  test("uses a .claude directory without package.json", () => {
-    const root = mkPinnedRoot("agentscan-root-claude-");
-    mkdirSync(join(root, ".claude"), { recursive: true });
-    expect(hasAgentConfigSignal(root)).toBe(true);
-    expect(resolveRoot(root)).toBe(root);
-  });
 
   test("prefers the starting agent-config dir over a parent package.json", () => {
     const parent = mkPinnedRoot("agentscan-root-parent-");
@@ -26,13 +13,6 @@ describe("resolveRoot", () => {
     const child = join(parent, "notes");
     mkdirSync(join(child, ".claude"), { recursive: true });
     expect(resolveRoot(child)).toBe(child);
-  });
-
-  test("throws when there is nothing to scan", () => {
-    const empty = mkPinnedRoot("agentscan-root-empty-");
-    expect(() => resolveRoot(empty)).toThrow(
-      /No package\.json or agent configuration found/,
-    );
   });
 
   test("a pin stops walk-up before a parent git root or agent signal", () => {
@@ -89,9 +69,9 @@ describe("resolveRoot", () => {
     const child = join(parent, "apps", "web");
     mkdirSync(join(child, ".cursor"), { recursive: true });
     const ctx = resolveScanContext(child);
-    expect(ctx.projectRoot).toBe(child);
+    expect(ctx.root).toBe(child);
     expect(ctx.scanBoundary).toBe(parent);
-    expect(ctx.commandcodeProjectRoot).toBe(parent);
+    expect(resolveCommandcodeProjectRoot(ctx)).toBe(parent);
     expect(ctx.repositoryBoundary).toBe(parent);
   });
 
@@ -101,8 +81,8 @@ describe("resolveRoot", () => {
     const child = join(parent, "apps", "web");
     mkdirSync(join(child, ".cursor"), { recursive: true });
     const ctx = resolveScanContext(child);
-    expect(ctx.projectRoot).toBe(child);
-    expect(ctx.commandcodeProjectRoot).toBe(child);
+    expect(ctx.root).toBe(child);
+    expect(resolveCommandcodeProjectRoot(ctx)).toBe(child);
     expect(ctx.repositoryBoundary).toBeUndefined();
   });
 

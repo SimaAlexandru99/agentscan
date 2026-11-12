@@ -1,10 +1,11 @@
-import type { Facts, Finding } from "../facts/types";
+import type { Facts } from "../facts/types";
+import type { Finding } from "../findings";
 import { runBudgets } from "./budgets";
 import { checkAgents } from "./agents";
 import { checkConfigErrors } from "./config";
 import { checkHookEvents, checkHooks } from "./hooks";
 import { checkMcp } from "./mcp";
-import type { CheckOptions } from "./options";
+import type { Thresholds } from "../config/schema";
 import { checkRules } from "./rules";
 import {
   checkDescriptionBudget,
@@ -13,41 +14,26 @@ import {
   checkSkillStructure,
 } from "./skills";
 
-export type { CheckOptions } from "./options";
-export {
-  COPILOT_HOOK_EVENTS,
-  CURSOR_HOOK_EVENTS,
-  GEMINI_HOOK_EVENTS,
-  KNOWN_HOOK_EVENTS,
-  VSCODE_HOOK_EVENTS,
-} from "./hooks";
-export { COMMANDCODE_HOOK_EVENTS } from "../facts/commandcode";
-export { GROK_HOOK_EVENTS } from "../facts/grok";
-export { KIRO_HOOK_EVENTS } from "../facts/kiro";
+/** The config keys checks read, passed through as loaded. */
+type CheckConfig = { requireLock?: boolean; thresholds: Thresholds };
 export { STRUCTURAL_CHECKS } from "./registry";
-export type { RuleProvenance, StructuralCheck } from "./provenance";
-export { canonicalRuleId, canonicalizeFindingId, ignoreRuleSet, RULE_ALIASES } from "./aliases";
 
-/**
- * Run every structural check. Order is deterministic; `check.ts` sorts anyway.
- */
+/** Run every structural check. */
 export function runChecks(
   facts: Facts,
-  options: CheckOptions = {},
+  config: CheckConfig,
 ): Finding[] {
   return [
     ...checkConfigErrors(facts),
     ...checkHookEvents(facts),
     ...checkHooks(facts),
     ...checkSkillStructure(facts),
-    ...checkLockIntegrity(facts, options),
+    ...checkLockIntegrity(facts, config.requireLock === true),
     ...checkDuplicateDescriptions(facts),
-    ...checkDescriptionBudget(facts, options),
+    ...checkDescriptionBudget(facts, config.thresholds),
     ...checkAgents(facts),
     ...checkMcp(facts),
     ...checkRules(facts),
-    ...(options.budgets === undefined
-      ? []
-      : runBudgets(facts, options.budgets)),
+    ...runBudgets(facts, config.thresholds),
   ];
 }

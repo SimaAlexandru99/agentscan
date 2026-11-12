@@ -1,19 +1,12 @@
-import { existsSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { claudeConfigDir } from "../facts/claude";
-import { parse as parseYaml } from "yaml";
+import { toPosix } from "../facts/paths";
+import { providerHome } from "../facts/providers";
+import { splitFrontmatter } from "./frontmatter";
 import type { Provider } from "../facts/provider";
-import type { ConfigErrorFact, RuleFact, WindsurfRuleScope } from "../facts/types";
-import {
-  NESTED_DISCOVERY_MAX_DEPTH,
-  POLICY_CAP,
-  readCapped,
-  walkFiles,
-} from "./shared";
-
-function lineCount(text: string): number {
-  return text.length === 0 ? 0 : text.replace(/\r?\n$/, "").split(/\r?\n/).length;
-}
+import type { RuleFact, WindsurfRuleScope } from "../facts/types";
+import { NESTED_DISCOVERY_MAX_DEPTH, POLICY_CAP, walkFiles } from "./shared";
+import { readCapped, type ScanIO } from "./fs";
+import { lineCount } from "../facts/text";
 
 /**
  * Workspace Windsurf rules declare `trigger` in frontmatter.
@@ -22,95 +15,64 @@ function lineCount(text: string): number {
 function windsurfWorkspaceTrigger(
   text: string,
 ): "yes" | "no" | "unreadable" {
-  let body = text;
-  if (body.charCodeAt(0) === 0xfeff) {
-    body = body.slice(1);
-  }
-  body = body.replace(/\r\n/g, "\n");
-  if (!body.startsWith("---")) {
+  const split = splitFrontmatter(text);
+  if (split.kind === "none") {
     return "no";
   }
-  const fence = /\n(?:---|\.\.\.)[ \t]*(?:\n|$)/.exec(body.slice(3));
-  if (fence === null) {
+  if (split.kind !== "ok") {
     return "unreadable";
   }
-  try {
-    const block = parseYaml(body.slice(3, 3 + fence.index)) as unknown;
-    if (block === null || typeof block !== "object" || Array.isArray(block)) {
-      return "unreadable";
-    }
-    const trigger = (block as Record<string, unknown>).trigger;
-    return typeof trigger === "string" && trigger.trim().length > 0 ? "yes" : "no";
-  } catch {
-    return "unreadable";
-  }
+  const trigger = split.record.trigger;
+  return typeof trigger === "string" && trigger.trim().length > 0 ? "yes" : "no";
 }
 
-export function readRuleFile(
+function readRuleFile(
   path: string,
   sourceProvider: Provider,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   extras?: {
     windsurfScope?: WindsurfRuleScope;
   },
 ): RuleFact | undefined {
-  try {
-    const result = readCapped(path, POLICY_CAP);
-    const text = result.buf.subarray(0, POLICY_CAP).toString("utf8");
-    if (result.truncated) {
-      errors.push({
-        path,
-        kind: "truncated",
-        detail: `file exceeds ${POLICY_CAP} byte scan cap`,
-      });
-    }
-    const windsurfScope = extras?.windsurfScope;
-    const trigger =
-      windsurfScope === "workspace" ? windsurfWorkspaceTrigger(text) : undefined;
-    if (trigger === "unreadable") {
-      errors.push({
-        path,
-        kind: "unexpected-shape",
-        detail: "Windsurf rule frontmatter is not valid YAML",
-      });
-    }
-    return {
-      path,
-      sourceProvider,
-      lineCount: lineCount(text),
-      byteLength: result.buf.length,
-      charCount: text.length,
-      ...(windsurfScope === undefined ? {} : { windsurfScope }),
-      ...(trigger === "yes" ? { windsurfHasTrigger: true } : {}),
-      ...(trigger === "no" ? { windsurfHasTrigger: false } : {}),
-      ...(trigger === "unreadable" ? { windsurfTriggerUnreadable: true } : {}),
-    };
-  } catch (err) {
-    errors.push({
-      path,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
+  const result = readCapped(path, POLICY_CAP, io, { optional: true });
+  if (result === undefined) {
     return undefined;
   }
+  const text = result.text;
+  const windsurfScope = extras?.windsurfScope;
+  const trigger =
+    windsurfScope === "workspace" ? windsurfWorkspaceTrigger(text) : undefined;
+  if (trigger === "unreadable") {
+    io.errors.push({
+      path,
+      kind: "unexpected-shape",
+      detail: "Windsurf rule frontmatter is not valid YAML",
+    });
+  }
+  return {
+    path,
+    sourceProvider,
+    lineCount: lineCount(text),
+    byteLength: result.byteLength,
+    charCount: text.length,
+    ...(windsurfScope === undefined ? {} : { windsurfScope }),
+    ...(trigger === undefined ? {} : { windsurfTrigger: trigger }),
+  };
 }
 
 function collectMdRules(
   dir: string,
   sourceProvider: Provider,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
   extras?: { windsurfScope?: WindsurfRuleScope },
 ): RuleFact[] {
   const out: RuleFact[] = [];
-  if (!existsSync(dir)) {
-    return out;
-  }
   for (const abs of walkFiles(dir, {
     maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
     match: (_abs, name) => name.endsWith(".md"),
-    errors,
+    io,
   })) {
-    const fact = readRuleFile(abs, sourceProvider, errors, extras);
+    const fact = readRuleFile(abs, sourceProvider, io, extras);
     if (fact !== undefined) {
       out.push(fact);
     }
@@ -122,7 +84,7 @@ function isWindsurfWorkspaceRulePath(abs: string, name: string): boolean {
   if (!name.endsWith(".md")) {
     return false;
   }
-  const normalized = abs.replaceAll("\\", "/");
+  const normalized = toPosix(abs);
   return normalized.includes("/.devin/rules/") || normalized.includes("/.windsurf/rules/");
 }
 
@@ -131,39 +93,35 @@ function isWindsurfWorkspaceRulePath(abs: string, name: string): boolean {
  * docs/spec/claude-memory.md, docs/spec/grok-rules.md, and
  * docs/spec/windsurf-rules.md. Size limits are checked separately.
  */
-export function discoverRules(root: string, errors: ConfigErrorFact[]): RuleFact[] {
+export function discoverRules(root: string, io: ScanIO): RuleFact[] {
   const out: RuleFact[] = [];
   const cursorRules = join(root, ".cursor", "rules");
-  if (existsSync(cursorRules)) {
-    for (const abs of walkFiles(cursorRules, {
-      maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
-      match: (_abs, name) => name.endsWith(".mdc"),
-      errors,
-    })) {
-      const fact = readRuleFile(abs, "cursor", errors);
-      if (fact !== undefined) {
-        out.push(fact);
-      }
+  for (const abs of walkFiles(cursorRules, {
+    maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
+    match: (_abs, name) => name.endsWith(".mdc"),
+    io,
+  })) {
+    const fact = readRuleFile(abs, "cursor", io);
+    if (fact !== undefined) {
+      out.push(fact);
     }
   }
-  out.push(...collectMdRules(join(root, ".grok", "rules"), "grok", errors));
-  out.push(...collectMdRules(join(root, ".claude", "rules"), "claude", errors));
+  out.push(...collectMdRules(join(root, ".grok", "rules"), "grok", io));
+  out.push(...collectMdRules(join(root, ".claude", "rules"), "claude", io));
   out.push(
-    ...collectMdRules(join(root, ".devin", "rules"), "windsurf", errors, {
+    ...collectMdRules(join(root, ".devin", "rules"), "windsurf", io, {
       windsurfScope: "workspace",
     }),
   );
   out.push(
-    ...collectMdRules(join(root, ".windsurf", "rules"), "windsurf", errors, {
+    ...collectMdRules(join(root, ".windsurf", "rules"), "windsurf", io, {
       windsurfScope: "workspace",
     }),
   );
   const legacy = join(root, ".windsurfrules");
-  if (existsSync(legacy) && basename(legacy) === ".windsurfrules") {
-    const fact = readRuleFile(legacy, "windsurf", errors, { windsurfScope: "legacy" });
-    if (fact !== undefined) {
-      out.push(fact);
-    }
+  const legacyFact = readRuleFile(legacy, "windsurf", io, { windsurfScope: "legacy" });
+  if (legacyFact !== undefined) {
+    out.push(legacyFact);
   }
   return out;
 }
@@ -175,15 +133,15 @@ export function discoverRules(root: string, errors: ConfigErrorFact[]): RuleFact
  */
 export function discoverNestedWindsurfRules(
   scanBoundary: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): RuleFact[] {
   const out: RuleFact[] = [];
   for (const abs of walkFiles(scanBoundary, {
     maxDepth: NESTED_DISCOVERY_MAX_DEPTH,
     match: isWindsurfWorkspaceRulePath,
-    errors,
+    io,
   })) {
-    const fact = readRuleFile(abs, "windsurf", errors, { windsurfScope: "workspace" });
+    const fact = readRuleFile(abs, "windsurf", io, { windsurfScope: "workspace" });
     if (fact !== undefined) {
       out.push(fact);
     }
@@ -192,27 +150,27 @@ export function discoverNestedWindsurfRules(
 }
 
 /**
- * Only the quoted global file. Do not glob `~/.codeium/windsurf/memories/`.
- * See docs/spec/windsurf-rules.md.
- */
-/**
  * User `~/.claude/rules/` (or `$CLAUDE_CONFIG_DIR/rules`). `--global` only.
  * See docs/spec/claude-memory.md.
  */
-export function discoverClaudeUserRules(errors: ConfigErrorFact[]): RuleFact[] {
-  return collectMdRules(join(claudeConfigDir(), "rules"), "claude", errors);
+export function discoverClaudeUserRules(io: ScanIO): RuleFact[] {
+  return collectMdRules(join(providerHome("claude"), "rules"), "claude", io);
 }
 
+/**
+ * Only the quoted global file. Do not glob `~/.codeium/windsurf/memories/`.
+ * See docs/spec/windsurf-rules.md.
+ */
 export function discoverWindsurfGlobalRules(
   filePath: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): RuleFact[] {
-  if (!existsSync(filePath) || basename(filePath) !== "global_rules.md") {
+  if (basename(filePath) !== "global_rules.md") {
     return [];
   }
   if (basename(dirname(filePath)) !== "memories") {
     return [];
   }
-  const fact = readRuleFile(filePath, "windsurf", errors, { windsurfScope: "global" });
+  const fact = readRuleFile(filePath, "windsurf", io, { windsurfScope: "global" });
   return fact === undefined ? [] : [fact];
 }

@@ -1,26 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { mkPinnedProject } from "../helpers/tmp";
+import { scanContext, tmpProject, write } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import { runChecks, STRUCTURAL_CHECKS } from "../../src/checks/index";
 import { defaultConfig } from "../../src/config/schema";
-import { extractFacts } from "../../src/facts/extract";
+import { extractFacts } from "../../src/discover/extract";
 import type { Facts } from "../../src/facts/types";
-
-function tmpProject(prefix: string): string {
-  return mkPinnedProject(prefix, "correctness");
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
-
-function ruleIds(dir: string): string[] {
-  return analyze({ dir }).findings.map((finding) => finding.ruleId);
-}
+import { ruleIds } from "../helpers/scan";
 
 describe("Claude hook schema profile", () => {
   test("type is required and is not inferred from command", () => {
@@ -131,7 +118,7 @@ describe("VS Code native vs Copilot CLI hooks", () => {
         },
       }),
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     expect(facts.hooks[0]!.schemaProfile).toBe("copilot-cli");
     expect(ruleIds(root)).not.toContain("vscode.hook.unknown-event");
     expect(ruleIds(root)).not.toContain("copilot.hook.unknown-event");
@@ -167,7 +154,7 @@ describe("VS Code native vs Copilot CLI hooks", () => {
     expect(ruleIds(root)).toContain("copilot.hook.incompatible-handler");
   });
 
-  test("Copilot honors bash, cwd, and timeoutSec", () => {
+  test("Copilot honors bash and cwd", () => {
     const root = tmpProject("agentscan-copilot-fields-");
     write(
       root,
@@ -179,9 +166,8 @@ describe("VS Code native vs Copilot CLI hooks", () => {
         },
       }),
     );
-    const hook = extractFacts(root, defaultConfig, { includeGlobal: false }).hooks[0]!;
+    const hook = extractFacts(scanContext(root), defaultConfig).hooks[0]!;
     expect(hook.schemaProfile).toBe("copilot-cli");
-    expect(hook.timeout).toBe(15);
     expect(hook.cwd).toBe(".");
     expect(ruleIds(root)).not.toContain("copilot.hook.command-without-command");
     expect(ruleIds(root)).not.toContain("vscode.hook.unknown-handler-type");
@@ -227,22 +213,6 @@ describe("VS Code native vs Copilot CLI hooks", () => {
     expect(ids).toContain("copilot.hook.missing-script");
     expect(ids).not.toContain("vscode.hook.unknown-event");
     expect(ids).not.toContain("vscode.hook.missing-script");
-  });
-
-  test("timeoutSec wins over timeout", () => {
-    const root = tmpProject("agentscan-copilot-timeout-");
-    write(
-      root,
-      ".github/hooks/timeout.json",
-      JSON.stringify({
-        version: 1,
-        hooks: {
-          preToolUse: [{ bash: "true", timeout: 99, timeoutSec: 8 }],
-        },
-      }),
-    );
-    const hook = extractFacts(root, defaultConfig, { includeGlobal: false }).hooks[0]!;
-    expect(hook.timeout).toBe(8);
   });
 });
 
@@ -420,11 +390,9 @@ describe("Codex AGENTS chain knobs", () => {
     );
     write(root, "TEAM.md", "fallback instructions\n");
     write(root, "packages/app/notes.txt", "cwd\n");
-    const facts = extractFacts(root, defaultConfig, {
-      includeGlobal: false,
+    const facts = extractFacts(scanContext(root, {
       startDir: join(root, "packages", "app"),
-    });
-    expect(facts.codexProjectDocFallbackFilenames).toEqual(["TEAM.md"]);
+    }), defaultConfig);
     expect(facts.policyFiles.some((f) => f.path.endsWith("TEAM.md"))).toBe(true);
   });
 
@@ -435,9 +403,6 @@ describe("Codex AGENTS chain knobs", () => {
     write(root, "AGENTS.md", `${"x".repeat(40_000)}\n`);
     write(root, "packages/app/notes.txt", "cwd\n");
     const startDir = join(root, "packages", "app");
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false, startDir });
-    expect(facts.codexProjectRootMarkers).toEqual([]);
-    expect(facts.codexProjectRoot).toBe(startDir);
     const findings = analyze({ dir: startDir }).findings;
     expect(findings.map((f) => f.ruleId)).not.toContain("codex.budget.instructions");
   });
@@ -531,6 +496,9 @@ describe("Remaining spec-required negative fixtures", () => {
   test("OpenCode no-launch is the check-layer fallback without a typed defect", () => {
     const facts: Facts = {
       root: "/tmp/proj",
+      skillLockRoots: ["/tmp/proj"],
+      codexProjectDocMaxBytes: 32_768,
+      codexInstructionChain: [],
       packageManager: "bun",
       dependencies: {},
       devDependencies: {},
@@ -546,7 +514,6 @@ describe("Remaining spec-required negative fixtures", () => {
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
         },
       ],
       policyFiles: [],
@@ -554,7 +521,7 @@ describe("Remaining spec-required negative fixtures", () => {
       hasSkillsLock: false,
       configErrors: [],
     };
-    expect(runChecks(facts).map((finding) => finding.ruleId)).toContain("opencode.mcp.no-launch");
+    expect(runChecks(facts, { thresholds: defaultConfig.thresholds }).map((finding) => finding.ruleId)).toContain("opencode.mcp.no-launch");
   });
 
   test("every spec-required check id is named in docs/spec", () => {

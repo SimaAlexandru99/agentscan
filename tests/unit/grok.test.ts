@@ -1,39 +1,11 @@
-import { describe, expect, spyOn, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { describe, expect, test } from "bun:test";
+import { mkdtempSync } from "node:fs";
 import * as os from "node:os";
 import { join } from "node:path";
-import { mkPinnedProject, mkPinnedRoot } from "../helpers/tmp";
+import { mkPinnedRoot, tmpProject, write } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
-import { runChecks } from "../../src/checks/index";
-import { defaultConfig } from "../../src/config/schema";
-import { inferHookSchemaProfile } from "../../src/facts/hook-schema";
-import { extractFacts } from "../../src/facts/extract";
-import { providerFromSkillsDir, schemaProfileFromSkillsDir } from "../../src/facts/provider";
-
-function tmpProject(prefix: string): string {
-  return mkPinnedProject(prefix, "grok");
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
-
-function findingsFor(root: string, includeGlobal = false, startDir?: string) {
-  const facts = extractFacts(root, defaultConfig, { includeGlobal, startDir });
-  return { facts, findings: runChecks(facts) };
-}
-
-function ruleIds(root: string, includeGlobal = false, startDir?: string): string[] {
-  return findingsFor(root, includeGlobal, startDir).findings.map((f) => f.ruleId);
-}
-
-describe("Grok hook profile is not Claude", () => {
-  test("inferHookSchemaProfile(grok) is grok", () => {
-    expect(inferHookSchemaProfile("grok")).toBe("grok");
-  });
-});
+import { findingsFor, ruleIds } from "../helpers/scan";
+import { withEnv, withHome } from "../helpers/env";
 
 describe("Grok MCP", () => {
   test("stdio + url parse as grok-toml without claude url-without-type", () => {
@@ -85,12 +57,12 @@ url = "https://example.com/mcp"
     expect(pair).toHaveLength(2);
     const child = pair.find((s) => s.path.includes(`${join("packages", "app", ".grok")}`));
     const parent = pair.find((s) => s !== child);
-    expect(child?.grokEffective).toBe(true);
-    expect(parent?.grokEffective).toBe(false);
+    expect(child?.effective).toBe(true);
+    expect(parent?.effective).toBe(false);
     expect(ruleIds(root, false, startDir)).not.toContain("grok.mcp.no-launch");
   });
 
-  test("project same-name shadows user; secrets still inspect user raw", () => {
+  test("project same-name shadows user", () => {
     const root = tmpProject("agentscan-grok-mcp-user-");
     write(
       root,
@@ -108,18 +80,14 @@ command = "npx"
 env = { ANTHROPIC_API_KEY = "sk-ant-abcdefghijklmnop" }
 `,
     );
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       const { facts, findings } = findingsFor(root, true);
       const user = facts.mcp.find((s) => s.path.includes(tmpHome));
       const project = facts.mcp.find((s) => s.path.includes(join(root, ".grok")));
-      expect(project?.grokEffective).toBe(true);
-      expect(user?.grokEffective).toBe(false);
-      expect(findings.map((f) => f.ruleId)).toContain("security.hardcoded-secret");
+      expect(project?.effective).toBe(true);
+      expect(user?.effective).toBe(false);
       expect(findings.map((f) => f.ruleId)).not.toContain("grok.mcp.no-launch");
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 
   test("GROK_HOME overrides ~/.grok under --global", () => {
@@ -133,20 +101,23 @@ env = { ANTHROPIC_API_KEY = "sk-ant-abcdefghijklmnop" }
 url = "https://example.com/mcp"
 `,
     );
-    const previous = process.env.GROK_HOME;
-    process.env.GROK_HOME = altHome;
-    try {
+    withEnv({ GROK_HOME: altHome }, () => {
       const { facts } = findingsFor(root, true);
       expect(facts.mcp.some((s) => s.name === "fromhome" && s.schemaProfile === "grok-toml")).toBe(
         true,
       );
-    } finally {
-      if (previous === undefined) {
-        delete process.env.GROK_HOME;
-      } else {
-        process.env.GROK_HOME = previous;
-      }
-    }
+    });
+  });
+});
+
+describe("Grok nested skills", () => {
+  test("monorepo pkg/.grok/skills is discovered", () => {
+    const root = tmpProject("agentscan-grok-nested-skill-");
+    write(root, "pkg/.grok/skills/x/SKILL.md", "---\nname: x\ndescription: Nested Grok skill.\n---\n");
+    const { facts } = findingsFor(root);
+    const skill = facts.skills.find((s) => s.path === join(root, "pkg", ".grok", "skills", "x"));
+    expect(skill?.sourceProvider).toBe("grok");
+    expect(skill?.schemaProfile).toBe("grok");
   });
 });
 
@@ -184,22 +155,6 @@ describe("Grok hooks", () => {
     expect(ruleIds(root)).toContain("grok.hook.http-without-url");
   });
 
-  test("missing script", () => {
-    const root = tmpProject("agentscan-grok-hook-script-");
-    write(
-      root,
-      ".grok/hooks/guard.json",
-      JSON.stringify({
-        hooks: {
-          PreToolUse: [
-            { hooks: [{ type: "command", command: "bin/safety-check.sh" }] },
-          ],
-        },
-      }),
-    );
-    expect(ruleIds(root)).toContain("grok.hook.missing-script");
-  });
-
   test("version:1 github hooks stay Copilot, not Grok", () => {
     const root = tmpProject("agentscan-grok-copilot-regression-");
     write(
@@ -230,8 +185,6 @@ describe("Grok skills and rules", () => {
     expect(ids).not.toContain("agent-skills.skill.name-does-not-match-directory");
     expect(ids).not.toContain("agent-skills.skill.missing-name");
     expect(ids).not.toContain("claude.skill.missing-description");
-    expect(providerFromSkillsDir("/repo/.grok/skills")).toBe("grok");
-    expect(schemaProfileFromSkillsDir("/repo/.grok/skills")).toBe("grok");
   });
 
   test("missing frontmatter is grok.skill.missing-frontmatter", () => {

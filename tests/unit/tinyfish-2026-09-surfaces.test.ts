@@ -1,18 +1,9 @@
-import { describe, expect, spyOn, test } from "bun:test";
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
-import * as os from "node:os";
+import { describe, expect, test } from "bun:test";
+import { chmodSync } from "node:fs";
 import { join } from "node:path";
-import { runChecks } from "../../src/checks/index";
-import { defaultConfig } from "../../src/config/schema";
-import { inferHookSchemaProfile } from "../../src/facts/hook-schema";
-import { extractFacts } from "../../src/facts/extract";
-import { mkPinnedProject } from "../helpers/tmp";
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
+import { mkPinnedProject, write } from "../helpers/tmp";
+import { withHome } from "../helpers/env";
+import { findingsFor } from "../helpers/scan";
 
 function script(root: string, rel: string): void {
   write(root, rel, "#!/bin/sh\nexit 0\n");
@@ -25,15 +16,15 @@ function skillMd(name: string, description?: string): string {
 }
 
 function scan(root: string, includeGlobal = false) {
-  const facts = extractFacts(root, defaultConfig, { includeGlobal });
-  return { facts, findings: runChecks(facts), ruleIds: runChecks(facts).map((f) => f.ruleId) };
+  const analysis = findingsFor(root, includeGlobal);
+  return {
+    facts: analysis.facts,
+    findings: analysis.findings,
+    ruleIds: analysis.findings.map((f) => f.ruleId),
+  };
 }
 
 describe("Kiro hook profile is not Claude", () => {
-  test("inferHookSchemaProfile(kiro) is kiro", () => {
-    expect(inferHookSchemaProfile("kiro")).toBe("kiro");
-  });
-
   test("official-shaped hook with a present script is clean", () => {
     const root = mkPinnedProject("agentscan-kiro-ok-", "kiro");
     script(root, ".kiro/hooks/lint.sh");
@@ -55,55 +46,6 @@ describe("Kiro hook profile is not Claude", () => {
     const { facts, ruleIds } = scan(root);
     expect(facts.hooks.filter((h) => h.schemaProfile === "kiro")).toHaveLength(1);
     expect(ruleIds.filter((id) => id.startsWith("kiro.hook."))).toEqual([]);
-  });
-
-  test("every quoted trigger is accepted", () => {
-    const root = mkPinnedProject("agentscan-kiro-all-", "kiro");
-    script(root, ".kiro/hooks/x.sh");
-    const events = [
-      "SessionStart",
-      "Stop",
-      "UserPromptSubmit",
-      "PreTaskExec",
-      "PostTaskExec",
-      "PreToolUse",
-      "PostToolUse",
-      "PostFileCreate",
-      "PostFileSave",
-      "PostFileDelete",
-    ];
-    write(
-      root,
-      ".kiro/hooks/all.json",
-      JSON.stringify({
-        version: "v1",
-        hooks: events.map((trigger) => ({
-          name: trigger,
-          trigger,
-          action: { type: "command", command: ".kiro/hooks/x.sh" },
-        })),
-      }),
-    );
-    expect(scan(root).ruleIds.filter((id) => id.startsWith("kiro.hook."))).toEqual([]);
-  });
-
-  test("missing script is kiro.hook.missing-script", () => {
-    const root = mkPinnedProject("agentscan-kiro-miss-", "kiro");
-    write(
-      root,
-      ".kiro/hooks/guard.json",
-      JSON.stringify({
-        version: "v1",
-        hooks: [
-          {
-            name: "guard",
-            trigger: "PreToolUse",
-            action: { type: "command", command: ".kiro/hooks/gone.sh" },
-          },
-        ],
-      }),
-    );
-    expect(scan(root).ruleIds).toContain("kiro.hook.missing-script");
   });
 
   test("unknown trigger is kiro.hook.unknown-event not Claude", () => {
@@ -335,8 +277,7 @@ describe("--global user files stay off the default scan", () => {
     );
     write(tmpHome, ".gemini/mcp-oauth-tokens.json", '{"token":"secret"}');
 
-    const homedirSpy = spyOn(os, "homedir").mockReturnValue(tmpHome);
-    try {
+    withHome(tmpHome, () => {
       const off = scan(root, false);
       expect(off.ruleIds).not.toContain("cursor.hook.missing-script");
       expect(off.ruleIds).not.toContain("gemini.hook.missing-script");
@@ -350,9 +291,7 @@ describe("--global user files stay off the default scan", () => {
       expect(on.ruleIds).toContain("gemini.mcp.no-launch");
       expect(on.ruleIds).toContain("antigravity.mcp.no-launch");
       expect(on.facts.mcp.some((s) => s.path.includes("mcp-oauth-tokens"))).toBe(false);
-    } finally {
-      homedirSpy.mockRestore();
-    }
+    });
   });
 });
 

@@ -68,7 +68,7 @@ Quoted from the MCP page:
 
 Closer project file wins over a parent project file. Any project file beats
 the user file. Spec/runtime `grok.mcp.*` checks skip
-`grokEffective === false`. Security checks still inspect every readable MCP
+`effective === false`. Security checks still inspect every readable MCP
 file.
 
 ## Compatibility (unread)

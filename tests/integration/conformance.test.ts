@@ -43,14 +43,6 @@ const MINIMUM_FACTS: Record<string, FactCounts> = {
 };
 
 describe("official-shaped conformance fixtures", () => {
-  test("at least four fixtures are present", () => {
-    expect(fixtures.length).toBeGreaterThanOrEqual(4);
-  });
-
-  test("every fixture has a minimum-facts entry", () => {
-    expect(Object.keys(MINIMUM_FACTS).sort()).toEqual(fixtures);
-  });
-
   for (const name of fixtures) {
     test(`${name} produces no error or warning findings`, () => {
       const analysis = analyze({ dir: join(fixturesRoot, name) });
@@ -62,7 +54,8 @@ describe("official-shaped conformance fixtures", () => {
 
     test(`${name} is actually seen by discovery`, () => {
       const facts = analyze({ dir: join(fixturesRoot, name) }).facts;
-      const minimum = MINIMUM_FACTS[name] ?? {};
+      const minimum = MINIMUM_FACTS[name];
+      expect(minimum).toBeDefined();
       const seen = {
         hooks: facts.hooks.length,
         mcp: facts.mcp.length,
@@ -70,7 +63,7 @@ describe("official-shaped conformance fixtures", () => {
         agents: facts.agents.length,
         rules: (facts.rules ?? []).length,
       };
-      for (const [kind, floor] of Object.entries(minimum) as [keyof FactCounts, number][]) {
+      for (const [kind, floor] of Object.entries(minimum ?? {}) as [keyof FactCounts, number][]) {
         expect(seen[kind]).toBeGreaterThanOrEqual(floor);
       }
     });

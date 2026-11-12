@@ -1,5 +1,6 @@
 import { basename } from "node:path";
-import type { Facts, Finding } from "../facts/types";
+import type { Facts } from "../facts/types";
+import type { Finding } from "../findings";
 import { make } from "./make";
 
 /**
@@ -12,8 +13,7 @@ import { make } from "./make";
  * tool whose flagship check reports hardcoded secrets must not print one.
  *
  * Only the position survives, because only the position is actionable. Redacting
- * by token shape was the alternative and is strictly worse: it catches six known
- * shapes, and a parser can quote any source at all.
+ * by token shape would catch only known shapes, and a parser can quote any source.
  */
 function safeDetail(detail: string): string {
   const position = detail.match(/\bline \d+(?:, column \d+)?/i)?.[0];
@@ -29,8 +29,6 @@ export function checkConfigErrors(facts: Facts): Finding[] {
     // project 40 points for four files that work.
     if (err.kind === "truncated") {
       return make("scan.truncated", `scan:${err.path}`, {
-        action: "warn",
-        severity: "info",
         message: `${basename(err.path)} is larger than the scan cap — only its first bytes were read`,
         reason:
           "The file itself is fine; agentscan reads a bounded prefix of it. Checks that read the body — skill.broken-reference, and the AGENTS.md / CLAUDE.md line counts — see only that prefix, so they can undercount on this file.",
@@ -50,8 +48,6 @@ export function checkConfigErrors(facts: Facts): Finding[] {
     // fields gave three findings sharing one id, and `explain` reached only the
     // first. The kind and detail disambiguate without changing the common case.
     return make("config.unreadable", `config:${err.path}#${err.kind}:${safeDetail(err.detail)}`, {
-      action: "warn",
-      severity: "error",
       message: `${basename(err.path)} ${what} — its contents are invisible to the scan`,
       reason:
         "An unparseable config is silently ignored by the tools that read it, so whatever it configured is simply not in effect.",

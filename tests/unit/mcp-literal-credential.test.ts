@@ -1,20 +1,13 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync } from "node:fs";
+import * as os from "node:os";
+import { join } from "node:path";
 import { analyze } from "../../src/analyze";
 import { defaultConfig } from "../../src/config/schema";
-import { extractFacts } from "../../src/facts/extract";
-import { mkPinnedProject } from "../helpers/tmp";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-
-function tmpProject(prefix: string): string {
-  return mkPinnedProject(prefix, "literal-credential");
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
+import { extractFacts } from "../../src/discover/extract";
+import { scanContext, tmpProject, write } from "../helpers/tmp";
+import { ruleIds } from "../helpers/scan";
+import { withHome } from "../helpers/env";
 
 function findings(root: string) {
   return analyze({ dir: root }).findings;
@@ -36,7 +29,7 @@ describe("mcp.literal-credential", () => {
         },
       }),
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     expect(facts.mcp[0]!.literalCredentialFields).toEqual(["auth.CLIENT_SECRET"]);
     const hits = findings(root).filter((f) => f.ruleId === "mcp.literal-credential");
     expect(hits).toHaveLength(1);
@@ -64,7 +57,7 @@ describe("mcp.literal-credential", () => {
         },
       }),
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     const lit = facts.mcp.find((s) => s.name === "literal");
     const interp = facts.mcp.find((s) => s.name === "interpolated");
     expect(lit?.literalCredentialFields).toEqual(["headers.API_KEY"]);
@@ -96,7 +89,7 @@ describe("mcp.literal-credential", () => {
         },
       }),
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     expect(facts.mcp.find((s) => s.name === "bad")?.literalCredentialFields).toEqual([
       "headers.Authorization",
     ]);
@@ -119,7 +112,7 @@ describe("mcp.literal-credential", () => {
         },
       }),
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     expect(facts.mcp[0]!.literalCredentialFields).toEqual(["http_headers.API_KEY"]);
     expect(findings(root).map((f) => f.ruleId)).toContain("mcp.literal-credential");
   });
@@ -146,7 +139,7 @@ headers = { API_KEY = "{{session_id}}" }
         },
       }),
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     expect(facts.mcp.every((s) => (s.literalCredentialFields ?? []).length === 0)).toBe(true);
     expect(findings(root).map((f) => f.ruleId)).not.toContain("mcp.literal-credential");
     expect(findings(root).map((f) => f.ruleId)).not.toContain("mcp.literal-env");
@@ -162,7 +155,7 @@ url = "https://example.com/mcp"
 headers = { API_KEY = "project-local-api-key" }
 `,
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     expect(facts.mcp[0]!.literalCredentialFields).toEqual(["headers.API_KEY"]);
     expect(findings(root).map((f) => f.ruleId)).toContain("mcp.literal-credential");
   });
@@ -181,8 +174,78 @@ headers = { API_KEY = "project-local-api-key" }
         },
       }),
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     expect(facts.mcp[0]!.literalCredentialFields ?? []).toEqual([]);
     expect(findings(root).map((f) => f.ruleId)).not.toContain("mcp.literal-credential");
   });
+});
+
+/**
+ * Precedence decides which same-name server a provider launches, not which
+ * file is read for secrets: a literal in the user file still leaks.
+ */
+const tomlServer = 'command = "npx"\n';
+const userSecrets: { provider: string; project?: [string, string]; home: [string, string]; ruleId: string }[] = [
+  {
+    provider: "Claude ~/.claude.json",
+    project: [".mcp.json", JSON.stringify({ mcpServers: { docs: { command: "npx" } } })],
+    home: [
+      ".claude.json",
+      JSON.stringify({
+        mcpServers: { docs: { command: "npx", env: { API_TOKEN: "not-interpolated-literal" } } },
+      }),
+    ],
+    ruleId: "mcp.literal-env",
+  },
+  {
+    provider: "Codex ~/.codex/config.toml",
+    project: [".codex/config.toml", `[mcp_servers.docs]\n${tomlServer}`],
+    home: [
+      ".codex/config.toml",
+      `[mcp_servers.docs]\n${tomlServer}env = { ANTHROPIC_API_KEY = "sk-ant-abcdefghijklmnop" }\n`,
+    ],
+    ruleId: "security.hardcoded-secret",
+  },
+  {
+    provider: "Grok ~/.grok/config.toml",
+    project: [".grok/config.toml", `[mcp_servers.docs]\n${tomlServer}`],
+    home: [
+      ".grok/config.toml",
+      `[mcp_servers.docs]\n${tomlServer}env = { ANTHROPIC_API_KEY = "sk-ant-abcdefghijklmnop" }\n`,
+    ],
+    ruleId: "security.hardcoded-secret",
+  },
+  {
+    provider: "Windsurf ~/.codeium/windsurf/mcp_config.json",
+    home: [
+      ".codeium/windsurf/mcp_config.json",
+      JSON.stringify({
+        mcpServers: { leaked: { command: "npx", env: { ANTHROPIC_API_KEY: "sk-ant-abcdefghijklmnop" } } },
+      }),
+    ],
+    ruleId: "security.hardcoded-secret",
+  },
+];
+
+describe("secrets in user MCP config under --global", () => {
+  test.each(userSecrets)("$provider -> $ruleId", ({ project, home, ruleId }) => {
+    const root = tmpProject("agentscan-user-secret-");
+    write(root, "AGENTS.md", "keep scanable\n");
+    if (project) write(root, project[0], project[1]);
+    const tmpHome = mkdtempSync(join(os.tmpdir(), "agentscan-user-secret-home-"));
+    write(tmpHome, home[0], home[1]);
+    withHome(tmpHome, () => {
+      expect(ruleIds(root, true)).toContain(ruleId);
+    });
+  });
+});
+
+test("MCP facts carry the secret label, never the secret value", () => {
+  const root = tmpProject("agentscan-secret-label-");
+  const key = "sk-ant-abcdefghijklmnop";
+  write(root, ".mcp.json", JSON.stringify({ mcpServers: { leaked: { command: "npx", env: { K: key } } } }));
+  const { facts, findings } = analyze({ dir: root });
+  expect(facts.mcp.map((s) => s.secretLabel)).toEqual(["Anthropic key"]);
+  expect(JSON.stringify(facts)).not.toContain(key);
+  expect(findings.map((f) => f.ruleId)).toContain("security.hardcoded-secret");
 });

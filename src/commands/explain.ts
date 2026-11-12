@@ -1,8 +1,9 @@
 import { analyze } from "../analyze";
-import { canonicalizeFindingId } from "../checks/aliases";
-import type { Finding } from "../facts/types";
+import { canonicalizeFindingId } from "../checks/registry";
+import type { Finding } from "../findings";
 import { provenanceLine } from "../report/provenance-line";
 import { safe } from "../report/safe";
+import type { CommandResult } from "./result";
 
 export type ExplainOptions = {
   dir?: string;
@@ -10,20 +11,12 @@ export type ExplainOptions = {
   configPath?: string;
 };
 
-export type ExplainResult = {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-};
 
 /**
  * Re-run the check pipeline and print details for a finding by stable id.
  * Exit 1 if the finding is not found.
  */
-export async function runExplain(
-  findingId: string,
-  options: ExplainOptions = {},
-): Promise<ExplainResult> {
+export function runExplain(findingId: string, options: ExplainOptions = {}): CommandResult {
   const { findings } = analyze(options);
   const finding = findings.find(
     (f) => f.id === findingId || f.id === canonicalizeFindingId(findingId),
@@ -54,9 +47,6 @@ function formatExplain(f: Finding): string {
   lines.push(`rule: ${safe(f.ruleId)}`);
   lines.push(`provenance: ${safe(provenanceLine(f))}`);
   if (f.source.kind === "spec") {
-    // The full URL, not the shortened form the report prints, plus the capture
-    // holding the verbatim quote — this is the surface a reader uses to check
-    // the claim rather than take it.
     lines.push(`source: ${safe(f.source.url)}`);
     lines.push(`capture: docs/spec/${safe(f.source.capture)}`);
   }

@@ -1,23 +1,29 @@
-import type { Provider } from "./provider";
+export type HookDefect =
+  | "invalid-group"
+  | "command-without-command"
+  | "http-without-url"
+  | "mcp-tool-without-server-or-tool"
+  | "prompt-without-prompt"
+  | "unknown-handler-type"
+  | "incompatible-handler";
 
 /**
- * File-schema contract for a hooks object. Distinct from `sourceProvider`:
- * `.github/hooks` is always VS Code-owned, but `version: 1` is Copilot CLI.
- *
- * See docs/spec/hook-events.md, docs/spec/vscode-hooks.md, docs/spec/copilot-hooks.md.
+ * Why an entry is defective, when a profile words it differently: a non-string
+ * Command Code matcher, or which part of a Kiro file is missing. Kiro file-level
+ * facts use a synthetic event name, so the message must not claim a missing
+ * `hooks` array when the array is present. See docs/spec/kiro-hooks.md.
  */
-export type HookSchemaProfile =
-  | "claude"
-  | "vscode-native"
-  | "copilot-cli"
-  | "commandcode"
-  | "grok"
-  | "windsurf"
-  | "gemini"
-  | "cursor"
-  | "kiro";
+export type HookDefectDetail =
+  | "matcher-not-string"
+  | "missing-version"
+  | "missing-hooks"
+  | "missing-version-and-hooks"
+  | "entry";
 
 export type HookHandlerType = "command" | "http" | "mcp_tool" | "prompt" | "agent";
+
+/** Copilot CLI handler `type` values. See docs/spec/copilot-hooks.md. */
+export const COPILOT_HANDLER_TYPES = new Set(["command", "http", "prompt"]);
 
 /** Source: docs/spec/hook-events.md (read 2026-08-31) */
 export const KNOWN_HOOK_EVENTS = new Set([
@@ -119,7 +125,7 @@ export const COPILOT_HOOK_EVENTS = new Set([
  * Claude events that accept every handler type (command, http, mcp_tool, prompt, agent).
  * Source: docs/spec/hook-events.md (read 2026-08-31)
  */
-export const CLAUDE_ALL_HANDLER_EVENTS = new Set([
+const CLAUDE_ALL_HANDLER_EVENTS = new Set([
   "PermissionDenied",
   "PermissionRequest",
   "PostToolBatch",
@@ -136,7 +142,7 @@ export const CLAUDE_ALL_HANDLER_EVENTS = new Set([
 ]);
 
 /** Claude events that accept command, http, and mcp_tool only. */
-export const CLAUDE_COMMAND_HTTP_MCP_EVENTS = new Set([
+const CLAUDE_COMMAND_HTTP_MCP_EVENTS = new Set([
   "ConfigChange",
   "CwdChanged",
   "DirectoryAdded",
@@ -158,48 +164,7 @@ export const CLAUDE_COMMAND_HTTP_MCP_EVENTS = new Set([
 ]);
 
 /** Claude events that accept command and mcp_tool only (no http, prompt, or agent). */
-export const CLAUDE_COMMAND_MCP_EVENTS = new Set(["SessionStart", "Setup"]);
-
-export function inferHookSchemaProfile(
-  sourceProvider: Provider,
-  explicit?: HookSchemaProfile,
-): HookSchemaProfile {
-  if (explicit !== undefined) {
-    return explicit;
-  }
-  switch (sourceProvider) {
-    case "commandcode":
-      return "commandcode";
-    case "grok":
-      return "grok";
-    case "windsurf":
-      return "windsurf";
-    case "vscode":
-      return "vscode-native";
-    case "gemini":
-      return "gemini";
-    case "cursor":
-      return "cursor";
-    case "kiro":
-      return "kiro";
-    case "claude":
-    case "agent-skills":
-    case "codex":
-    case "antigravity":
-    case "cline":
-    case "roo":
-    case "kilo":
-    case "opencode":
-    case "junie":
-    case "continue":
-    case "unknown":
-      return "claude";
-    default: {
-      const neverProvider: never = sourceProvider;
-      return neverProvider;
-    }
-  }
-}
+const CLAUDE_COMMAND_MCP_EVENTS = new Set(["SessionStart", "Setup"]);
 
 export function claudeHandlerCompatible(event: string, type: HookHandlerType): boolean {
   if (!KNOWN_HOOK_EVENTS.has(event)) {
@@ -219,10 +184,6 @@ export function claudeHandlerCompatible(event: string, type: HookHandlerType): b
 
 export function copilotCanonicalEvent(event: string): string {
   return COPILOT_TO_VSCODE_EVENT[event] ?? event;
-}
-
-export function isKnownCopilotEvent(event: string): boolean {
-  return COPILOT_HOOK_EVENTS.has(event);
 }
 
 export function isCopilotCliHooksDocument(raw: Record<string, unknown>): boolean {

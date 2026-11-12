@@ -1,12 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { runChecks } from "../../src/checks/index";
-import { defaultConfig } from "../../src/config/schema";
-import { discoverMcp, mcpCommandPath } from "../../src/discover/index";
-import { extractFacts } from "../../src/facts/extract";
-import type { ConfigErrorFact } from "../../src/facts/types";
+import { mcpCommandPath } from "../../src/discover/mcp";
+import { mkPinnedRoot } from "../helpers/tmp";
+import { findingsFor } from "../helpers/scan";
 
 describe("mcpCommandPath", () => {
   test("accepts path-like values only", () => {
@@ -35,7 +32,7 @@ describe("mcpCommandPath", () => {
 
 describe("mcp.command-missing discovery", () => {
   test("flags a missing relative command and ignores npx", () => {
-    const root = mkdtempSync(join(tmpdir(), "agentscan-mcp-cmd-"));
+    const root = mkPinnedRoot("agentscan-mcp-cmd-");
     writeFileSync(
       join(root, ".mcp.json"),
       JSON.stringify({
@@ -47,26 +44,22 @@ describe("mcp.command-missing discovery", () => {
       "utf8",
     );
 
-    const errors: ConfigErrorFact[] = [];
-    const facts = discoverMcp(root, defaultConfig.mcpPaths, errors);
-    const gone = facts.find((f) => f.name === "gone");
-    const ok = facts.find((f) => f.name === "ok");
+    const analysis = findingsFor(root);
+    const gone = analysis.facts.mcp.find((f) => f.name === "gone");
+    const ok = analysis.facts.mcp.find((f) => f.name === "ok");
     expect(gone?.commandExists).toBe(false);
     expect(ok?.commandExists).toBeUndefined();
 
-    const findings = runChecks(
-      extractFacts(root, defaultConfig, { includeGlobal: false }),
-    );
-    expect(findings.map((f) => f.ruleId)).toContain("mcp.command-missing");
+    expect(analysis.findings.map((f) => f.ruleId)).toContain("mcp.command-missing");
     expect(
-      findings.some(
+      analysis.findings.some(
         (f) => f.ruleId === "mcp.command-missing" && f.message.includes("npx"),
       ),
     ).toBe(false);
   });
 
   test("does not flag when the command file exists", () => {
-    const root = mkdtempSync(join(tmpdir(), "agentscan-mcp-ok-"));
+    const root = mkPinnedRoot("agentscan-mcp-ok-");
     mkdirSync(join(root, "bin"), { recursive: true });
     writeFileSync(join(root, "bin", "server.js"), "#!/usr/bin/env node\n", "utf8");
     writeFileSync(
@@ -77,9 +70,6 @@ describe("mcp.command-missing discovery", () => {
       "utf8",
     );
 
-    const findings = runChecks(
-      extractFacts(root, defaultConfig, { includeGlobal: false }),
-    );
-    expect(findings.map((f) => f.ruleId)).not.toContain("mcp.command-missing");
+    expect(findingsFor(root).findings.map((f) => f.ruleId)).not.toContain("mcp.command-missing");
   });
 });

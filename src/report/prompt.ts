@@ -1,9 +1,8 @@
-import { basename } from "node:path";
 import { provenanceLine } from "./provenance-line";
-import type { Facts, Finding, Severity } from "../facts/types";
+import type { Facts } from "../facts/types";
+import type { Finding, Severity } from "../findings";
 import { safe } from "./safe";
-import { score } from "./score";
-import { sortFindings } from "./sort";
+import { projectLabel, summarize } from "./summary";
 
 /**
  * A paste-ready handoff for an agent that will fix the findings.
@@ -24,10 +23,9 @@ export function renderPrompt(args: {
   findings: Finding[];
 }): string {
   const { version, facts } = args;
-  const actionable = sortFindings(args.findings).filter(
-    (f) => f.severity !== "info",
-  );
-  const project = basename(facts.root) || facts.root;
+  const summary = summarize(args.findings, { verbose: false });
+  const { actionable } = summary;
+  const project = projectLabel(facts.root);
 
   if (actionable.length === 0) {
     return [
@@ -42,7 +40,7 @@ export function renderPrompt(args: {
   const lines: string[] = [
     `# Fix the agent configuration in ${safe(project)}`,
     "",
-    `\`agentscan\` v${version} scores this project ${score(args.findings)}/100 and found`,
+    `\`agentscan\` v${version} scores this project ${summary.score}/100 and found`,
     `${actionable.length} ${actionable.length === 1 ? "issue" : "issues"} in its agent configuration —`,
     "hooks, MCP servers, skills, agent definitions. Each one below is a config file",
     "saying something that is not true of the filesystem.",
@@ -66,8 +64,6 @@ export function renderPrompt(args: {
       for (const e of f.evidence) {
         lines.push(`  - ${safe(e.kind)}: \`${safe(e.value)}\``);
       }
-      // A fixing agent gains the most from the page itself: it can read the
-      // rule's source before changing the config the rule is about.
       if (f.source.kind === "spec") {
         lines.push(`  - Source: ${safe(f.source.url)} (${f.provenance}, read ${f.lastVerified})`);
       } else {

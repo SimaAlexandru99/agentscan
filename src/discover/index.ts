@@ -1,11 +1,10 @@
-import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import type { AgentscanConfig } from "../config/schema";
-import { claudeConfigDir } from "../facts/claude";
-import { grokHomeDir } from "../facts/grok";
+import { isInside } from "../facts/paths";
+import { providerHome, USER_SKILL_PROVIDERS } from "../facts/providers";
 import type {
-  ConfigErrorFact,
+  AgentSurface,
   HookFact,
   McpFact,
   RuleFact,
@@ -13,30 +12,25 @@ import type {
 } from "../facts/types";
 import { discoverAgents } from "./agents";
 import { discoverClaudeCommands } from "./claude";
-import { discoverCodexUserMcp } from "./codex";
+import { CODEX_PROJECT_DOC_MAX_BYTES, discoverCodexUserMcp, readCodexProjectConfig } from "./codex";
 import {
-  applyCommandcodeAgentPrecedence,
   applyCommandcodeHookPrecedence,
   applyCommandcodeMcpPrecedence,
   applyCommandcodeSkillPrecedence,
   commandcodeAgentsSkillsRoots,
+  applyCommandcodeMcpJsonDefects,
   discoverCommandcodeCommands,
   discoverCommandcodeHooks,
   discoverCommandcodeInlineMcp,
-  discoverCommandcodeMods,
   discoverCommandcodeUserMcp,
   isCommandcodeSkillsRel,
   readCommandcodeSettingsLayers,
+  resolveCommandcodeProjectRoot,
   resolveSkillLocation,
-  winningCommandcodeModel,
   winningSkillsExtraDirs,
 } from "./commandcode";
 import { discoverCursorHooksFile } from "./cursor";
-import {
-  discoverKiroHooksDir,
-  kiroUserHooksDir,
-  kiroUserSkillsPath,
-} from "./kiro";
+import { discoverKiroHooksDir } from "./kiro";
 import { applyGrokMcpPrecedence, discoverGrokUserMcp } from "./grok";
 import {
   discoverClaudeUserHooks,
@@ -49,34 +43,45 @@ import {
   discoverHooks,
   discoverVscodeHooks,
 } from "./hooks";
-import { discoverClaudeUserMcp, discoverMcpSurface, discoverNestedContinueMcp, parseMcpFile } from "./mcp";
+import {
+  addUniqueMcp,
+  discoverClaudeUserMcp,
+  discoverGeminiUserMcp,
+  discoverMcpSurface,
+  discoverNestedContinueMcp,
+} from "./mcp";
 import { discoverPluginHooks, discoverPluginSurfaces, findPluginRoots } from "./plugins";
-import { discoverPolicyFiles, discoverSkillsLocks, resolveCodexProjectRoot } from "./policy";
+import {
+  codexInstructionChain,
+  discoverPolicyFiles,
+  discoverSkillsLocks,
+  resolveCodexProjectRoot,
+} from "./policy";
 import { discoverClaudeUserRules, discoverNestedWindsurfRules, discoverRules } from "./rules";
 import {
   discoverWindsurfHooksFile,
   discoverWindsurfUserMcp,
   discoverWindsurfUserRules,
   windsurfUserHooksPath,
-  windsurfUserSkillsPath,
 } from "./windsurf";
 import {
   disambiguateSkills,
   discoverNestedClaudeSkills,
   discoverSkillsInDir,
 } from "./skills";
-import { ancestorDirsInclusive, type AgentSurface } from "./shared";
+import { newScanIO, type ScanIO } from "./fs";
+import { ancestorDirsInclusive, type ScanContext } from "./scan-context";
 
-export type { AgentSurface } from "./shared";
-export { hasAgentConfigSignal, resolveRoot, resolveScanContext } from "./shared";
-export { hookScriptPath } from "./hooks";
-export { discoverMcp, mcpCommandPath } from "./mcp";
-export { skillReferences } from "./skills";
+export { resolveRoot, resolveScanContext, type ScanContext, type ScanLocation } from "./scan-context";
 
-function mcpKey(fact: McpFact): string {
-  const platform = fact.platform === undefined ? "" : `:${fact.platform}`;
-  const layer = fact.claudeMcpLayer === undefined ? "" : `:${fact.claudeMcpLayer}`;
-  return `${fact.name}@${fact.path}${platform}${layer}`;
+/**
+ * A file reached twice (scanning `$HOME` with `--global` reads
+ * `~/.claude/settings.json` on the walk-up and as user settings) yields the
+ * same facts in the same order; the later batch from a seen file is dropped.
+ * Same file under another source or provider is a different reader, kept.
+ */
+function hookFileKey(fact: HookFact): string {
+  return `${resolve(fact.path)}\0${fact.source ?? ""}\0${fact.sourceProvider ?? ""}`;
 }
 
 function uniqueRules(facts: RuleFact[]): RuleFact[] {
@@ -93,6 +98,148 @@ function uniqueRules(facts: RuleFact[]): RuleFact[] {
   return out;
 }
 
+function applyLayerPrecedence(
+  skills: SkillFact[],
+  mcp: McpFact[],
+  hooks: HookFact[],
+  ctx: {
+    commandcodeProjectRoot: string;
+    startDir: string;
+    extraDirs: string[];
+    agentsSkillsRoots: string[];
+    includeGlobal: boolean;
+  },
+): void {
+  applyCommandcodeSkillPrecedence(skills, ctx);
+  applyCommandcodeMcpJsonDefects(mcp, ctx.commandcodeProjectRoot);
+  applyCommandcodeMcpPrecedence(mcp, ctx.commandcodeProjectRoot);
+  applyGrokMcpPrecedence(mcp, ctx.startDir);
+  applyCommandcodeHookPrecedence(hooks);
+}
+
+/** Hook, MCP and rule facts one source contributes; the loop merges and dedupes them. */
+type SourceBatch = { hooks?: HookFact[]; mcp?: McpFact[]; rules?: RuleFact[] };
+type SourceScan = ScanContext & { config: AgentscanConfig; io: ScanIO };
+
+/**
+ * One entry per source of hooks, MCP servers and rules. `project` runs for each
+ * directory of the walk-up (nearest first), `nested` once over the scan
+ * boundary, `user` once under `--global`. Within a phase, list order is read
+ * order, which is the order facts and config errors are reported in.
+ */
+type Source = {
+  id: string;
+  project?: (dir: string, scan: SourceScan) => SourceBatch;
+  nested?: (scan: SourceScan) => SourceBatch;
+  user?: (scan: SourceScan) => SourceBatch;
+};
+
+const SOURCES: Source[] = [
+  {
+    id: "claude",
+    project: (dir, { io }) => ({ hooks: discoverHooks(dir, io) }),
+    user: ({ root, startDir, scanBoundary, io }) => ({
+      hooks: discoverClaudeUserHooks(root, io),
+      mcp: discoverClaudeUserMcp(io, [root, startDir, scanBoundary]),
+      rules: discoverClaudeUserRules(io),
+    }),
+  },
+  {
+    id: "vscode",
+    project: (dir, { io }) => ({ hooks: discoverVscodeHooks(dir, io) }),
+  },
+  {
+    id: "copilot",
+    project: (dir, { io }) => ({ hooks: discoverCopilotSettingsHooks(dir, io) }),
+    user: ({ io }) => ({
+      hooks: [...discoverCopilotUserHooks(io), ...discoverCopilotUserSettingsHooks(io)],
+    }),
+  },
+  {
+    id: "grok",
+    project: (dir, { io }) => ({
+      hooks: discoverGrokHooks(join(dir, ".grok", "hooks"), dir, io),
+    }),
+    user: ({ io }) => ({
+      hooks: discoverGrokHooks(join(providerHome("grok"), "hooks"), providerHome("grok"), io),
+      mcp: discoverGrokUserMcp(io),
+    }),
+  },
+  {
+    id: "gemini",
+    project: (dir, { io }) => ({ hooks: discoverGeminiHooks(dir, io) }),
+    user: ({ root, io }) => ({
+      hooks: discoverGeminiUserHooks(root, io),
+      mcp: discoverGeminiUserMcp(root, io),
+    }),
+  },
+  {
+    id: "codex",
+    user: ({ io }) => ({ mcp: discoverCodexUserMcp(io) }),
+  },
+  {
+    id: "commandcode",
+    user: (scan) => ({
+      mcp: discoverCommandcodeUserMcp(resolveCommandcodeProjectRoot(scan), scan.io),
+    }),
+  },
+  {
+    id: "windsurf",
+    project: (dir, { io }) => ({
+      hooks: discoverWindsurfHooksFile(join(dir, ".windsurf", "hooks.json"), dir, io),
+    }),
+    nested: ({ scanBoundary, io }) => ({
+      rules: discoverNestedWindsurfRules(scanBoundary, io),
+    }),
+    user: ({ io }) => {
+      const mcp = discoverWindsurfUserMcp(io);
+      const rules = discoverWindsurfUserRules(io);
+      const hooksPath = windsurfUserHooksPath();
+      return {
+        mcp,
+        rules,
+        hooks: discoverWindsurfHooksFile(hooksPath, dirname(hooksPath), io),
+      };
+    },
+  },
+  {
+    id: "cursor",
+    project: (dir, { io }) => ({
+      hooks: discoverCursorHooksFile(join(dir, ".cursor", "hooks.json"), dir, io),
+    }),
+    user: ({ root, io }) => ({
+      hooks: discoverCursorHooksFile(join(providerHome("cursor"), "hooks.json"), root, io),
+    }),
+  },
+  {
+    id: "kiro",
+    project: (dir, { io }) => ({
+      hooks: discoverKiroHooksDir(join(dir, ".kiro", "hooks"), dir, io),
+    }),
+    user: ({ root, io }) => ({
+      hooks: discoverKiroHooksDir(join(providerHome("kiro"), "hooks"), root, io),
+    }),
+  },
+  {
+    id: "continue",
+    nested: ({ scanBoundary, io }) => ({
+      mcp: discoverNestedContinueMcp(scanBoundary, io),
+    }),
+  },
+  {
+    // Every provider's project MCP file, from the configured `mcpPaths`.
+    id: "mcp-paths",
+    project: (dir, { config, io }) => ({
+      mcp: discoverMcpSurface(dir, config.mcpPaths, io),
+    }),
+  },
+  {
+    // Every provider's project rules directories.
+    id: "rules",
+    project: (dir, { io }) => ({ rules: discoverRules(dir, io) }),
+  },
+];
+
 /**
  * Enumerate project (and optionally global) agent surface: skills, agents, hooks,
  * MCP, policy, lockfile. Config files that cannot be parsed are reported through
@@ -104,21 +251,15 @@ function uniqueRules(facts: RuleFact[]): RuleFact[] {
  * `commandcodeProjectRoot` (git root, or the working directory outside a git repo).
  */
 export function discoverAgentSurface(
-  root: string,
+  ctx: ScanContext,
   config: AgentscanConfig,
-  opts: {
-    includeGlobal: boolean;
-    onNestedDirectoryRead?: () => void;
-    startDir?: string;
-    scanBoundary?: string;
-    commandcodeProjectRoot?: string;
-  },
+  opts: { onNestedDirectoryRead?: () => void; io?: ScanIO } = {},
 ): AgentSurface {
-  const startDir = opts.startDir ?? root;
-  const scanBoundary = opts.scanBoundary ?? root;
-  const commandcodeProjectRoot = opts.commandcodeProjectRoot ?? root;
+  const { root, startDir, scanBoundary } = ctx;
+  const includeGlobal = config.includeGlobal;
+  const commandcodeProjectRoot = resolveCommandcodeProjectRoot(ctx);
   const dirs = ancestorDirsInclusive(startDir, scanBoundary);
-  const configErrors: ConfigErrorFact[] = [];
+  const io = opts.io ?? newScanIO();
   const skills: SkillFact[] = [];
   const configuredRoots = new Set<string>();
   for (const dir of dirs) {
@@ -128,24 +269,24 @@ export function discoverAgentSurface(
       }
       const abs = resolve(dir, rel);
       configuredRoots.add(abs);
-      skills.push(...discoverSkillsInDir(abs, "project", configErrors, root));
+      skills.push(...discoverSkillsInDir(abs, "project", io, root));
     }
   }
   const commandcodeSkills = resolve(commandcodeProjectRoot, ".commandcode", "skills");
   if (!configuredRoots.has(commandcodeSkills)) {
     configuredRoots.add(commandcodeSkills);
-    skills.push(...discoverSkillsInDir(commandcodeSkills, "project", configErrors, root));
+    skills.push(...discoverSkillsInDir(commandcodeSkills, "project", io, root));
   }
   skills.push(
-    ...discoverNestedClaudeSkills(scanBoundary, configuredRoots, configErrors, {
+    ...discoverNestedClaudeSkills(scanBoundary, configuredRoots, io, {
       onDirectoryRead: opts.onNestedDirectoryRead,
     }),
   );
 
   const ccLayers = readCommandcodeSettingsLayers(
     commandcodeProjectRoot,
-    configErrors,
-    opts.includeGlobal,
+    io,
+    includeGlobal,
   );
   const extraDirs: string[] = [];
   for (const declared of winningSkillsExtraDirs(ccLayers)) {
@@ -155,40 +296,22 @@ export function discoverAgentSurface(
       continue;
     }
     configuredRoots.add(abs);
-    const homeRoot = resolve(homedir());
-    const source = abs === homeRoot || abs.startsWith(`${homeRoot}/`) ? "global" : "project";
-    const extra = discoverSkillsInDir(abs, source, configErrors, root);
+    const source = isInside(abs, homedir()) ? "global" : "project";
+    // Command Code reads extra dirs as Agent Skills, whatever the path suggests.
     skills.push(
-      ...extra.map((skill) =>
-        skill.schemaProfile === "agent-skills"
-          ? skill
-          : { ...skill, schemaProfile: "agent-skills" as const },
-      ),
+      ...discoverSkillsInDir(abs, source, io, root, undefined, "agent-skills"),
     );
   }
 
-  if (opts.includeGlobal) {
-    const home = homedir();
-    const globalSkillDirs = [
-      join(claudeConfigDir(), "skills"),
-      join(home, ".codex", "skills"),
-      join(home, ".commandcode", "skills"),
-      join(home, ".agents", "skills"),
-      join(grokHomeDir(), "skills"),
-      windsurfUserSkillsPath(home),
-      kiroUserSkillsPath(home),
-      join(home, ".cline", "skills"),
-      join(home, ".roo", "skills"),
-      join(home, ".kilo", "skills"),
-      join(home, ".junie", "skills"),
-    ];
-    for (const abs of globalSkillDirs) {
+  if (includeGlobal) {
+    for (const provider of USER_SKILL_PROVIDERS) {
+      const abs = join(providerHome(provider), "skills");
       const resolved = resolve(abs);
       if (configuredRoots.has(resolved)) {
         continue;
       }
       configuredRoots.add(resolved);
-      skills.push(...discoverSkillsInDir(abs, "global", configErrors, root));
+      skills.push(...discoverSkillsInDir(abs, "global", io, root, provider));
     }
   }
 
@@ -197,230 +320,109 @@ export function discoverAgentSurface(
     scanBoundary,
     homedir(),
   );
-  applyCommandcodeSkillPrecedence(skills, {
-    commandcodeProjectRoot,
-    extraDirs,
-    agentsSkillsRoots,
-    includeGlobal: opts.includeGlobal,
-  });
-
-  const lock = discoverSkillsLocks(scanBoundary, root, configErrors);
+  const lock = discoverSkillsLocks(scanBoundary, root, io);
   const agents = discoverAgents(
     scanBoundary,
-    configErrors,
+    io,
     startDir,
-    opts.includeGlobal,
+    includeGlobal,
     commandcodeProjectRoot,
   );
-  applyCommandcodeAgentPrecedence(agents, commandcodeProjectRoot);
 
   const hooks: HookFact[] = [];
+  const hookFilesSeen = new Set<string>();
+  const addHooks = (batch: HookFact[]): void => {
+    const fresh = batch.filter((fact) => !hookFilesSeen.has(hookFileKey(fact)));
+    for (const fact of fresh) {
+      hookFilesSeen.add(hookFileKey(fact));
+    }
+    hooks.push(...fresh);
+  };
   const mcp: McpFact[] = [];
   const mcpSeen = new Set<string>();
+  const addMcp = (batch: McpFact[]): void => addUniqueMcp(mcp, mcpSeen, batch);
   const rules: RuleFact[] = [];
-  let codexProjectDocMaxBytes: number | undefined;
-  let codexProjectDocFallbackFilenames: string[] | undefined;
-  let codexProjectRootMarkers: string[] | undefined;
+  const merge = (batch: SourceBatch | undefined): void => {
+    addHooks(batch?.hooks ?? []);
+    addMcp(batch?.mcp ?? []);
+    rules.push(...(batch?.rules ?? []));
+  };
+  const scan: SourceScan = { ...ctx, config, io };
   for (const dir of dirs) {
-    hooks.push(...discoverHooks(dir, configErrors));
-    hooks.push(...discoverVscodeHooks(dir, configErrors));
-    hooks.push(...discoverCopilotSettingsHooks(dir, configErrors));
-    hooks.push(...discoverGrokHooks(join(dir, ".grok", "hooks"), dir, configErrors));
-    hooks.push(...discoverGeminiHooks(dir, configErrors));
-    hooks.push(
-      ...discoverWindsurfHooksFile(join(dir, ".windsurf", "hooks.json"), dir, configErrors),
-    );
-    hooks.push(
-      ...discoverCursorHooksFile(join(dir, ".cursor", "hooks.json"), dir, configErrors),
-    );
-    hooks.push(...discoverKiroHooksDir(join(dir, ".kiro", "hooks"), dir, configErrors));
-    const discovered = discoverMcpSurface(dir, config.mcpPaths, configErrors);
-    if (discovered.codexProjectDocMaxBytes !== undefined && codexProjectDocMaxBytes === undefined) {
-      codexProjectDocMaxBytes = discovered.codexProjectDocMaxBytes;
+    for (const source of SOURCES) {
+      merge(source.project?.(dir, scan));
     }
-    if (
-      discovered.codexProjectDocFallbackFilenames !== undefined &&
-      codexProjectDocFallbackFilenames === undefined
-    ) {
-      codexProjectDocFallbackFilenames = discovered.codexProjectDocFallbackFilenames;
-    }
-    if (discovered.codexProjectRootMarkers !== undefined && codexProjectRootMarkers === undefined) {
-      codexProjectRootMarkers = discovered.codexProjectRootMarkers;
-    }
-    for (const fact of discovered.facts) {
-      const key = mcpKey(fact);
-      if (mcpSeen.has(key)) {
-        continue;
-      }
-      mcpSeen.add(key);
-      mcp.push(fact);
-    }
-    rules.push(...discoverRules(dir, configErrors));
   }
-  rules.push(...discoverNestedWindsurfRules(scanBoundary, configErrors));
-  mcp.push(...discoverNestedContinueMcp(scanBoundary, configErrors, mcpSeen));
-  const pluginRoots = findPluginRoots(scanBoundary, configErrors);
-  hooks.push(...discoverPluginHooks(scanBoundary, configErrors, pluginRoots));
+  for (const source of SOURCES) {
+    merge(source.nested?.(scan));
+  }
+  const pluginRoots = findPluginRoots(scanBoundary, io);
+  addHooks(discoverPluginHooks(scanBoundary, io, pluginRoots));
   const pluginSurfaces = discoverPluginSurfaces(
     scanBoundary,
-    configErrors,
+    io,
     configuredRoots,
     pluginRoots,
   );
+  const layeredSkills = [...skills];
   skills.push(...pluginSurfaces.skills);
   agents.push(...pluginSurfaces.agents);
-  for (const fact of pluginSurfaces.mcp) {
-    const key = mcpKey(fact);
-    if (mcpSeen.has(key)) {
-      continue;
+  addMcp(pluginSurfaces.mcp);
+  addHooks(discoverCommandcodeHooks(commandcodeProjectRoot, ccLayers, io));
+  addMcp(discoverCommandcodeInlineMcp(commandcodeProjectRoot, ccLayers, io));
+  if (includeGlobal) {
+    for (const source of SOURCES) {
+      merge(source.user?.(scan));
     }
-    mcpSeen.add(key);
-    mcp.push(fact);
   }
-  hooks.push(...discoverCommandcodeHooks(commandcodeProjectRoot, ccLayers, configErrors));
-  for (const fact of discoverCommandcodeInlineMcp(commandcodeProjectRoot, ccLayers, configErrors)) {
-    const key = mcpKey(fact);
-    if (mcpSeen.has(key)) {
-      continue;
-    }
-    mcpSeen.add(key);
-    mcp.push(fact);
-  }
-  if (opts.includeGlobal) {
-    const home = homedir();
-    hooks.push(...discoverClaudeUserHooks(root, configErrors));
-    hooks.push(...discoverCopilotUserHooks(configErrors));
-    hooks.push(...discoverCopilotUserSettingsHooks(configErrors));
-    hooks.push(...discoverGrokHooks(join(grokHomeDir(), "hooks"), grokHomeDir(), configErrors));
-    hooks.push(
-      ...discoverCursorHooksFile(join(home, ".cursor", "hooks.json"), root, configErrors),
-    );
-    hooks.push(...discoverGeminiUserHooks(root, configErrors));
-    hooks.push(...discoverKiroHooksDir(kiroUserHooksDir(home), root, configErrors));
-    for (const userMcpPath of [
-      join(home, ".gemini", "settings.json"),
-      join(home, ".gemini", "config", "mcp_config.json"),
-    ]) {
-      if (!existsSync(userMcpPath)) {
-        continue;
-      }
-      for (const fact of parseMcpFile(userMcpPath, root, configErrors).facts) {
-        const key = mcpKey(fact);
-        if (mcpSeen.has(key)) {
-          continue;
-        }
-        mcpSeen.add(key);
-        mcp.push(fact);
-      }
-    }
-    for (const fact of discoverClaudeUserMcp(configErrors, [root, startDir, scanBoundary])) {
-      const key = mcpKey(fact);
-      if (mcpSeen.has(key)) {
-        continue;
-      }
-      mcpSeen.add(key);
-      mcp.push(fact);
-    }
-    for (const fact of discoverGrokUserMcp(configErrors)) {
-      const key = mcpKey(fact);
-      if (mcpSeen.has(key)) {
-        continue;
-      }
-      mcpSeen.add(key);
-      mcp.push(fact);
-    }
-    for (const fact of discoverCodexUserMcp(configErrors)) {
-      const key = mcpKey(fact);
-      if (mcpSeen.has(key)) {
-        continue;
-      }
-      mcpSeen.add(key);
-      mcp.push(fact);
-    }
-    for (const fact of discoverCommandcodeUserMcp(commandcodeProjectRoot, configErrors)) {
-      const key = mcpKey(fact);
-      if (mcpSeen.has(key)) {
-        continue;
-      }
-      mcpSeen.add(key);
-      mcp.push(fact);
-    }
-    for (const fact of discoverWindsurfUserMcp(configErrors)) {
-      const key = mcpKey(fact);
-      if (mcpSeen.has(key)) {
-        continue;
-      }
-      mcpSeen.add(key);
-      mcp.push(fact);
-    }
-    rules.push(...discoverClaudeUserRules(configErrors));
-    rules.push(...discoverWindsurfUserRules(configErrors));
-    const userWindsurfHooks = windsurfUserHooksPath();
-    hooks.push(
-      ...discoverWindsurfHooksFile(
-        userWindsurfHooks,
-        dirname(userWindsurfHooks),
-        configErrors,
-      ),
-    );
-  }
-  applyCommandcodeMcpPrecedence(mcp, commandcodeProjectRoot);
-  applyGrokMcpPrecedence(mcp, startDir);
-  const slashCommands = [
+  // Commands are read only for their frontmatter hooks.
+  const commands = [
     ...discoverCommandcodeCommands(
       commandcodeProjectRoot,
-      opts.includeGlobal,
-      configErrors,
+      includeGlobal,
+      io,
     ),
-    ...discoverClaudeCommands(startDir, scanBoundary, opts.includeGlobal, root, configErrors),
+    ...discoverClaudeCommands(startDir, scanBoundary, includeGlobal, root, io),
     ...pluginSurfaces.commands,
   ];
-  const mods = discoverCommandcodeMods(ccLayers);
-  const winningModel = winningCommandcodeModel(ccLayers);
   const allHooks = [
     ...hooks,
     ...skills.flatMap((s) => s.frontmatterHooks ?? []),
     ...agents.flatMap((a) => a.frontmatterHooks ?? []),
-    ...slashCommands.flatMap((command) => command.frontmatterHooks ?? []),
+    ...commands.flatMap((command) => command.frontmatterHooks ?? []),
   ];
-  applyCommandcodeHookPrecedence(allHooks);
-
-  const codexProjectRoot = resolveCodexProjectRoot(
+  applyLayerPrecedence(layeredSkills, mcp, allHooks, {
+    commandcodeProjectRoot,
     startDir,
+    extraDirs,
+    agentsSkillsRoots,
+    includeGlobal,
+  });
+
+  const codex = readCodexProjectConfig(dirs, config.mcpPaths, io);
+  const codexProjectRoot = resolveCodexProjectRoot(startDir, scanBoundary, codex.projectRootMarkers);
+  const fallbacks = codex.projectDocFallbackFilenames ?? [];
+  const policyFiles = discoverPolicyFiles(
     scanBoundary,
-    codexProjectRootMarkers,
+    config.policyFiles,
+    io,
+    startDir,
+    includeGlobal,
+    fallbacks,
   );
   return {
     skills: disambiguateSkills(skills, root),
     agents,
     hooks: allHooks,
     mcp,
-    policyFiles: discoverPolicyFiles(
-      scanBoundary,
-      config.policyFiles,
-      configErrors,
-      startDir,
-      opts.includeGlobal,
-      commandcodeProjectRoot,
-      codexProjectDocFallbackFilenames ?? [],
-    ),
+    policyFiles,
     rules: uniqueRules(rules),
     lockedSkills: lock.locked,
     hasSkillsLock: lock.present,
     skillsLockInvalid: lock.invalid,
-    ...(lock.lockRoots.length === 0 ? {} : { skillLockRoots: lock.lockRoots }),
-    configErrors,
-    ...(codexProjectDocMaxBytes === undefined ? {} : { codexProjectDocMaxBytes }),
-    ...(codexProjectDocFallbackFilenames === undefined
-      ? {}
-      : { codexProjectDocFallbackFilenames }),
-    ...(codexProjectRootMarkers === undefined ? {} : { codexProjectRootMarkers }),
-    codexProjectRoot,
-    ...(slashCommands.length === 0 ? {} : { slashCommands }),
-    ...(mods.length === 0 ? {} : { mods }),
-    ...(winningModel === undefined
-      ? {}
-      : { commandcodeModel: winningModel.model, commandcodeModelSource: winningModel.source }),
-    commandcodeProjectRoot,
+    skillLockRoots: lock.lockRoots,
+    configErrors: io.errors,
+    codexProjectDocMaxBytes: codex.projectDocMaxBytes ?? CODEX_PROJECT_DOC_MAX_BYTES,
+    codexInstructionChain: codexInstructionChain(policyFiles, startDir, codexProjectRoot, fallbacks),
   };
 }

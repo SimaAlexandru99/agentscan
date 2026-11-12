@@ -1,26 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { mkPinnedProject } from "../helpers/tmp";
+import { tmpProject, write } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
 import { hooksFromObject } from "../../src/discover/hooks";
 import {
-  launchMatchesHost,
   skipLaunchExistenceCheck,
   resolveLaunchCwd,
   scriptCandidateFromLaunch,
 } from "../../src/discover/launch";
-import type { ConfigErrorFact } from "../../src/facts/types";
-
-function tmpProject(prefix: string): string {
-  return mkPinnedProject(prefix, "launch-platform");
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
+import { newScanIO } from "../../src/discover/fs";
+import { ruleIds } from "../helpers/scan";
 
 function hostOsKey(): "windows" | "linux" | "osx" {
   if (process.platform === "win32") {
@@ -32,18 +20,7 @@ function hostOsKey(): "windows" | "linux" | "osx" {
   return "linux";
 }
 
-function ruleIds(dir: string): string[] {
-  return analyze({ dir }).findings.map((finding) => finding.ruleId);
-}
-
 describe("OS-specific launch existence checks", () => {
-  test("launchMatchesHost treats platform-neutral as matching every host", () => {
-    expect(launchMatchesHost({}, "linux")).toBe(true);
-    expect(launchMatchesHost({ platform: "windows" }, "linux")).toBe(false);
-    expect(launchMatchesHost({ platform: "windows" }, "win32")).toBe(true);
-    expect(launchMatchesHost({ platform: "osx" }, "darwin")).toBe(true);
-  });
-
   test.skipIf(process.platform === "win32")(
     "official VS Code Windows hook example does not emit missing-script on POSIX",
     () => {
@@ -159,7 +136,7 @@ describe("OS-specific launch existence checks", () => {
   );
 
   test("Linux absolute script and cwd are skipped when the host is Windows", () => {
-    const errors: ConfigErrorFact[] = [];
+    const io = newScanIO();
     const facts = hooksFromObject(
       {
         PostToolUse: [
@@ -176,8 +153,8 @@ describe("OS-specific launch existence checks", () => {
       "/tmp/hooks.json",
       "vscode-hooks",
       { project: "/tmp/proj" },
-      errors,
-      "vscode",
+      io,
+      { sourceProvider: "vscode", schemaProfile: "vscode-native" },
       "win32",
     );
     const linux = facts.find((hook) => hook.platform === "linux");

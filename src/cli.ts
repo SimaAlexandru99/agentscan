@@ -1,13 +1,14 @@
 import { parseArgs } from "node:util";
-import { type OutputFormat, runCheck } from "./commands/check";
+import { runCheck } from "./commands/check";
 import { runDemo } from "./commands/demo";
 import { runExplain } from "./commands/explain";
 import { runInit } from "./commands/init";
+import type { CommandResult } from "./commands/result";
 import { runRulesCommand } from "./commands/rules";
 import { shouldColour } from "./report/ansi";
 import { copyToClipboard } from "./report/clipboard";
 import { safe } from "./report/safe";
-import type { FailOn } from "./report/exit-code";
+import { failOnSchema, outputFormatSchema } from "./config/schema";
 import { VERSION } from "./version";
 
 function printHelp(): void {
@@ -31,7 +32,7 @@ check options:
   --copy                 Also copy the report to the system clipboard
   --no-color             Never colour, even on a terminal (also: NO_COLOR=1)
   --quiet                Summary only
-  --verbose              Show KEEP findings
+  --verbose              Show info findings and each finding's id
   --fail-on <level>      never | warning | error (default: never)
   --fail-under <0-100>   Fail when the score drops below this floor
   --global               Also scan global skill dirs
@@ -46,12 +47,14 @@ init options:
   process.stdout.write(`${text}\n`);
 }
 
-function isOutput(value: string): value is OutputFormat {
-  return value === "human" || value === "json" || value === "prompt";
-}
-
-function isFailOn(value: string): value is FailOn {
-  return value === "never" || value === "warning" || value === "error";
+function emit(result: CommandResult): number {
+  if (result.stderr !== undefined && result.stderr.length > 0) {
+    process.stderr.write(result.stderr);
+  }
+  if (result.stdout.length > 0) {
+    process.stdout.write(result.stdout);
+  }
+  return result.exitCode;
 }
 
 export async function main(argv: string[]): Promise<number> {
@@ -124,7 +127,8 @@ export async function main(argv: string[]): Promise<number> {
       case "check": {
         const dir = positionals[1];
         const failOnRaw = values["fail-on"];
-        if (failOnRaw !== undefined && !isFailOn(failOnRaw)) {
+        const failOn = failOnSchema.safeParse(failOnRaw);
+        if (failOnRaw !== undefined && !failOn.success) {
           process.stderr.write(
             `Invalid --fail-on value: ${safe(failOnRaw)} (use never|warning|error)\n`,
           );
@@ -142,19 +146,20 @@ export async function main(argv: string[]): Promise<number> {
           }
         }
         const outputRaw = values.output;
-        if (outputRaw !== undefined && !isOutput(outputRaw)) {
+        const output = outputFormatSchema.safeParse(outputRaw);
+        if (outputRaw !== undefined && !output.success) {
           process.stderr.write(
             `Invalid --output value: ${safe(outputRaw)} (use human|json|prompt)\n`,
           );
           return 2;
         }
-        const result = await runCheck({
+        const result = runCheck({
           dir,
-          json: values.json,
-          ...(outputRaw === undefined ? {} : { output: outputRaw }),
+          // `--output` wins; `--json` is its alias.
+          ...(output.success ? { output: output.data } : values.json === true ? { output: "json" as const } : {}),
           quiet: values.quiet,
           verbose: values.verbose,
-          failOn: failOnRaw,
+          ...(failOn.success ? { failOn: failOn.data } : {}),
           ...(failUnder === undefined ? {} : { failUnder }),
           global: values.global,
           configPath: values.config,
@@ -164,7 +169,7 @@ export async function main(argv: string[]): Promise<number> {
             noColorFlag: values["no-color"],
           }),
         });
-        process.stdout.write(result.stdout);
+        const code = emit(result);
         if (values.copy === true) {
           // stderr, so `--copy` stays composable with `> file` and `| tool`.
           // A clipboard miss does not change the exit code: the scan is what
@@ -178,7 +183,7 @@ export async function main(argv: string[]): Promise<number> {
               : `Could not copy: ${safe(copied.reason)}. Redirect instead: agentscan check > report.md\n`,
           );
         }
-        return result.exitCode;
+        return code;
       }
       case "explain": {
         const findingId = positionals[1];
@@ -186,49 +191,28 @@ export async function main(argv: string[]): Promise<number> {
           process.stderr.write("Usage: agentscan explain <findingId> [dir]\n");
           return 2;
         }
-        const result = await runExplain(findingId, {
-          dir: positionals[2],
-          global: values.global,
-          configPath: values.config,
-        });
-        if (result.stderr.length > 0) {
-          process.stderr.write(result.stderr);
-        }
-        if (result.stdout.length > 0) {
-          process.stdout.write(result.stdout);
-        }
-        return result.exitCode;
+        return emit(
+          runExplain(findingId, {
+            dir: positionals[2],
+            global: values.global,
+            configPath: values.config,
+          }),
+        );
       }
       case "rules": {
-        const result = await runRulesCommand({
-          dir: positionals[1],
-          configPath: values.config,
-          json: values.json,
-        });
-        process.stdout.write(result.stdout);
-        return result.exitCode;
+        return emit(
+          runRulesCommand({
+            dir: positionals[1],
+            configPath: values.config,
+            json: values.json,
+          }),
+        );
       }
       case "init": {
-        const result = await runInit(positionals[1], {
-          force: values.force,
-        });
-        if (result.stderr.length > 0) {
-          process.stderr.write(result.stderr);
-        }
-        if (result.stdout.length > 0) {
-          process.stdout.write(result.stdout);
-        }
-        return result.exitCode;
+        return emit(runInit(positionals[1], { force: values.force }));
       }
       case "demo": {
-        const result = await runDemo();
-        if (result.stderr.length > 0) {
-          process.stderr.write(result.stderr);
-        }
-        if (result.stdout.length > 0) {
-          process.stdout.write(result.stdout);
-        }
-        return result.exitCode;
+        return emit(runDemo());
       }
       case "help":
         printHelp();

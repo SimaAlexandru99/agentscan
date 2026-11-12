@@ -1,46 +1,21 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { claudeConfigDir } from "../facts/claude";
-import type { ConfigErrorFact, SlashCommandFact } from "../facts/types";
+import { providerHome } from "../facts/providers";
+import type { SlashCommandFact } from "../facts/types";
 import { hooksFromObject } from "./hooks";
-import { ancestorDirsInclusive, readFrontmatter } from "./shared";
+import { ancestorDirsInclusive } from "./scan-context";
+import { readFrontmatter } from "./frontmatter";
+import { isDirectory, isFile, listDir, type ScanIO } from "./fs";
 
-function isFile(path: string): boolean {
-  try {
-    return statSync(path).isFile();
-  } catch {
-    return false;
-  }
-}
-
-function isDirectory(path: string): boolean {
-  try {
-    return statSync(path).isDirectory();
-  } catch {
-    return false;
-  }
-}
-
-function commandFiles(dir: string, errors: ConfigErrorFact[]): string[] {
-  let names: string[];
-  try {
-    names = readdirSync(dir);
-  } catch (err) {
-    errors.push({
-      path: dir,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return [];
-  }
+/** Markdown command files below `dir`, as paths relative to it. */
+export function commandFiles(dir: string, io: ScanIO): string[] {
   const out: string[] = [];
-  for (const name of names) {
+  for (const { name } of listDir(dir, io, { optional: true }) ?? []) {
     if (name.startsWith(".")) {
       continue;
     }
     const abs = join(dir, name);
     if (isDirectory(abs)) {
-      out.push(...commandFiles(abs, errors).map((rel) => join(name, rel)));
+      out.push(...commandFiles(abs, io).map((rel) => join(name, rel)));
       continue;
     }
     if (name.endsWith(".md") && isFile(abs)) {
@@ -58,13 +33,10 @@ export function discoverClaudeCommandsInDir(
   dir: string,
   source: "project" | "global",
   projectRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): SlashCommandFact[] {
-  if (!existsSync(dir)) {
-    return [];
-  }
   const facts: SlashCommandFact[] = [];
-  for (const rel of commandFiles(dir, errors)) {
+  for (const rel of commandFiles(dir, io)) {
     const filePath = join(dir, rel);
     const fact: SlashCommandFact = {
       name: basename(rel, ".md"),
@@ -72,14 +44,15 @@ export function discoverClaudeCommandsInDir(
       source,
       sourceProvider: "claude",
     };
-    const fm = readFrontmatter(filePath, errors);
+    const fm = readFrontmatter(filePath, io);
     if (fm.hooks !== undefined) {
       const hooks = hooksFromObject(
         fm.hooks,
         filePath,
         "skill",
         { project: projectRoot, own: dirname(filePath) },
-        errors,
+        io,
+        { sourceProvider: "claude", schemaProfile: "claude" },
       );
       if (hooks.length > 0) {
         fact.frontmatterHooks = hooks.map((hook) => ({
@@ -102,7 +75,7 @@ export function discoverClaudeCommands(
   scanBoundary: string,
   includeGlobal: boolean,
   projectRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): SlashCommandFact[] {
   const facts: SlashCommandFact[] = [];
   const seen = new Set<string>();
@@ -117,10 +90,10 @@ export function discoverClaudeCommands(
     }
   };
   for (const dir of ancestorDirsInclusive(startDir, scanBoundary)) {
-    add(discoverClaudeCommandsInDir(join(dir, ".claude", "commands"), "project", projectRoot, errors));
+    add(discoverClaudeCommandsInDir(join(dir, ".claude", "commands"), "project", projectRoot, io));
   }
   if (includeGlobal) {
-    add(discoverClaudeCommandsInDir(join(claudeConfigDir(), "commands"), "global", projectRoot, errors));
+    add(discoverClaudeCommandsInDir(join(providerHome("claude"), "commands"), "global", projectRoot, io));
   }
   return facts;
 }

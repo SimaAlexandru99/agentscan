@@ -18,7 +18,7 @@ Do not emit `claude.agent.*` on these files.
 They load bundled → personal → project; first definition of a name wins.
 Personal therefore shadows project on a name collision. Nested package
 `.commandcode/agents` is not Command Code project config. agentscan
-inventories each readable file and sets `commandcodeEffective`. Spec/runtime
+inventories each readable file and sets `effective`. Spec/runtime
 `commandcode.agent.*` checks skip shadowed files.
 
 ## Name

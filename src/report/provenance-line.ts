@@ -1,5 +1,5 @@
-import type { RuleSource } from "../checks/provenance";
-import type { Finding } from "../facts/types";
+import type { RuleSource } from "../findings";
+import type { Finding } from "../findings";
 
 /**
  * Strip the scheme and any trailing slash so a source fits on a report line

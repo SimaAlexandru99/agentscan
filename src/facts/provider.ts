@@ -1,30 +1,5 @@
-export type Provider =
-  | "agent-skills"
-  | "claude"
-  | "codex"
-  | "vscode"
-  | "cursor"
-  | "grok"
-  | "antigravity"
-  | "gemini"
-  | "windsurf"
-  | "kiro"
-  | "cline"
-  | "roo"
-  | "kilo"
-  | "opencode"
-  | "junie"
-  | "continue"
-  | "commandcode"
-  | "unknown";
-
-export type Compatibility = {
-  sourceProvider: Provider;
-  consumedBy?: Provider[];
-  schemaProfile?: string;
-};
-
-export type SkillSchemaProfile = "claude" | "agent-skills" | "grok";
+import { toPosix } from "./paths";
+export type { Provider, SkillSchemaProfile } from "./providers";
 
 export type McpLaunchKind = "command" | "url" | "registry-reference" | "no-launch";
 
@@ -42,250 +17,82 @@ export type McpSchemaProfile =
   | "grok-toml"
   | "windsurf-json";
 
-export function schemaProfileFromSkillsDir(dir: string): SkillSchemaProfile {
-  const normalized = dir.replaceAll("\\", "/");
-  if (
-    normalized.includes("/.agents/skills") ||
-    normalized.endsWith("/.agents/skills") ||
-    normalized.includes("/.cursor/skills") ||
-    normalized.endsWith("/.cursor/skills") ||
-    normalized.includes("/.codex/skills") ||
-    normalized.endsWith("/.codex/skills") ||
-    normalized.includes("/.commandcode/skills") ||
-    normalized.endsWith("/.commandcode/skills") ||
-    normalized.includes("/.windsurf/skills") ||
-    normalized.endsWith("/.windsurf/skills") ||
-    normalized.includes("/.codeium/windsurf/skills") ||
-    normalized.endsWith("/.codeium/windsurf/skills") ||
-    normalized.includes("/.kiro/skills") ||
-    normalized.endsWith("/.kiro/skills") ||
-    normalized.includes("/.cline/skills") ||
-    normalized.endsWith("/.cline/skills") ||
-    normalized.includes("/.roo/skills") ||
-    normalized.endsWith("/.roo/skills") ||
-    normalized.includes("/.kilo/skills") ||
-    normalized.endsWith("/.kilo/skills") ||
-    normalized.includes("/.junie/skills") ||
-    normalized.endsWith("/.junie/skills")
-  ) {
-    return "agent-skills";
-  }
-  if (
-    normalized.includes("/.grok/skills") ||
-    normalized.endsWith("/.grok/skills")
-  ) {
-    return "grok";
-  }
-  return "claude";
-}
-
 export function assertNever(value: never, message: string): never {
   throw new Error(message);
 }
 
-export function providerFromSkillsDir(dir: string): Provider {
-  const normalized = dir.replaceAll("\\", "/");
-  if (
-    normalized.includes("/.claude/skills") ||
-    normalized.endsWith("/.claude/skills")
-  ) {
-    return "claude";
-  }
-  if (
-    normalized.includes("/.agents/skills") ||
-    normalized.endsWith("/.agents/skills")
-  ) {
-    return "agent-skills";
-  }
-  if (
-    normalized.includes("/.cursor/skills") ||
-    normalized.endsWith("/.cursor/skills")
-  ) {
-    return "cursor";
-  }
-  if (
-    normalized.includes("/.codex/skills") ||
-    normalized.endsWith("/.codex/skills")
-  ) {
-    return "codex";
-  }
-  if (
-    normalized.includes("/.commandcode/skills") ||
-    normalized.endsWith("/.commandcode/skills")
-  ) {
-    return "commandcode";
-  }
-  if (
-    normalized.includes("/.grok/skills") ||
-    normalized.endsWith("/.grok/skills")
-  ) {
-    return "grok";
-  }
-  if (
-    normalized.includes("/.windsurf/skills") ||
-    normalized.endsWith("/.windsurf/skills") ||
-    normalized.includes("/.codeium/windsurf/skills") ||
-    normalized.endsWith("/.codeium/windsurf/skills")
-  ) {
-    return "windsurf";
-  }
-  if (normalized.includes("/.kiro/skills") || normalized.endsWith("/.kiro/skills")) {
-    return "kiro";
-  }
-  if (normalized.includes("/.cline/skills") || normalized.endsWith("/.cline/skills")) {
-    return "cline";
-  }
-  if (normalized.includes("/.roo/skills") || normalized.endsWith("/.roo/skills")) {
-    return "roo";
-  }
-  if (normalized.includes("/.kilo/skills") || normalized.endsWith("/.kilo/skills")) {
-    return "kilo";
-  }
-  if (normalized.includes("/.junie/skills") || normalized.endsWith("/.junie/skills")) {
-    return "junie";
-  }
-  return "unknown";
-}
+/**
+ * One row per MCP path shape: which profile owns it, and whether `.json` is
+ * parsed as JSONC. First match wins. Anything else is Claude's `mcp.json`.
+ * `jsonc` is the path, not the profile: Continue YAML and its server JSON
+ * files share `continue-yaml`.
+ */
+const MCP_FILE_RULES: readonly {
+  profile: McpSchemaProfile;
+  test: (normalized: string) => boolean;
+  jsonc?: true;
+}[] = [
+  {
+    profile: "commandcode-json",
+    test: (p) =>
+      p.endsWith(".commandcode/mcp.json") ||
+      /(?:^|\/)\.commandcode\/settings(?:\.local)?\.json$/.test(p),
+  },
+  { profile: "mcp-json", test: (p) => /(?:^|\/)\.mcp\.json$/.test(p) },
+  { profile: "vscode-json", test: (p) => /(?:^|\/)\.vscode\/mcp\.json$/.test(p), jsonc: true },
+  { profile: "cursor-json", test: (p) => /(?:^|\/)\.cursor\/mcp\.json$/.test(p), jsonc: true },
+  {
+    profile: "antigravity-json",
+    test: (p) =>
+      p.endsWith(".agents/mcp_config.json") || p.endsWith(".gemini/config/mcp_config.json"),
+  },
+  { profile: "codex-toml", test: (p) => p.endsWith(".codex/config.toml") },
+  { profile: "gemini-json", test: (p) => /(?:^|\/)\.gemini\/settings\.json$/.test(p), jsonc: true },
+  { profile: "continue-yaml", test: (p) => /\/\.continue\/mcpServers\/.*\.json$/.test(p), jsonc: true },
+  {
+    profile: "continue-yaml",
+    test: (p) =>
+      p.includes("/.continue/mcpServers/") ||
+      p.endsWith(".continue/config.yaml") ||
+      p.endsWith(".continue/config.yml"),
+  },
+  {
+    profile: "opencode-json",
+    test: (p) => /(?:^|\/)(?:\.opencode\/)?opencode\.jsonc?$/.test(p),
+    jsonc: true,
+  },
+  { profile: "grok-toml", test: (p) => p.endsWith(".grok/config.toml") },
+  {
+    profile: "windsurf-json",
+    test: (p) => /(?:^|\/)\.codeium\/windsurf\/mcp_config\.json$/.test(p),
+  },
+];
+
+/** Default `mcpPaths`. Order is the order project files are read. */
+export const DEFAULT_MCP_PATHS = [
+  ".mcp.json",
+  ".claude/mcp.json",
+  "mcp.json",
+  ".vscode/mcp.json",
+  ".cursor/mcp.json",
+  ".agents/mcp_config.json",
+  ".codex/config.toml",
+  ".gemini/settings.json",
+  "opencode.json",
+  "opencode.jsonc",
+  ".opencode/opencode.json",
+  ".opencode/opencode.jsonc",
+  ".continue/config.yaml",
+  ".continue/mcpServers",
+  ".grok/config.toml",
+] as const;
 
 export function mcpProfileFromPath(filePath: string): McpSchemaProfile {
-  const normalized = filePath.replaceAll("\\", "/");
-  if (
-    normalized.endsWith("/.commandcode/mcp.json") ||
-    normalized.endsWith(".commandcode/mcp.json") ||
-    /(?:^|\/)\.commandcode\/settings(?:\.local)?\.json$/.test(normalized)
-  ) {
-    return "commandcode-json";
-  }
-  if (
-    /(?:^|\/)\.mcp\.json$/.test(normalized)
-  ) {
-    return "mcp-json";
-  }
-  if (
-    normalized.endsWith("/.vscode/mcp.json") ||
-    normalized.endsWith(".vscode/mcp.json")
-  ) {
-    return "vscode-json";
-  }
-  if (
-    normalized.endsWith("/.cursor/mcp.json") ||
-    normalized.endsWith(".cursor/mcp.json")
-  ) {
-    return "cursor-json";
-  }
-  if (
-    normalized.endsWith("/.agents/mcp_config.json") ||
-    normalized.endsWith(".agents/mcp_config.json") ||
-    normalized.endsWith("/.gemini/config/mcp_config.json") ||
-    normalized.endsWith(".gemini/config/mcp_config.json")
-  ) {
-    return "antigravity-json";
-  }
-  if (
-    normalized.endsWith("/.codex/config.toml") ||
-    normalized.endsWith(".codex/config.toml")
-  ) {
-    return "codex-toml";
-  }
-  if (
-    normalized.endsWith("/.gemini/settings.json") ||
-    normalized.endsWith(".gemini/settings.json")
-  ) {
-    return "gemini-json";
-  }
-  if (
-    normalized.includes("/.continue/mcpServers/") ||
-    normalized.endsWith("/.continue/config.yaml") ||
-    normalized.endsWith(".continue/config.yaml") ||
-    normalized.endsWith("/.continue/config.yml") ||
-    normalized.endsWith(".continue/config.yml")
-  ) {
-    return "continue-yaml";
-  }
-  if (
-    /(?:^|\/)(?:\.opencode\/)?opencode\.jsonc?$/.test(normalized)
-  ) {
-    return "opencode-json";
-  }
-  if (
-    normalized.endsWith("/.grok/config.toml") ||
-    normalized.endsWith(".grok/config.toml")
-  ) {
-    return "grok-toml";
-  }
-  if (
-    /(?:^|\/)\.codeium\/windsurf\/mcp_config\.json$/.test(normalized)
-  ) {
-    return "windsurf-json";
-  }
-  if (/(?:^|\/)\.claude\.json$/.test(normalized)) {
-    return "claude-json";
-  }
-  return "claude-json";
+  const normalized = toPosix(filePath);
+  return MCP_FILE_RULES.find((rule) => rule.test(normalized))?.profile ?? "claude-json";
 }
 
-export function sourceProviderForMcpProfile(
-  profile: McpSchemaProfile,
-): Provider {
-  switch (profile) {
-    case "claude-json":
-      return "claude";
-    case "mcp-json":
-      return "unknown";
-    case "commandcode-json":
-      return "commandcode";
-    case "vscode-json":
-      return "vscode";
-    case "cursor-json":
-      return "cursor";
-    case "antigravity-json":
-      return "antigravity";
-    case "codex-toml":
-      return "codex";
-    case "gemini-json":
-      return "gemini";
-    case "opencode-json":
-      return "opencode";
-    case "continue-yaml":
-      return "continue";
-    case "grok-toml":
-      return "grok";
-    case "windsurf-json":
-      return "windsurf";
-    default: {
-      return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
-    }
-  }
-}
-
-export function consumedByForMcpProfile(profile: McpSchemaProfile): Provider[] {
-  switch (profile) {
-    case "mcp-json":
-      return ["claude", "commandcode"];
-    case "commandcode-json":
-      return ["commandcode"];
-    case "claude-json":
-      return ["claude"];
-    case "vscode-json":
-      return ["vscode"];
-    case "cursor-json":
-      return ["cursor"];
-    case "antigravity-json":
-      return ["antigravity"];
-    case "codex-toml":
-      return ["codex"];
-    case "gemini-json":
-      return ["gemini"];
-    case "opencode-json":
-      return ["opencode"];
-    case "continue-yaml":
-      return ["continue"];
-    case "grok-toml":
-      return ["grok"];
-    case "windsurf-json":
-      return ["windsurf"];
-    default: {
-      return assertNever(profile, `unhandled MCP schema profile: ${profile}`);
-    }
-  }
+/** `.json` files whose tool accepts comments. Extension `.jsonc` is decided by the reader. */
+export function mcpFileIsJsonc(normalizedPath: string): boolean {
+  return MCP_FILE_RULES.some((rule) => rule.jsonc === true && rule.test(normalizedPath));
 }

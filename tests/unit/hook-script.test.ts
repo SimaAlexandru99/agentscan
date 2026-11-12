@@ -1,11 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { runChecks } from "../../src/checks/index";
-import { defaultConfig } from "../../src/config/schema";
-import { discoverAgentSurface, hookScriptPath } from "../../src/discover/index";
-import { extractFacts } from "../../src/facts/extract";
+import { hookScriptPath } from "../../src/discover/launch";
+import { mkPinnedRoot } from "../helpers/tmp";
+import { findingsFor } from "../helpers/scan";
 
 /**
  * Every case here is a real hook command taken from this machine's projects.
@@ -134,7 +132,7 @@ describe("hookScriptPath — refuses to guess", () => {
 
 describe("hook script discovery", () => {
   test("directories are missing scripts, while files and absent paths stay distinct", () => {
-    const root = mkdtempSync(join(tmpdir(), "agentscan-hook-"));
+    const root = mkPinnedRoot("agentscan-hook-");
     const hooksDir = join(root, ".claude", "hooks");
     mkdirSync(join(hooksDir, "directory.js"), { recursive: true });
     writeFileSync(join(hooksDir, "regular.js"), "", "utf8");
@@ -156,17 +154,16 @@ describe("hook script discovery", () => {
       "utf8",
     );
 
-    const surface = discoverAgentSurface(root, defaultConfig, { includeGlobal: false });
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const analysis = findingsFor(root);
     const hooks = new Map(
-      surface.hooks.map((hook) => [hook.scriptPath, hook.scriptExists]),
+      analysis.facts.hooks.map((hook) => [hook.scriptPath, hook.scriptExists]),
     );
 
     expect(hooks.get(".claude/hooks/directory.js")).toBe(false);
     expect(hooks.get(".claude/hooks/regular.js")).toBe(true);
     expect(hooks.get(".claude/hooks/missing.js")).toBe(false);
     expect(
-      runChecks(facts)
+      analysis.findings
         .filter((finding) => finding.ruleId === "claude.hook.missing-script")
         .map((finding) => finding.subject),
     ).toEqual([

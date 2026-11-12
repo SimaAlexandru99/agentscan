@@ -5,18 +5,14 @@
  *   bun run readme:rules          # rewrite the table
  *   bun run readme:rules --check  # exit 1 if it is out of date
  *
- * Why a generator rather than a convention: the table had silently lost three
- * rules (`windsurf.hook.*`, PR #13) and nobody noticed for a release, because
- * nothing compared it to anything.
- *
  * Why it preserves cells instead of printing `check.description`: the README's
  * "Catches" prose is deliberately richer than the registry one-liner —
  * "Config file is not valid JSON or cannot be read" against "A config file that
  * is not valid JSON, so whatever it declares is silently not in effect". A
  * generator that overwrote it would trade a drift bug for a worse README. So
- * the README stays the source of truth for the prose and the severity, the
- * registry stays the source of truth for the id set, provenance, and source,
- * and this script enforces exactly that split.
+ * the README stays the source of truth for the prose, the registry stays the
+ * source of truth for the id set, severity, provenance, and source, and this
+ * script enforces exactly that split.
  *
  * A rule with no row yet gets one seeded from the registry description, marked
  * for a human to improve.
@@ -25,34 +21,30 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { STRUCTURAL_CHECKS } from "../src/checks/index";
 import type { StructuralCheck } from "../src/checks/provenance";
+import { severityLabel } from "../src/checks/provenance";
+import { shortSourceUrl } from "../src/report/provenance-line";
 
 const README = join(import.meta.dir, "../README.md");
 const START = "<!-- rules:start -->";
 const END = "<!-- rules:end -->";
 const CHECK = process.argv.includes("--check");
 
-type Existing = { severity: string; catches: string };
+type Existing = { catches: string };
 
 /**
- * Parse the current table so hand-written severity and prose survive.
+ * Parse the current table so hand-written prose survives.
  *
- * Accepts the generated five-column shape and the hand-written three-column
- * one it replaced. Reading only the new shape would make the first run after a
- * format change silently duplicate columns instead of round-tripping — which
- * is exactly what happened while writing this.
+ * Reads the generated five-column shape: id, severity, provenance, source, catches.
  */
 function existingRows(block: string): Map<string, Existing> {
   const out = new Map<string, Existing>();
   for (const line of block.split("\n")) {
     const trimmed = line.trim();
-    const wide = /^\| `([^`]+)` \| ([^|]*?) \| [^|]*? \| .*? \| (.*?) \|$/.exec(trimmed);
-    const narrow = /^\| `([^`]+)` \| ([^|]*?) \| (.*?) \|$/.exec(trimmed);
-    const m = wide ?? narrow;
+    const m = /^\| `([^`]+)` \| [^|]*? \| [^|]*? \| .*? \| (.*?) \|$/.exec(trimmed);
     const id = m?.[1];
-    const severity = m?.[2];
-    const catches = m?.[3];
-    if (id !== undefined && severity !== undefined && catches !== undefined) {
-      out.set(id, { severity: severity.trim(), catches: catches.trim() });
+    const catches = m?.[2];
+    if (id !== undefined && catches !== undefined) {
+      out.set(id, { catches: catches.trim() });
     }
   }
   return out;
@@ -60,8 +52,7 @@ function existingRows(block: string): Map<string, Existing> {
 
 function sourceCell(check: StructuralCheck): string {
   if (check.source.kind === "spec") {
-    const label = check.source.url.replace(/^https?:\/\//, "").replace(/\/$/, "");
-    return `[${label}](${check.source.url})`;
+    return `[${shortSourceUrl(check.source.url)}](${check.source.url})`;
   }
   return `_${check.source.detail}_`;
 }
@@ -77,7 +68,7 @@ function render(existing: Map<string, Existing>): { table: string; seeded: strin
     if (prior === undefined) {
       seeded.push(check.id);
     }
-    const severity = prior?.severity ?? "error";
+    const severity = severityLabel(check);
     const catches = prior?.catches ?? check.description;
     rows.push(
       `| \`${check.id}\` | ${severity} | ${check.provenance} | ${sourceCell(check)} | ${catches} |`,

@@ -1,24 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { mkPinnedProject } from "../helpers/tmp";
-import { analyze } from "../../src/analyze";
+import { scanContext, tmpProject, write } from "../helpers/tmp";
 import { defaultConfig } from "../../src/config/schema";
-import { extractFacts } from "../../src/facts/extract";
-
-function tmpProject(prefix: string): string {
-  return mkPinnedProject(prefix, "opencode-mcp");
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
-
-function ruleIds(dir: string): string[] {
-  return analyze({ dir }).findings.map((finding) => finding.ruleId);
-}
+import { extractFacts } from "../../src/discover/extract";
+import { ruleIds } from "../helpers/scan";
 
 describe("OpenCode MCP V1/V2 schema", () => {
   test("V2 local requires type and command", () => {
@@ -80,7 +64,7 @@ describe("OpenCode MCP V1/V2 schema", () => {
         },
       }),
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = extractFacts(scanContext(root), defaultConfig);
     expect(facts.mcp[0]!.opencodeSchema).toBe("v1");
     expect(facts.mcp[0]!.opencodeInherit).toBe(true);
     expect(ruleIds(root)).toEqual([]);
@@ -100,5 +84,53 @@ describe("OpenCode MCP V1/V2 schema", () => {
       }\n`,
     );
     expect(ruleIds(root)).toEqual([]);
+  });
+
+  test("{env:VAR} is a reference, not a hardcoded secret", () => {
+    // Checks and discovery once used different interpolation regexes; the
+    // checks copy did not know OpenCode's `{env:VAR}`, so a token-shaped
+    // variable name inside it was reported as a leaked credential.
+    const root = tmpProject("agentscan-oc-env-ref-");
+    const tokenShapedName = `ghp_${"A".repeat(24)}`;
+    write(
+      root,
+      "opencode.json",
+      JSON.stringify({
+        mcp: {
+          servers: {
+            docs: {
+              type: "remote",
+              url: "https://example.com/mcp",
+              headers: { Authorization: `Bearer {env:${tokenShapedName}}` },
+            },
+          },
+        },
+      }),
+    );
+    expect(ruleIds(root)).not.toContain("security.hardcoded-secret");
+  });
+
+  test("every interpolated reference is redacted, not only the first", () => {
+    const root = tmpProject("agentscan-oc-env-refs-");
+    const tokenShapedName = `ghp_${"B".repeat(24)}`;
+    write(
+      root,
+      "opencode.json",
+      JSON.stringify({
+        mcp: {
+          servers: {
+            docs: {
+              type: "remote",
+              url: "https://example.com/mcp",
+              headers: {
+                "X-First": "{env:HARMLESS}",
+                Authorization: `Bearer {env:${tokenShapedName}}`,
+              },
+            },
+          },
+        },
+      }),
+    );
+    expect(ruleIds(root)).not.toContain("security.hardcoded-secret");
   });
 });

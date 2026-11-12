@@ -1,13 +1,16 @@
 import { homedir } from "node:os";
-import { basename, join, posix, win32 } from "node:path";
+import { basename, isAbsolute, join, posix, win32 } from "node:path";
+import { COMMANDCODE_PROJECT_DIR } from "../facts/commandcode";
+import { GEMINI_PROJECT_DIR } from "../facts/gemini";
+import { isFile, isRecord } from "./fs";
 
-export type OsPlatform = "windows" | "linux" | "osx";
+import type { OsPlatform } from "../facts/types";
+export type { OsPlatform };
 
 export type LaunchCommand = {
   executable: string;
   args: string[];
   platform?: OsPlatform;
-  /** Working directory declared on the entry or an OS override. */
   cwd?: string;
 };
 
@@ -50,8 +53,10 @@ const INTERPRETERS = new Set([
 ]);
 
 const INLINE_CODE_FLAGS = /^-(?:e|p|c)$/;
-const SHELL_METACHARS = /[|;&`]|\$\(|\|\||&&/;
-const PROJECT_DIR = /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\}|COMMANDCODE_PROJECT_DIR\b|\{COMMANDCODE_PROJECT_DIR\}|COMMANDCODE_CWD\b|\{COMMANDCODE_CWD\})/;
+/** Anything that makes a command a shell program rather than one argv. */
+export const SHELL_METACHARS = /[|;&`]|\$\(/;
+const CLAUDE_PROJECT_DIR = /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\})/;
+const PROJECT_DIRS = [CLAUDE_PROJECT_DIR, COMMANDCODE_PROJECT_DIR, GEMINI_PROJECT_DIR];
 const PLUGIN_ROOT = /^\$(?:CLAUDE_PLUGIN_ROOT\b|\{CLAUDE_PLUGIN_ROOT\})/;
 const SCRIPT_EXT = /\.(?:js|mjs|cjs|ts|tsx|jsx|py|sh|bash|zsh|rb|pl|php|ps1|cmd|bat)$/i;
 const OS_KEYS = ["windows", "linux", "osx"] as const;
@@ -79,24 +84,110 @@ function interpreterName(executable: string): string {
   return basename(executable).replace(/\.exe$/i, "").toLowerCase();
 }
 
+/** `/x`, `./x`, `../x`, `~/x`, `.x` or `a/b`: a path operand, not a PATH lookup. `.` and `..` are not. */
+export function looksLikePath(candidate: string): boolean {
+  return candidate !== "." && candidate !== ".." && (candidate.startsWith(".") || candidate.includes("/"));
+}
+
 function isPathLike(candidate: string, interpreted: boolean): boolean {
-  if (candidate.length === 0 || isWindowsAbsOrUnc(candidate)) {
+  if (isWindowsAbsOrUnc(candidate)) {
     return false;
   }
-  if (candidate === "." || candidate === "..") {
-    return false;
+  return looksLikePath(candidate) || (interpreted && SCRIPT_EXT.test(candidate));
+}
+
+export function expandHome(path: string): string {
+  return path.startsWith("~/") ? join(homedir(), path.slice(2)) : path;
+}
+
+export function isProjectDirPlaceholder(value: string): boolean {
+  return PROJECT_DIRS.some((re) => re.test(value));
+}
+
+function afterPlaceholder(re: RegExp, value: string): string | undefined {
+  const match = re.exec(value);
+  return match === null ? undefined : value.slice(match[0].length).replace(/^\//, "");
+}
+
+/**
+ * Where a script path resolves from. `plugin` is set only for hooks declared by
+ * a plugin; `own` is the declaring file's directory. See docs/spec/hook-sources.md.
+ */
+export type ScriptBases = {
+  project: string;
+  plugin?: string;
+  own?: string;
+};
+
+function scriptLocations(script: string, bases: ScriptBases, cwdAbs?: string): string[] {
+  if (script.startsWith("~/")) {
+    return [expandHome(script)];
   }
-  if (
-    candidate.startsWith("/") ||
-    candidate.startsWith("./") ||
-    candidate.startsWith("../") ||
-    candidate.startsWith("~/") ||
-    candidate.startsWith(".") ||
-    candidate.includes("/")
-  ) {
-    return true;
+  for (const re of PROJECT_DIRS) {
+    const rel = afterPlaceholder(re, script);
+    if (rel !== undefined) {
+      return [join(bases.project, rel)];
+    }
   }
-  return interpreted && SCRIPT_EXT.test(candidate);
+  if (bases.plugin !== undefined) {
+    const rel = afterPlaceholder(PLUGIN_ROOT, script);
+    if (rel !== undefined) {
+      return [join(bases.plugin, rel)];
+    }
+  }
+  if (isAbsolute(script)) {
+    return [script];
+  }
+  if (cwdAbs !== undefined) {
+    return [join(cwdAbs, script)];
+  }
+  // A bare relative path has no documented base — the placeholders above exist
+  // precisely because the working directory is not guaranteed. Try the
+  // declaring file's own directory and the project root, and call it missing
+  // only when it is at neither. Same two-base rule as skill.broken-reference;
+  // see docs/spec/hook-sources.md for why this one is a judgement, not a quote.
+  return [...(bases.own === undefined ? [] : [join(bases.own, script)]), join(bases.project, script)];
+}
+
+export type ScriptCheck = { scriptPath: string; exists: boolean };
+
+/** `fact` with the script operand and whether it exists, when there is one to check. */
+export function withScriptCheck<T extends object>(
+  fact: T,
+  script: ScriptCheck | undefined,
+): T | (T & { scriptPath: string; scriptExists: boolean }) {
+  return script === undefined ? fact : { ...fact, scriptPath: script.scriptPath, scriptExists: script.exists };
+}
+
+/**
+ * The one script resolver: the launch's script operand and whether it exists.
+ * Undefined when there is no certain operand or the path, cwd, or OS override
+ * cannot be checked on this host.
+ */
+export function checkLaunchScript(
+  launch: LaunchCommand,
+  bases: ScriptBases,
+  hostPlatform: NodeJS.Platform = process.platform,
+): ScriptCheck | undefined {
+  const cwd = resolveLaunchCwd(launch.cwd, bases.project, hostPlatform);
+  const script = scriptCandidateFromLaunch(launch, bases);
+  if (script === undefined || skipLaunchExistenceCheck(launch, cwd, script, hostPlatform)) {
+    return undefined;
+  }
+  const cwdAbs = cwd.status === "ok" ? cwd.abs : undefined;
+  return { scriptPath: script, exists: scriptLocations(script, bases, cwdAbs).some(isFile) };
+}
+
+export function checkCommandScript(
+  command: string,
+  bases: ScriptBases,
+  hostPlatform: NodeJS.Platform = process.platform,
+): ScriptCheck | undefined {
+  const script = hookScriptPath(command, bases);
+  if (script === undefined || pathSkipsExistenceCheck(script, hostPlatform)) {
+    return undefined;
+  }
+  return { scriptPath: script, exists: scriptLocations(script, bases).some(isFile) };
 }
 
 function expandPlaceholder(
@@ -106,7 +197,7 @@ function expandPlaceholder(
   if (!candidate.startsWith("$")) {
     return candidate;
   }
-  if (PROJECT_DIR.test(candidate)) {
+  if (isProjectDirPlaceholder(candidate)) {
     return candidate;
   }
   return bases.plugin !== undefined && PLUGIN_ROOT.test(candidate)
@@ -118,7 +209,7 @@ function expandPlaceholder(
  * First filesystem operand of a launch argv. Undefined when the answer is not
  * certain — PATH binaries, `node -e`, and shell compounds are skipped.
  */
-export function scriptCandidateFromArgv(
+function scriptCandidateFromArgv(
   argv: string[],
   bases: { plugin?: string } = {},
 ): string | undefined {
@@ -165,8 +256,8 @@ export function scriptCandidateFromLaunch(
 }
 
 /**
- * Pull the script path out of a hook command string. Same conservatism as
- * before: shell programs are skipped outright.
+ * Pull the script path out of a hook command string. Shell programs are
+ * skipped outright.
  */
 export function hookScriptPath(
   command: string,
@@ -183,7 +274,7 @@ function stringArgs(value: unknown): string[] {
   return value.filter((part): part is string => typeof part === "string");
 }
 
-export function optionalCwd(value: unknown): string | undefined {
+function optionalCwd(value: unknown): string | undefined {
   if (typeof value !== "string") {
     return undefined;
   }
@@ -191,11 +282,11 @@ export function optionalCwd(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-export function cwdIsUnresolved(cwd: string): boolean {
+function cwdIsUnresolved(cwd: string): boolean {
   return UNRESOLVED_CWD.test(cwd);
 }
 
-export function nodePlatformOf(os: OsPlatform): NodeJS.Platform {
+function nodePlatformOf(os: OsPlatform): NodeJS.Platform {
   switch (os) {
     case "windows":
       return "win32";
@@ -214,7 +305,7 @@ export function nodePlatformOf(os: OsPlatform): NodeJS.Platform {
  * Platform-neutral launches are checked on every host. An OS override is
  * checked only when it names this process's platform.
  */
-export function launchMatchesHost(
+function launchMatchesHost(
   launch: Pick<LaunchCommand, "platform">,
   hostPlatform: NodeJS.Platform = process.platform,
 ): boolean {
@@ -247,7 +338,7 @@ export function isWindowsAbsOrUnc(value: string): boolean {
   return value.startsWith("\\\\") || value.startsWith("//");
 }
 
-export function isPosixAbsolutePath(value: string): boolean {
+function isPosixAbsolutePath(value: string): boolean {
   return posix.isAbsolute(value) && !value.startsWith("//");
 }
 
@@ -323,10 +414,7 @@ export function resolveLaunchCwd(
   if (isPosixAbsolutePath(cwd) && hostPlatform === "win32") {
     return { status: "foreign" };
   }
-  let expanded = cwd;
-  if (expanded.startsWith("~/")) {
-    expanded = join(homedir(), expanded.slice(2));
-  }
+  const expanded = expandHome(cwd);
   const pathApi = pathApiForHost(hostPlatform);
   const abs = pathApi.isAbsolute(expanded) ? expanded : pathApi.join(projectRoot, expanded);
   return { status: "ok", abs };
@@ -380,7 +468,7 @@ function launchFromOverride(
   if (typeof value === "string" && value.length > 0) {
     return launchFromCommandArgs(value, undefined, platform, base?.cwd);
   }
-  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+  if (isRecord(value)) {
     const record = value as Record<string, unknown>;
     const cwd = optionalCwd(record.cwd) ?? base?.cwd;
     if (record.command !== undefined || record.args !== undefined) {
@@ -397,7 +485,6 @@ function launchFromOverride(
   return undefined;
 }
 
-/** Default launch plus each OS-specific override, kept as separate argv lists. */
 export function launchesFromEntry(entry: Record<string, unknown>): LaunchCommand[] {
   const out: LaunchCommand[] = [];
   const baseCwd = optionalCwd(entry.cwd);

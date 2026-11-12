@@ -1,36 +1,34 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, isAbsolute, join } from "node:path";
-import { claudeConfigDir } from "../facts/claude";
-import {
-  COMMANDCODE_HOOK_HANDLER_TYPES,
-  COMMANDCODE_HOOK_TIMEOUT_MAX,
-  COMMANDCODE_HOOK_TIMEOUT_MIN,
-  COMMANDCODE_PROJECT_DIR,
-} from "../facts/commandcode";
-import { GEMINI_HOOK_HANDLER_TYPES, GEMINI_PROJECT_DIR } from "../facts/gemini";
+import { dirname, join } from "node:path";
+import { providerHome } from "../facts/providers";
+import { GEMINI_HOOK_HANDLER_TYPES } from "../facts/gemini";
 import { GROK_HOOK_HANDLER_TYPES } from "../facts/grok";
 import {
+  HOOK_PROFILES,
+  PROFILES,
+  type EventKeyedProfile,
+  type FlatHookProfile,
+  type HookSchemaProfile,
+  type PipedProfile,
+} from "../facts/hook-profiles";
+import {
   claudeHandlerCompatible,
+  COPILOT_HANDLER_TYPES,
   copilotCanonicalEvent,
-  inferHookSchemaProfile,
   isCopilotCliHooksDocument,
   type HookHandlerType,
-  type HookSchemaProfile,
 } from "../facts/hook-schema";
 import type { Provider } from "../facts/provider";
-import type { ConfigErrorFact, HookDefect, HookFact } from "../facts/types";
+import type { HookDefect, HookFact } from "../facts/types";
 import {
+  checkCommandScript,
+  checkLaunchScript,
   formatLaunch,
   launchFromCommandArgs,
   launchesFromEntry,
-  resolveLaunchCwd,
-  scriptCandidateFromLaunch,
-  skipLaunchExistenceCheck,
+  type ScriptBases,
+  withScriptCheck,
 } from "./launch";
-import { readJsonConfig } from "./shared";
-
-export { hookScriptPath } from "./launch";
+import { isRecord, listDir, readConfigFile, reportRootShapeOnce, type ScanIO } from "./fs";
 
 /**
  * Where a hook's script paths resolve from.
@@ -42,93 +40,10 @@ export { hookScriptPath } from "./launch";
  *
  * See docs/spec/hook-sources.md.
  */
-export type HookBases = {
-  /** `${CLAUDE_PROJECT_DIR}`, and the fallback base for a bare relative path. */
-  project: string;
-  /** `${CLAUDE_PLUGIN_ROOT}` — absent unless the hook came from a plugin. */
-  plugin?: string;
-  /** The declaring file's own directory, tried first for a relative path. */
-  own?: string;
-};
-
-const PROJECT_DIR = /^\$(?:CLAUDE_PROJECT_DIR\b|\{CLAUDE_PROJECT_DIR\})/;
-const PLUGIN_ROOT = /^\$(?:CLAUDE_PLUGIN_ROOT\b|\{CLAUDE_PLUGIN_ROOT\})/;
-
-const CLAUDE_HANDLER_TYPES = new Set(["command", "http", "mcp_tool", "mcp-tool", "prompt", "agent"]);
-const COPILOT_HANDLER_TYPES = new Set(["command", "http", "prompt"]);
-
-/**
- * Pull the script path out of a hook command, so a hook whose script is gone can
- * be reported. Returns undefined whenever the answer is not certain.
- *
- * Deliberately conservative: a wrong "this hook is broken" on a guard hook is as
- * damaging as missing a real one. Shell programs (`a && b`, `$(...)`, pipes) are
- * skipped outright, because a command like `[ ! -f x ] || node x` handles the
- * missing file itself and flagging it would be a false positive.
- */
-// hookScriptPath lives in launch.ts so MCP and hooks share one argv walker.
-
-function isFile(path: string): boolean {
-  try {
-    return statSync(path).isFile();
-  } catch {
-    return false;
-  }
-}
-
-function resolveHookScript(
-  bases: HookBases,
-  extracted: string,
-  cwdAbs?: string,
-): { scriptPath: string; exists: boolean } | undefined {
-  if (extracted.startsWith("~/")) {
-    return {
-      scriptPath: extracted,
-      exists: isFile(join(homedir(), extracted.slice(2))),
-    };
-  }
-  if (
-    PROJECT_DIR.test(extracted) ||
-    COMMANDCODE_PROJECT_DIR.test(extracted) ||
-    GEMINI_PROJECT_DIR.test(extracted)
-  ) {
-    const rel = extracted.replace(
-      /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\}|COMMANDCODE_PROJECT_DIR|\{COMMANDCODE_PROJECT_DIR\}|COMMANDCODE_CWD|\{COMMANDCODE_CWD\}|GEMINI_PROJECT_DIR|\{GEMINI_PROJECT_DIR\})\/?/,
-      "",
-    );
-    return { scriptPath: extracted, exists: isFile(join(bases.project, rel)) };
-  }
-  if (bases.plugin !== undefined && PLUGIN_ROOT.test(extracted)) {
-    const rel = extracted.replace(
-      /^\$(?:CLAUDE_PLUGIN_ROOT|\{CLAUDE_PLUGIN_ROOT\})\/?/,
-      "",
-    );
-    return { scriptPath: extracted, exists: isFile(join(bases.plugin, rel)) };
-  }
-  if (isAbsolute(extracted)) {
-    return { scriptPath: extracted, exists: isFile(extracted) };
-  }
-  if (cwdAbs !== undefined) {
-    return { scriptPath: extracted, exists: isFile(join(cwdAbs, extracted)) };
-  }
-  // A bare relative path has no documented base — the placeholders above exist
-  // precisely because the working directory is not guaranteed. Try the
-  // declaring file's own directory and the project root, and call it missing
-  // only when it is at neither. Same two-base rule as skill.broken-reference;
-  // see docs/spec/hook-sources.md for why this one is a judgement, not a quote.
-  const candidates = [
-    ...(bases.own === undefined ? [] : [join(bases.own, extracted)]),
-    join(bases.project, extracted),
-  ];
-  return { scriptPath: extracted, exists: candidates.some(isFile) };
-}
+export type HookBases = ScriptBases;
 
 function nonemptyString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-function isHandlerEntry(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function isMatcherOnlyGroup(group: Record<string, unknown>): boolean {
@@ -155,7 +70,7 @@ function handlersFromGroups(groups: unknown, nestedOnly: boolean): Record<string
   const first = groups[0];
   if (
     !nestedOnly &&
-    isHandlerEntry(first) &&
+    isRecord(first) &&
     (first.type !== undefined ||
       first.command !== undefined ||
       first.url !== undefined ||
@@ -166,11 +81,11 @@ function handlersFromGroups(groups: unknown, nestedOnly: boolean): Record<string
       first.prompt !== undefined) &&
     !Array.isArray(first.hooks)
   ) {
-    return groups.filter(isHandlerEntry);
+    return groups.filter(isRecord);
   }
   const out: Record<string, unknown>[] = [];
   for (const group of groups) {
-    if (!isHandlerEntry(group)) {
+    if (!isRecord(group)) {
       continue;
     }
     const inner = group.hooks;
@@ -178,7 +93,7 @@ function handlersFromGroups(groups: unknown, nestedOnly: boolean): Record<string
       continue;
     }
     for (const entry of inner) {
-      if (isHandlerEntry(entry)) {
+      if (isRecord(entry)) {
         out.push(entry);
       }
     }
@@ -206,15 +121,18 @@ function unknownTypeLabel(item: Record<string, unknown>): string {
   return JSON.stringify(item.type);
 }
 
-function timeoutFromCommandcodeEntry(
+/** Timeout facts for profiles whose spec documents a closed range. */
+function timeoutFromEntry(
   item: Record<string, unknown>,
+  profile: HookSchemaProfile,
 ): Pick<HookFact, "timeout" | "timeoutOutOfBounds"> {
-  if (!("timeout" in item)) {
+  const range = HOOK_PROFILES[profile].timeout;
+  if (range === undefined || !("timeout" in item)) {
     return {};
   }
   const value = item.timeout;
   if (typeof value === "number" && Number.isFinite(value)) {
-    if (value < COMMANDCODE_HOOK_TIMEOUT_MIN || value > COMMANDCODE_HOOK_TIMEOUT_MAX) {
+    if (value < range.min || value > range.max) {
       return { timeout: value, timeoutOutOfBounds: true };
     }
     return { timeout: value };
@@ -222,13 +140,6 @@ function timeoutFromCommandcodeEntry(
   return { timeoutOutOfBounds: true };
 }
 
-function timeoutFromCopilotEntry(item: Record<string, unknown>): Pick<HookFact, "timeout"> {
-  const value = item.timeoutSec !== undefined ? item.timeoutSec : item.timeout;
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return { timeout: value };
-  }
-  return {};
-}
 
 type HookContext = {
   event: string;
@@ -245,7 +156,6 @@ function baseFact(
   extra: Partial<HookFact> = {},
 ): HookFact {
   return {
-    name: ctx.event,
     path: ctx.filePath,
     event: ctx.event,
     source: ctx.source,
@@ -264,24 +174,7 @@ function attachLaunch(
   if (launch === undefined) {
     return fact;
   }
-  const cwd = resolveLaunchCwd(launch.cwd, ctx.bases.project, ctx.hostPlatform);
-  const candidate = scriptCandidateFromLaunch(launch, ctx.bases);
-  if (
-    skipExists ||
-    candidate === undefined ||
-    skipLaunchExistenceCheck(launch, cwd, candidate, ctx.hostPlatform)
-  ) {
-    return fact;
-  }
-  const resolved = resolveHookScript(
-    ctx.bases,
-    candidate,
-    cwd.status === "ok" ? cwd.abs : undefined,
-  );
-  if (resolved === undefined) {
-    return fact;
-  }
-  return { ...fact, scriptPath: resolved.scriptPath, scriptExists: resolved.exists };
+  return withScriptCheck(fact, skipExists ? undefined : checkLaunchScript(launch, ctx.bases, ctx.hostPlatform));
 }
 
 function commandFactsFromLaunches(
@@ -306,7 +199,7 @@ function commandFactsFromLaunches(
 }
 
 function commandcodeHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact {
-  const timeoutFacts = timeoutFromCommandcodeEntry(item);
+  const timeoutFacts = timeoutFromEntry(item, ctx.schemaProfile);
   if (item.type !== "command") {
     return baseFact(ctx, {
       defect: "unknown-handler-type",
@@ -346,14 +239,6 @@ function claudeHookFromEntry(item: Record<string, unknown>, ctx: HookContext): H
       baseFact(ctx, {
         defect: "unknown-handler-type",
         unknownHandlerType: "(missing)",
-      }),
-    ];
-  }
-  if (!CLAUDE_HANDLER_TYPES.has(typeRaw)) {
-    return [
-      baseFact(ctx, {
-        defect: "unknown-handler-type",
-        unknownHandlerType: typeRaw,
       }),
     ];
   }
@@ -457,7 +342,6 @@ function copilotCommandChoice(
 }
 
 function copilotHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
-  const timeoutFacts = timeoutFromCopilotEntry(item);
   const typeRaw = typeof item.type === "string" ? item.type : undefined;
   const handlerType =
     typeRaw === undefined ? "command" : normalizeHandlerType(typeRaw);
@@ -466,7 +350,6 @@ function copilotHookFromEntry(item: Record<string, unknown>, ctx: HookContext): 
       baseFact(ctx, {
         defect: "unknown-handler-type",
         unknownHandlerType: typeRaw,
-        ...timeoutFacts,
       }),
     ];
   }
@@ -478,7 +361,6 @@ function copilotHookFromEntry(item: Record<string, unknown>, ctx: HookContext): 
       baseFact(ctx, {
         handlerType: "http",
         ...(cwd === undefined ? {} : { cwd }),
-        ...timeoutFacts,
         ...(url === undefined ? { defect: "http-without-url" as const } : {}),
       }),
     ];
@@ -496,7 +378,6 @@ function copilotHookFromEntry(item: Record<string, unknown>, ctx: HookContext): 
       baseFact(ctx, {
         handlerType: "prompt",
         ...(cwd === undefined ? {} : { cwd }),
-        ...timeoutFacts,
         ...(defect === undefined ? {} : { defect }),
       }),
     ];
@@ -507,7 +388,6 @@ function copilotHookFromEntry(item: Record<string, unknown>, ctx: HookContext): 
       baseFact(ctx, {
         handlerType: "command",
         ...(cwd === undefined ? {} : { cwd }),
-        ...timeoutFacts,
         defect: "command-without-command",
       }),
     ];
@@ -518,7 +398,6 @@ function copilotHookFromEntry(item: Record<string, unknown>, ctx: HookContext): 
       baseFact(ctx, {
         handlerType: "command",
         ...(cwd === undefined ? {} : { cwd }),
-        ...timeoutFacts,
         defect: "command-without-command",
       }),
     ];
@@ -527,31 +406,18 @@ function copilotHookFromEntry(item: Record<string, unknown>, ctx: HookContext): 
     handlerType: "command",
     command: formatLaunch(launch),
     ...(launch.cwd === undefined ? {} : { cwd: launch.cwd }),
-    ...timeoutFacts,
   });
   return [attachLaunch(fact, launch, ctx, choice.skipExists)];
 }
 
-function timeoutFromGrokEntry(item: Record<string, unknown>): Pick<HookFact, "timeout"> {
-  if (!("timeout" in item)) {
-    return {};
-  }
-  const value = item.timeout;
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return { timeout: value };
-  }
-  return {};
-}
 
 function grokHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
-  const timeoutFacts = timeoutFromGrokEntry(item);
   const typeRaw = typeof item.type === "string" ? item.type : undefined;
   if (typeRaw === undefined) {
     return [
       baseFact(ctx, {
         defect: "unknown-handler-type",
         unknownHandlerType: "(missing)",
-        ...timeoutFacts,
       }),
     ];
   }
@@ -560,7 +426,6 @@ function grokHookFromEntry(item: Record<string, unknown>, ctx: HookContext): Hoo
       baseFact(ctx, {
         defect: "unknown-handler-type",
         unknownHandlerType: typeRaw,
-        ...timeoutFacts,
       }),
     ];
   }
@@ -569,15 +434,11 @@ function grokHookFromEntry(item: Record<string, unknown>, ctx: HookContext): Hoo
     return [
       baseFact(ctx, {
         handlerType: "http",
-        ...timeoutFacts,
         ...(url === undefined ? { defect: "http-without-url" as const } : {}),
       }),
     ];
   }
-  return commandFactsFromLaunches(ctx, item, "command-without-command").map((fact) => ({
-    ...fact,
-    ...timeoutFacts,
-  }));
+  return commandFactsFromLaunches(ctx, item, "command-without-command");
 }
 
 /**
@@ -599,30 +460,147 @@ function geminiHookFromEntry(item: Record<string, unknown>, ctx: HookContext): H
   return commandFactsFromLaunches(ctx, item, "command-without-command");
 }
 
-function hooksFromProfile(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
-  switch (ctx.schemaProfile) {
-    case "claude":
-      return claudeHookFromEntry(item, ctx);
-    case "vscode-native":
-      return vscodeNativeHookFromEntry(item, ctx);
-    case "copilot-cli":
-      return copilotHookFromEntry(item, ctx);
-    case "commandcode":
-      return [commandcodeHookFromEntry(item, ctx)];
-    case "grok":
-      return grokHookFromEntry(item, ctx);
-    case "gemini":
-      return geminiHookFromEntry(item, ctx);
-    // Flat documents with their own readers; never routed through this pipeline.
-    case "cursor":
-    case "windsurf":
-    case "kiro":
-      return [];
-    default: {
-      const neverProfile: never = ctx.schemaProfile;
-      return neverProfile;
+/** One handler entry -> facts, for profiles whose layout is `nested` or `flat-array`. */
+const ENTRY_READERS: Record<PipedProfile, (item: Record<string, unknown>, ctx: HookContext) => HookFact[]> = {
+  claude: claudeHookFromEntry,
+  "vscode-native": vscodeNativeHookFromEntry,
+  "copilot-cli": copilotHookFromEntry,
+  commandcode: (item, ctx) => [commandcodeHookFromEntry(item, ctx)],
+  grok: grokHookFromEntry,
+  gemini: geminiHookFromEntry,
+};
+
+function isPipedProfile(profile: HookSchemaProfile): profile is PipedProfile {
+  const layout = HOOK_PROFILES[profile].layout;
+  return layout === "nested" || layout === "flat-array";
+}
+
+/** String command, else `command-without-command`, else a script-existence check. */
+export function commandHook(
+  base: HookFact,
+  command: string | undefined,
+  projectRoot: string,
+): HookFact {
+  if (command === undefined || command.length === 0) {
+    return { ...base, handlerType: "command", defect: "command-without-command" };
+  }
+  return withScriptCheck(
+    { ...base, handlerType: "command", command },
+    checkCommandScript(command, { project: projectRoot }),
+  );
+}
+
+/** Records the one `unexpected-shape` error when a `hooks` value is not an object. */
+export function isHooksObject(
+  hooks: unknown,
+  filePath: string,
+  io: ScanIO,
+): hooks is Record<string, unknown> {
+  if (isRecord(hooks)) {
+    return true;
+  }
+  io.errors.push({ path: filePath, kind: "unexpected-shape", detail: "`hooks` is not an object" });
+  return false;
+}
+
+/** A hook file's root object; a missing file is no hooks, not an error. */
+export function readHooksDocument(filePath: string, io: ScanIO): Record<string, unknown> | undefined {
+  const raw = readConfigFile(filePath, io, { optional: true });
+  if (raw === undefined) {
+    return undefined;
+  }
+  if (!isRecord(raw)) {
+    reportRootShapeOnce(filePath, io, "file is not a JSON object");
+    return undefined;
+  }
+  return raw as Record<string, unknown>;
+}
+
+/** How one hook-bearing file is read: its source, provider, and schema profile. */
+type HooksFileSpec = {
+  source: NonNullable<HookFact["source"]>;
+  sourceProvider: Provider;
+  /** Fixed profile, or chosen from the parsed document. */
+  profile: HookSchemaProfile | ((doc: Record<string, unknown>) => HookSchemaProfile);
+};
+
+/** The one "exists -> read -> object -> `.hooks` -> facts" path for nested hook files. */
+export function readHooksFile(
+  filePath: string,
+  spec: HooksFileSpec,
+  bases: HookBases,
+  io: ScanIO,
+): HookFact[] {
+  const doc = readHooksDocument(filePath, io);
+  if (doc === undefined || doc.hooks === undefined) {
+    return [];
+  }
+  const profile = typeof spec.profile === "function" ? spec.profile(doc) : spec.profile;
+  return hooksFromObject(
+    doc.hooks,
+    filePath,
+    spec.source,
+    bases,
+    io,
+    { sourceProvider: spec.sourceProvider, schemaProfile: profile },
+  );
+}
+
+/** Fact factory for one flat-document profile; source and provider are the profile's own. */
+export function hookBase(profile: FlatHookProfile) {
+  return (event: string, path: string, extra: Partial<HookFact> = {}): HookFact => ({
+    path,
+    event,
+    source: PROFILES[profile].fileSource,
+    sourceProvider: profile,
+    schemaProfile: profile,
+    ...extra,
+  });
+}
+
+/**
+ * The event-keyed flat documents (`{ hooks: { Event: [entry, ...] } }`) of
+ * Cursor and Windsurf: one fact per entry, built by `entry` from `base`.
+ * Never routed through `hooksFromObject`, whose groups are Claude's nested shape.
+ */
+export function readFlatHooks(
+  filePath: string,
+  profile: EventKeyedProfile,
+  io: ScanIO,
+  entry: (
+    item: unknown,
+    base: (extra?: Partial<HookFact>) => HookFact,
+    hostPlatform: NodeJS.Platform,
+  ) => HookFact,
+  hostPlatform: NodeJS.Platform = process.platform,
+): HookFact[] {
+  const hooks = readHooksDocument(filePath, io)?.hooks;
+  if (hooks === undefined || !isHooksObject(hooks, filePath, io)) {
+    return [];
+  }
+  const make = hookBase(profile);
+  const facts: HookFact[] = [];
+  for (const [event, value] of Object.entries(hooks)) {
+    if (!Array.isArray(value)) {
+      io.errors.push({
+        path: filePath,
+        kind: "unexpected-shape",
+        detail: `${event} hook list is not an array`,
+      });
+      continue;
+    }
+    for (const item of value) {
+      facts.push(entry(item, (extra) => make(event, filePath, extra), hostPlatform));
     }
   }
+  return facts;
+}
+
+export function hookJsonFiles(dir: string, io: ScanIO): string[] {
+  return (listDir(dir, io, { optional: true }) ?? [])
+    .map(({ name }) => name)
+    .filter((name) => name.endsWith(".json") && !name.startsWith("."))
+    .map((name) => join(dir, name));
 }
 
 /**
@@ -639,30 +617,20 @@ export function hooksFromObject(
   filePath: string,
   source: NonNullable<HookFact["source"]>,
   bases: HookBases,
-  errors: ConfigErrorFact[],
-  sourceProvider: Provider = "claude",
+  io: ScanIO,
+  owner: { sourceProvider: Provider; schemaProfile: HookSchemaProfile },
   hostPlatform: NodeJS.Platform = process.platform,
-  schemaProfile?: HookSchemaProfile,
 ): HookFact[] {
-  if (hooks === null || typeof hooks !== "object" || Array.isArray(hooks)) {
-    errors.push({
-      path: filePath,
-      kind: "unexpected-shape",
-      detail: "`hooks` is not an object",
-    });
+  if (!isHooksObject(hooks, filePath, io)) {
     return [];
   }
 
-  const profile = inferHookSchemaProfile(sourceProvider, schemaProfile);
-  const nestedOnly =
-    profile === "claude" ||
-    profile === "commandcode" ||
-    profile === "grok" ||
-    profile === "gemini";
+  const { sourceProvider, schemaProfile: profile } = owner;
+  const nestedOnly = HOOK_PROFILES[profile].layout === "nested";
   const facts: HookFact[] = [];
   for (const [event, groups] of Object.entries(hooks as Record<string, unknown>)) {
     if (!Array.isArray(groups)) {
-      errors.push({
+      io.errors.push({
         path: filePath,
         kind: "unexpected-shape",
         detail: `invalid hook groups for ${event}`,
@@ -682,7 +650,7 @@ export function hooksFromObject(
 
     let invalidGroup = false;
     for (const group of groups) {
-      if (!isHandlerEntry(group)) {
+      if (!isRecord(group)) {
         continue;
       }
       if (nestedOnly && group.matcher !== undefined && typeof group.matcher !== "string") {
@@ -690,7 +658,7 @@ export function hooksFromObject(
         facts.push(
           baseFact(ctx, {
             defect: "invalid-group",
-            commandcodeInvalidMatcher: profile === "commandcode" ? true : undefined,
+            defectDetail: "matcher-not-string",
           }),
         );
       }
@@ -713,8 +681,11 @@ export function hooksFromObject(
       }
       continue;
     }
+    if (!isPipedProfile(profile)) {
+      continue;
+    }
     for (const item of handlers) {
-      facts.push(...hooksFromProfile(item, ctx));
+      facts.push(...ENTRY_READERS[profile](item, ctx));
     }
   }
   return facts;
@@ -723,43 +694,20 @@ export function hooksFromObject(
 function claudeSettingsHooksFromFile(
   filePath: string,
   projectRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): HookFact[] {
-  if (!existsSync(filePath)) {
-    return [];
-  }
-  const raw = readJsonConfig(filePath, errors);
-  if (raw === undefined) {
-    return [];
-  }
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    errors.push({
-      path: filePath,
-      kind: "unexpected-shape",
-      detail: "settings file is not a JSON object",
-    });
-    return [];
-  }
-  const hooks = (raw as Record<string, unknown>).hooks;
-  if (hooks === undefined) {
-    return [];
-  }
-  return hooksFromObject(
-    hooks,
+  return readHooksFile(
     filePath,
-    "settings",
+    { source: "settings", sourceProvider: "claude", profile: "claude" },
     { project: projectRoot },
-    errors,
-    "claude",
-    process.platform,
-    "claude",
+    io,
   );
 }
 
-export function discoverHooks(root: string, errors: ConfigErrorFact[]): HookFact[] {
+export function discoverHooks(root: string, io: ScanIO): HookFact[] {
   return [
-    ...claudeSettingsHooksFromFile(join(root, ".claude", "settings.json"), root, errors),
-    ...claudeSettingsHooksFromFile(join(root, ".claude", "settings.local.json"), root, errors),
+    ...claudeSettingsHooksFromFile(join(root, ".claude", "settings.json"), root, io),
+    ...claudeSettingsHooksFromFile(join(root, ".claude", "settings.local.json"), root, io),
   ];
 }
 
@@ -768,8 +716,8 @@ export function discoverHooks(root: string, errors: ConfigErrorFact[]): HookFact
  * its `hooks` object. User `~/.gemini/settings.json` is opened under `--global`
  * together with that file's MCP servers. See docs/spec/gemini-hooks.md.
  */
-export function discoverGeminiHooks(root: string, errors: ConfigErrorFact[]): HookFact[] {
-  return discoverGeminiHooksFile(join(root, ".gemini", "settings.json"), root, errors);
+export function discoverGeminiHooks(root: string, io: ScanIO): HookFact[] {
+  return discoverGeminiHooksFile(join(root, ".gemini", "settings.json"), root, io);
 }
 
 /**
@@ -777,35 +725,20 @@ export function discoverGeminiHooks(root: string, errors: ConfigErrorFact[]): Ho
  * `--global` user file; relative scripts resolve against `projectRoot`.
  * See docs/spec/gemini-hooks.md.
  */
-export function discoverGeminiHooksFile(
+function discoverGeminiHooksFile(
   filePath: string,
   projectRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): HookFact[] {
-  if (!existsSync(filePath)) {
-    return [];
-  }
-  const raw = readJsonConfig(filePath, errors);
-  if (raw === undefined) {
-    return [];
-  }
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    // The MCP reader already reports this file's shape; do not double-report.
-    return [];
-  }
-  const hooks = (raw as Record<string, unknown>).hooks;
-  if (hooks === undefined) {
-    return [];
-  }
-  return hooksFromObject(
-    hooks,
+  return readHooksFile(
     filePath,
-    "gemini-settings",
+    {
+      source: "gemini-settings",
+      sourceProvider: "gemini",
+      profile: "gemini",
+    },
     { project: projectRoot },
-    errors,
-    "gemini",
-    process.platform,
-    "gemini",
+    io,
   );
 }
 
@@ -815,9 +748,9 @@ export function discoverGeminiHooksFile(
  */
 export function discoverGeminiUserHooks(
   projectRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): HookFact[] {
-  return discoverGeminiHooksFile(join(homedir(), ".gemini", "settings.json"), projectRoot, errors);
+  return discoverGeminiHooksFile(join(providerHome("gemini"), "settings.json"), projectRoot, io);
 }
 
 /**
@@ -827,89 +760,36 @@ export function discoverGeminiUserHooks(
  */
 export function discoverClaudeUserHooks(
   projectRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): HookFact[] {
   return claudeSettingsHooksFromFile(
-    join(claudeConfigDir(), "settings.json"),
+    join(providerHome("claude"), "settings.json"),
     projectRoot,
-    errors,
+    io,
   );
 }
 
 function discoverHookDir(
   dir: string,
   root: string,
-  errors: ConfigErrorFact[],
-  defaultProfile: HookSchemaProfile,
+  io: ScanIO,
 ): HookFact[] {
-  if (!existsSync(dir)) {
-    return [];
-  }
-  let names: string[];
-  try {
-    names = readdirSync(dir);
-  } catch (err) {
-    errors.push({
-      path: dir,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return [];
-  }
-  const facts: HookFact[] = [];
-  for (const name of names) {
-    if (!name.endsWith(".json") || name.startsWith(".")) {
-      continue;
-    }
-    const filePath = join(dir, name);
-    const raw = readJsonConfig(filePath, errors);
-    if (raw === undefined) {
-      continue;
-    }
-    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-      errors.push({
-        path: filePath,
-        kind: "unexpected-shape",
-        detail: "hook file is not a JSON object",
-      });
-      continue;
-    }
-    const doc = raw as Record<string, unknown>;
-    const hooks = doc.hooks;
-    if (hooks === undefined) {
-      continue;
-    }
-    const profile = isCopilotCliHooksDocument(doc) ? "copilot-cli" : defaultProfile;
-    facts.push(
-      ...hooksFromObject(
-        hooks,
-        filePath,
-        "vscode-hooks",
-        { project: root, own: dir },
-        errors,
-        "vscode",
-        process.platform,
-        profile,
-      ),
-    );
-  }
-  return facts;
+  return hookJsonFiles(dir, io).flatMap((filePath) =>
+    readHooksFile(
+      filePath,
+      {
+        source: "vscode-hooks",
+        sourceProvider: "vscode",
+        profile: (doc) => (isCopilotCliHooksDocument(doc) ? "copilot-cli" : "vscode-native"),
+      },
+      { project: root, own: dir },
+      io,
+    ),
+  );
 }
 
-export function discoverVscodeHooks(root: string, errors: ConfigErrorFact[]): HookFact[] {
-  return discoverHookDir(join(root, ".github", "hooks"), root, errors, "vscode-native");
-}
-
-/**
- * Copilot CLI user home. `$COPILOT_HOME` when set, otherwise `~/.copilot`.
- * See docs/spec/copilot-hooks.md.
- */
-export function copilotHomeDir(): string {
-  const fromEnv = process.env.COPILOT_HOME;
-  if (typeof fromEnv === "string" && fromEnv.trim().length > 0) {
-    return fromEnv;
-  }
-  return join(homedir(), ".copilot");
+export function discoverVscodeHooks(root: string, io: ScanIO): HookFact[] {
+  return discoverHookDir(join(root, ".github", "hooks"), root, io);
 }
 
 /**
@@ -919,51 +799,28 @@ export function copilotHomeDir(): string {
  * under `/etc/github-copilot/policy.d` stay unread.
  * See docs/spec/copilot-hooks.md and docs/spec/vscode-hooks.md.
  */
-export function discoverCopilotUserHooks(errors: ConfigErrorFact[]): HookFact[] {
-  const dir = join(copilotHomeDir(), "hooks");
-  return discoverHookDir(dir, dir, errors, "vscode-native");
+export function discoverCopilotUserHooks(io: ScanIO): HookFact[] {
+  const dir = join(providerHome("copilot"), "hooks");
+  return discoverHookDir(dir, dir, io);
 }
 
 function copilotSettingsHooksFromFiles(
   files: string[],
   projectRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): HookFact[] {
-  const facts: HookFact[] = [];
-  for (const filePath of files) {
-    if (!existsSync(filePath)) {
-      continue;
-    }
-    const raw = readJsonConfig(filePath, errors);
-    if (raw === undefined) {
-      continue;
-    }
-    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-      errors.push({
-        path: filePath,
-        kind: "unexpected-shape",
-        detail: "settings file is not a JSON object",
-      });
-      continue;
-    }
-    const hooks = (raw as Record<string, unknown>).hooks;
-    if (hooks === undefined) {
-      continue;
-    }
-    facts.push(
-      ...hooksFromObject(
-        hooks,
-        filePath,
-        "copilot-settings",
-        { project: projectRoot, own: dirname(filePath) },
-        errors,
-        "vscode",
-        process.platform,
-        "copilot-cli",
-      ),
-    );
-  }
-  return facts;
+  return files.flatMap((filePath) =>
+    readHooksFile(
+      filePath,
+      {
+        source: "copilot-settings",
+        sourceProvider: "vscode",
+        profile: "copilot-cli",
+      },
+      { project: projectRoot, own: dirname(filePath) },
+      io,
+    ),
+  );
 }
 
 /**
@@ -974,7 +831,7 @@ function copilotSettingsHooksFromFiles(
  */
 export function discoverCopilotSettingsHooks(
   root: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): HookFact[] {
   return copilotSettingsHooksFromFiles(
     [
@@ -982,7 +839,7 @@ export function discoverCopilotSettingsHooks(
       join(root, ".github", "copilot", "settings.local.json"),
     ],
     root,
-    errors,
+    io,
   );
 }
 
@@ -990,9 +847,9 @@ export function discoverCopilotSettingsHooks(
  * Inline Copilot CLI `hooks` in `$COPILOT_HOME/settings.json` or
  * `~/.copilot/settings.json`. Only read under `--global`.
  */
-export function discoverCopilotUserSettingsHooks(errors: ConfigErrorFact[]): HookFact[] {
-  const home = copilotHomeDir();
-  return copilotSettingsHooksFromFiles([join(home, "settings.json")], home, errors);
+export function discoverCopilotUserSettingsHooks(io: ScanIO): HookFact[] {
+  const home = providerHome("copilot");
+  return copilotSettingsHooksFromFiles([join(home, "settings.json")], home, io);
 }
 
 /**
@@ -1002,56 +859,14 @@ export function discoverCopilotUserSettingsHooks(errors: ConfigErrorFact[]): Hoo
 export function discoverGrokHooks(
   dir: string,
   projectRoot: string,
-  errors: ConfigErrorFact[],
+  io: ScanIO,
 ): HookFact[] {
-  if (!existsSync(dir)) {
-    return [];
-  }
-  let names: string[];
-  try {
-    names = readdirSync(dir);
-  } catch (err) {
-    errors.push({
-      path: dir,
-      kind: "unreadable",
-      detail: err instanceof Error ? err.message : String(err),
-    });
-    return [];
-  }
-  const facts: HookFact[] = [];
-  for (const name of names) {
-    if (!name.endsWith(".json") || name.startsWith(".")) {
-      continue;
-    }
-    const filePath = join(dir, name);
-    const raw = readJsonConfig(filePath, errors);
-    if (raw === undefined) {
-      continue;
-    }
-    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-      errors.push({
-        path: filePath,
-        kind: "unexpected-shape",
-        detail: "hook file is not a JSON object",
-      });
-      continue;
-    }
-    const hooks = (raw as Record<string, unknown>).hooks;
-    if (hooks === undefined) {
-      continue;
-    }
-    facts.push(
-      ...hooksFromObject(
-        hooks,
-        filePath,
-        "grok-hooks",
-        { project: projectRoot, own: dir },
-        errors,
-        "grok",
-        process.platform,
-        "grok",
-      ),
-    );
-  }
-  return facts;
+  return hookJsonFiles(dir, io).flatMap((filePath) =>
+    readHooksFile(
+      filePath,
+      { source: "grok-hooks", sourceProvider: "grok", profile: "grok" },
+      { project: projectRoot, own: dir },
+      io,
+    ),
+  );
 }

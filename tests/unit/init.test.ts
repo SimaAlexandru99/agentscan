@@ -1,14 +1,14 @@
 // tests/unit/init.test.ts
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runInit } from "../../src/commands/init";
 import { defaultConfig } from "../../src/config/schema";
+import { mkPinnedRoot } from "../helpers/tmp";
 
 describe("runInit", () => {
   test("writes .agentscanrc.json with defaultConfig", async () => {
-    const root = mkdtempSync(join(tmpdir(), "agentscan-init-"));
+    const root = mkPinnedRoot("agentscan-init-");
     const result = await runInit(root);
 
     expect(result.exitCode).toBe(0);
@@ -22,7 +22,7 @@ describe("runInit", () => {
   });
 
   test("refuses overwrite without --force", async () => {
-    const root = mkdtempSync(join(tmpdir(), "agentscan-init-"));
+    const root = mkPinnedRoot("agentscan-init-");
     const path = join(root, ".agentscanrc.json");
     writeFileSync(path, JSON.stringify({ failOn: "error" }), "utf8");
 
@@ -37,7 +37,7 @@ describe("runInit", () => {
   });
 
   test("overwrites with --force", async () => {
-    const root = mkdtempSync(join(tmpdir(), "agentscan-init-"));
+    const root = mkPinnedRoot("agentscan-init-");
     const path = join(root, ".agentscanrc.json");
     writeFileSync(path, JSON.stringify({ failOn: "error" }), "utf8");
 

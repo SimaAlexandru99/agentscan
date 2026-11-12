@@ -24,7 +24,7 @@ USER ~/.commandcode/
 ├── auth.json          ← never read
 └── projects/{project}/mcp.json   ← only with an honest slug
 
-PROJECT <commandcodeProjectRoot>/
+PROJECT <command-code-project-root>/   (git root, else cwd)
 ├── .commandcode/settings.json
 ├── .commandcode/settings.local.json
 └── .mcp.json
@@ -68,7 +68,7 @@ honest name, inventory it without inventing a name-keyed launch error.
 
 ## Mods
 
-`mods` is `{ sources?, paths?, disabled? }`. Coverage is experimental /
-inventory-only. Never execute or import TypeScript mods.
+`mods` is `{ sources?, paths?, disabled? }`. The scanner does not read or
+record it. Never execute or import TypeScript mods.
 
 ## Staleness risk: HIGH

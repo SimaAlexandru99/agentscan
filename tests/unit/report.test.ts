@@ -1,10 +1,11 @@
 // tests/unit/report.test.ts
 import { describe, expect, test } from "bun:test";
-import type { Facts, Finding, SkillFact } from "../../src/facts/types";
-import { exitCode } from "../../src/report/exit-code";
+import { checkById } from "../../src/checks/registry";
+import type { Facts, SkillFact } from "../../src/facts/types";
+import { sortFindings, type Finding } from "../../src/findings";
 import { renderJson } from "../../src/report/json";
-import { sortFindings } from "../../src/report/sort";
 import { renderText } from "../../src/report/text";
+import { agentFact, mcpFact, skillFact as buildSkill } from "../helpers/facts";
 import { ruleMeta } from "../helpers/finding";
 
 function finding(partial: Partial<Finding> & Pick<Finding, "id" | "action" | "severity">): Finding {
@@ -21,7 +22,7 @@ function finding(partial: Partial<Finding> & Pick<Finding, "id" | "action" | "se
 }
 
 function skillFact(id: string): SkillFact {
-  return {
+  return buildSkill({
     id,
     path: `.agents/skills/${id}`,
     source: "project",
@@ -29,12 +30,15 @@ function skillFact(id: string): SkillFact {
     hasFrontmatter: true,
     frontmatterName: id,
     description: "d",
-  };
+  });
 }
 
 function baseFacts(overrides: Partial<Facts> = {}): Facts {
   return {
     root: "/tmp/my-app",
+    skillLockRoots: ["/tmp/my-app"],
+    codexProjectDocMaxBytes: 32_768,
+    codexInstructionChain: [],
     packageManager: "bun",
     dependencies: { next: "16.3.0", "better-auth": "1.2.0" },
     devDependencies: { typescript: "5.8.0" },
@@ -50,73 +54,45 @@ function baseFacts(overrides: Partial<Facts> = {}): Facts {
   };
 }
 
-describe("sortFindings", () => {
+/** Finding ids in the order the JSON report lists them, after analyze()'s sort. */
+function jsonOrder(findings: Finding[]): string[] {
+  const raw = renderJson({ version: "0.1.0", root: "/tmp/my-app", facts: baseFacts(), findings: sortFindings(findings) });
+  return (JSON.parse(raw) as { findings: { id: string }[] }).findings.map((f) => f.id);
+}
+
+describe("report order", () => {
   test("orders by severity error > warning > info, then action, then id", () => {
     const input = [
       finding({ id: "b:skill:a", action: "warn", severity: "info", subject: "skill:a" }),
-      finding({ id: "a:skill:z", action: "delete", severity: "error", subject: "skill:z" }),
+      finding({ id: "a:skill:z", action: "warn", severity: "error", subject: "skill:z" }),
       finding({ id: "c:skill:m", action: "add", severity: "warning", subject: "skill:m" }),
-      finding({ id: "a:skill:a", action: "delete", severity: "error", subject: "skill:a" }),
-      finding({ id: "c:skill:a", action: "delete", severity: "warning", subject: "skill:a" }),
+      finding({ id: "a:skill:a", action: "warn", severity: "error", subject: "skill:a" }),
+      finding({ id: "c:skill:a", action: "warn", severity: "warning", subject: "skill:a" }),
     ];
 
-    const sorted = sortFindings(input);
-
-    expect(sorted.map((f) => f.id)).toEqual([
-      "a:skill:a", // error, delete, a…
-      "a:skill:z", // error, delete, z…
+    expect(jsonOrder(input)).toEqual([
+      "a:skill:a", // error, warn, a…
+      "a:skill:z", // error, warn, z…
       "c:skill:m", // warning, add (action localeCompare)
-      "c:skill:a", // warning, delete
+      "c:skill:a", // warning, warn
       "b:skill:a", // info
     ]);
   });
 
-  test("does not mutate input", () => {
+  test("rendering does not reorder the caller's findings", () => {
     const input = [
       finding({ id: "2", action: "add", severity: "info" }),
       finding({ id: "1", action: "add", severity: "error" }),
     ];
     const copy = [...input];
-    sortFindings(input);
+    jsonOrder(input);
     expect(input.map((f) => f.id)).toEqual(copy.map((f) => f.id));
   });
 
-  test("stable for same severity+action+id order via id", () => {
-    const a = finding({ id: "r:skill:a", action: "delete", severity: "warning" });
-    const b = finding({ id: "r:skill:b", action: "delete", severity: "warning" });
-    expect(sortFindings([b, a]).map((f) => f.id)).toEqual(["r:skill:a", "r:skill:b"]);
-  });
-});
-
-describe("exitCode", () => {
-  const errorFinding = finding({ id: "e", action: "delete", severity: "error" });
-  const warningFinding = finding({ id: "w", action: "delete", severity: "warning" });
-  const infoFinding = finding({ id: "i", action: "drift", severity: "info" });
-  const keepWarning = finding({ id: "k", action: "keep", severity: "warning" });
-
-  test("never → always 0", () => {
-    expect(exitCode([errorFinding, warningFinding], "never")).toBe(0);
-    expect(exitCode([], "never")).toBe(0);
-  });
-
-  test("warning → 1 if any warning|error (non-keep)", () => {
-    expect(exitCode([warningFinding], "warning")).toBe(1);
-    expect(exitCode([errorFinding], "warning")).toBe(1);
-    expect(exitCode([infoFinding], "warning")).toBe(0);
-    expect(exitCode([], "warning")).toBe(0);
-  });
-
-  test("warning excludes action keep", () => {
-    expect(exitCode([keepWarning], "warning")).toBe(0);
-    expect(exitCode([keepWarning, infoFinding], "warning")).toBe(0);
-    expect(exitCode([keepWarning, warningFinding], "warning")).toBe(1);
-  });
-
-  test("error → 1 only if any severity error", () => {
-    expect(exitCode([errorFinding], "error")).toBe(1);
-    expect(exitCode([warningFinding], "error")).toBe(0);
-    expect(exitCode([infoFinding], "error")).toBe(0);
-    expect(exitCode([], "error")).toBe(0);
+  test("same severity and action fall back to id", () => {
+    const a = finding({ id: "r:skill:a", action: "warn", severity: "warning" });
+    const b = finding({ id: "r:skill:b", action: "warn", severity: "warning" });
+    expect(jsonOrder([b, a])).toEqual(["r:skill:a", "r:skill:b"]);
   });
 });
 
@@ -125,14 +101,14 @@ describe("renderText", () => {
     finding({
       id: "next.redundant-cache-components-skill:skill:next-cache-components",
       ruleId: "next.redundant-cache-components-skill",
-      action: "delete",
+      action: "warn",
       severity: "warning",
       subject: "skill:next-cache-components",
       message: "Redundant Next cache skill — prefer node_modules/next docs",
       reason: "next >= 16",
       evidence: [
-        { kind: "dep", value: "next@16.3.0" },
-        { kind: "path", value: ".agents/skills/next-cache-components" },
+        { kind: "detail", value: "next@16.3.0" },
+        { kind: "skill", value: ".agents/skills/next-cache-components" },
       ],
     }),
     finding({
@@ -143,12 +119,12 @@ describe("renderText", () => {
       subject: "skill:better-auth",
       message: "Missing better-auth skill",
       reason: "mapped dep",
-      evidence: [{ kind: "dep", value: "better-auth@1.2.0" }],
+      evidence: [{ kind: "detail", value: "better-auth@1.2.0" }],
     }),
     finding({
       id: "skill.keep:skill:zod",
       ruleId: "skill.keep",
-      action: "keep",
+      action: "add",
       severity: "info",
       subject: "skill:zod",
       message: "Keep skill",
@@ -216,7 +192,7 @@ describe("renderText", () => {
       ...findings,
       finding({
         id: "policy.x:policy:foo",
-        action: "drift",
+        action: "warn",
         severity: "info",
         subject: "policy:foo",
         ruleId: "policy.x",
@@ -240,15 +216,6 @@ describe("renderText", () => {
       quiet: false,
     });
     expect(verboseText).toContain("policy:foo");
-  });
-
-  const deleteFinding = finding({
-    id: "d:1",
-    action: "delete",
-    severity: "warning",
-    subject: "skill:next-cache-components",
-    ruleId: "next.redundant-cache-components-skill",
-    message: "Redundant",
   });
 
   test("a newline in a subject cannot forge a report line", () => {
@@ -363,22 +330,21 @@ describe("renderText", () => {
       devDependencies: { typescript: "5.8.0" },
       skills: [skillFact("a"), skillFact("b")],
       mcp: [
-        {
+        mcpFact({
           name: "m",
           path: ".mcp.json",
           hasCommand: true,
           hasUrl: false,
           literalEnvKeys: [],
-          raw: "{}",
-        },
+        }),
       ],
       agents: [
-        {
+        agentFact({
           name: "reviewer",
           path: ".claude/agents/reviewer.md",
           hasFrontmatter: true,
           description: "Reviews code",
-        },
+        }),
       ],
     });
     const text = renderText({
@@ -398,7 +364,7 @@ describe("renderText", () => {
 
   test("repeated findings collapse into one block with a count", () => {
     // Six dead hooks used to print the same sentence six times, 24 lines of it.
-    const many = Array.from({ length: 3 }, (_, i) => ({
+    const many: Finding[] = Array.from({ length: 3 }, (_, i) => ({
       id: `claude.hook.missing-script:h${i}`,
       ruleId: "claude.hook.missing-script",
       action: "warn" as const,
@@ -429,7 +395,7 @@ describe("renderText", () => {
   });
 
   test("grouped headline stays neutral when events differ", () => {
-    const mixed = [
+    const mixed: Finding[] = [
       {
         id: "claude.hook.missing-script:a",
         ruleId: "claude.hook.missing-script",
@@ -608,14 +574,14 @@ describe("renderJson", () => {
     const findings = [
       finding({
         id: "z:info",
-        action: "drift",
+        action: "warn",
         severity: "info",
         subject: "policy:x",
         ruleId: "policy.x",
       }),
       finding({
         id: "a:err",
-        action: "delete",
+        action: "warn",
         severity: "error",
         subject: "skill:a",
         ruleId: "r",
@@ -626,7 +592,7 @@ describe("renderJson", () => {
       version: "0.1.0",
       root: "/tmp/my-app",
       facts: baseFacts(),
-      findings,
+      findings: sortFindings(findings),
     });
 
     const parsed = JSON.parse(raw) as {
@@ -678,13 +644,10 @@ describe("renderJson", () => {
     const first = parsed.findings[0];
     // The machine surface is the one a CI consumer reads; a comment promising
     // these keys is not a guarantee.
-    expect(first?.provenance).toBe("spec-required");
-    expect(first?.lastVerified).toBe("2026-09-03");
-    expect(first?.source).toEqual({
-      kind: "spec",
-      url: "https://cursor.com/docs/hooks",
-      capture: "cursor-hooks.md",
-    });
+    const check = checkById("cursor.hook.unknown-event")!;
+    expect(first?.provenance).toBe(check.provenance);
+    expect(first?.lastVerified).toBe(check.lastVerified);
+    expect(first?.source).toEqual(check.source);
   });
 
 });
@@ -706,9 +669,12 @@ describe("provenance line", () => {
       quiet: false,
     });
 
-    expect(text).toContain("spec-required · cursor.com/docs/hooks · read 2026-09-03");
+    const check = checkById("cursor.hook.unknown-event")!;
+    if (check.source.kind !== "spec") throw new Error("cursor.hook.unknown-event lost its spec page");
+    const page = check.source.url.replace(/^https:\/\//, "");
+    expect(text).toContain(`${check.provenance} · ${page} · read ${check.lastVerified}`);
     // scheme stripped, path intact — a truncated URL cannot be pasted
-    expect(text).not.toContain("https://cursor.com/docs/hooks");
+    expect(text).not.toContain(check.source.url);
   });
 
   test("a rule with no vendor page says so instead of printing a bare label", () => {
@@ -748,6 +714,9 @@ describe("provenance line", () => {
       quiet: false,
     });
 
-    expect(text.split("spec-required · cursor.com/docs/hooks").length - 1).toBe(1);
+    const check = checkById("cursor.hook.unknown-event")!;
+    if (check.source.kind !== "spec") throw new Error("cursor.hook.unknown-event lost its spec page");
+    const line = `${check.provenance} · ${check.source.url.replace(/^https:\/\//, "")}`;
+    expect(text.split(line).length - 1).toBe(1);
   });
 });

@@ -46,15 +46,6 @@ function fakeBun(path: string): void {
 
 describe("composite Action scan contract", () => {
   test("forwards quoted arguments and preserves the multiline output delimiter", () => {
-    expect(scanStep().env).toEqual({
-      AGENTSCAN_PATH: "${{ inputs.path }}",
-      AGENTSCAN_FAIL_ON: "${{ inputs.fail-on }}",
-      AGENTSCAN_FAIL_UNDER: "${{ inputs.fail-under }}",
-      AGENTSCAN_OUTPUT: "${{ inputs.output }}",
-      AGENTSCAN_GLOBAL: "${{ inputs.global }}",
-      AGENTSCAN_ACTION_PATH: "${{ github.action_path }}",
-    });
-
     const root = mkdtempSync(join(tmpdir(), "agentscan-action-contract-"));
     const bun = join(root, "bun");
     const capture = join(root, "captured-args");

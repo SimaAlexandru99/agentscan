@@ -1,25 +1,18 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { defaultConfig } from "../config/schema";
+import type { CommandResult } from "./result";
 
 export type InitOptions = {
   force?: boolean;
 };
 
-export type InitResult = {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-};
 
 /**
  * Write `.agentscanrc.json` with defaultConfig.
  * Refuses to overwrite an existing file unless `force` is true.
  */
-export async function runInit(
-  dir?: string,
-  options: InitOptions = {},
-): Promise<InitResult> {
+export function runInit(dir?: string, options: InitOptions = {}): CommandResult {
   const root = resolve(dir ?? process.cwd());
   const path = join(root, ".agentscanrc.json");
 

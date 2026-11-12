@@ -1,17 +1,11 @@
-import type { CommandcodeAgentDefect, Facts, Finding } from "../facts/types";
-import { isShadowedCommandcode } from "../facts/commandcode";
+import type { CommandcodeAgentDefect, Facts } from "../facts/types";
+import type { Finding } from "../findings";
+import { isShadowed } from "../facts/precedence";
 import { assertNever } from "../facts/provider";
 import { make } from "./make";
+import type { RuleId } from "./registry";
 
-function isClaudeAgent(sourceProvider: string | undefined): boolean {
-  return sourceProvider === undefined || sourceProvider === "claude";
-}
-
-function isCommandcodeAgent(sourceProvider: string | undefined): boolean {
-  return sourceProvider === "commandcode";
-}
-
-function commandcodeAgentRule(defect: CommandcodeAgentDefect): string {
+function commandcodeAgentRule(defect: CommandcodeAgentDefect): RuleId {
   switch (defect) {
     case "reserved-name":
       return "commandcode.agent.reserved-name";
@@ -62,10 +56,10 @@ function commandcodeAgentSuggest(
 function checkCommandcodeAgents(facts: Facts): Finding[] {
   const out: Finding[] = [];
   for (const agent of facts.agents) {
-    if (!isCommandcodeAgent(agent.sourceProvider)) {
+    if (agent.sourceProvider !== "commandcode") {
       continue;
     }
-    if (isShadowedCommandcode(agent.commandcodeEffective)) {
+    if (isShadowed(agent)) {
       continue;
     }
     if (agent.unreadable === true || agent.unparseableFrontmatter === true) {
@@ -74,8 +68,6 @@ function checkCommandcodeAgents(facts: Facts): Finding[] {
     for (const defect of agent.commandcodeDefects ?? []) {
       out.push(
         make(commandcodeAgentRule(defect), `agent:${agent.name}`, {
-          action: "warn",
-          severity: "error",
           message: commandcodeAgentMessage(agent, defect),
           reason:
             "Command Code custom agents ignore reserved names (explore, plan, review, general), accept permissionMode from a closed list, and drop mistyped fields. Filename supplies name when frontmatter omits it. See docs/spec/commandcode-agents.md.",
@@ -91,13 +83,6 @@ function checkCommandcodeAgents(facts: Facts): Finding[] {
 /**
  * Agent definitions, checked for structure only.
  *
- * Two checks, not four. `agent.unknown-model` and `agent.unknown-tool` were
- * planned and cut: both would hardcode a list of valid values and report
- * anything absent from it, which is exactly the shape of the hook-event list
- * that held 9 of 31 names and called a working hook dead at severity error.
- * Model ids change and MCP tool names are per-machine. See plans/003 for the
- * conditions under which they may return.
- *
  * Frontmatter `name` is deliberately not compared to the filename — see
  * docs/spec/skills.md for the same trap, and the regression test that guards it.
  *
@@ -109,7 +94,7 @@ export function checkAgents(facts: Facts): Finding[] {
   const out: Finding[] = [];
   const names = new Map<string, string[]>();
   for (const agent of facts.agents) {
-    if (!isClaudeAgent(agent.sourceProvider)) {
+    if (agent.sourceProvider !== "claude") {
       continue;
     }
     if (agent.unreadable === true || agent.unparseableFrontmatter === true) {
@@ -121,8 +106,6 @@ export function checkAgents(facts: Facts): Finding[] {
     if (!agent.hasFrontmatter) {
       out.push(
         make("claude.agent.missing-frontmatter", `agent:${agent.name}`, {
-          action: "warn",
-          severity: "error",
           message: "Agent definition has no YAML frontmatter block",
           reason:
             "An agent is selected by its declared description; without a frontmatter block there is nothing to select on, and the file is unlikely to load as an agent at all.",
@@ -135,8 +118,6 @@ export function checkAgents(facts: Facts): Finding[] {
     if (agent.description === undefined) {
       out.push(
         make("claude.agent.missing-description", `agent:${agent.name}`, {
-          action: "warn",
-          severity: "error",
           message: "Agent frontmatter has no `description`",
           reason:
             "The description is how the main session decides which agent to dispatch. Without one the agent can still be named explicitly, but it will not be chosen on its own.",
@@ -148,8 +129,6 @@ export function checkAgents(facts: Facts): Finding[] {
     if (agent.frontmatterName === undefined) {
       out.push(
         make("claude.agent.missing-name", `agent:${agent.name}`, {
-          action: "warn",
-          severity: "error",
           message: "Agent frontmatter has no `name`",
           reason: "Agent identity is declared by the required frontmatter name.",
           evidence: [{ kind: "agent", value: agent.path }],
@@ -163,7 +142,6 @@ export function checkAgents(facts: Facts): Finding[] {
       if (!formatOk) {
         out.push(
           make("claude.agent.invalid-name", `agent:${agent.name}`, {
-            action: "warn",
             // Error only for the documented load failures (`:` or a leading `-`).
             // Other off-format names stay warning. Filename is not compared to
             // name. See docs/spec/agents.md.
@@ -190,11 +168,9 @@ export function checkAgents(facts: Facts): Finding[] {
       const name = key.slice(key.indexOf("\0") + 1);
       out.push(
         make("claude.agent.duplicate-name", `agent:${name}`, {
-          action: "warn",
-          severity: "error",
           message: `Agent name "${name}" is declared by multiple files`,
           reason:
-            "Duplicate names make dispatch ambiguous within one `.claude/agents` directory, including its subfolders. The same name in a different walk-up layer is nearest-wins, not a duplicate. See docs/spec/claude-subagents.md.",
+            "Duplicate names make dispatch ambiguous within one `.claude/agents` directory, including its subfolders. The same name in a different walk-up layer is nearest-wins, not a duplicate. See docs/spec/agents.md and, for the directory scope, docs/spec/claude-subagents.md.",
           evidence: paths.map((path) => ({ kind: "agent", value: path })),
           suggest: "Give each agent a unique frontmatter name",
         }),

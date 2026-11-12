@@ -33,7 +33,7 @@ directory, at most 10 parent hops, **stopping before home** so
    project tree)
 
 On name conflicts, a higher row shadows a lower row. agentscan inventories
-every readable source and sets `commandcodeEffective`. Spec/runtime skill
+every readable source and sets `effective`. Spec/runtime skill
 checks do not claim a shadowed Command Code definition is currently loaded.
 Portable Agent Skills checks still apply to shadowed `.agents/skills`
 (Cursor and other consumers). Security checks may inspect all readable

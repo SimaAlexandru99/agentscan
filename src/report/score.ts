@@ -1,4 +1,4 @@
-import type { Finding } from "../facts/types";
+import type { Finding } from "../findings";
 import type { Tone } from "./ansi";
 
 /**
@@ -47,65 +47,31 @@ export function score(findings: Finding[]): number {
   return Math.max(0, 100 - deduction);
 }
 
-/**
- * A word for the number.
- *
- * The score alone does not say whether 71 is fine. The bands are deliberately
- * coarse and tied to what the deductions mean: 100 is nothing found, anything
- * below 90 contains at least one error or three warnings, and below 50 means
- * five or more things are actively broken.
- */
-export function scoreLabel(points: number): string {
-  if (points === 100) {
-    return "clean";
-  }
-  if (points >= 90) {
-    return "good";
-  }
-  if (points >= 70) {
-    return "needs work";
-  }
-  if (points >= 50) {
-    return "poor";
-  }
-  return "broken";
-}
+export type ScoreBand = {
+  label: string;
+  tone: Tone;
+  face: [string, string];
+};
 
 /**
- * Green, yellow or red for a score.
+ * Score bands, highest first: the word, colour and face for a score. One
+ * table so the face and the word can never disagree — a smiling box next to
+ * "broken" would undermine both.
  *
- * Stricter bands than react-doctor's 75/50 because the deductions are coarser
- * here: one error already costs 10, so 89 means something is genuinely broken
- * rather than merely imperfect.
+ * The bands are deliberately coarse and tied to what the deductions mean: 100
+ * is nothing found, anything below 90 contains at least one error or three
+ * warnings, and below 50 means five or more things are actively broken. The
+ * tones are stricter than react-doctor's 75/50 because one error already costs
+ * 10, so 89 means something is genuinely broken rather than merely imperfect.
  */
-export function scoreTone(points: number): Tone {
-  if (points >= 90) {
-    return "green";
-  }
-  if (points >= 50) {
-    return "yellow";
-  }
-  return "red";
-}
+const BANDS: readonly (ScoreBand & { min: number })[] = [
+  { min: 100, label: "clean", tone: "green", face: ["\u25e0 \u25e0", " \u25bd "] },
+  { min: 90, label: "good", tone: "green", face: ["\u2022 \u2022", " \u203f "] },
+  { min: 70, label: "needs work", tone: "yellow", face: ["\u2022 \u2022", " \u2500 "] },
+  { min: 50, label: "poor", tone: "yellow", face: ["\u25e1 \u25e1", " \u2312 "] },
+  { min: 0, label: "broken", tone: "red", face: ["\u2715 \u2715", " \u2312 "] },
+];
 
-/**
- * Eyes and mouth for the header box, as `[eyes, mouth]`.
- *
- * Keyed off the same thresholds as `scoreLabel` so the face and the word can
- * never disagree — a smiling box next to "broken" would undermine both.
- */
-export function scoreFace(points: number): [string, string] {
-  if (points === 100) {
-    return ["\u25e0 \u25e0", " \u25bd "];
-  }
-  if (points >= 90) {
-    return ["\u2022 \u2022", " \u203f "];
-  }
-  if (points >= 70) {
-    return ["\u2022 \u2022", " \u2500 "];
-  }
-  if (points >= 50) {
-    return ["\u25e1 \u25e1", " \u2312 "];
-  }
-  return ["\u2715 \u2715", " \u2312 "];
+export function scoreBand(points: number): ScoreBand {
+  return BANDS.find((band) => points >= band.min) ?? (BANDS.at(-1) as ScoreBand);
 }

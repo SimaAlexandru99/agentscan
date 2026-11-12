@@ -1,25 +1,18 @@
 import { describe, expect, test } from "bun:test";
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync } from "node:fs";
 import { join } from "node:path";
-import { runChecks } from "../../src/checks/index";
-import { defaultConfig } from "../../src/config/schema";
-import { extractFacts } from "../../src/facts/extract";
-import { mkPinnedProject } from "../helpers/tmp";
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
+import { mkPinnedProject, write } from "../helpers/tmp";
+import { withHome } from "../helpers/env";
+import { findingsFor } from "../helpers/scan";
 
 function script(root: string, rel: string): void {
   write(root, rel, "#!/bin/sh\nexit 0\n");
   chmodSync(join(root, rel), 0o755);
 }
 
-function scan(root: string) {
-  const facts = extractFacts(root, defaultConfig);
-  return { facts, ruleIds: runChecks(facts).map((f) => f.ruleId) };
+function scan(root: string, includeGlobal = false) {
+  const analysis = findingsFor(root, includeGlobal);
+  return { facts: analysis.facts, ruleIds: analysis.findings.map((f) => f.ruleId) };
 }
 
 describe("Gemini hooks in .gemini/settings.json", () => {
@@ -60,30 +53,23 @@ describe("Gemini hooks in .gemini/settings.json", () => {
     expect(ruleIds.filter((id) => id.startsWith("gemini.hook."))).toEqual([]);
   });
 
-  test("every documented event name is accepted", () => {
-    const root = mkPinnedProject("agentscan-gemini-hooks-all-", "gemini-hooks");
+  test("a comment in settings.json still yields hooks (JSONC, same as the MCP reader)", () => {
+    const root = mkPinnedProject("agentscan-gemini-hooks-jsonc-", "gemini-hooks");
     script(root, ".gemini/hooks/x.sh");
-    const events = [
-      "SessionStart",
-      "SessionEnd",
-      "BeforeAgent",
-      "AfterAgent",
-      "BeforeModel",
-      "AfterModel",
-      "BeforeToolSelection",
-      "BeforeTool",
-      "AfterTool",
-      "PreCompress",
-      "Notification",
-    ];
-    const hooks = Object.fromEntries(
-      events.map((event) => [
-        event,
-        [{ hooks: [{ type: "command", command: ".gemini/hooks/x.sh" }] }],
-      ]),
+    write(
+      root,
+      ".gemini/settings.json",
+      `{
+  // Gemini CLI accepts comments in settings.json
+  "hooks": {
+    "BeforeTool": [{ "matcher": "*", "hooks": [{ "type": "command", "command": ".gemini/hooks/x.sh" }] }]
+  }
+}
+`,
     );
-    write(root, ".gemini/settings.json", JSON.stringify({ hooks }));
-    expect(scan(root).ruleIds.filter((id) => id.startsWith("gemini.hook."))).toEqual([]);
+    const { facts } = scan(root);
+    expect(facts.hooks.filter((h) => h.schemaProfile === "gemini")).toHaveLength(1);
+    expect(facts.configErrors.filter((e) => e.kind === "invalid-json")).toEqual([]);
   });
 
   test("Claude event names are not Gemini event names", () => {
@@ -123,6 +109,19 @@ describe("Gemini hooks in .gemini/settings.json", () => {
     expect(ruleIds).toContain("gemini.hook.command-without-command");
     expect(ruleIds).toContain("gemini.hook.missing-script");
     expect(ruleIds.filter((id) => id === "gemini.hook.unknown-handler-type")).toHaveLength(2);
+  });
+
+  test("$GEMINI_PROJECT_DIR scripts are existence-checked", () => {
+    const root = mkPinnedProject("agentscan-gemini-hooks-placeholder-", "gemini-hooks");
+    script(root, ".gemini/hooks/present.sh");
+    const settings = (command: string) =>
+      JSON.stringify({ hooks: { BeforeTool: [{ hooks: [{ type: "command", command }] }] } });
+    write(root, ".gemini/settings.json", settings("$GEMINI_PROJECT_DIR/.gemini/hooks/missing.sh"));
+    expect(scan(root).ruleIds).toContain("gemini.hook.missing-script");
+    write(root, ".gemini/settings.json", settings("${GEMINI_PROJECT_DIR}/.gemini/hooks/present.sh"));
+    const { facts, ruleIds } = scan(root);
+    expect(facts.hooks.find((h) => h.schemaProfile === "gemini")?.scriptExists).toBe(true);
+    expect(ruleIds).not.toContain("gemini.hook.missing-script");
   });
 
   test("a group without a nested hooks array is invalid", () => {
@@ -169,39 +168,6 @@ describe("Cursor hooks in .cursor/hooks.json", () => {
     const { facts, ruleIds } = scan(root);
     expect(facts.hooks.filter((h) => h.schemaProfile === "cursor")).toHaveLength(2);
     expect(ruleIds.filter((id) => id.startsWith("cursor.hook."))).toEqual([]);
-  });
-
-  test("every documented event name is accepted", () => {
-    const root = mkPinnedProject("agentscan-cursor-hooks-all-", "cursor-hooks");
-    script(root, ".cursor/hooks/x.sh");
-    const events = [
-      "sessionStart",
-      "sessionEnd",
-      "preToolUse",
-      "postToolUse",
-      "postToolUseFailure",
-      "subagentStart",
-      "subagentStop",
-      "beforeShellExecution",
-      "afterShellExecution",
-      "beforeMCPExecution",
-      "afterMCPExecution",
-      "beforeReadFile",
-      "afterFileEdit",
-      "beforeSubmitPrompt",
-      "preCompact",
-      "stop",
-      "afterAgentResponse",
-      "afterAgentThought",
-      "beforeTabFileRead",
-      "afterTabFileEdit",
-      "workspaceOpen",
-    ];
-    const hooks = Object.fromEntries(
-      events.map((event) => [event, [{ command: ".cursor/hooks/x.sh" }]]),
-    );
-    write(root, ".cursor/hooks.json", JSON.stringify({ version: 1, hooks }));
-    expect(scan(root).ruleIds.filter((id) => id.startsWith("cursor.hook."))).toEqual([]);
   });
 
   test("an absent type is a command hook, not a missing required type", () => {
@@ -292,5 +258,39 @@ describe("Cursor hooks in .cursor/hooks.json", () => {
       JSON.stringify({ mcpServers: { docs: { command: "npx", args: ["-y", "srv"] } } }),
     );
     expect(scan(root).facts.hooks).toEqual([]);
+  });
+});
+
+describe("hook dedupe", () => {
+  test("--global scan of $HOME reads ~/.claude/settings.json once", () => {
+    const home = mkPinnedProject("agentscan-hooks-home-", "home");
+    write(
+      home,
+      ".claude/settings.json",
+      JSON.stringify({
+        hooks: { PreToolUse: [{ hooks: [{ type: "command", command: "node ./gone.mjs" }] }] },
+      }),
+    );
+    withHome(home, () => {
+      const { facts, ruleIds } = scan(home, true);
+      expect(facts.hooks.filter((h) => h.sourceProvider === "claude")).toHaveLength(1);
+      expect(ruleIds.filter((id) => id === "claude.hook.missing-script")).toHaveLength(1);
+    });
+  });
+});
+
+describe(".gemini/settings.json read by the hooks and MCP readers", () => {
+  test("a malformed file is one config error, not one per reader", () => {
+    const root = mkPinnedProject("agentscan-gemini-bad-json-", "gemini-bad-json");
+    write(root, ".gemini/settings.json", "{ not json");
+    const { facts } = scan(root);
+    expect(facts.configErrors.filter((e) => e.path.endsWith("settings.json"))).toHaveLength(1);
+  });
+
+  test("a non-object root is one shape error, not one per reader", () => {
+    const root = mkPinnedProject("agentscan-gemini-array-", "gemini-array");
+    write(root, ".gemini/settings.json", "[]");
+    const { facts } = scan(root);
+    expect(facts.configErrors.filter((e) => e.path.endsWith("settings.json"))).toHaveLength(1);
   });
 });

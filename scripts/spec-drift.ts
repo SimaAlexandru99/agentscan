@@ -10,32 +10,22 @@
  * This is a drift detector for a human to read, not an oracle. It over-reports
  * on purpose: a name it flags may be a false alarm from the page's prose, and
  * deciding that is the reviewer's job. What it must never do is stay quiet
- * while the hardcoded set is wrong — that already happened, with nine of
- * thirty-one hook events, and it reported a working hook as dead.
+ * while the hardcoded set is wrong, which would report a working hook as dead.
  */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  COMMANDCODE_HOOK_EVENTS,
-  CURSOR_HOOK_EVENTS,
-  GEMINI_HOOK_EVENTS,
-  GROK_HOOK_EVENTS,
-  KIRO_HOOK_EVENTS,
-  KNOWN_HOOK_EVENTS,
-  VSCODE_HOOK_EVENTS,
-} from "../src/checks/index";
-import {
-  COPILOT_ONLY_EVENTS,
-  COPILOT_PASCAL_ALIASES,
-  COPILOT_TO_VSCODE_EVENT,
-} from "../src/facts/hook-schema";
+import { SPEC_PAGES } from "../src/checks/spec-pages";
+import { HOOK_PROFILES, type HookSchemaProfile } from "../src/facts/hook-profiles";
+import { VSCODE_HOOK_EVENTS } from "../src/facts/hook-schema";
 import {
   fetchUrlFor,
   missingBaselineUrls,
   normalizeSpecText,
+  MS_PER_DAY,
   SPEC_HASHES_PATH,
   SPEC_SURFACES,
   specContentHash,
+  STALE_AFTER_DAYS,
   surfacesForUrl,
   surfaceStalenessNotes,
   SUSPICIOUSLY_SHORT_PAGE_CHARS,
@@ -44,8 +34,6 @@ import {
 } from "./spec-surfaces";
 
 const SPEC_DIR = join(import.meta.dir, "../docs/spec");
-/** Re-read the sources when the newest capture is older than this. */
-const STALE_AFTER_DAYS = 90;
 /**
  * `bun run spec:record` — rewrite scripts/spec-hashes.json from the live pages.
  * Only for a human who has just re-read every page whose hash moved and updated
@@ -55,9 +43,7 @@ const RECORD = process.argv.includes("--record");
 
 /**
  * PascalCase names on the hooks page that have been reviewed and are not hook
- * events. Recording the verdict keeps a known false alarm from costing a second
- * review — the same discipline as the rejected-findings list in plans/README.md.
- * Add a name here only after checking the page, with the reason.
+ * events. Add a name here only after checking the page, with the reason.
  */
 const REVIEWED_NOT_EVENTS = new Set([
   // A tool name. The event that fires when it is called is `TaskCreated`.
@@ -98,40 +84,6 @@ function candidateEvents(html: string): Set<string> {
   return out;
 }
 
-async function checkHookEvents(report: Report): Promise<void> {
-  const url = "https://code.claude.com/docs/en/hooks";
-  const html = await page(url);
-  if (html === null) {
-    report.notes.push(`could not fetch ${url} — hook events unverified`);
-    return;
-  }
-
-  const missingFromPage = [...KNOWN_HOOK_EVENTS].filter(
-    (e) => !html.includes(e),
-  );
-  if (missingFromPage.length > 0) {
-    report.drift.push(
-      `hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
-    );
-  }
-
-  // Only flag candidates the page ties to hooks, to keep the noise survivable.
-  const candidates = [...candidateEvents(html)].filter(
-    (name) =>
-      !KNOWN_HOOK_EVENTS.has(name) &&
-      !REVIEWED_NOT_EVENTS.has(name) &&
-      new RegExp(`\`${name}\`|\\| *${name} *\\|`).test(html) &&
-      /^(?:Pre|Post|Session|Subagent|Task|User|Permission|Tool|Stop|Notification|Config|Cwd|Directory|File|Worktree|Elicitation|Message|Instructions|Teammate|Setup)/.test(
-        name,
-      ),
-  );
-  if (candidates.length > 0) {
-    report.drift.push(
-      `possible new hook events on the page: ${candidates.sort().join(", ")}`,
-    );
-  }
-}
-
 function checkCaptureDates(report: Report): void {
   const today = Date.now();
   let newest = 0;
@@ -152,7 +104,7 @@ function checkCaptureDates(report: Report): void {
   if (newest === 0) {
     return;
   }
-  const days = Math.floor((today - newest) / 86_400_000);
+  const days = Math.floor((today - newest) / MS_PER_DAY);
   if (days > STALE_AFTER_DAYS) {
     report.drift.push(
       `newest docs/spec capture is ${days} days old (over ${STALE_AFTER_DAYS}) — re-read the sources`,
@@ -169,16 +121,30 @@ function checkSurfaceStaleness(report: Report): void {
   report.notes.push(`tracking ${SPEC_SURFACES.length} captured spec surfaces`);
 }
 
+/**
+ * Only a missing file means "no baseline". A corrupt one must stop the run:
+ * treating it as empty would let `--record` overwrite it in silence.
+ */
 function readBaseline(): SpecHashBaseline {
+  let raw: string;
   try {
-    const parsed: unknown = JSON.parse(readFileSync(SPEC_HASHES_PATH, "utf8"));
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    raw = readFileSync(SPEC_HASHES_PATH, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return {};
     }
-    return parsed as SpecHashBaseline;
-  } catch {
-    return {};
+    throw error;
   }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`${SPEC_HASHES_PATH} is not valid JSON: ${(error as Error).message}`);
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`${SPEC_HASHES_PATH} is not a JSON object`);
+  }
+  return parsed as SpecHashBaseline;
 }
 
 function surfaceLabel(url: string): string {
@@ -189,10 +155,9 @@ function surfaceLabel(url: string): string {
 /**
  * Compare every unique source page against its recorded content hash.
  *
- * This is what was missing on 2026-09-02: the hook-event diff above covers
- * five pages, and the staleness check only looks at dates, so a vendor adding
- * an alias, a field, or a spelling to any of the other pages moved nothing here.
- * A changed hash does not say what changed — it says "open this URL and re-read
+ * The hook-event check covers only the hooks pages and the staleness check only
+ * looks at dates, so a vendor adding an alias, a field, or a spelling to any
+ * other page would otherwise move nothing. A changed hash does not say what changed — it says "open this URL and re-read
  * the capture". That is the whole job.
  */
 async function checkSurfaceContent(
@@ -204,32 +169,26 @@ async function checkSurfaceContent(
   const today = new Date().toISOString().slice(0, 10);
   let compared = 0;
   for (const url of uniqueSurfaceUrls()) {
+    const previous = baseline[url];
     const html = await page(fetchUrlFor(url));
-    if (html === null) {
-      report.notes.push(`could not fetch ${url} — content hash unverified (${surfaceLabel(url)})`);
-      unhashed.push(url);
-      const previous = baseline[url];
-      if (previous !== undefined) {
-        next[url] = previous;
+    const text = html === null ? null : normalizeSpecText(html);
+    if (text === null || text.length < SUSPICIOUSLY_SHORT_PAGE_CHARS) {
+      if (text === null) {
+        report.notes.push(`could not fetch ${url} — content hash unverified (${surfaceLabel(url)})`);
+      } else {
+        // An error shell or redirect stub, not documentation.
+        report.drift.push(
+          `${surfaceLabel(url)} normalised to only ${text.length} characters — fetch or selector problem, not compared — ${url}`,
+        );
       }
-      continue;
-    }
-    const text = normalizeSpecText(html);
-    if (text.length < SUSPICIOUSLY_SHORT_PAGE_CHARS) {
-      // An error shell or redirect stub, not documentation. Keep the previous
-      // hash so a bad fetch is never recorded as the page's content.
-      report.drift.push(
-        `${surfaceLabel(url)} normalised to only ${text.length} characters — fetch or selector problem, not compared — ${url}`,
-      );
+      // Keep the previous hash so a bad fetch is never recorded as the page's content.
       unhashed.push(url);
-      const previous = baseline[url];
       if (previous !== undefined) {
         next[url] = previous;
       }
       continue;
     }
     const hash = specContentHash(text);
-    const previous = baseline[url];
     if (previous === undefined) {
       next[url] = { hash, recorded: today };
       if (!RECORD) {
@@ -260,71 +219,6 @@ function writeBaseline(baseline: SpecHashBaseline): void {
   writeFileSync(SPEC_HASHES_PATH, `${JSON.stringify(sorted, null, 2)}\n`, "utf8");
 }
 
-async function checkVscodeHookEvents(report: Report): Promise<void> {
-  const url = "https://code.visualstudio.com/docs/agent-customization/hooks";
-  const html = await page(url);
-  if (html === null) {
-    report.notes.push(`could not fetch ${url} — VS Code hook events unverified`);
-    return;
-  }
-  const missingFromPage = [...VSCODE_HOOK_EVENTS].filter((e) => !html.includes(e));
-  if (missingFromPage.length > 0) {
-    report.drift.push(
-      `VS Code hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
-    );
-  }
-}
-
-async function checkCopilotHookEvents(report: Report): Promise<void> {
-  const url = "https://docs.github.com/en/copilot/reference/hooks-reference";
-  const html = await page(url);
-  if (html === null) {
-    report.notes.push(`could not fetch ${url} — Copilot CLI hook events unverified`);
-    return;
-  }
-  const claimed = [
-    ...Object.keys(COPILOT_TO_VSCODE_EVENT),
-    ...COPILOT_ONLY_EVENTS,
-    ...Object.keys(COPILOT_PASCAL_ALIASES),
-  ];
-  const missingFromPage = claimed.filter((e) => !html.includes(e));
-  if (missingFromPage.length > 0) {
-    report.drift.push(
-      `Copilot CLI hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
-    );
-  }
-}
-
-async function checkCommandcodeHookEvents(report: Report): Promise<void> {
-  const url = "https://commandcode.ai/docs/hooks";
-  const html = await page(url);
-  if (html === null) {
-    report.notes.push(`could not fetch ${url} — Command Code hook events unverified`);
-    return;
-  }
-  const missingFromPage = [...COMMANDCODE_HOOK_EVENTS].filter((e) => !html.includes(e));
-  if (missingFromPage.length > 0) {
-    report.drift.push(
-      `Command Code hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
-    );
-  }
-}
-
-async function checkGrokHookEvents(report: Report): Promise<void> {
-  const url = "https://docs.x.ai/build/features/hooks";
-  const html = await page(url);
-  if (html === null) {
-    report.notes.push(`could not fetch ${url} — Grok hook events unverified`);
-    return;
-  }
-  const missingFromPage = [...GROK_HOOK_EVENTS].filter((e) => !html.includes(e));
-  if (missingFromPage.length > 0) {
-    report.drift.push(
-      `Grok hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
-    );
-  }
-}
-
 /**
  * Gemini's names are ordinary English words in PascalCase (`Notification`,
  * `SessionStart`), so a substring hit on the whole page would pass on prose
@@ -339,48 +233,70 @@ function pageMentionsEvent(html: string, event: string): boolean {
   );
 }
 
-async function checkGeminiHookEvents(report: Report): Promise<void> {
-  const url = fetchUrlFor("https://geminicli.com/docs/hooks/");
-  const text = await page(url);
-  if (text === null) {
-    report.notes.push(`could not fetch ${url} — Gemini hook events unverified`);
-    return;
-  }
-  const missingFromPage = [...GEMINI_HOOK_EVENTS].filter((e) => !pageMentionsEvent(text, e));
-  if (missingFromPage.length > 0) {
-    report.drift.push(
-      `Gemini hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
-    );
-  }
+type HookEventPage = {
+  label: string;
+  url: string;
+  mentions?: (page: string, event: string) => boolean;
+  /** Events checked on another provider's page instead. */
+  skip?: ReadonlySet<string>;
+  /** Also report PascalCase names the page ties to hooks that we do not know. */
+  scanCandidates?: true;
+};
+
+/**
+ * The page each hook profile's events (`HOOK_PROFILES[p].events`) are checked
+ * against. `null`: that profile's events are not checked against a page.
+ */
+const HOOK_EVENT_PAGES: Record<HookSchemaProfile, HookEventPage | null> = {
+  claude: { label: "Claude", url: SPEC_PAGES.claudeHooks.url, scanCandidates: true },
+  "vscode-native": { label: "VS Code", url: SPEC_PAGES.vscodeHooksGuide.url },
+  // Copilot CLI also accepts the VS Code names; those are checked on the VS Code page.
+  "copilot-cli": { label: "Copilot CLI", url: SPEC_PAGES.copilotHooks.url, skip: VSCODE_HOOK_EVENTS },
+  commandcode: { label: "Command Code", url: SPEC_PAGES.commandcodeHooks.url },
+  grok: { label: "Grok", url: SPEC_PAGES.grokHooks.url },
+  gemini: { label: "Gemini", url: fetchUrlFor(SPEC_PAGES.geminiHooks.url), mentions: pageMentionsEvent },
+  cursor: { label: "Cursor", url: SPEC_PAGES.cursorHooks.url },
+  kiro: { label: "Kiro", url: SPEC_PAGES.kiroHooksV1.url, mentions: pageMentionsEvent },
+  windsurf: null,
+};
+
+/** Names the page ties to hooks, minus the ones we know; filtered to keep the noise survivable. */
+function newEventCandidates(html: string, known: ReadonlySet<string>): string[] {
+  return [...candidateEvents(html)].filter(
+    (name) =>
+      !known.has(name) &&
+      !REVIEWED_NOT_EVENTS.has(name) &&
+      new RegExp(`\`${name}\`|\\| *${name} *\\|`).test(html) &&
+      /^(?:Pre|Post|Session|Subagent|Task|User|Permission|Tool|Stop|Notification|Config|Cwd|Directory|File|Worktree|Elicitation|Message|Instructions|Teammate|Setup)/.test(
+        name,
+      ),
+  );
 }
 
-async function checkCursorHookEvents(report: Report): Promise<void> {
-  const url = "https://cursor.com/docs/hooks";
-  const html = await page(url);
-  if (html === null) {
-    report.notes.push(`could not fetch ${url} — Cursor hook events unverified`);
-    return;
-  }
-  const missingFromPage = [...CURSOR_HOOK_EVENTS].filter((e) => !html.includes(e));
-  if (missingFromPage.length > 0) {
-    report.drift.push(
-      `Cursor hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
+async function checkHookEvents(report: Report): Promise<void> {
+  for (const [profile, target] of Object.entries(HOOK_EVENT_PAGES) as [HookSchemaProfile, HookEventPage | null][]) {
+    if (target === null) {
+      continue;
+    }
+    const { label, url, mentions, skip, scanCandidates } = target;
+    const html = await page(url);
+    if (html === null) {
+      report.notes.push(`could not fetch ${url} — ${label} hook events unverified`);
+      continue;
+    }
+    const known = HOOK_PROFILES[profile].events;
+    const missingFromPage = [...known].filter(
+      (e) => skip?.has(e) !== true && (mentions === undefined ? !html.includes(e) : !mentions(html, e)),
     );
-  }
-}
-
-async function checkKiroHookEvents(report: Report): Promise<void> {
-  const url = "https://kiro.dev/docs/ide/whats-new-v1/hooks/";
-  const html = await page(url);
-  if (html === null) {
-    report.notes.push(`could not fetch ${url} — Kiro hook events unverified`);
-    return;
-  }
-  const missingFromPage = [...KIRO_HOOK_EVENTS].filter((e) => !pageMentionsEvent(html, e));
-  if (missingFromPage.length > 0) {
-    report.drift.push(
-      `Kiro hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
-    );
+    if (missingFromPage.length > 0) {
+      report.drift.push(
+        `${label} hook events we claim but the page does not mention: ${missingFromPage.join(", ")}`,
+      );
+    }
+    const candidates = scanCandidates === true ? newEventCandidates(html, known) : [];
+    if (candidates.length > 0) {
+      report.drift.push(`possible new hook events on the page: ${candidates.sort().join(", ")}`);
+    }
   }
 }
 
@@ -388,13 +304,6 @@ const report: Report = { drift: [], notes: [] };
 checkCaptureDates(report);
 checkSurfaceStaleness(report);
 await checkHookEvents(report);
-await checkVscodeHookEvents(report);
-await checkCopilotHookEvents(report);
-await checkCommandcodeHookEvents(report);
-await checkGrokHookEvents(report);
-await checkGeminiHookEvents(report);
-await checkCursorHookEvents(report);
-await checkKiroHookEvents(report);
 const { baseline, unhashed } = await checkSurfaceContent(report);
 
 if (RECORD) {

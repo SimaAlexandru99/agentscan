@@ -1,12 +1,17 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
+import { SPEC_PAGES } from "../src/checks/spec-pages";
 
+/**
+ * One captured page and what spec:check needs to watch it. A page listed in
+ * `SPEC_PAGES` (every page a rule cites, plus the hook-event pages spec:check
+ * reads) takes its `url` and `lastVerified` from there; only the rest spell
+ * them out here.
+ */
 export type SpecSurface = {
   provider: string;
   surface: "instructions" | "skills" | "agents" | "hooks" | "mcp" | "rules";
   lastVerified: string;
-  sourceType: "official" | "vendor-recommendation";
-  stalenessRisk: "low" | "medium" | "high";
   url: string;
 };
 
@@ -69,8 +74,7 @@ function firstBlock(html: string, tag: string): string | undefined {
  * moving. When the page marks its content with `<main>` or `<article>`, only
  * that region is kept. This is deliberately a text reduction, not a parser:
  * a hash that changes for a cosmetic reason costs one re-read, while a hash
- * that stays put across a real change would repeat the seven false positives
- * of 2026-09-02.
+ * that stays put across a real change hides a spec change.
  */
 export function normalizeSpecText(html: string): string {
   let text = html.replace(/<!--[\s\S]*?-->/g, "");
@@ -119,438 +123,300 @@ export const SPEC_SURFACES: SpecSurface[] = [
   {
     provider: "agent-skills",
     surface: "skills",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "medium",
-    url: "https://agentskills.io/specification",
+    ...SPEC_PAGES.agentSkills,
   },
   {
     provider: "AGENTS.md",
     surface: "instructions",
     lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "medium",
     url: "https://agents.md/",
   },
   {
     provider: "claude",
     surface: "instructions",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "medium",
-    url: "https://code.claude.com/docs/en/memory",
+    ...SPEC_PAGES.claudeMemory,
   },
   {
     provider: "claude",
     surface: "skills",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "medium",
-    url: "https://code.claude.com/docs/en/skills",
+    ...SPEC_PAGES.claudeSkills,
   },
   {
     provider: "claude",
     surface: "agents",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "medium",
-    url: "https://code.claude.com/docs/en/sub-agents",
+    ...SPEC_PAGES.claudeSubagents,
   },
   {
     provider: "claude",
     surface: "hooks",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://code.claude.com/docs/en/hooks",
+    ...SPEC_PAGES.claudeHooks,
   },
   {
     provider: "claude",
     surface: "mcp",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://code.claude.com/docs/en/mcp",
+    ...SPEC_PAGES.claudeMcp,
   },
   {
     provider: "codex",
     surface: "instructions",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+    ...SPEC_PAGES.codexAgentsMd,
   },
   {
     provider: "codex",
     surface: "mcp",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://learn.chatgpt.com/docs/extend/mcp",
+    ...SPEC_PAGES.codexMcp,
   },
   {
     provider: "codex",
     surface: "mcp",
     lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://developers.openai.com/codex/config-advanced",
   },
   {
     provider: "codex",
     surface: "skills",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://agentskills.io/specification",
+    ...SPEC_PAGES.agentSkills,
   },
   {
     provider: "vscode",
     surface: "instructions",
     lastVerified: "2026-08-31",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://code.visualstudio.com/docs/agent-customization/custom-instructions",
   },
   {
     provider: "vscode",
     surface: "agents",
     lastVerified: "2026-08-31",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://code.visualstudio.com/docs/agent-customization/custom-agents",
   },
   {
     provider: "vscode",
     surface: "hooks",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://code.visualstudio.com/docs/agent-customization/hooks",
+    ...SPEC_PAGES.vscodeHooksGuide,
   },
   {
     provider: "vscode",
     surface: "mcp",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://code.visualstudio.com/docs/copilot/customization/mcp-servers",
+    ...SPEC_PAGES.vscodeMcp,
   },
   {
     provider: "cursor",
     surface: "skills",
     lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://cursor.com/docs/skills",
   },
   {
     provider: "cursor",
     surface: "rules",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://cursor.com/docs/rules",
+    ...SPEC_PAGES.cursorRules,
   },
   {
     provider: "cursor",
     surface: "mcp",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://cursor.com/docs/context/mcp",
+    ...SPEC_PAGES.cursorMcp,
   },
   {
     provider: "cursor",
     surface: "hooks",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://cursor.com/docs/hooks",
+    ...SPEC_PAGES.cursorHooks,
   },
   {
     provider: "antigravity",
     surface: "mcp",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://antigravity.google/docs/mcp",
+    ...SPEC_PAGES.antigravityMcp,
   },
   {
     provider: "gemini",
     surface: "mcp",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md",
+    ...SPEC_PAGES.geminiMcp,
   },
   {
     provider: "gemini",
     surface: "hooks",
     lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md",
   },
   {
     provider: "gemini",
     surface: "hooks",
     lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md",
   },
   {
     provider: "opencode",
     surface: "mcp",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://opencode.ai/v2/docs/mcp-servers",
+    ...SPEC_PAGES.opencodeMcp,
   },
   {
     provider: "continue",
     surface: "mcp",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://docs.continue.dev/customize/deep-dives/mcp",
+    ...SPEC_PAGES.continueMcp,
   },
   {
     provider: "commandcode",
     surface: "mcp",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://commandcode.ai/docs/mcp",
+    ...SPEC_PAGES.commandcodeMcp,
   },
   {
     provider: "commandcode",
     surface: "hooks",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://commandcode.ai/docs/hooks",
+    ...SPEC_PAGES.commandcodeHooks,
   },
   {
     provider: "commandcode",
     surface: "skills",
     lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://commandcode.ai/docs/skills",
   },
   {
     provider: "commandcode",
     surface: "agents",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://commandcode.ai/docs/agents",
+    ...SPEC_PAGES.commandcodeAgents,
   },
   {
     provider: "commandcode",
     surface: "instructions",
     lastVerified: "2026-08-31",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://commandcode.ai/docs/memory",
   },
   {
     provider: "copilot",
     surface: "hooks",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://docs.github.com/en/copilot/reference/hooks-reference",
+    ...SPEC_PAGES.copilotHooks,
   },
   {
     provider: "grok",
     surface: "mcp",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://docs.x.ai/build/features/mcp-servers",
+    ...SPEC_PAGES.grokMcp,
   },
   {
     provider: "grok",
     surface: "hooks",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://docs.x.ai/build/features/hooks",
+    ...SPEC_PAGES.grokHooks,
   },
   {
     provider: "grok",
     surface: "skills",
-    lastVerified: "2026-09-02",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://docs.x.ai/build/features/skills-plugins-marketplaces",
+    ...SPEC_PAGES.grokSkills,
   },
   {
     provider: "grok",
     surface: "rules",
     lastVerified: "2026-08-31",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://docs.x.ai/build/features/project-rules",
   },
   {
     provider: "grok",
     surface: "agents",
     lastVerified: "2026-08-31",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://docs.x.ai/build/features/subagents",
   },
   {
     provider: "windsurf",
     surface: "rules",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://docs.windsurf.com/windsurf/cascade/memories",
+    ...SPEC_PAGES.windsurfRules,
   },
   {
     provider: "windsurf",
     surface: "instructions",
     lastVerified: "2026-08-31",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://docs.windsurf.com/windsurf/cascade/agents-md",
   },
   {
     provider: "windsurf",
     surface: "mcp",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://docs.windsurf.com/windsurf/cascade/mcp",
+    ...SPEC_PAGES.windsurfMcp,
   },
   {
     provider: "windsurf",
     surface: "hooks",
-    lastVerified: "2026-09-03",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://docs.devin.ai/desktop/cascade/hooks",
+    ...SPEC_PAGES.windsurfHooks,
   },
   {
     provider: "windsurf",
     surface: "skills",
     lastVerified: "2026-08-31",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://docs.devin.ai/desktop/cascade/skills",
   },
   {
     provider: "vscode",
     surface: "hooks",
-    lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://code.visualstudio.com/docs/agents/reference/hooks-reference",
+    ...SPEC_PAGES.vscodeHooks,
+  },
+  {
+    provider: "gemini",
+    surface: "hooks",
+    ...SPEC_PAGES.geminiHooks,
   },
   {
     provider: "gemini",
     surface: "hooks",
     lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://geminicli.com/docs/hooks/",
-  },
-  {
-    provider: "gemini",
-    surface: "hooks",
-    lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://geminicli.com/docs/hooks/reference/",
   },
   {
     provider: "gemini",
     surface: "mcp",
     lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://geminicli.com/docs/tools/mcp-server/",
   },
   {
     provider: "opencode",
     surface: "mcp",
     lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://opencode.ai/docs/mcp-servers/",
   },
   {
     provider: "cursor",
     surface: "hooks",
     lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "medium",
     url: "https://cursor.com/docs/reference/third-party-hooks",
   },
   {
     provider: "kiro",
     surface: "hooks",
-    lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://kiro.dev/docs/hooks/",
+    ...SPEC_PAGES.kiroHooks,
   },
   {
     provider: "kiro",
     surface: "hooks",
-    lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "high",
-    url: "https://kiro.dev/docs/ide/whats-new-v1/hooks/",
+    ...SPEC_PAGES.kiroHooksV1,
   },
   {
     provider: "kiro",
     surface: "skills",
     lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "medium",
     url: "https://kiro.dev/docs/skills/",
   },
   {
     provider: "cline",
     surface: "skills",
     lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://docs.cline.bot/customization/skills",
   },
   {
     provider: "roo",
     surface: "skills",
     lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "medium",
     url: "https://docs.roocode.com/features/skills",
   },
   {
     provider: "kilo",
     surface: "skills",
     lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "medium",
     url: "https://kilo.ai/docs/customize/skills",
   },
   {
     provider: "junie",
     surface: "skills",
     lastVerified: "2026-09-07",
-    sourceType: "official",
-    stalenessRisk: "high",
     url: "https://junie.jetbrains.com/docs/agent-skills.html",
   },
 ];
 
-const STALE_AFTER_DAYS = 90;
+/** Re-read the sources when a capture or surface is older than this. */
+export const STALE_AFTER_DAYS = 90;
+export const MS_PER_DAY = 86_400_000;
 
 /** Unique URLs to fetch; two surfaces may cite the same page. */
 export function uniqueSurfaceUrls(surfaces: readonly SpecSurface[] = SPEC_SURFACES): string[] {
@@ -582,7 +448,7 @@ export function surfacesForUrl(
 export function surfaceStalenessNotes(today = Date.now()): string[] {
   const notes: string[] = [];
   for (const surface of SPEC_SURFACES) {
-    const days = Math.floor((today - Date.parse(surface.lastVerified)) / 86_400_000);
+    const days = Math.floor((today - Date.parse(surface.lastVerified)) / MS_PER_DAY);
     if (days > STALE_AFTER_DAYS) {
       notes.push(
         `${surface.provider} ${surface.surface} lastVerified ${surface.lastVerified} is ${days} days old (over ${STALE_AFTER_DAYS}) — ${surface.url}`,

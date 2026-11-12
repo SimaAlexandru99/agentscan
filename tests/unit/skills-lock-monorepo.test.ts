@@ -1,18 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { mkPinnedProject } from "../helpers/tmp";
+import { tmpProject, write } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
-
-function tmpProject(prefix: string): string {
-  return mkPinnedProject(prefix, "lock-mono");
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
 
 describe("skills-lock ownership in a monorepo", () => {
   test("each skill is compared only to the lockfile that governs its root", () => {

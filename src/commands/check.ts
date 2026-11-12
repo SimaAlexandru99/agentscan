@@ -1,31 +1,25 @@
 import { analyze } from "../analyze";
-import { exitCode, type FailOn } from "../report/exit-code";
+import type { FailOn, OutputFormat } from "../config/schema";
+import { exitCode } from "../report/exit-code";
 import { renderJson } from "../report/json";
 import { renderPrompt } from "../report/prompt";
 import { renderText } from "../report/text";
 import { VERSION } from "../version";
-
-export type OutputFormat = "human" | "json" | "prompt";
+import type { CommandResult } from "./result";
 
 export type CheckOptions = {
   dir?: string;
-  /** Alias for `output: "json"`, kept for the documented `--json` flag. */
-  json?: boolean;
   output?: OutputFormat;
   quiet?: boolean;
   verbose?: boolean;
   failOn?: FailOn;
-  /** Fail when the 0-100 score drops below this. */
   failUnder?: number;
   global?: boolean;
   configPath?: string;
-  /** ANSI colour and the header box. Only ever honoured for `human`. */
   colour?: boolean;
 };
 
-export type CheckResult = {
-  exitCode: number;
-  stdout: string;
+export type CheckResult = CommandResult & {
   /**
    * The same report with no escapes, present only when `stdout` has colour.
    *
@@ -39,7 +33,7 @@ export type CheckResult = {
  * Run the full check pipeline (discover → facts → rules + checks → report).
  * Returns exit code + stdout for testability; CLI prints and process.exit.
  */
-export async function runCheck(options: CheckOptions): Promise<CheckResult> {
+export function runCheck(options: CheckOptions): CheckResult {
   const { root, resolvedFrom, config, facts, findings } = analyze({
     dir: options.dir,
     global: options.global,
@@ -47,8 +41,7 @@ export async function runCheck(options: CheckOptions): Promise<CheckResult> {
     failOn: options.failOn,
   });
 
-  const format: OutputFormat =
-    options.output ?? (options.json === true ? "json" : "human");
+  const format = options.output ?? "human";
 
   let stdout: string;
   let plain: string | undefined;

@@ -1,27 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { mkPinnedProject } from "../helpers/tmp";
+import { tmpProject, write } from "../helpers/tmp";
 import { analyze } from "../../src/analyze";
-import { runChecks } from "../../src/checks/index";
 import { runExplain } from "../../src/commands/explain";
-import { defaultConfig } from "../../src/config/schema";
-import { parseJsonc } from "../../src/discover/jsonc";
-import { extractFacts } from "../../src/facts/extract";
-
-function tmpProject(prefix: string): string {
-  return mkPinnedProject(prefix, "review");
-}
-
-function write(root: string, rel: string, body: string): void {
-  const abs = join(root, rel);
-  mkdirSync(join(abs, ".."), { recursive: true });
-  writeFileSync(abs, body, "utf8");
-}
-
-function ruleIds(dir: string): string[] {
-  return analyze({ dir }).findings.map((finding) => finding.ruleId);
-}
+import { findingsFor, ruleIds } from "../helpers/scan";
 
 describe("nested Agent Skills discovery", () => {
   test("nested .cursor/skills/category/skill is one skill, not a missing-md folder", () => {
@@ -31,7 +14,7 @@ describe("nested Agent Skills discovery", () => {
       ".cursor/skills/frontend/deploy/SKILL.md",
       "---\nname: deploy\ndescription: Deploy the frontend.\n---\n",
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = findingsFor(root).facts;
     expect(facts.skills.map((skill) => skill.id)).toEqual(["deploy"]);
     expect(facts.skills[0]!.sourceProvider).toBe("cursor");
     expect(facts.skills[0]!.schemaProfile).toBe("agent-skills");
@@ -50,7 +33,7 @@ describe("nested Agent Skills discovery", () => {
       "packages/app/.agents/skills/real-skill/SKILL.md",
       "---\nname: real-skill\ndescription: A nested Agent Skill.\n---\n",
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = findingsFor(root).facts;
     const ids = facts.skills.map((skill) => `${skill.sourceProvider}:${skill.id}`).sort();
     expect(ids).toEqual(["agent-skills:real-skill", "cursor:real-skill"]);
   });
@@ -71,7 +54,7 @@ describe("nested Agent Skills discovery", () => {
       ".agents/skills/typed/SKILL.md",
       "---\nname: 123\ndescription: true\n---\n",
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = findingsFor(root).facts;
     expect(facts.skills[0]!.frontmatterName).toBeUndefined();
     expect(facts.skills[0]!.nameKind).toBe("number");
     expect(facts.skills[0]!.description).toBeUndefined();
@@ -87,11 +70,7 @@ describe("Codex instruction chain", () => {
     const root = tmpProject("agentscan-codex-same-");
     write(root, "AGENTS.override.md", "o".repeat(20_000));
     write(root, "AGENTS.md", "n".repeat(20_000));
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
-    const findings = runChecks(facts, {
-      budgets: { agentsMdLines: 150, claudeMdLines: 200, agents: 8, mcp: 5 },
-    });
-    expect(findings.map((finding) => finding.ruleId)).not.toContain(
+    expect(findingsFor(root).findings.map((finding) => finding.ruleId)).not.toContain(
       "codex.budget.instructions",
     );
   });
@@ -101,22 +80,16 @@ describe("Codex instruction chain", () => {
     write(root, "AGENTS.override.md", "o".repeat(20_000));
     write(root, "packages/app/AGENTS.md", "n".repeat(20_000));
     const startDir = join(root, "packages", "app");
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false, startDir });
-    const findings = runChecks(facts, {
-      budgets: { agentsMdLines: 150, claudeMdLines: 200, agents: 8, mcp: 5 },
-    });
-    expect(findings.map((finding) => finding.ruleId)).toContain("codex.budget.instructions");
+    expect(findingsFor(root, false, startDir).findings.map((finding) => finding.ruleId)).toContain(
+      "codex.budget.instructions",
+    );
   });
 
   test("empty override falls through to AGENTS.md", () => {
     const root = tmpProject("agentscan-codex-empty-");
     write(root, "AGENTS.override.md", "\n");
     write(root, "AGENTS.md", "keep\n");
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
-    const findings = runChecks(facts, {
-      budgets: { agentsMdLines: 150, claudeMdLines: 200, agents: 8, mcp: 5 },
-    });
-    expect(findings.map((finding) => finding.ruleId)).not.toContain(
+    expect(findingsFor(root).findings.map((finding) => finding.ruleId)).not.toContain(
       "codex.budget.instructions",
     );
   });
@@ -130,12 +103,9 @@ describe("Codex instruction chain", () => {
       "utf8",
     );
     write(root, "AGENTS.md", "x".repeat(40_000));
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
-    expect(facts.codexProjectDocMaxBytes).toBe(65_536);
-    const findings = runChecks(facts, {
-      budgets: { agentsMdLines: 150, claudeMdLines: 200, agents: 8, mcp: 5 },
-    });
-    expect(findings.map((finding) => finding.ruleId)).not.toContain(
+    const analysis = findingsFor(root);
+    expect(analysis.facts.codexProjectDocMaxBytes).toBe(65_536);
+    expect(analysis.findings.map((finding) => finding.ruleId)).not.toContain(
       "codex.budget.instructions",
     );
   });
@@ -268,7 +238,7 @@ describe("Continue, JSONC, scan boundary, explain aliases", () => {
       ".continue/mcpServers/docs.yaml",
       "name: Continue Docs\nversion: 0.0.1\nschema: v1\nmcpServers:\n  - uses: continuedev/continue-docs-mcp\n",
     );
-    const facts = extractFacts(root, defaultConfig, { includeGlobal: false });
+    const facts = findingsFor(root).facts;
     expect(facts.mcp).toHaveLength(1);
     expect(facts.mcp[0]!.launchKind).toBe("registry-reference");
     expect(facts.mcp[0]!.uses).toBe("continuedev/continue-docs-mcp");
@@ -336,21 +306,29 @@ describe("Continue, JSONC, scan boundary, explain aliases", () => {
   });
 });
 
-describe("parseJsonc", () => {
-  test("accepts comments, trailing commas, URLs, and escaped quotes", () => {
-    const value = parseJsonc(`{
-      // line
-      /* block */
-      "url": "https://example.com/mcp",
-      "quote": "say \\"hi\\"",
-      "list": [1, 2,],
-    }`) as Record<string, unknown>;
-    expect(value.url).toBe("https://example.com/mcp");
-    expect(value.quote).toBe('say "hi"');
-    expect(value.list).toEqual([1, 2]);
+describe("JSONC config files", () => {
+  test("// inside a string, URLs, and escaped quotes are not comments", () => {
+    const root = tmpProject("agentscan-jsonc-strings-");
+    write(
+      root,
+      "opencode.jsonc",
+      `{
+        "mcp": {
+          "docs": {
+            "type": "remote",
+            "url": "https://example.com/mcp",
+            "headers": { "X-Note": "say \\"hi\\" // not a comment", },
+          },
+        },
+      }\n`,
+    );
+    expect(ruleIds(root)).toEqual([]);
+    expect(analyze({ dir: root }).facts.mcp.map((s) => s.name)).toEqual(["docs"]);
   });
 
-  test("rejects an unterminated comment", () => {
-    expect(() => parseJsonc("{ /* unterminated")).toThrow();
+  test("an unterminated comment is config.unreadable", () => {
+    const root = tmpProject("agentscan-jsonc-unterminated-");
+    write(root, "opencode.jsonc", "{ /* unterminated");
+    expect(ruleIds(root)).toContain("config.unreadable");
   });
 });
