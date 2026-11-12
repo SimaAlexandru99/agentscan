@@ -2,12 +2,15 @@
 
 **Source:** https://cursor.com/docs/context/mcp
 **Read:** 2026-09-02
+**Re-read:** 2026-11-12. The page still says create `~/.cursor/mcp.json` for
+tools available everywhere. `version` is not a required field.
 **Depends on it:** `cursor.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`, `mcp.literal-credential`
 
 ## Project file
 
-`.cursor/mcp.json` in the project. Global `~/.cursor/mcp.json` is outside a
-normal project scan.
+`.cursor/mcp.json` in the project. Global `~/.cursor/mcp.json` is opened
+under `--global` / `includeGlobal` and uses the same `cursor-json` profile.
+A missing `version` is not a finding.
 
 ## Shape
 

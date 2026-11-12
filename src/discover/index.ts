@@ -29,7 +29,7 @@ import {
   resolveSkillLocation,
   winningSkillsExtraDirs,
 } from "./commandcode";
-import { discoverCursorHooksFile } from "./cursor";
+import { discoverCursorHooksFile, discoverCursorUserMcp } from "./cursor";
 import { discoverDevinProject, discoverDevinUser } from "./devin";
 import { discoverKiroHooksDir } from "./kiro";
 import { applyGrokMcpPrecedence, discoverGrokUserMcp } from "./grok";
@@ -217,6 +217,7 @@ const SOURCES: Source[] = [
     }),
     user: ({ root, io }) => ({
       hooks: discoverCursorHooksFile(join(providerHome("cursor"), "hooks.json"), root, io),
+      mcp: discoverCursorUserMcp(root, io),
     }),
   },
   {

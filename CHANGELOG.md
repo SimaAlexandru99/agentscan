@@ -13,6 +13,9 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+- Cursor user MCP under `--global`: `~/.cursor/mcp.json` uses the same
+  `cursor-json` profile as the project file. A missing `version` is not a
+  finding.
 - Kiro hook triggers `SessionEnd`, `PreCompact`, and `PostCompact`, quoted
   on the types page (2026-11-12). `PreTaskExec` and `PostTaskExec` stay:
   that table still lists Pre/Post Task Execution and does not quote a

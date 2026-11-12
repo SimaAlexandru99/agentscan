@@ -1,7 +1,10 @@
+import { join } from "node:path";
 import { CURSOR_HOOK_HANDLER_TYPES } from "../facts/cursor";
-import type { HookFact } from "../facts/types";
+import { providerHome } from "../facts/providers";
+import type { HookFact, McpFact } from "../facts/types";
 import { commandHook, readFlatHooks } from "./hooks";
 import { isRecord, type ScanIO } from "./fs";
+import { parseMcpFile } from "./mcp";
 
 /**
  * Workspace `.cursor/hooks.json`.
@@ -43,4 +46,13 @@ export function discoverCursorHooksFile(
     // `./hooks/script.sh` really does resolve to `<project>/hooks/script.sh`.
     return commandHook(base(), command, projectRoot);
   });
+}
+
+/**
+ * User MCP at `~/.cursor/mcp.json`. Only called under `--global`.
+ * `version` is ignored: the page does not require it.
+ * See docs/spec/cursor-mcp.md.
+ */
+export function discoverCursorUserMcp(projectRoot: string, io: ScanIO): McpFact[] {
+  return parseMcpFile(join(providerHome("cursor"), "mcp.json"), projectRoot, io, { optional: true });
 }

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { chmodSync } from "node:fs";
+import { chmodSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkPinnedProject, write } from "../helpers/tmp";
 import { withHome } from "../helpers/env";
@@ -258,6 +259,31 @@ describe("Cursor hooks in .cursor/hooks.json", () => {
       JSON.stringify({ mcpServers: { docs: { command: "npx", args: ["-y", "srv"] } } }),
     );
     expect(scan(root).facts.hooks).toEqual([]);
+  });
+
+  test("user ~/.cursor/mcp.json is --global only and version is not a finding", () => {
+    const root = mkPinnedProject("agentscan-cursor-user-mcp-", "cursor-mcp");
+    const home = mkdtempSync(join(tmpdir(), "agentscan-cursor-home-"));
+    write(
+      home,
+      ".cursor/mcp.json",
+      JSON.stringify({
+        mcpServers: {
+          docs: { command: "npx", args: ["-y", "srv"] },
+          empty: {},
+        },
+      }),
+    );
+    withHome(home, () => {
+      const off = scan(root, false);
+      expect(off.facts.mcp.some((server) => server.name === "docs")).toBe(false);
+      const on = scan(root, true);
+      const docs = on.facts.mcp.find((server) => server.name === "docs");
+      expect(docs?.schemaProfile).toBe("cursor-json");
+      expect(docs?.path).toBe(join(home, ".cursor", "mcp.json"));
+      expect(on.ruleIds).toContain("cursor.mcp.no-launch");
+      expect(on.ruleIds.some((id) => id.includes("version"))).toBe(false);
+    });
   });
 });
 
