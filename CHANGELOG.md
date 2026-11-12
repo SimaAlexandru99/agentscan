@@ -13,6 +13,14 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+## 2.0.0 — 2026-11-12
+
+Breaking for configs that still name the 0.7 rule ids or the old threshold
+keys. `ignoreRules`, `ignoreFindings`, and `explain` accept only the printed
+ids (`claude.hook.missing-script`, not `hook.missing-script`).
+`thresholds.skillDescriptionBytes` and `thresholds.skills` are rejected; the
+listing budget is `thresholds.skillListingChars`. **143 checks**, **647 tests**.
+
 - Kiro agents: `.kiro/agents/**/*.json` and `*.md` on the ancestor walk, and
   `~/.kiro/agents/` under `--global`. The name is the path relative to that
   directory, without the extension. A nearer workspace file shadows a farther
@@ -91,13 +99,12 @@ intermediate commit that this train does not cut.
   `agent` actions, array-of-hooks files. New: `kiro.hook.unknown-event`,
   `kiro.hook.missing-script`, `kiro.hook.command-without-command`,
   `kiro.hook.prompt-without-prompt`, `kiro.hook.unknown-handler-type`,
-  `kiro.hook.invalid-group`. Agents stay unread (no quoted filename
-  pattern). Skills: `.kiro/skills` as Agent Skills.
+  `kiro.hook.invalid-group`. Agents are inventoried on their own walk
+  (above). Skills: `.kiro/skills` as Agent Skills.
 - Cline / Roo / Kilo / Junie skill directories (`.cline/skills`,
   `.roo/skills`, `.kilo/skills`, `.junie/skills`, plus `--global` home
   copies). Junie does not require `description` and does not require
-  `name` to match the folder. Cline hooks and Cline/Kiro agents stay
-  unread.
+  `name` to match the folder. Cline hooks and Cline agents stay unread.
 - VS Code `.github/agents/*.agent.md` frontmatter hooks parse as
   vscode-native. Marketplace plugin `hooks.json` stays unread.
 - `--global` Cursor `~/.cursor/hooks.json`, Gemini

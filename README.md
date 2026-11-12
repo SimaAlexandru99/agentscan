@@ -6,13 +6,13 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/checks-143-111111?style=flat-square" alt="143 checks">
-  <img src="https://img.shields.io/badge/tests-603%20passing-111111?style=flat-square" alt="603 tests">
+  <img src="https://img.shields.io/badge/tests-647%20passing-111111?style=flat-square" alt="647 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
   <img src="https://img.shields.io/npm/v/@chimix/agentscan?style=flat-square&color=111111&label=npm" alt="npm version">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-1.4.0-111111?style=flat-square" alt="Changelog"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-2.0.0-111111?style=flat-square" alt="Changelog"></a>
 </p>
 
 <p align="center">
@@ -199,7 +199,7 @@ Flags for `check`:
   │  ⌒  │   6 error · 2 warning · 11 info hidden (--verbose)
   └─────┘
 
-agentscan v1.4.0 — touchagency
+agentscan v2.0.0 — touchagency
 
 Scanned: 46 deps · 108 skills · 1 mcp · 2 agents · packageManager=bun
 
@@ -231,7 +231,7 @@ JSON shape (abridged):
 
 ```json
 {
-  "version": "1.4.0",
+  "version": "2.0.0",
   "root": "/path/to/project",
   "factsSummary": {
     "packageManager": "bun",
@@ -610,7 +610,7 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `kiro.hook.invalid-group` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro hook file is missing version v1 or a hooks array |
 <!-- rules:end -->
 
-### Coverage in 1.4.0
+### Coverage in 2.0.0
 
 Each cell is one coverage dimension. There is no `full` / `partial` label: a
 documented global or static location that is not opened stays **unread**.
@@ -851,6 +851,15 @@ first.
 Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
 GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
+
+**2.0.0** (12 November 2026) is breaking for configs that still name the 0.7
+rule ids or the old threshold keys. `ignoreRules`, `ignoreFindings`, and
+`explain` accept only the printed ids. `thresholds.skillDescriptionBytes`
+and `thresholds.skills` are rejected; the listing budget is
+`thresholds.skillListingChars`. It also ships the November 2026 vendor
+contracts: Kiro agents, Antigravity rules, skills, and hooks, Codex hooks,
+Cursor user MCP, Devin CLI hooks / MCP / skills, and the Copilot user MCP
+file. **143 checks**, **647 tests**.
 
 **1.4.0** (2 September 2026) closes two coverage gaps and ships the
 2026-09-02 re-verification: Copilot CLI inline `hooks` in
