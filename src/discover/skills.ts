@@ -79,7 +79,7 @@ export function firstMarkdownParagraph(body: string): string | undefined {
 function inNamedSibling(body: string, skillDir: string, rel: string): boolean {
   const escaped = rel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   // Lookahead, so every backticked name before the reference is a candidate.
-  const pattern = new RegExp(`\`([a-z0-9][a-z0-9-]*)\`(?=[^.\n]*?\`${escaped}\`)`, "g");
+  const pattern = new RegExp(`\`([a-z0-9][a-z0-9-]*)\`(?=(?:(?!\\n\\s*\\n)[^.])*?\`${escaped}\`)`, "g");
   for (const match of body.matchAll(pattern)) {
     const sibling = match[1];
     if (sibling !== undefined && isFile(join(dirname(skillDir), sibling, rel))) {

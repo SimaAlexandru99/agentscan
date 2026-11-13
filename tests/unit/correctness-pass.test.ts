@@ -278,7 +278,7 @@ describe("Agent Skills optional fields and skill-root refs", () => {
     write(
       root,
       ".agents/skills/expo-overview/SKILL.md",
-      "---\nname: expo-overview\ndescription: Overview.\n---\n\nUse `expo` or route to `eas-app-stores`; its `references/native-ios.md` covers signing. Also read `references/gone.md`.\n",
+      "---\nname: expo-overview\ndescription: Overview.\n---\n\nUse `expo` or route to `eas-app-stores`; its\n  `references/native-ios.md` covers signing. Also read `references/gone.md`.\n",
     );
     const broken = analyze({ dir: root }).findings.filter((f) => f.ruleId === "skill.broken-reference");
     expect(broken.flatMap((f) => f.evidence.filter((e) => e.kind === "missing").map((e) => e.value))).toEqual([
@@ -293,6 +293,7 @@ describe("Agent Skills optional fields and skill-root refs", () => {
     const ids = withHome(home, () => ruleIds(home, true));
     expect(ids).not.toContain("skill.broken-reference");
   });
+
 });
 
 describe("Claude skills description fallback and listing budget", () => {
