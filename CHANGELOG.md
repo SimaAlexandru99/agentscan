@@ -13,6 +13,38 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+## 2.1.0 — 2026-11-14
+
+Fewer false findings when the scan root is a home directory or `--global` is
+on, from an audit of four machines (692 findings on one home, about 440 of
+them false or noise). **143 checks**, **656 tests**. No rule id was added or
+removed.
+
+- `check --global` with no project in the working directory scans the
+  documented global locations instead of exiting 2.
+- `claude.agent.duplicate-name`: `~/.claude/agents` is read once when the scan
+  root is home, so one file is no longer reported as its own duplicate.
+- `claude.hook.missing-script`: a quoted script operand such as
+  `"${CLAUDE_PLUGIN_ROOT}/scripts/x"` is unquoted before it is resolved.
+- `config.unreadable`: `EACCES` and `EPERM` are an `info` permission note, once
+  per path, and podman storage under `~/.local/share/containers` is skipped.
+- `skill.locked-not-installed`: a `skills-lock.json` entry resolves beside the
+  lock's own directory, so a lock inside a worktree or dot-directory finds its
+  skills.
+- `skill.broken-reference`: a reference into a sibling skill named earlier in
+  the same sentence resolves there, also across a line wrap; under `--global`
+  a Claude skill's reference also resolves against the repo that owns its
+  `.claude/skills`.
+- `claude.agent.invalid-name` follows the current sub-agents page: an error
+  only for an empty name, a name over 256 characters, or one containing `:`.
+  Digits, capitals and spaces are accepted.
+- `copilot.hook.unknown-event`: a PascalCase twin of a documented camelCase
+  event (for example `Notification`) is a `warning` that names the documented
+  spelling.
+- `windsurf.rule.missing-trigger` is `info`. Under `--global`, plugin caches,
+  marketplaces, backups and installed-plugin copies are skipped for Windsurf
+  rules, `budget.*` and `scan.truncated`.
+
 ## 2.0.0 — 2026-11-12
 
 Breaking for configs that still name the 0.7 rule ids or the old threshold

@@ -6,13 +6,13 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/checks-143-111111?style=flat-square" alt="143 checks">
-  <img src="https://img.shields.io/badge/tests-647%20passing-111111?style=flat-square" alt="647 tests">
+  <img src="https://img.shields.io/badge/tests-656%20passing-111111?style=flat-square" alt="656 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
   <img src="https://img.shields.io/npm/v/@chimix/agentscan?style=flat-square&color=111111&label=npm" alt="npm version">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-2.0.0-111111?style=flat-square" alt="Changelog"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-2.1.0-111111?style=flat-square" alt="Changelog"></a>
 </p>
 
 <p align="center">
@@ -851,6 +851,9 @@ first.
 Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
 GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
+
+**2.1.0** (14 November 2026) cuts false findings on home-directory and
+`--global` scans; see the changelog. No rule id changed.
 
 **2.0.0** (12 November 2026) is breaking for configs that still name the 0.7
 rule ids or the old threshold keys. `ignoreRules`, `ignoreFindings`, and
