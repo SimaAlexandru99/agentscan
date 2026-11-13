@@ -248,7 +248,8 @@ export function scriptCandidateFromLaunch(
   launch: LaunchCommand,
   bases: { plugin?: string } = {},
 ): string | undefined {
-  if (launch.args.length === 0 && /\s/.test(launch.executable)) {
+  // A quoted single operand (`"${CLAUDE_PLUGIN_ROOT}/x"`) is unquoted by the shell too.
+  if (launch.args.length === 0 && /[\s"']/.test(launch.executable)) {
     const tokens = tokenize(launch.executable);
     return tokens === undefined ? undefined : scriptCandidateFromArgv(tokens, bases);
   }

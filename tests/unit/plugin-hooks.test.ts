@@ -69,6 +69,19 @@ describe("plugin hooks", () => {
     expect(projectFindings(root).filter((f) => f.ruleId.startsWith("hook."))).toEqual([]);
   });
 
+  test("a double-quoted ${CLAUDE_PLUGIN_ROOT} script resolves like an unquoted one", () => {
+    const root = project();
+    const dir = plugin(root, "quoted-plugin", guard('"${CLAUDE_PLUGIN_ROOT}/scripts/te-hook"'));
+    mkdirSync(join(dir, "scripts"), { recursive: true });
+    writeFileSync(join(dir, "scripts", "te-hook"), "#!/bin/sh\n");
+    expect(projectFindings(root).filter((f) => f.ruleId === "claude.hook.missing-script")).toEqual([]);
+
+    plugin(root, "quoted-gone", guard('"${CLAUDE_PLUGIN_ROOT}/scripts/gone"'));
+    const missing = projectFindings(root).filter((f) => f.ruleId === "claude.hook.missing-script");
+    expect(missing).toHaveLength(1);
+    expect(missing[0]!.message).not.toContain('"');
+  });
+
   test("the scan root itself can be the plugin", () => {
     // `claude --plugin-dir .` — a plugin repo scanned from inside it.
     const root = project();
