@@ -273,9 +273,16 @@ export function discoverAgents(
   }
   facts.push(...discoverCommandcodeAgents(commandcodeProjectRoot, includeGlobal, io));
   if (includeGlobal) {
-    facts.push(...discoverClaudeAgentsDir(join(providerHome("claude"), "agents"), root, io));
-    for (const fact of discoverKiroAgentsDir(join(providerHome("kiro"), "agents"), io)) {
-      kiroPending.push({ fact, hops: KIRO_GLOBAL_HOPS });
+    // Scanning `~` itself already walked `~/.claude/agents` and `~/.kiro/agents`.
+    const claudeGlobal = join(providerHome("claude"), "agents");
+    if (!seenDirs.has(claudeGlobal)) {
+      facts.push(...discoverClaudeAgentsDir(claudeGlobal, root, io));
+    }
+    const kiroGlobal = join(providerHome("kiro"), "agents");
+    if (!ancestors.some((dir) => join(dir, ".kiro", "agents") === kiroGlobal)) {
+      for (const fact of discoverKiroAgentsDir(kiroGlobal, io)) {
+        kiroPending.push({ fact, hops: KIRO_GLOBAL_HOPS });
+      }
     }
   }
   facts.push(...shadowFartherKiroAgents(kiroPending));

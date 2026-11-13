@@ -159,6 +159,9 @@ export function checkAgents(facts: Facts): Finding[] {
       const scope = agent.namespace ?? "";
       const key = `${scope}\0${agent.frontmatterName}`;
       const list = names.get(key) ?? [];
+      if (list.includes(agent.path)) {
+        continue;
+      }
       list.push(agent.path);
       names.set(key, list);
     }

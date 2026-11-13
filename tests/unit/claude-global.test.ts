@@ -209,3 +209,15 @@ describe("Claude user hooks and MCP are --global only", () => {
     expect(mcpProfileFromPath("C:\\Users\\me\\.claude.json")).toBe("claude-json");
   });
 });
+
+describe("--global scan rooted at the home directory", () => {
+  test("~/.claude/agents is read once, not reported as a duplicate of itself", () => {
+    const home = tmpProject("agentscan-claude-home-root-");
+    write(home, ".claude/agents/critic.md", "---\nname: critic\ndescription: Reviews diffs\n---\nBody\n");
+    withHome(home, () => {
+      const { facts, findings } = findingsFor(home, true);
+      expect(facts.agents.filter((a) => a.path.endsWith("critic.md"))).toHaveLength(1);
+      expect(findings.map((f) => f.ruleId)).not.toContain("claude.agent.duplicate-name");
+    });
+  });
+});
