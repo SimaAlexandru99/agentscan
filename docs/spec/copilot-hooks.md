@@ -146,3 +146,9 @@ Not added: `Notification`. The `notification` section shows
 of them.
 
 ## Staleness risk: HIGH
+
+> **Severity note (2026-11-13):** a PascalCase key whose camelCase form is a
+> documented event, but which is not itself one of the documented PascalCase
+> aliases (for example `Notification`), is reported at `warning` with the
+> documented spelling. This is a heuristic: the page does not list it, and the
+> payload's `hook_event_name` uses the PascalCase form.

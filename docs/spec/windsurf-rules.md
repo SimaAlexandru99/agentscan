@@ -87,3 +87,8 @@ Opened only with `--global`. Do not glob the rest of
 - Workflows and skills (other pages)
 
 ## Staleness risk: HIGH
+
+> **Severity note (2026-11-13):** `windsurf.rule.missing-trigger` reports at
+> `info`. The page requires a `trigger` but does not say what happens without
+> one, and a 2026-11-13 audit found every hit in plugin-cache copies Windsurf
+> never reads. Under `--global` those copies are skipped.

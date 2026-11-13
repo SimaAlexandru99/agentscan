@@ -77,13 +77,16 @@ export function firstMarkdownParagraph(body: string): string | undefined {
  * into the sibling skill named earlier in the same sentence, not this one.
  */
 function inNamedSibling(body: string, skillDir: string, rel: string): boolean {
-  const escaped = rel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // Lookahead, so every backticked name before the reference is a candidate.
-  const pattern = new RegExp(`\`([a-z0-9][a-z0-9-]*)\`(?=(?:(?!\\n\\s*\\n)[^.])*?\`${escaped}\`)`, "g");
-  for (const match of body.matchAll(pattern)) {
-    const sibling = match[1];
-    if (sibling !== undefined && isFile(join(dirname(skillDir), sibling, rel))) {
-      return true;
+  const needle = `\`${rel}\``;
+  for (let at = body.indexOf(needle); at !== -1; at = body.indexOf(needle, at + needle.length)) {
+    // The sentence before the reference: back to the last `.` or blank line.
+    const before = body.slice(0, at);
+    const start = Math.max(before.lastIndexOf("."), before.search(/\n\s*\n(?![\s\S]*\n\s*\n)/));
+    for (const match of before.slice(start + 1).matchAll(/`([a-z0-9][a-z0-9-]*)`/g)) {
+      const sibling = match[1];
+      if (sibling !== undefined && isFile(join(dirname(skillDir), sibling, rel))) {
+        return true;
+      }
     }
   }
   return false;

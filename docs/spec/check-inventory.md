@@ -141,7 +141,7 @@ Source: https://docs.github.com/en/copilot/reference/hooks-reference
 
 | id | sev | provenance | verdict | note |
 |----|-----|------------|---------|------|
-| `copilot.hook.unknown-event` | error | spec-required | **corrected** | 14 camelCase names hold; PascalCase `SessionEnd`, `PostToolUseFailure`, `ErrorOccurred`, `PermissionRequest` are documented and were rejected |
+| `copilot.hook.unknown-event` | error / warning | spec-required | **corrected** | 14 camelCase names hold; PascalCase `SessionEnd`, `PostToolUseFailure`, `ErrorOccurred`, `PermissionRequest` are documented and were rejected. An undocumented PascalCase twin of a documented camelCase event (e.g. `Notification`) is a warning naming the documented spelling (heuristic, audit 2026-11-13) |
 | `copilot.hook.missing-script` | error | internal-consistency | holds | now also path-checks `exec` |
 | `copilot.hook.command-without-command` | error | spec-required | **corrected** | "one of `bash`, `powershell`, or `command`, unless `exec` is specified" — `exec` was not accepted |
 | `copilot.hook.http-without-url` | error | spec-required | holds | "`url` — Yes" |
@@ -213,7 +213,7 @@ Sources: https://code.claude.com/docs/en/sub-agents · https://commandcode.ai/do
 | `claude.agent.missing-description` | error | spec-required | holds | skip list: "A `name` but no `description`: Claude Code skips the file" |
 | `claude.agent.missing-name` | error | spec-required | holds | skip list: "No `name`: … treats the file as documentation" |
 | `claude.agent.duplicate-name` | error | spec-required | holds | scoped to one `.claude/agents/` tree; nested layers are nearest-wins |
-| `claude.agent.invalid-name` | warning / error | spec-required | holds | "lowercase letters and hyphens"; error tier = "starts with `-` or contains `:` … skips the file" |
+| `claude.agent.invalid-name` | error | spec-required | **corrected 2026-11-13** | "Unique identifier of at most 256 characters, such as code-reviewer or reviewer-v2 … Names can't contain `:`"; the lowercase-and-hyphens wording is gone from the page |
 | `commandcode.agent.reserved-name` | error | spec-required | holds | "Reserved names (explore, plan, review, general) … A custom file with one of these names is ignored" |
 | `commandcode.agent.invalid-permission-mode` | error | spec-required | **corrected** | Default column is `inherit`; explicit `permissionMode: inherit` was reported as invalid |
 | `commandcode.agent.invalid-field-type` | error | spec-required | holds | typed table unchanged; `reasoningEffort` now documented, invalid values fall back and load — no check |
@@ -261,7 +261,7 @@ Sources: https://code.claude.com/docs/en/sub-agents · https://commandcode.ai/do
 | `cursor.rule.too-large` | info | vendor-recommendation | cursor.com/docs/rules | holds | "Keep rules under 500 lines" |
 | `windsurf.rule.too-large` | info | vendor-recommendation | docs.windsurf.com/…/memories | holds | "Workspace rule files are limited to 12,000 characters each" |
 | `windsurf.rule.global-too-large` | info | vendor-recommendation | same | holds | "The global rules file is limited to 6,000 characters" |
-| `windsurf.rule.missing-trigger` | warning | spec-required | same | holds | "Each workspace rule declares an activation mode in its frontmatter via the `trigger` field" |
+| `windsurf.rule.missing-trigger` | info | spec-required | same | holds; info because the page does not say what a missing trigger does (audit 2026-11-13) | "Each workspace rule declares an activation mode in its frontmatter via the `trigger` field" |
 
 ## Corrections
 
