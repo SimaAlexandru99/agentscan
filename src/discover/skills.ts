@@ -1,7 +1,7 @@
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import type { Provider } from "../facts/provider";
 import { isInside } from "../facts/paths";
-import { providerFromSkillsDir, SKILL_DOT_DIRS, skillSchemaFor } from "../facts/providers";
+import { providerFromSkillsDir, SKILL_DOT_DIRS, skillSchemaFor, skillsMarker } from "../facts/providers";
 import type { SkillFact, SkillSchemaProfile } from "../facts/types";
 import { hooksFromObject } from "./hooks";
 import { NESTED_DISCOVERY_MAX_DEPTH, NESTED_DISCOVERY_SKIP } from "./shared";
@@ -72,6 +72,23 @@ export function firstMarkdownParagraph(body: string): string | undefined {
  * root — that two-base rule is empirical for Claude only; see docs/spec/skills.md
  * and docs/spec/agent-skills.md.
  */
+/**
+ * "Route to `eas-app-stores`; its `references/native-ios.md` covers…" points
+ * into the sibling skill named earlier in the same sentence, not this one.
+ */
+function inNamedSibling(body: string, skillDir: string, rel: string): boolean {
+  const escaped = rel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Lookahead, so every backticked name before the reference is a candidate.
+  const pattern = new RegExp(`\`([a-z0-9][a-z0-9-]*)\`(?=[^.\n]*?\`${escaped}\`)`, "g");
+  for (const match of body.matchAll(pattern)) {
+    const sibling = match[1];
+    if (sibling !== undefined && isFile(join(dirname(skillDir), sibling, rel))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function brokenReferences(
   body: string,
   skillDir: string,
@@ -79,13 +96,18 @@ function brokenReferences(
   skillRootOnly: boolean,
 ): string[] {
   return skillReferences(body).filter((rel) => {
-    if (isFile(join(skillDir, rel))) {
+    if (isFile(join(skillDir, rel)) || inNamedSibling(body, skillDir, rel)) {
       return false;
     }
     if (skillRootOnly) {
       return true;
     }
-    return !isFile(join(root, rel));
+    if (isFile(join(root, rel))) {
+      return false;
+    }
+    // A global scan's root is home; the skill's own repo is the dir that holds `.claude/skills`.
+    const marker = skillsMarker(skillDir)?.root;
+    return marker === undefined || !isFile(join(dirname(dirname(marker)), rel));
   });
 }
 

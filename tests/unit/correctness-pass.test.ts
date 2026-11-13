@@ -8,6 +8,7 @@ import { defaultConfig } from "../../src/config/schema";
 import { extractFacts } from "../../src/discover/extract";
 import type { Facts } from "../../src/facts/types";
 import { ruleIds } from "../helpers/scan";
+import { withHome } from "../helpers/env";
 
 describe("Claude hook schema profile", () => {
   test("type is required and is not inferred from command", () => {
@@ -268,6 +269,29 @@ describe("Agent Skills optional fields and skill-root refs", () => {
       "---\nname: pointer\ndescription: Points at a bundled file.\n---\n\nRead references/guide.md\n",
     );
     expect(ruleIds(root)).toContain("skill.broken-reference");
+  });
+
+  test("a reference into a sibling skill named earlier in the sentence resolves there", () => {
+    const root = tmpProject("agentscan-as-sibling-ref-");
+    write(root, ".agents/skills/eas-app-stores/SKILL.md", "---\nname: eas-app-stores\ndescription: Stores.\n---\n\nBody.\n");
+    write(root, ".agents/skills/eas-app-stores/references/native-ios.md", "ios\n");
+    write(
+      root,
+      ".agents/skills/expo-overview/SKILL.md",
+      "---\nname: expo-overview\ndescription: Overview.\n---\n\nUse `expo` or route to `eas-app-stores`; its `references/native-ios.md` covers signing. Also read `references/gone.md`.\n",
+    );
+    const broken = analyze({ dir: root }).findings.filter((f) => f.ruleId === "skill.broken-reference");
+    expect(broken.flatMap((f) => f.evidence.filter((e) => e.kind === "missing").map((e) => e.value))).toEqual([
+      "references/gone.md",
+    ]);
+  });
+
+  test("--global: a Claude skill reference resolves against the repo that owns .claude/skills", () => {
+    const home = tmpProject("agentscan-claude-ref-home-");
+    write(home, "projects/app/scripts/run.js", "x\n");
+    write(home, "projects/app/.claude/skills/runner/SKILL.md", "---\nname: runner\ndescription: Runs.\n---\n\nRun scripts/run.js\n");
+    const ids = withHome(home, () => ruleIds(home, true));
+    expect(ids).not.toContain("skill.broken-reference");
   });
 });
 
