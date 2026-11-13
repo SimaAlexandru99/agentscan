@@ -136,7 +136,7 @@ export const STRUCTURAL_CHECKS = [
   {
     id: "copilot.hook.unknown-event",
     description: "Copilot CLI hook registered under an event name that is never dispatched",
-    severity: "error",
+    severity: ["error", "warning"],
     provenance: "spec-required",
     ...spec(SPEC_PAGES.copilotHooks, "copilot-hooks.md"),
   },

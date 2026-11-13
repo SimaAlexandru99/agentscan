@@ -45,20 +45,30 @@ export function checkHookEvents(facts: Facts): Finding[] {
       continue;
     }
     reported.add(key);
+    // Copilot CLI documents camelCase names; a PascalCase twin is a likely casing slip.
+    const recased = `${event.charAt(0).toLowerCase()}${event.slice(1)}`;
+    const casingSlip = profile === "copilot-cli" && recased !== event && known.has(recased);
+    const args: Pick<Finding, "message" | "reason" | "evidence" | "suggest"> = {
+      message: casingSlip
+        ? `"${event}" is not a documented Copilot CLI hook event; the documented name is "${recased}"`
+        : `"${event}" is not a hook event that gets dispatched`,
+      reason:
+        "Hook events are matched by exact name. An unrecognised name never matches, so everything registered under it silently never runs — a typo here looks identical to a working hook. Event sets are per schema profile; a VS Code name is not validated against Claude's list, and Copilot CLI camelCase names map onto VS Code events where the Copilot hooks reference documents that mapping.",
+      evidence: [
+        { kind: "hook", value: `${event} @ ${hook.path}` },
+        {
+          kind: "known",
+          value: [...known].join(", "),
+        },
+      ],
+      suggest: casingSlip
+        ? `Rename "${event}" to "${recased}" in ${hook.path}`
+        : `Fix the event name in ${hook.path} (or ignoreRules: ["${ruleId}"] if it is newly supported)`,
+    };
     out.push(
-      make(ruleId, `hook:${event}`, {
-        message: `"${event}" is not a hook event that gets dispatched`,
-        reason:
-          "Hook events are matched by exact name. An unrecognised name never matches, so everything registered under it silently never runs — a typo here looks identical to a working hook. Event sets are per schema profile; a VS Code name is not validated against Claude's list, and Copilot CLI camelCase names map onto VS Code events where the Copilot hooks reference documents that mapping.",
-        evidence: [
-          { kind: "hook", value: `${event} @ ${hook.path}` },
-          {
-            kind: "known",
-            value: [...known].join(", "),
-          },
-        ],
-        suggest: `Fix the event name in ${hook.path} (or ignoreRules: ["${ruleId}"] if it is newly supported)`,
-      }),
+      ruleId === "copilot.hook.unknown-event"
+        ? make(ruleId, `hook:${event}`, { ...args, severity: casingSlip ? "warning" : "error" })
+        : make(ruleId, `hook:${event}`, args),
     );
   }
   return out;

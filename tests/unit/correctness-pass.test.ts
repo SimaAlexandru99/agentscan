@@ -187,6 +187,20 @@ describe("VS Code native vs Copilot CLI hooks", () => {
     expect(ruleIds(root)).toContain("vscode.hook.unknown-event");
   });
 
+  test("a PascalCase twin of a documented Copilot event is a warning naming the documented event", () => {
+    const root = tmpProject("agentscan-copilot-case-");
+    write(
+      root,
+      ".github/hooks/case.json",
+      JSON.stringify({ version: 1, hooks: { Notification: [{ bash: "true" }], notARealEvent: [{ bash: "true" }] } }),
+    );
+    const findings = analyze({ dir: root }).findings.filter((f) => f.ruleId === "copilot.hook.unknown-event");
+    const slip = findings.find((f) => f.subject === "hook:Notification");
+    expect(slip?.severity).toBe("warning");
+    expect(slip?.suggest).toContain('"notification"');
+    expect(findings.find((f) => f.subject === "hook:notARealEvent")?.severity).toBe("error");
+  });
+
   test("unknown Copilot event, missing script, and handler defects fire", () => {
     const root = tmpProject("agentscan-copilot-neg-");
     write(
