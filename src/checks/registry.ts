@@ -19,7 +19,7 @@ export const STRUCTURAL_CHECKS = [
   {
     id: "config.unreadable",
     description: "Config file is not valid JSON or cannot be read",
-    severity: "error",
+    severity: ["error", "info"],
     provenance: "internal-consistency",
     lastVerified: "2026-09-02",
     source: { kind: "derived", detail: "parser result" },

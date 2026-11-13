@@ -51,6 +51,12 @@ function errorDetail(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** EACCES/EPERM: the scan lacks permission, the file is not broken. */
+function unreadableKind(err: unknown): "unreadable" | "permission-denied" {
+  const code = err instanceof Error ? (err as NodeJS.ErrnoException).code : undefined;
+  return code === "EACCES" || code === "EPERM" ? "permission-denied" : "unreadable";
+}
+
 function isEnoent(err: unknown): boolean {
   return err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT";
 }
@@ -74,7 +80,7 @@ export function listDir(dir: string, io: ScanIO, opts: DirReadOpts = {}): Dirent
     if (opts.optional === true && isEnoent(err)) {
       return undefined;
     }
-    io.errors.push({ path: dir, kind: "unreadable", detail: opts.detail ?? errorDetail(err) });
+    io.errors.push({ path: dir, kind: unreadableKind(err), detail: opts.detail ?? errorDetail(err) });
     return undefined;
   }
 }
@@ -102,7 +108,7 @@ export function readCapped(
     if (opts.optional === true && isEnoent(err)) {
       return undefined;
     }
-    io.errors.push({ path, kind: "unreadable", detail: errorDetail(err) });
+    io.errors.push({ path, kind: unreadableKind(err), detail: errorDetail(err) });
     return undefined;
   }
   const truncated = buf.length > cap;
@@ -196,7 +202,7 @@ function parseConfigFile(path: string, errors: ConfigErrorFact[]): unknown | und
   try {
     text = readFileSync(path, "utf8");
   } catch (err) {
-    errors.push({ path, kind: "unreadable", detail: errorDetail(err) });
+    errors.push({ path, kind: unreadableKind(err), detail: errorDetail(err) });
     return undefined;
   }
   const format = configFormat(path);

@@ -465,7 +465,7 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 <!-- rules:start -->
 | id | Severity | Provenance | Source | Catches |
 |----|----------|------------|--------|---------|
-| `config.unreadable` | error | internal-consistency | _parser result_ | Config file is not valid JSON or cannot be read |
+| `config.unreadable` | error/info | internal-consistency | _parser result_ | Config file is not valid JSON or cannot be read |
 | `scan.truncated` | info | internal-consistency | _scan cap_ | File is larger than the scan cap, so body checks read only a prefix of it |
 | `claude.hook.unknown-event` | error | spec-required | [code.claude.com/docs/en/hooks](https://code.claude.com/docs/en/hooks) | Hook registered under an event name that is never dispatched |
 | `claude.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Hook points at a script that does not exist, so it never runs |

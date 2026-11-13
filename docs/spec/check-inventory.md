@@ -104,7 +104,7 @@ the page re-read on 2026-09-02.
 
 | id | sev | provenance | source | verdict |
 |----|-----|------------|--------|---------|
-| `config.unreadable` | error | internal-consistency | n/a (parser result) | holds |
+| `config.unreadable` | error / info | internal-consistency | n/a (parser result) | holds; info for EACCES/EPERM (permission of the scan, not a file defect) |
 | `scan.truncated` | info | internal-consistency | n/a (scan cap) | holds |
 
 ### Claude Code hooks — [hook-events.md](hook-events.md), [hook-sources.md](hook-sources.md)

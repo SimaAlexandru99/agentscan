@@ -126,6 +126,25 @@ describe("never claim anything about a file that failed to open", () => {
       chmodSync(join(dir, ".agents/skills/locked"), 0o755);
     }
   });
+
+  test("permission denied is an info note, and podman storage is not walked", async () => {
+    const dir = project({
+      "package.json": '{"name":"x"}',
+      "private/notes.txt": "x",
+      ".local/share/containers/storage/volumes/v/_data/x": "x",
+    });
+    const locked = [join(dir, "private"), join(dir, ".local/share/containers/storage/volumes/v/_data")];
+    for (const path of locked) chmodSync(path, 0o000);
+    try {
+      const hits = (await report(dir)).findings.filter((f) => f.ruleId === "config.unreadable");
+      expect(hits).toHaveLength(1);
+      expect(hits[0]!.severity).toBe("info");
+      expect(hits[0]!.message).toContain("permission denied");
+      expect(hits[0]!.id).toContain("/private#");
+    } finally {
+      for (const path of locked) chmodSync(path, 0o755);
+    }
+  });
 });
 
 describe("directories that are not skills", () => {

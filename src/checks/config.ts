@@ -22,7 +22,15 @@ function safeDetail(detail: string): string {
   return position === undefined ? head : `${head} at ${position}`;
 }
 export function checkConfigErrors(facts: Facts): Finding[] {
-  return facts.configErrors.map((err) => {
+  // Every walker that meets a locked directory records it; one note per path is enough.
+  const denied = new Set<string>();
+  const errors = facts.configErrors.filter((err) => {
+    if (err.kind !== "permission-denied") return true;
+    if (denied.has(err.path)) return false;
+    denied.add(err.path);
+    return true;
+  });
+  return errors.map((err) => {
     // Truncation is a limit of this scan, not a defect in the scanned file:
     // the file is valid and the tools that read it see all of it. Reporting it
     // as `config.unreadable` at error said the opposite, and cost a real
@@ -38,6 +46,18 @@ export function checkConfigErrors(facts: Facts): Finding[] {
         ],
       });
     }
+    if (err.kind === "permission-denied") {
+      return make("config.unreadable", `config:${err.path}#${err.kind}`, {
+        severity: "info",
+        message: `${basename(err.path)} could not be read (permission denied) — skipped`,
+        reason:
+          "The scanning user lacks permission to read this path. That is a property of this scan, not a defect in the file, which is often not agent config at all.",
+        evidence: [
+          { kind: "config", value: err.path },
+          { kind: "detail", value: safeDetail(err.detail) },
+        ],
+      });
+    }
     const what =
       err.kind === "invalid-json"
         ? "is not valid JSON"
@@ -48,6 +68,7 @@ export function checkConfigErrors(facts: Facts): Finding[] {
     // fields gave three findings sharing one id, and `explain` reached only the
     // first. The kind and detail disambiguate without changing the common case.
     return make("config.unreadable", `config:${err.path}#${err.kind}:${safeDetail(err.detail)}`, {
+      severity: "error",
       message: `${basename(err.path)} ${what} — its contents are invisible to the scan`,
       reason:
         "An unparseable config is silently ignored by the tools that read it, so whatever it configured is simply not in effect.",

@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { toPosix } from "../facts/paths";
 import { listDir, type ScanIO } from "./fs";
 
 export const POLICY_CAP = 100_000;
@@ -21,6 +22,8 @@ export const NESTED_DISCOVERY_SKIP = new Set([
   "coverage",
   "vendor",
 ]);
+/** Directory paths (posix tails) never holding agent config; podman volumes there are often EACCES. */
+const NESTED_DISCOVERY_SKIP_PATHS = ["/.local/share/containers"];
 
 export function walkFiles(
   dir: string,
@@ -38,6 +41,9 @@ export function walkFiles(
     }
     const abs = join(dir, entry.name);
     if (entry.isDirectory()) {
+      if (NESTED_DISCOVERY_SKIP_PATHS.some((tail) => toPosix(abs).endsWith(tail))) {
+        continue;
+      }
       if (depth >= opts.maxDepth) {
         continue;
       }

@@ -218,9 +218,10 @@ export type ConfigErrorFact = {
   /**
    * `truncated` is not a defect in the file — it says agentscan read only a
    * bounded prefix of it, so body-reading checks may undercount. It reports at
-   * info through `scan.truncated`; the other three are `config.unreadable`.
+   * info through `scan.truncated`; the rest are `config.unreadable`, at info
+   * for `permission-denied` (EACCES/EPERM says nothing about the file itself).
    */
-  kind: "invalid-json" | "unreadable" | "unexpected-shape" | "truncated";
+  kind: "invalid-json" | "unreadable" | "permission-denied" | "unexpected-shape" | "truncated";
   detail: string;
 };
 
