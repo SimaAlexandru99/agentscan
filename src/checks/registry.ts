@@ -765,7 +765,7 @@ export const STRUCTURAL_CHECKS = [
   {
     id: "windsurf.rule.missing-trigger",
     description: "Windsurf workspace rule is missing frontmatter trigger",
-    severity: "warning",
+    severity: "info",
     provenance: "spec-required",
     ...spec(SPEC_PAGES.windsurfRules, "windsurf-rules.md"),
   },

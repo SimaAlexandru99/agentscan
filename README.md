@@ -568,7 +568,7 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `cursor.rule.too-large` | info | vendor-recommendation | [cursor.com/docs/rules](https://cursor.com/docs/rules) | Cursor project rule exceeds the 500-line recommendation |
 | `windsurf.rule.too-large` | info | vendor-recommendation | [docs.windsurf.com/windsurf/cascade/memories](https://docs.windsurf.com/windsurf/cascade/memories) | Windsurf workspace rule exceeds the 12,000-character limit |
 | `windsurf.rule.global-too-large` | info | vendor-recommendation | [docs.windsurf.com/windsurf/cascade/memories](https://docs.windsurf.com/windsurf/cascade/memories) | Windsurf global_rules.md exceeds the 6,000-character limit |
-| `windsurf.rule.missing-trigger` | warning | spec-required | [docs.windsurf.com/windsurf/cascade/memories](https://docs.windsurf.com/windsurf/cascade/memories) | Windsurf workspace rule is missing frontmatter trigger |
+| `windsurf.rule.missing-trigger` | info | spec-required | [docs.windsurf.com/windsurf/cascade/memories](https://docs.windsurf.com/windsurf/cascade/memories) | Windsurf workspace rule is missing frontmatter trigger |
 | `antigravity.rule.missing-trigger` | warning | spec-required | [antigravity.google/docs/rules](https://antigravity.google/docs/rules) | Antigravity modular rule is missing a frontmatter trigger |
 | `antigravity.rule.invalid-trigger` | warning | spec-required | [antigravity.google/docs/rules](https://antigravity.google/docs/rules) | Antigravity modular rule trigger is not always_on, model_decision, glob, or manual |
 | `antigravity.rule.missing-description` | warning | spec-required | [antigravity.google/docs/rules](https://antigravity.google/docs/rules) | Antigravity model_decision rule is missing a description |

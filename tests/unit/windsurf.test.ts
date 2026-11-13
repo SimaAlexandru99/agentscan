@@ -61,6 +61,17 @@ describe("Windsurf workspace rules", () => {
     expect(findings.map((f) => f.ruleId)).not.toContain("windsurf.rule.too-large");
   });
 
+  test("--global: missing-trigger is info and skips installed plugin copies", () => {
+    const root = tmpProject("agentscan-windsurf-global-copies-");
+    write(root, ".devin/rules/plain.md", "no frontmatter\n");
+    write(root, ".claude/plugins/cache/vendor/p/1.0.0/.windsurf/rules/vendor.md", "no frontmatter\n");
+    write(root, ".claude-backups/old/.windsurf/rules/vendor.md", "no frontmatter\n");
+    const { findings } = withHome(root, () => findingsFor(root, true));
+    const hits = findings.filter((f) => f.ruleId === "windsurf.rule.missing-trigger");
+    expect(hits.map((f) => f.subject)).toEqual([`rule:${join(root, ".devin/rules/plain.md")}`]);
+    expect(hits[0]!.severity).toBe("info");
+  });
+
   test("workspace rule without trigger is windsurf.rule.missing-trigger", () => {
     const root = tmpProject("agentscan-windsurf-trigger-");
     write(root, ".devin/rules/plain.md", "no frontmatter\n");
