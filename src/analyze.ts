@@ -38,7 +38,7 @@ export type Project = {
  */
 export function loadProject(options: AnalyzeOptions = {}): Project {
   const requested = resolve(options.dir ?? process.cwd());
-  const location = resolveScanContext(requested);
+  const location = resolveScanContext(requested, { allowNoProject: options.global === true });
   const root = location.root;
   const loaded = loadConfig(root, options.configPath);
   const config: AgentscanConfig = {

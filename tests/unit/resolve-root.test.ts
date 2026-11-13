@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { resolveCommandcodeProjectRoot } from "../../src/discover/commandcode";
 import { hasAgentConfigSignal, resolveRoot, resolveScanContext } from "../../src/discover/scan-context";
 import { mkPinnedRoot } from "../helpers/tmp";
+import { withHome } from "../helpers/env";
+import { analyze } from "../../src/analyze";
 
 describe("resolveRoot", () => {
 
@@ -93,5 +95,21 @@ describe("resolveRoot", () => {
     mkdirSync(child, { recursive: true });
     writeFileSync(join(child, "package.json"), '{"name":"pkg"}', "utf8");
     expect(resolveRoot(child)).toBe(child);
+  });
+});
+
+describe("--global without a project", () => {
+  test("scans global locations instead of failing", () => {
+    const empty = mkPinnedRoot("agentscan-global-empty-");
+    const home = mkPinnedRoot("agentscan-global-home-");
+    mkdirSync(join(home, ".claude", "agents"), { recursive: true });
+    writeFileSync(
+      join(home, ".claude", "agents", "x.md"),
+      "---\nname: plug:x\ndescription: d\n---\n",
+      "utf8",
+    );
+    expect(() => analyze({ dir: empty })).toThrow(/No package\.json or agent configuration found/);
+    const ids = withHome(home, () => analyze({ dir: empty, global: true })).findings.map((f) => f.ruleId);
+    expect(ids).toContain("claude.agent.invalid-name");
   });
 });

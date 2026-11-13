@@ -63,7 +63,10 @@ export type ScanContext = Pick<ScanLocation, "root" | "startDir" | "scanBoundary
  * `package.json`, but `scanBoundary` stays at Git/workspace so parent Claude
  * or Codex files remain visible.
  */
-export function resolveScanContext(startDir: string): ScanLocation {
+export function resolveScanContext(
+  startDir: string,
+  opts: { allowNoProject?: boolean } = {},
+): ScanLocation {
   const requestedDir = resolve(startDir);
   let dir = requestedDir;
   let nearestSignal: string | undefined;
@@ -95,6 +98,18 @@ export function resolveScanContext(startDir: string): ScanLocation {
   // Prefer whichever of signal/workspace is closer to startDir. A fixture
   // with only package.json must not jump to a parent repo's `.claude`.
   const projectRoot = nearer(requestedDir, nearestSignal, nearestWorkspace) ?? nearestGit;
+  if (projectRoot === undefined && opts.allowNoProject === true) {
+    // `--global` with no project: scan the global locations from here.
+    // shortcut: nested discovery still walks this dir's subtree (depth-capped);
+    // thread a global-only flag through discovery if that ever costs too much.
+    return {
+      startDir: requestedDir,
+      workspaceBoundary: undefined,
+      repositoryBoundary: undefined,
+      scanBoundary: requestedDir,
+      root: requestedDir,
+    };
+  }
   if (projectRoot === undefined) {
     throw new Error(
       `No package.json or agent configuration found walking up from ${requestedDir}`,
