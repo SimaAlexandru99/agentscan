@@ -512,7 +512,7 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `claude.agent.missing-description` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Agent frontmatter has no description |
 | `claude.agent.missing-name` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Agent frontmatter has no name |
 | `claude.agent.duplicate-name` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Agent names are duplicated |
-| `claude.agent.invalid-name` | warning/error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Agent frontmatter name is not a valid identifier |
+| `claude.agent.invalid-name` | error | spec-required | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) | Agent frontmatter name is one Claude Code skips |
 | `claude.mcp.no-launch` | error | spec-required | [code.claude.com/docs/en/mcp](https://code.claude.com/docs/en/mcp) | MCP server declares neither command nor url |
 | `vscode.mcp.no-launch` | error | spec-required | [code.visualstudio.com/docs/agents/reference/mcp-configuration](https://code.visualstudio.com/docs/agents/reference/mcp-configuration) | VS Code MCP server declares neither command nor url |
 | `cursor.mcp.no-launch` | error | spec-required | [cursor.com/docs/context/mcp](https://cursor.com/docs/context/mcp) | Cursor MCP server declares neither command nor url |
