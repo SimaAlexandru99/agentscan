@@ -41,3 +41,25 @@ describe("skills-lock ownership in a monorepo", () => {
     ]);
   });
 });
+
+describe("skills-lock inside a dot-dir worktree", () => {
+  test("entries installed beside the lock are not reported as missing", () => {
+    const root = tmpProject("agentscan-lock-worktree-");
+    write(
+      root,
+      ".worktrees/x/skills-lock.json",
+      JSON.stringify({ skills: { present: {}, absent: {} } }),
+    );
+    write(
+      root,
+      ".worktrees/x/.claude/skills/present/SKILL.md",
+      "---\nname: present\ndescription: Present skill.\n---\n",
+    );
+
+    const missing = analyze({ dir: root })
+      .findings.filter((finding) => finding.ruleId === "skill.locked-not-installed")
+      .map((finding) => finding.subject);
+    expect(missing.some((subject) => subject.includes("present"))).toBe(false);
+    expect(missing.some((subject) => subject.includes("absent"))).toBe(true);
+  });
+});

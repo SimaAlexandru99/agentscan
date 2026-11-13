@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { providerHome } from "../facts/providers";
+import { PROJECT_SKILL_DIRS, providerHome } from "../facts/providers";
 import type { Provider } from "../facts/provider";
 import type { LockedSkillFact, PolicyFileFact } from "../facts/types";
 import { NESTED_DISCOVERY_MAX_DEPTH, POLICY_CAP, walkFiles } from "./shared";
 import { ancestorDirsInclusive, hops } from "./scan-context";
-import { isRecord, readCapped, readConfigFile, type ScanIO } from "./fs";
+import { isFile, isRecord, readCapped, readConfigFile, type ScanIO } from "./fs";
 
 function readPolicyFile(
   filePath: string,
@@ -456,6 +456,11 @@ function parseSkillsLockFile(
   const locked: LockedSkillFact[] = [];
   for (const [id, value] of Object.entries(skills as Record<string, unknown>)) {
     const entry: LockedSkillFact = { id, lockRoot, lockPath: filePath };
+    // A lock in a dot-dir worktree (`.worktrees/x/`) sits where the skill walk
+    // does not go; its own directory is the only base that names its installs.
+    if (PROJECT_SKILL_DIRS.some((dir) => isFile(join(lockRoot, dir, id, "SKILL.md")))) {
+      entry.installedBesideLock = true;
+    }
     if (isRecord(value)) {
       const v = value as Record<string, unknown>;
       if (typeof v.source === "string") {

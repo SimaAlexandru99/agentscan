@@ -233,6 +233,8 @@ export type LockedSkillFact = {
   computedHash?: string;
   lockRoot?: string;
   lockPath?: string;
+  /** A project skill dir beside the lockfile holds `<id>/SKILL.md`, even where the skill walk does not reach. */
+  installedBesideLock?: boolean;
 };
 
 export type PolicyFileFact = {

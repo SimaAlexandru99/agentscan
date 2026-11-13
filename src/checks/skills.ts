@@ -382,7 +382,7 @@ export function checkLockIntegrity(facts: Facts, requireLock: boolean): Finding[
     );
     const onDisk = new Set(inScope.map((skill) => skill.id));
     for (const entry of entries) {
-      if (onDisk.has(entry.id)) {
+      if (onDisk.has(entry.id) || entry.installedBesideLock === true) {
         continue;
       }
       const from = entry.source === undefined ? "" : ` (from ${entry.source})`;
