@@ -137,22 +137,16 @@ export function checkAgents(facts: Facts): Finding[] {
       );
     } else {
       const name = agent.frontmatterName;
-      const skipped = name.startsWith("-") || name.includes(":");
-      const formatOk = /^[a-z]+(?:-[a-z]+)*$/.test(name);
-      if (!formatOk) {
+      // Only the documented skip conditions fire; `reviewer-v2` and other
+      // off-format names load fine. See docs/spec/agents.md.
+      if (name.trim() === "" || name.startsWith("-") || name.includes(":") || name.length > 256) {
         out.push(
           make("claude.agent.invalid-name", `agent:${agent.name}`, {
-            // Error only for the documented load failures (`:` or a leading `-`).
-            // Other off-format names stay warning. Filename is not compared to
-            // name. See docs/spec/agents.md.
-            severity: skipped ? "error" : "warning",
-            message: skipped
-              ? `Agent name "${name}" is skipped (starts with "-" or contains ":")`
-              : `Agent name "${name}" is not a valid identifier`,
+            message: `Agent name "${name.slice(0, 80)}" is skipped (empty, starts with "-", contains ":", or longer than 256 characters)`,
             reason:
-              "The subagent reference specifies a unique identifier in lowercase letters and hyphens. The filename does not have to match. A name that starts with `-` or contains `:` is skipped. See docs/spec/agents.md.",
+              "Claude Code skips a subagent whose name is empty, starts with `-`, contains `:`, or is longer than 256 characters, and writes an error to the debug log. See docs/spec/agents.md.",
             evidence: [{ kind: "agent", value: agent.path }],
-            suggest: "Use lowercase letters and hyphens in the `name` field; do not start with `-` or include `:`",
+            suggest: "Use a non-empty name of at most 256 characters that does not start with `-` or contain `:`",
           }),
         );
       }

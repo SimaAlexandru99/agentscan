@@ -121,6 +121,6 @@ describe("runRulesCommand", () => {
       new RegExp(`cursor\\.hook\\.unknown-event\\s+${check.severity}\\s+${check.provenance}\\s+${esc(page)}`),
     );
     expect(result.stdout).toMatch(/mcp\.command-missing\s+error\s+internal-consistency\s+\(cross-provider/);
-    expect(result.stdout).toMatch(/claude\.agent\.invalid-name\s+warning\/error\s+spec-required/);
+    expect(result.stdout).toMatch(/claude\.agent\.invalid-name\s+error\s+spec-required/);
   });
 });

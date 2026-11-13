@@ -276,7 +276,7 @@ describe("Claude skills description fallback and listing budget", () => {
 });
 
 describe("Claude agent names", () => {
-  test("numbers are off-format warnings; colon is a skipped error", () => {
+  test("digits load fine; colon and >256 chars are skipped errors", () => {
     const root = tmpProject("agentscan-agent-name-");
     write(
       root,
@@ -288,12 +288,18 @@ describe("Claude agent names", () => {
       ".claude/agents/plug.md",
       "---\nname: plug:reviewer\ndescription: Plugin scoped.\n---\n",
     );
+    write(
+      root,
+      ".claude/agents/long.md",
+      `---\nname: ${"a".repeat(257)}\ndescription: Too long.\n---\n`,
+    );
     const findings = analyze({ dir: root }).findings.filter(
       (f) => f.ruleId === "claude.agent.invalid-name",
     );
     const byName = Object.fromEntries(findings.map((f) => [f.subject, f.severity]));
-    expect(byName["agent:reviewer2"]).toBe("warning");
+    expect(byName["agent:reviewer2"]).toBeUndefined();
     expect(byName["agent:plug"]).toBe("error");
+    expect(byName["agent:long"]).toBe("error");
   });
 
   test("filename is not compared to name", () => {

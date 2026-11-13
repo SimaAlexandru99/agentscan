@@ -11,7 +11,7 @@ export type SpecPage = { url: string; lastVerified: string };
 export const SPEC_PAGES = {
   agentSkills: { url: "https://agentskills.io/specification", lastVerified: "2026-09-03" },
   claudeHooks: { url: "https://code.claude.com/docs/en/hooks", lastVerified: "2026-09-03" },
-  claudeSubagents: { url: "https://code.claude.com/docs/en/sub-agents", lastVerified: "2026-09-02" },
+  claudeSubagents: { url: "https://code.claude.com/docs/en/sub-agents", lastVerified: "2026-11-13" },
   claudeSkills: { url: "https://code.claude.com/docs/en/skills", lastVerified: "2026-09-03" },
   claudeMcp: { url: "https://code.claude.com/docs/en/mcp", lastVerified: "2026-09-03" },
   claudeMemory: { url: "https://code.claude.com/docs/en/memory", lastVerified: "2026-09-03" },

@@ -377,11 +377,9 @@ describe("agent definitions", () => {
     expect(findings[0]!.severity).toBe("error");
   });
 
-  test("an off-format name is a warning, not an error", () => {
-    // The reference specifies "lowercase letters and hyphens" but documents a
-    // load failure only for `:`. `error` here would claim more than the docs
-    // do about `name: SEO Specialist`, which 16 of 34 real files look like.
-    // See docs/spec/agents.md.
+  test("an off-format name that Claude Code loads is not flagged", () => {
+    // The reference names `reviewer-v2` as valid and skips only empty, `-`-led,
+    // `:`-bearing or >256-char names. See docs/spec/agents.md.
     const findings = runChecks(
       baseFacts({
         agents: [
@@ -395,8 +393,7 @@ describe("agent definitions", () => {
         ],
       }), limits(),
     );
-    expect(findings.map((f) => f.ruleId)).toEqual(["claude.agent.invalid-name"]);
-    expect(findings[0]!.severity).toBe("warning");
+    expect(findings.map((f) => f.ruleId)).toEqual([]);
   });
 
   test("a complete agent produces nothing", () => {
@@ -979,7 +976,7 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
         agentFact({ name: "nodesc", path: ".claude/agents/nodesc.md", hasFrontmatter: true }),
         agentFact({ name: "dup-a", path: ".claude/agents/dup-a.md", hasFrontmatter: true, frontmatterName: "duplicate", description: "d" }),
         agentFact({ name: "dup-b", path: ".claude/agents/dup-b.md", hasFrontmatter: true, frontmatterName: "duplicate", description: "d" }),
-        agentFact({ name: "bad", path: ".claude/agents/bad.md", hasFrontmatter: true, frontmatterName: "Bad Name", description: "d" }),
+        agentFact({ name: "bad", path: ".claude/agents/bad.md", hasFrontmatter: true, frontmatterName: "plug:bad", description: "d" }),
         {
           name: "explore",
           path: ".commandcode/agents/explore.md",

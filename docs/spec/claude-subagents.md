@@ -1,7 +1,7 @@
 # Claude Code subagent discovery
 
 **Source:** https://code.claude.com/docs/en/sub-agents
-**Read:** 2026-09-03
+**Read:** 2026-11-13
 **Depends on it:** walk-up `.claude/agents` discovery, `--global` `~/.claude/agents`, `claude.agent.duplicate-name` scope
 
 Quoted (read 2026-08-30):
@@ -20,6 +20,21 @@ Duplicate-name errors are therefore scoped to one `.claude/agents` directory
 (including its subfolders), not across walk-up layers.
 
 Frontmatter `name` is still not compared to the filename (plan 003).
+
+## Name rules
+
+Quoted (read 2026-11-13):
+
+> `name` | Yes | Unique identifier of at most 256 characters, such as
+> `code-reviewer` or `reviewer-v2`. [...] The filename doesn't have to match.
+> Names can't contain `:`, which is reserved for plugin-scoped identifiers
+> such as `my-plugin:reviewer`
+
+> A `name` that starts with `-`, contains `:`, or is longer than 256
+> characters: Claude Code skips the file and writes an error to the debug log.
+
+`claude.agent.invalid-name` is an error for exactly those cases plus an empty
+name, and silent otherwise. Details in [agents.md](agents.md).
 
 ## User subagents (`--global`)
 

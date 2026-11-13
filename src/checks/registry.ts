@@ -357,8 +357,8 @@ export const STRUCTURAL_CHECKS = [
   },
   {
     id: "claude.agent.invalid-name",
-    description: "Agent frontmatter name is not a valid identifier",
-    severity: ["warning", "error"],
+    description: "Agent frontmatter name is one Claude Code skips",
+    severity: "error",
     provenance: "spec-required",
     ...spec(SPEC_PAGES.claudeSubagents, "agents.md"),
   },
