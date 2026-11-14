@@ -4,7 +4,7 @@
   "description": "Offline linter for Claude Code, Command Code, Grok Build, Windsurf, portable Agent Skills, AGENTS.md, and MCP/hooks/rules for VS Code, Cursor, Codex, Gemini, OpenCode, and Continue",
   "type": "module",
   "bin": {
-    "agentscan": "./dist/cli.js"
+    "agentscan": "dist/cli.js"
   },
   "publishConfig": {
     "access": "public"
