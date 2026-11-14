@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
-import { GITHUB_REPO } from "@/lib/site";
+import { GITHUB_REPO } from "@/lib/links";
 import { cn } from "@/lib/utils";
 
 const links = [

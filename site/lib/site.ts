@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import checks from "@/data/checks.json";
 import product from "@/data/product.json";
+import { GITHUB_REPO } from "@/lib/links";
 
 export const SITE_ORIGIN = "https://agentscan.space";
 export const SITE_LASTMOD = "2026-11-14";
@@ -41,7 +42,8 @@ export const BREAKING_NOTE =
 export const STILL_UNREAD =
   "Still unread: Cline hooks and agents, ~/.cursor/skills/, OpenCode's global config, ~/.continue/config.yaml, Windsurf auto-generated memories, Copilot policy hooks, and plugin hooks.json. .claude/settings.json stays Claude. Antigravity httpUrl does not launch a server. Kiro agents are inventory only and add no rule id.";
 export const NPM_PACKAGE = "@chimix/agentscan";
-export const GITHUB_REPO = "https://github.com/SimaAlexandru99/agentscan";
+// In its own module so client components do not pull checks.json into the bundle.
+export { GITHUB_REPO };
 export const GITHUB_ISSUES = `${GITHUB_REPO}/issues`;
 export const NPM_URL = "https://www.npmjs.com/package/@chimix/agentscan";
 export const RUN_COMMAND = "npx @chimix/agentscan@latest";
