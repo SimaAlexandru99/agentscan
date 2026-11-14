@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { join } from "node:path";
 import { mkPinnedProject, mkPinnedRoot, write } from "../helpers/tmp";
 import { findingsFor, ruleIds } from "../helpers/scan";
 import { withEnv, withHome } from "../helpers/env";
@@ -194,5 +195,16 @@ describe("Copilot portable MCP and Local hook classification", () => {
         expect(on.findings.map((finding) => finding.ruleId)).not.toContain("vscode.mcp.no-launch");
       });
     });
+  });
+});
+
+describe("Copilot project MCP", () => {
+  test(".github/mcp.json is read as copilot-json without --global", () => {
+    const root = mkPinnedProject("agentscan-copilot-project-mcp-");
+    write(root, ".github/mcp.json", JSON.stringify({ mcpServers: { empty: {} } }));
+    const result = findingsFor(root, false);
+    const servers = result.facts.mcp.filter((server) => server.path === join(root, ".github", "mcp.json"));
+    expect(servers.map((server) => server.schemaProfile)).toEqual(["copilot-json"]);
+    expect(result.findings.map((finding) => finding.ruleId)).toContain("vscode.mcp.no-launch");
   });
 });

@@ -55,6 +55,7 @@ import {
   addUniqueMcp,
   discoverClaudeUserMcp,
   discoverCopilotUserMcp,
+  parseProfiledMcpFile,
   discoverGeminiUserMcp,
   discoverMcpSurface,
   discoverNestedContinueMcp,
@@ -164,7 +165,11 @@ const SOURCES: Source[] = [
   },
   {
     id: "copilot",
-    project: (dir, { io }) => ({ hooks: discoverCopilotSettingsHooks(dir, io) }),
+    project: (dir, { io }) => ({
+      hooks: discoverCopilotSettingsHooks(dir, io),
+      // Copilot CLI project MCP; same schema as the user mcp-config.json.
+      mcp: parseProfiledMcpFile(join(dir, ".github", "mcp.json"), dir, io, "copilot-json", { optional: true }),
+    }),
     user: ({ root, io }) => ({
       hooks: [...discoverCopilotUserHooks(io), ...discoverCopilotUserSettingsHooks(io)],
       mcp: discoverCopilotUserMcp(root, io),
