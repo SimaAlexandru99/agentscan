@@ -63,9 +63,9 @@ describe("1.0 public copy", () => {
     expect(docs).toContain("GLOBAL_FLAG_MEANING");
   });
 
-  test("markdown names the 2.3.1 surfaces and the breaking ids", () => {
+  test("markdown names the current surfaces and the breaking ids", () => {
     for (const body of [ABOUT_MARKDOWN, LLMS_TXT]) {
-      expect(body).toContain("What 2.3.1 reads");
+      expect(body).toContain(`What ${PRODUCT_VERSION} reads`);
     }
     // The home markdown mirrors the new home: one "Agents it reads" section names every agent.
     expect(HOME_MARKDOWN).toContain("## Agents it reads");
@@ -238,5 +238,12 @@ describe("home and results pages", () => {
     expect(HOME_METRICS[2].value).toBe(
       `${checksData.filter((check) => check.sourceUrl !== null).length} / ${checksData.length}`,
     );
+  });
+});
+
+describe("version and count come from the generated data", () => {
+  test("PRODUCT_CHECKS is checks.json length; the newest release is PRODUCT_VERSION", () => {
+    expect(PRODUCT_CHECKS).toBe(checksData.length);
+    expect(releasesData[0]?.version).toBe(PRODUCT_VERSION);
   });
 });

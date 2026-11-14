@@ -1,10 +1,12 @@
+import checks from "@/data/checks.json";
+import product from "@/data/product.json";
+
 export const SITE_ORIGIN = "https://agentscan.space";
 export const SITE_LASTMOD = "2026-11-14";
 export const PRODUCT_NAME = "agentscan";
-export const PRODUCT_VERSION = "2.3.1";
-// The published release, not the repo. The site advertises the package a
-// visitor can install.
-export const PRODUCT_CHECKS = 163;
+// Root package.json version and registry size, via `bun run site:data`.
+export const PRODUCT_VERSION = product.version;
+export const PRODUCT_CHECKS = checks.length;
 
 export const HOME_TITLE = "agentscan: lint Claude Code hooks, MCP configs and skills";
 export const HOME_DESCRIPTION =

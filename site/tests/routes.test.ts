@@ -143,7 +143,7 @@ describe("public routes", () => {
     expect(res.body).toContain('og:title" content="agentscan: lint Claude Code hooks');
     expect(res.body).toContain("claude.hook.missing-script");
     expect(res.body).toContain('href="/results"');
-    expect(res.body).toContain('href="/changelog#v2.3.1"');
+    expect(res.body).toContain(`href="/changelog#v${PRODUCT_VERSION}"`);
     expect(res.body).toContain('"price":"0"');
     expect(res.body).toContain("skillListingChars");
     expect(res.body).not.toContain("Alpha");
@@ -227,7 +227,7 @@ describe("public routes", () => {
       expect(res.body.length).toBeGreaterThan(500);
       expect(res.body).toContain("agentscan");
       if (path === "/about") {
-        expect(res.body).toContain("What 2.3.1 reads");
+        expect(res.body).toContain(`What ${PRODUCT_VERSION} reads`);
         expect(res.body).toContain("Kiro agents are inventory only");
       }
     }
@@ -254,7 +254,7 @@ describe("public routes", () => {
     expect(checks.body).toContain('id="claude.hook.missing-script"');
     expect(checks.body).toContain("agentscan inference");
     const changelog = await probe("/changelog", { headers: { Accept: "text/html" } });
-    expect(changelog.body).toContain('id="v2.3.1"');
+    expect(changelog.body).toContain(`id="v${PRODUCT_VERSION}"`);
     expect(changelog.body).toContain('id="v2.0.0"');
   });
 

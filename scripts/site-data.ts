@@ -2,7 +2,7 @@
 /**
  * Generate the site's data from the repo, so no count or release is hand-copied.
  *
- *   bun run site:data   # writes site/data/checks.json and site/data/releases.json
+ *   bun run site:data   # writes site/data/checks.json, releases.json and product.json
  *
  * `tests/unit/site-data.test.ts` regenerates both in memory and fails when the
  * committed JSON is stale.
@@ -16,6 +16,8 @@ const ROOT = join(import.meta.dir, "..");
 export const CHECKS_PATH = join(ROOT, "site/data/checks.json");
 export const RELEASES_PATH = join(ROOT, "site/data/releases.json");
 export const CHANGELOG_PATH = join(ROOT, "CHANGELOG.md");
+export const PRODUCT_PATH = join(ROOT, "site/data/product.json");
+export const PACKAGE_PATH = join(ROOT, "package.json");
 
 export type SiteCheck = {
   id: string;
@@ -34,6 +36,11 @@ export type SiteRelease = {
   items: string[];
   breaking: boolean;
 };
+
+/** The site cannot import ../package.json (turbopack root is site/), so the version is copied here. */
+export function buildProduct(packageJson: string): { version: string } {
+  return { version: (JSON.parse(packageJson) as { version: string }).version };
+}
 
 export function buildChecks(): SiteCheck[] {
   return STRUCTURAL_CHECKS.map((check) => ({
@@ -142,6 +149,7 @@ if (import.meta.main) {
   const releases = buildReleases(readFileSync(CHANGELOG_PATH, "utf8"));
   writeFileSync(CHECKS_PATH, serialize(checks), "utf8");
   writeFileSync(RELEASES_PATH, serialize(releases), "utf8");
+  writeFileSync(PRODUCT_PATH, serialize(buildProduct(readFileSync(PACKAGE_PATH, "utf8"))), "utf8");
   process.stdout.write(
     `wrote ${checks.length} checks and ${releases.length} releases (${releases.map((r) => r.version).join(", ")})\n`,
   );

@@ -2,9 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import {
   buildChecks,
+  buildProduct,
   buildReleases,
   CHANGELOG_PATH,
   CHECKS_PATH,
+  PACKAGE_PATH,
+  PRODUCT_PATH,
   RELEASES_PATH,
   serialize,
 } from "../../scripts/site-data";
@@ -18,6 +21,10 @@ describe("site data matches the registry and CHANGELOG — run `bun run site:dat
     expect(readFileSync(RELEASES_PATH, "utf8")).toBe(
       serialize(buildReleases(readFileSync(CHANGELOG_PATH, "utf8"))),
     );
+  });
+
+  test("site/data/product.json", () => {
+    expect(readFileSync(PRODUCT_PATH, "utf8")).toBe(serialize(buildProduct(readFileSync(PACKAGE_PATH, "utf8"))));
   });
 
   test("releases parse summary (first bullet when no paragraph), top-level bullets, and the breaking flag", () => {
