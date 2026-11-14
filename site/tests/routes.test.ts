@@ -99,6 +99,7 @@ describe("public routes", () => {
       "/",
       "/docs",
       "/checks",
+      "/results",
       "/changelog",
       "/about",
       "/contact",
@@ -230,13 +231,14 @@ describe("public routes", () => {
     for (const [path, h1] of [
       ["/checks", `All ${PRODUCT_CHECKS} agentscan checks`],
       ["/changelog", "agentscan changelog"],
+      ["/results", "What one run found on a real setup"],
     ] as const) {
       const res = await probe(path, { headers: { Accept: "text/html" } });
       expect(res.status).toBe(200);
       expect(res.body.match(/<h1[\s>]/g)?.length).toBe(1);
       expect(res.body).toContain(h1);
       expect(res.body).toContain(`<link rel="canonical" href="https://agentscan.space${path}"`);
-      expect(res.body).toContain('"@type":"ItemList"');
+      if (path !== "/results") expect(res.body).toContain('"@type":"ItemList"');
       expect(res.body).toContain('"@type":"BreadcrumbList"');
       const md = await probe(`${path}.md`);
       expect(md.status).toBe(200);

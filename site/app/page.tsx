@@ -133,8 +133,8 @@ export default function HomePage() {
             which <span className="text-foreground">25 were false</span> — two
             checks had been written from what real projects looked like instead
             of from the spec. Both were deleted. Spec-required checks cite a
-            published line in docs/spec/. Heuristics stay at info and are
-            labeled. 1.0.0 was the first stable release. {PRODUCT_VERSION} ships{" "}
+            published line in docs/spec/.
+            Heuristics stay at info and are labeled. 1.0.0 was the first stable release. {PRODUCT_VERSION} ships{" "}
             {PRODUCT_CHECKS} checks, still offline on check. {BREAKING_NOTE}
           </p>
         </div>

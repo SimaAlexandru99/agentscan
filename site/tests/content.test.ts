@@ -2,14 +2,19 @@ import { describe, expect, test } from "bun:test";
 
 import { metadata as changelogMetadata } from "../app/changelog/page";
 import { metadata as checksMetadata } from "../app/checks/page";
+import { metadata as homeMetadata } from "../app/page";
+import { metadata as resultsMetadata } from "../app/results/page";
 import checksData from "../data/checks.json";
 import releasesData from "../data/releases.json";
+import { AGENT_EXAMPLES, HOME_METRICS } from "../lib/home";
 import { jsonLdScript, softwareApplicationJsonLd } from "../lib/json-ld";
+import { RESULT_CASES } from "../lib/results";
 import {
   ABOUT_MARKDOWN,
   CHANGELOG_MARKDOWN,
   CHECKS_MARKDOWN,
   CONTACT_MARKDOWN,
+  RESULTS_MARKDOWN,
   DOCS_MARKDOWN,
   HOME_MARKDOWN,
   LLMS_TXT,
@@ -187,5 +192,47 @@ describe("checks and changelog pages", () => {
 
   test("JSON-LD script text cannot close its tag", () => {
     expect(jsonLdScript({ text: "</script><x>" })).not.toContain("<");
+  });
+});
+
+describe("home and results pages", () => {
+  test("home title and description fit, JSON-LD offers price 0 and the current version", () => {
+    const title = (homeMetadata.title as { absolute: string }).absolute;
+    expect(title.length).toBeLessThanOrEqual(60);
+    const description = homeMetadata.description ?? "";
+    expect(description.length).toBeGreaterThanOrEqual(120);
+    expect(description.length).toBeLessThanOrEqual(160);
+    for (const phrase of ["hooks that no longer run", "MCP servers that cannot start", "Offline"]) {
+      expect(description).toContain(phrase);
+    }
+    expect(softwareApplicationJsonLd.softwareVersion).toBe(PRODUCT_VERSION);
+    expect(softwareApplicationJsonLd.offers.price).toBe("0");
+    expect(JSON.stringify(softwareApplicationJsonLd)).not.toContain("aggregateRating");
+  });
+
+  test("results metadata fits and the page is indexable with a markdown variant", () => {
+    expect(`${String(resultsMetadata.title)} · agentscan`.length).toBeLessThanOrEqual(60);
+    const description = resultsMetadata.description ?? "";
+    expect(description.length).toBeGreaterThanOrEqual(120);
+    expect(description.length).toBeLessThanOrEqual(160);
+    expect(INDEXABLE_PATHS).toContain("/results");
+    expect(markdownForPath("/results.md").body).toBe(RESULTS_MARKDOWN);
+    expect(RESULTS_MARKDOWN).toContain("692 → 251");
+    expect(LLMS_TXT).toContain("https://agentscan.space/results.md");
+  });
+
+  test("every rule id the home and results pages name exists with a matching severity", () => {
+    const severity = new Map(checksData.map((check) => [check.id, check.severity]));
+    for (const agent of AGENT_EXAMPLES) {
+      const actual = severity.get(agent.rule);
+      expect(actual).toBeDefined();
+      expect(actual).toContain(agent.sev === "WARN" ? "warning" : "error");
+    }
+    for (const item of RESULT_CASES) {
+      expect(severity.has(item.rule)).toBe(true);
+    }
+    expect(HOME_METRICS[2].value).toBe(
+      `${checksData.filter((check) => check.sourceUrl !== null).length} / ${checksData.length}`,
+    );
   });
 });

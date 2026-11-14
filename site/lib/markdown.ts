@@ -1,5 +1,20 @@
 import { checks, CITED_CHECKS } from "@/lib/checks";
 import { NPM_NOTE, releases } from "@/lib/releases";
+import {
+  ERRORS_LINE,
+  FINDINGS_AFTER,
+  FINDINGS_BEFORE,
+  RESULT_CASES,
+  RESULT_LESSONS,
+  RESULTS_CTA,
+  RESULTS_CTA_COMMAND,
+  RESULTS_FOOTNOTE,
+  RESULTS_H1,
+  RESULTS_INTRO,
+  RESULTS_LEFT_ALONE,
+  RESULTS_LESSONS_INTRO,
+  RESULTS_SUMMARY,
+} from "@/lib/results";
 import { AGENTSCAN_SKILL_MD } from "@/lib/skill";
 import {
   absoluteUrl,
@@ -287,6 +302,35 @@ ${releases
 Older releases: [CHANGELOG.md](${GITHUB_REPO}/blob/master/CHANGELOG.md).
 `;
 
+export const RESULTS_MARKDOWN = `# ${RESULTS_H1}
+
+${RESULTS_INTRO}
+
+${RESULTS_SUMMARY.map((item) => `- **${item.value}** ${item.label}`).join("\n")}
+
+## The problems, one by one
+
+${RESULT_CASES.map((item) => `- **${item.count}× ${item.title}** (\`${item.rule}\`, ${item.state}). ${item.why} ${item.action}`).join("\n")}
+
+${RESULTS_LEFT_ALONE}
+
+## What the run taught us about ${PRODUCT_NAME}
+
+${RESULTS_LESSONS_INTRO}
+
+Findings on one home directory: ${FINDINGS_BEFORE} → ${FINDINGS_AFTER}; ${ERRORS_LINE}.
+
+${RESULT_LESSONS.map((lesson) => `- ${lesson}`).join("\n")}
+
+${RESULTS_CTA}
+
+\`\`\`bash
+${RESULTS_CTA_COMMAND}
+\`\`\`
+
+${RESULTS_FOOTNOTE}
+`;
+
 export const LLMS_TXT = `# ${PRODUCT_NAME}
 
 > Offline linter for agent configuration. ${PRODUCT_VERSION}, ${PRODUCT_CHECKS} checks. No AI, no network on check, writes nothing to the scanned tree.
@@ -323,6 +367,7 @@ Do not skip \`claude.hook.missing-script\` (error). Heuristics stay at info and 
 
 - [agentscan docs](${absoluteUrl("/docs.md")}): Quickstart, check flags, skill, CI
 - [All ${checks.length} checks](${absoluteUrl("/checks.md")}): Every rule id with severity, provenance, and source
+- [Results from a real run](${absoluteUrl("/results.md")}): Ten real config problems on the author's setup and what was done about them
 - [Changelog](${absoluteUrl("/changelog.md")}): Releases since ${releases.at(-1)?.version}, newest first
 - [Homepage](${absoluteUrl("/index.md")}): What the tool is and the failure it exists for
 - [Skill](${absoluteUrl("/.well-known/agent-skills/agentscan/SKILL.md")}): When to run the audit
@@ -350,6 +395,7 @@ const PAGES: Record<string, string> = {
   "/": HOME_MARKDOWN,
   "/docs": DOCS_MARKDOWN,
   "/checks": CHECKS_MARKDOWN,
+  "/results": RESULTS_MARKDOWN,
   "/changelog": CHANGELOG_MARKDOWN,
   "/about": ABOUT_MARKDOWN,
   "/contact": CONTACT_MARKDOWN,

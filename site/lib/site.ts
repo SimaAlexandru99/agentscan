@@ -47,6 +47,7 @@ export const INDEXABLE_PATHS = [
   "/",
   "/docs",
   "/checks",
+  "/results",
   "/changelog",
   "/about",
   "/contact",
