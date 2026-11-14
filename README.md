@@ -610,8 +610,8 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `kiro.hook.unknown-handler-type` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro hook action type is missing or is not command or agent |
 | `kiro.hook.invalid-group` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro hook file is missing version v1 or a hooks array |
 | `zed.mcp.no-launch` | error | spec-required | [zed.dev/docs/ai/mcp](https://zed.dev/docs/ai/mcp) | Zed context server declares neither command nor url |
-| `amp.mcp.no-launch` | error | spec-required | [ampcode.com/docs/customize/mcp](https://ampcode.com/docs/customize/mcp) | Amp MCP server declares neither command nor url |
-| `claude-desktop.mcp.no-launch` | error | spec-required | [modelcontextprotocol.io/docs/develop/connect-local-servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers) | Claude Desktop MCP server declares no command |
+| `amp.mcp.no-launch` | error | internal-consistency | _agentscan inference_ | Amp MCP server declares neither command nor url |
+| `claude-desktop.mcp.no-launch` | error | internal-consistency | _agentscan inference_ | Claude Desktop MCP server declares no command |
 | `claude-desktop.extension.missing-field` | error | spec-required | [raw.githubusercontent.com/anthropics/mcpb/main/MANIFEST.md](https://raw.githubusercontent.com/anthropics/mcpb/main/MANIFEST.md) | Claude Desktop extension manifest lacks a required field or names an unknown server type |
 <!-- rules:end -->
 
