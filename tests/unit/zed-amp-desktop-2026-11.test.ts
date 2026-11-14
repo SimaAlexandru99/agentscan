@@ -30,6 +30,23 @@ describe("Zed context_servers", () => {
     expect(analysis.findings.map((f) => f.ruleId)).not.toContain("claude.mcp.url-without-type");
   });
 
+  test("an extension-provided server (settings only, trailing comma) is launchable", () => {
+    const root = mkPinnedProject("agentscan-zed-ext-");
+    write(
+      root,
+      ".zed/settings.json",
+      `{
+  "context_servers": {
+    "mcp-server-context7": { "enabled": true, "remote": false, "settings": {}, },
+  },
+}
+`,
+    );
+    const analysis = findingsFor(root);
+    expect(analysis.facts.configErrors).toEqual([]);
+    expect(analysis.findings.map((f) => f.ruleId)).not.toContain("zed.mcp.no-launch");
+  });
+
   test("settings without context_servers are not a config error", () => {
     const root = mkPinnedProject("agentscan-zed-nokey-");
     write(root, ".zed/settings.json", `{ "theme": "One Dark" }`);

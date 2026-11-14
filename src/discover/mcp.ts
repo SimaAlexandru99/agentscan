@@ -282,6 +282,7 @@ function parseMcpServers(
     let hasUrl = false;
     let hasServerUrl = false;
     let hasHttpUrl = false;
+    let extensionProvided = false;
     let transport: string | undefined;
     let transportField: McpFact["transportField"];
     let literalEnvKeys: string[] = [];
@@ -295,6 +296,7 @@ function parseMcpServers(
       hasServerUrl =
         typeof entry.serverUrl === "string" && entry.serverUrl.length > 0;
       hasHttpUrl = typeof entry.httpUrl === "string" && entry.httpUrl.length > 0;
+      extensionProvided = entry.command === undefined && entry.url === undefined && isRecord(entry.settings);
       const declared = transportFromEntry(entry);
       transport = declared.transport;
       transportField = declared.transportField;
@@ -335,6 +337,7 @@ function parseMcpServers(
         ...(uses === undefined ? {} : { uses }),
         ...(hasServerUrl ? { hasServerUrl: true } : {}),
         ...(hasHttpUrl ? { hasHttpUrl: true } : {}),
+        ...(extensionProvided ? { extensionProvided: true } : {}),
         ...(variant.command === undefined ? {} : { command: variant.command }),
         ...(variant.commandExists === undefined ? {} : { commandExists: variant.commandExists }),
         ...(variant.cwd === undefined ? {} : { cwd: variant.cwd }),

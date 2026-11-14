@@ -98,7 +98,14 @@ const PROFILES = {
     consumedBy: ["vscode"],
     ruleIdPrefix: "vscode",
   },
-  "zed-json": { ...COMMAND_OR_URL, sourceProvider: "zed", consumedBy: ["zed"], ruleIdPrefix: "zed" },
+  // An extension-provided server has only `settings` (and `enabled`/`remote`); Zed launches it from the extension.
+  "zed-json": {
+    ...COMMAND_OR_URL,
+    sourceProvider: "zed",
+    consumedBy: ["zed"],
+    ruleIdPrefix: "zed",
+    launchable: (server) => commandOrUrl(server) || server.extensionProvided === true,
+  },
   "amp-json": { ...COMMAND_OR_URL, sourceProvider: "amp", consumedBy: ["amp"], ruleIdPrefix: "amp" },
   // Only command entries are documented; `type`/`url` entries are unverified, so they count as launchable.
   "claude-desktop-json": {

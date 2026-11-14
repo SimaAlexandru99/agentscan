@@ -96,3 +96,14 @@ Quoted:
 - The `zed.dev/docs/ai/rules` URL now returns 404; project instructions moved to `zed.dev/docs/ai/instructions` (see zed-rules.md).
 
 ## Staleness risk: HIGH
+
+## Extension-provided servers
+
+Quoted (https://zed.dev/docs/ai/mcp, "As Extensions", read 2026-11-14):
+
+> One of the ways you can use MCP servers in Zed is by exposing them as an extension.
+
+An installed extension's entry in `context_servers` carries only `settings`
+(plus `enabled` / `remote`), with no `command` or `url`. agentscan treats such
+an entry as launchable, so `zed.mcp.no-launch` does not fire on it. Secrets in
+`settings` are still checked.
