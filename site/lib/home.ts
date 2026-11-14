@@ -1,4 +1,5 @@
 import { checks, CITED_CHECKS } from "@/lib/checks";
+import { SUPPORTED_AGENTS } from "@/lib/site";
 
 /** Home copy from the approved mockup (Home.dc.html). */
 export const BENEFITS = [
@@ -8,7 +9,7 @@ export const BENEFITS = [
   },
   {
     title: "MCP servers that can actually start",
-    body: "Entries with no command or url, command paths that do not exist, and transports a vendor does not support, across 23 agents.",
+    body: `Entries with no command or url, command paths that do not exist, and transports a vendor does not support, across ${SUPPORTED_AGENTS.length} agents.`,
   },
   {
     title: "Secrets kept out of config",
@@ -59,8 +60,9 @@ export const AGENT_EXAMPLES: readonly AgentExample[] = [
   { name: "Zed", files: [["mcp", ".zed/settings.json (context_servers)"]], sev: "ERROR", rule: "security.hardcoded-secret", msg: "A GitHub token in plain text in editor settings." },
 ];
 
-export const OTHER_AGENTS =
-  "Also Antigravity, Windsurf, Devin CLI, Kiro, Command Code, OpenCode, Continue, Cline, Roo Code, Kilo Code and Junie.";
+const shown = new Set(AGENT_EXAMPLES.map((a) => a.name));
+const others = SUPPORTED_AGENTS.filter((name) => !shown.has(name));
+export const OTHER_AGENTS = `Also ${others.slice(0, -1).join(", ")} and ${others.at(-1)}.`;
 
 export const RUNS_NOTE =
   "Runs on the author's own setup: 4 machines (one Linux, three Windows) and 29 project checkouts, 13–14 November 2026. Project names withheld.";

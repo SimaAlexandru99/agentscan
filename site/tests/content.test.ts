@@ -64,8 +64,12 @@ describe("1.0 public copy", () => {
   });
 
   test("markdown names the 2.3.1 surfaces and the breaking ids", () => {
-    for (const body of [HOME_MARKDOWN, ABOUT_MARKDOWN, LLMS_TXT]) {
+    for (const body of [ABOUT_MARKDOWN, LLMS_TXT]) {
       expect(body).toContain("What 2.3.1 reads");
+    }
+    // The home markdown mirrors the new home: one "Agents it reads" section names every agent.
+    expect(HOME_MARKDOWN).toContain("## Agents it reads");
+    for (const body of [HOME_MARKDOWN, ABOUT_MARKDOWN, LLMS_TXT]) {
       for (const line of COVERAGE_LINES) {
         expect(body).toContain(line);
       }

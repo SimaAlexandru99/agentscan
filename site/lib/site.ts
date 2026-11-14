@@ -62,3 +62,10 @@ export function absoluteUrl(path: string): string {
   }
   return `${SITE_ORIGIN}${path}`;
 }
+
+/** Every coding agent whose config agentscan reads (Copilot CLI and VS Code counted once). */
+export const SUPPORTED_AGENTS = [
+  "Claude Code", "Claude Desktop", "Codex", "Cursor", "Copilot", "Gemini CLI", "Grok Build", "Qwen Code",
+  "Factory Droid", "Zed", "Antigravity", "Windsurf", "Devin CLI", "Kiro", "Command Code", "OpenCode",
+  "Continue", "Amp", "Goose", "Cline", "Roo Code", "Kilo Code", "Junie",
+] as const;

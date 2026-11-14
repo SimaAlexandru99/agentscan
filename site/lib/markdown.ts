@@ -15,6 +15,7 @@ import {
   RESULTS_LESSONS_INTRO,
   RESULTS_SUMMARY,
 } from "@/lib/results";
+import { BENEFITS, HOME_METRICS, RUNS_NOTE } from "@/lib/home";
 import { AGENTSCAN_SKILL_MD } from "@/lib/skill";
 import {
   absoluteUrl,
@@ -28,6 +29,7 @@ import {
   NPM_URL,
   PRODUCT_CHECKS,
   PRODUCT_NAME,
+  SUPPORTED_AGENTS,
   PRODUCT_VERSION,
   RUN_COMMAND,
   SITE_ORIGIN,
@@ -69,20 +71,46 @@ ${CHECK_COMMAND}
 
 Or: \`${RUN_COMMAND}\`
 
+## What one run catches
+
+The config says one thing, the disk says another, and the agent starts without a warning:
+
+\`\`\`text
+ERROR   claude.hook.missing-script
+        PreToolUse hook points at a script that does not exist: .claude/hooks/guard-destructive-bash.js
+Summary: 1 error · score 90/100
+\`\`\`
+
+## What you get after one run
+
+${BENEFITS.map((b, i) => `${i + 1}. **${b.title}.** ${b.body}`).join("\n")}
+
+## From real runs
+
+${HOME_METRICS.map((m) => `- **${m.value}** ${m.label}`).join("\n")}
+
+${RUNS_NOTE} Details: [results](${absoluteUrl("/results")}).
+
 ## How it works
 
 No AI, no network on check. Read the config, read the disk, compare. Same tree in, same findings out, every time.
 
-- ${PRODUCT_CHECKS} checks, each labeled spec-required, vendor-recommendation, security, internal-consistency, or heuristic.
+- ${PRODUCT_CHECKS} checks, each labeled spec-required, vendor-recommendation, security, internal-consistency, or heuristic. [All checks](${absoluteUrl("/checks")}).
 - No network — check never opens a socket.
 - Writes nothing — the scanned tree is left untouched.
 - Spec-required checks cite a published line in [docs/spec/](${GITHUB_REPO}/tree/master/docs/spec). Heuristics stay at info and are labeled.
 
-## What 2.3.1 reads
+## Agents it reads
+
+${SUPPORTED_AGENTS.join(", ")}.
 
 ${COVERAGE_LINES.map((line) => `- ${line}`).join("\n")}
 
 ${STILL_UNREAD}
+
+## Latest releases
+
+${releases.slice(0, 3).map((r) => `- [${r.version}](${absoluteUrl("/changelog")}#v${r.version}) (${r.date}): ${r.summary}`).join("\n")}
 
 ## Why the tool looks like this
 
@@ -100,6 +128,9 @@ Agents forget the audit. The skill tells them to run it before they edit a hook 
 This origin is a marketing site. There is no hosted HTTP API and no Streamable HTTP MCP server here. MCP in product copy means MCP *configs the CLI audits*.
 
 - [Docs](${absoluteUrl("/docs")})
+- [Checks](${absoluteUrl("/checks")})
+- [Results](${absoluteUrl("/results")})
+- [Changelog](${absoluteUrl("/changelog")})
 - [GitHub](${GITHUB_REPO})
 - [npm ${NPM_PACKAGE}](${NPM_URL})
 `;

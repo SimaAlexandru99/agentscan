@@ -16,6 +16,7 @@ import {
   HOME_TITLE,
   PRODUCT_CHECKS,
   PRODUCT_VERSION,
+  SUPPORTED_AGENTS,
 } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
@@ -64,7 +65,7 @@ export default function HomePage() {
               style={{ animationDelay: "140ms" }}
             >
               Linters read the code your agent writes. agentscan reads the agent
-              itself, for 23 coding agents, and checks each config against the
+              itself, for {SUPPORTED_AGENTS.length} coding agents, and checks each config against the
               disk and the vendor&apos;s own docs. Offline, read-only,
               deterministic.
             </p>
