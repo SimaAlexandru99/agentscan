@@ -16,6 +16,7 @@ import {
   HOME_TITLE,
   PRODUCT_CHECKS,
   PRODUCT_VERSION,
+  socialMetadata,
   SUPPORTED_AGENTS,
 } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -27,13 +28,7 @@ export const metadata: Metadata = {
     canonical: "/",
     types: { "text/markdown": "/index.md" },
   },
-  openGraph: {
-    type: "website",
-    url: "/",
-    title: HOME_TITLE,
-    description: HOME_DESCRIPTION,
-  },
-  twitter: { card: "summary_large_image", title: HOME_TITLE, description: HOME_DESCRIPTION },
+  ...socialMetadata(HOME_TITLE, HOME_DESCRIPTION, "/"),
 };
 
 const h2 = "text-3xl font-semibold tracking-tight text-foreground sm:text-4xl";

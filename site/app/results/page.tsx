@@ -20,6 +20,7 @@ import {
   RESULTS_SUMMARY,
   RESULTS_TITLE,
 } from "@/lib/results";
+import { socialMetadata } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const DESCRIPTION =
@@ -32,8 +33,7 @@ export const metadata: Metadata = {
     canonical: "/results",
     types: { "text/markdown": "/results.md" },
   },
-  openGraph: { title: RESULTS_TITLE, description: DESCRIPTION, url: "/results", type: "article" },
-  twitter: { card: "summary_large_image", title: RESULTS_TITLE, description: DESCRIPTION },
+  ...socialMetadata(RESULTS_TITLE, DESCRIPTION, "/results"),
 };
 
 export default function ResultsPage() {

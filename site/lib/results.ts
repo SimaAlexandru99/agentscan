@@ -1,6 +1,6 @@
 /** /results copy, verbatim from the owner-approved mockup (Results.dc.html). */
 export const RESULTS_TITLE = "Results from a real agentscan run";
-export const RESULTS_H1 = "What one run found on a real setup";
+export const RESULTS_H1 = "Real agentscan results: hooks silently ignored, configs that would not load";
 
 export const RESULTS_INTRO =
   "On 13–14 November 2026 agentscan ran over the author's own agent setup: four machines (one Linux, three Windows), their global config for every installed agent, and 29 project checkouts. Below is each real problem it reported, what was done about it, and what the run taught us about agentscan itself. Project names are withheld; no secret is shown.";

@@ -58,3 +58,10 @@ export const PROVENANCE_SPLIT = (
   label,
   count: checks.filter((check) => check.provenance === provenance).length,
 }));
+
+/** /checks "Common symptoms": what a user sees → the rule that explains it. */
+export const SYMPTOMS = [
+  ["Hook script not found (exit 127)", "claude.hook.missing-script"],
+  ["MCP server failed to start", "mcp.command-missing"],
+  ["Plaintext token in mcp.json", "security.hardcoded-secret"],
+] as const;

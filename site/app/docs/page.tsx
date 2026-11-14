@@ -1,27 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { JsonLd } from "@/components/json-ld";
 import { SiteFooter } from "@/components/site-footer";
+import { breadcrumbJsonLd } from "@/lib/json-ld";
 import {
   BREAKING_NOTE,
   GLOBAL_FLAG_MEANING,
   PRODUCT_CHECKS,
   PRODUCT_VERSION,
+  socialMetadata,
 } from "@/lib/site";
+
+const DOCS_DESCRIPTION =
+  "Run agentscan offline to validate mcp.json, lint SKILL.md and AGENTS.md, and gate CI on broken agent config. Read-only; flags, exit codes and the agent skill.";
 
 export const metadata: Metadata = {
   title: { absolute: `agentscan docs — ${PRODUCT_VERSION}, ${PRODUCT_CHECKS} checks` },
-  description:
-    `Quickstart, check flags, and CI for agentscan ${PRODUCT_VERSION} (${PRODUCT_CHECKS} checks).`,
+  description: DOCS_DESCRIPTION,
   alternates: {
     canonical: "/docs",
     types: { "text/markdown": "/docs.md" },
   },
-  openGraph: {
-    title: "agentscan docs",
-    url: "/docs",
-    type: "website",
-  },
+  ...socialMetadata("agentscan docs", DOCS_DESCRIPTION, "/docs"),
 };
 
 const flags = [
@@ -70,13 +71,15 @@ const flags = [
 export default function DocsPage() {
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd("Docs", "/docs")} />
       <article className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
           agentscan docs
         </h1>
         <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
           agentscan {PRODUCT_VERSION} audits agent configuration on disk —{" "}
-          {PRODUCT_CHECKS} checks.
+          {PRODUCT_CHECKS} checks. Use it to validate mcp.json, lint SKILL.md and
+          AGENTS.md, and gate CI on broken agent config.
           Scans are read-only and never open a network connection. Spec-required
           checks cite a published spec line; heuristics stay at info and are
           labeled. Full behavior lives in the{" "}

@@ -237,7 +237,7 @@ describe("public routes", () => {
     for (const [path, h1] of [
       ["/checks", `All ${PRODUCT_CHECKS} agentscan checks`],
       ["/changelog", "agentscan changelog"],
-      ["/results", "What one run found on a real setup"],
+      ["/results", "Real agentscan results: hooks silently ignored, configs that would not load"],
     ] as const) {
       const res = await probe(path, { headers: { Accept: "text/html" } });
       expect(res.status).toBe(200);
@@ -256,6 +256,15 @@ describe("public routes", () => {
     const changelog = await probe("/changelog", { headers: { Accept: "text/html" } });
     expect(changelog.body).toContain(`id="v${PRODUCT_VERSION}"`);
     expect(changelog.body).toContain('id="v2.0.0"');
+  });
+
+  test("every page carries exactly one og:image and one twitter:image", async () => {
+    for (const path of ["/", "/checks", "/results", "/changelog", "/docs", "/about"]) {
+      const res = await probe(path, { headers: { Accept: "text/html" } });
+      expect(res.body.match(/property="og:image"/g)?.length).toBe(1);
+      expect(res.body.match(/name="twitter:image"/g)?.length).toBe(1);
+      if (path === "/docs" || path === "/about") expect(res.body).toContain('"@type":"BreadcrumbList"');
+    }
   });
 
   test("every internal header and footer link resolves", async () => {

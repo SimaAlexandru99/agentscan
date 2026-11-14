@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { metadata as changelogMetadata } from "../app/changelog/page";
 import { metadata as checksMetadata } from "../app/checks/page";
+import { metadata as docsMetadata } from "../app/docs/page";
 import { metadata as homeMetadata } from "../app/page";
 import { metadata as resultsMetadata } from "../app/results/page";
 import checksData from "../data/checks.json";
@@ -9,6 +10,7 @@ import releasesData from "../data/releases.json";
 import { AGENT_EXAMPLES, HOME_METRICS } from "../lib/home";
 import { jsonLdScript, softwareApplicationJsonLd } from "../lib/json-ld";
 import { RESULT_CASES } from "../lib/results";
+import { SYMPTOMS } from "../lib/checks";
 import {
   ABOUT_MARKDOWN,
   CHANGELOG_MARKDOWN,
@@ -245,5 +247,20 @@ describe("version and count come from the generated data", () => {
   test("PRODUCT_CHECKS is checks.json length; the newest release is PRODUCT_VERSION", () => {
     expect(PRODUCT_CHECKS).toBe(checksData.length);
     expect(releasesData[0]?.version).toBe(PRODUCT_VERSION);
+  });
+});
+
+describe("SEO copy", () => {
+  test("every /checks symptom links to a real rule id", () => {
+    const ids = new Set(checksData.map((check) => check.id));
+    for (const [, id] of SYMPTOMS) expect(ids.has(id)).toBe(true);
+  });
+
+  test("/docs description is 120–160 characters and names the queries", () => {
+    const description = String(docsMetadata.description);
+    expect(description.length).toBeGreaterThanOrEqual(120);
+    expect(description.length).toBeLessThanOrEqual(160);
+    expect(description).toContain("validate mcp.json");
+    expect(description).toContain("lint SKILL.md");
   });
 });

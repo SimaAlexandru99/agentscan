@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ArticleLayout } from "@/components/article-layout";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbJsonLd } from "@/lib/json-ld";
 import {
   BREAKING_NOTE,
   COVERAGE_LINES,
@@ -10,26 +12,26 @@ import {
   PRODUCT_CHECKS,
   PRODUCT_VERSION,
   RUN_COMMAND,
+  socialMetadata,
   STILL_UNREAD,
 } from "@/lib/site";
 
+const DESCRIPTION = `agentscan ${PRODUCT_VERSION} is a local CLI that audits agent configuration. ${PRODUCT_CHECKS} checks. Offline on check.`;
+
 export const metadata: Metadata = {
   title: { absolute: `About agentscan — ${PRODUCT_VERSION}` },
-  description: `agentscan ${PRODUCT_VERSION} is a local CLI that audits agent configuration. ${PRODUCT_CHECKS} checks. Offline on check.`,
+  description: DESCRIPTION,
   alternates: {
     canonical: "/about",
     types: { "text/markdown": "/about.md" },
   },
-  openGraph: {
-    title: "About agentscan",
-    url: "/about",
-    type: "website",
-  },
+  ...socialMetadata("About agentscan", DESCRIPTION, "/about"),
 };
 
 export default function AboutPage() {
   return (
     <ArticleLayout title="About agentscan">
+      <JsonLd data={breadcrumbJsonLd("About", "/about")} />
       <p>
         agentscan is a local command-line linter for agent configuration.{" "}
         {PRODUCT_VERSION} ships {PRODUCT_CHECKS} checks. It reads skills,{" "}
@@ -39,7 +41,7 @@ export default function AboutPage() {
         reports where the config disagrees with the disk.
       </p>
       <h2 className="mt-10 text-xl font-semibold tracking-tight text-foreground">
-        What {PRODUCT_VERSION} reads
+        {`What ${PRODUCT_VERSION} reads`}
       </h2>
       <ul className="mt-4 list-disc space-y-2 pl-5">
         {COVERAGE_LINES.map((line) => (

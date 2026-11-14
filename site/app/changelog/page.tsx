@@ -6,7 +6,7 @@ import { JsonLd } from "@/components/json-ld";
 import { SiteFooter } from "@/components/site-footer";
 import { breadcrumbJsonLd, itemListJsonLd } from "@/lib/json-ld";
 import { NPM_NOTE, releases } from "@/lib/releases";
-import { absoluteUrl, GITHUB_REPO, PRODUCT_VERSION } from "@/lib/site";
+import { absoluteUrl, GITHUB_REPO, PRODUCT_VERSION, socialMetadata } from "@/lib/site";
 
 const TITLE = "agentscan changelog";
 const DESCRIPTION = `Every agentscan release from ${releases.at(-1)?.version} to ${PRODUCT_VERSION}, newest first: new agents, new checks, and fixes. The check path stays offline in each.`;
@@ -18,8 +18,7 @@ export const metadata: Metadata = {
     canonical: "/changelog",
     types: { "text/markdown": "/changelog.md" },
   },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "/changelog", type: "website" },
-  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+  ...socialMetadata(TITLE, DESCRIPTION, "/changelog"),
 };
 
 export default function ChangelogPage() {

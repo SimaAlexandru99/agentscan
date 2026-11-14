@@ -35,7 +35,7 @@ export function ChecksFilter({
       const visible =
         (family === "all" || row.dataset.family === family) &&
         (severity === "all" || (row.dataset.severity ?? "").split("/").includes(severity)) &&
-        (q === "" || (row.dataset.search ?? "").includes(q));
+        (q === "" || (row.textContent ?? "").toLowerCase().includes(q));
       row.hidden = !visible;
       if (visible) count++;
     }

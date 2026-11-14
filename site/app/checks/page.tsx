@@ -10,10 +10,11 @@ import {
   checkFamily,
   checks,
   PROVENANCE_SPLIT,
+  SYMPTOMS,
 } from "@/lib/checks";
 import { breadcrumbJsonLd, itemListJsonLd } from "@/lib/json-ld";
 import { cn } from "@/lib/utils";
-import { absoluteUrl, PRODUCT_VERSION } from "@/lib/site";
+import { absoluteUrl, PRODUCT_VERSION, socialMetadata } from "@/lib/site";
 
 const TITLE = `All ${checks.length} agentscan checks`;
 const DESCRIPTION = `Every rule agentscan ${PRODUCT_VERSION} can raise: id, severity, provenance, and source. ${CITED_CHECKS} of ${checks.length} checks cite a vendor docs page. Filter by agent.`;
@@ -25,8 +26,7 @@ export const metadata: Metadata = {
     canonical: "/checks",
     types: { "text/markdown": "/checks.md" },
   },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "/checks", type: "website" },
-  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+  ...socialMetadata(TITLE, DESCRIPTION, "/checks"),
 };
 
 function severityClass(severity: string): string {
@@ -63,6 +63,17 @@ export default function ChecksPage() {
             agentscan changelog
           </Link>
           .
+        </p>
+        <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+          Common symptoms:{" "}
+          {SYMPTOMS.map(([text, id], index) => (
+            <span key={id}>
+              {index > 0 ? " · " : null}
+              <a href={`#${id}`} className="text-primary underline-offset-4 hover:underline">
+                {text}
+              </a>
+            </span>
+          ))}
         </p>
 
         <section
@@ -105,7 +116,6 @@ export default function ChecksPage() {
                     id={check.id}
                     data-family={checkFamily(check.id)}
                     data-severity={check.severity}
-                    data-search={`${check.id} ${check.description}`.toLowerCase()}
                     className="check-row scroll-mt-20 border-t border-border/60 align-top target:bg-primary/10"
                   >
                     <td className="whitespace-nowrap px-4 py-3 font-mono text-[13px] text-foreground">
