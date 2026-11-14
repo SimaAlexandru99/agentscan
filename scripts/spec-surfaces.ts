@@ -459,6 +459,7 @@ export const SPEC_SURFACES: SpecSurface[] = [
   { provider: "factory", surface: "mcp", ...SPEC_PAGES.factoryMcp },
   { provider: "factory", surface: "agents", ...SPEC_PAGES.factoryAgents },
   { provider: "factory", surface: "skills", lastVerified: "2026-11-14", url: "https://docs.factory.com/harness/skills" },
+  { provider: "goose", surface: "mcp", ...SPEC_PAGES.gooseMcp },
 ];
 
 /** Re-read the sources when a capture or surface is older than this. */

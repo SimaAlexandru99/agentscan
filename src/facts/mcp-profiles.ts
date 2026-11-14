@@ -114,6 +114,15 @@ const PROFILES = {
     consumedBy: ["factory"],
     ruleIdPrefix: "factory",
   },
+  // `extensions:` normalised to command/url; builtin and platform are not launch entries.
+  "goose-yaml": {
+    ...COMMAND_OR_URL,
+    sourceProvider: "goose",
+    consumedBy: ["goose"],
+    ruleIdPrefix: "goose",
+    noLaunchDeclares: "type sse, which Goose does not support",
+    noLaunchAdd: "type streamable_http with uri",
+  },
 } as const satisfies Record<McpSchemaProfile, McpProfileSpec>;
 
 export const MCP_PROFILES: Record<McpSchemaProfile, McpProfileSpec> = PROFILES;

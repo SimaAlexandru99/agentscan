@@ -19,7 +19,8 @@ export type McpSchemaProfile =
   | "devin-json"
   | "copilot-json"
   | "qwen-json"
-  | "factory-json";
+  | "factory-json"
+  | "goose-yaml";
 
 export function assertNever(value: never, message: string): never {
   throw new Error(message);

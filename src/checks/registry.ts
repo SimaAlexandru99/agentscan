@@ -1156,6 +1156,13 @@ export const STRUCTURAL_CHECKS = [
     provenance: "spec-required",
     ...spec(SPEC_PAGES.factoryAgents, "factory-agents.md"),
   },
+  {
+    id: "goose.mcp.no-launch",
+    description: "Goose extension declares type sse, which Goose does not support",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.gooseMcp, "goose-mcp.md"),
+  },
 ] as const satisfies readonly StructuralCheck[];
 
 export type RuleId = (typeof STRUCTURAL_CHECKS)[number]["id"];

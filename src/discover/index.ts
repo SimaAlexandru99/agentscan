@@ -59,6 +59,7 @@ import {
   discoverCopilotUserMcp,
   parseProfiledMcpFile,
   discoverGeminiUserMcp,
+  discoverGooseUserMcp,
   discoverMcpSurface,
   discoverNestedContinueMcp,
 } from "./mcp";
@@ -290,6 +291,11 @@ const SOURCES: Source[] = [
     id: "factory",
     project: (dir, { io }) => discoverFactoryProject(dir, io),
     user: ({ root, io }) => discoverFactoryUser(root, io),
+  },
+  {
+    // No project config is documented for Goose.
+    id: "goose",
+    user: ({ root, io }) => ({ mcp: discoverGooseUserMcp(root, io) }),
   },
   {
     // Every provider's project MCP file, from the configured `mcpPaths`.

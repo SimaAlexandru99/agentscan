@@ -51,6 +51,7 @@ export const SPEC_PAGES = {
   factoryHooks: { url: "https://docs.factory.com/harness/hooks", lastVerified: "2026-11-14" },
   factoryMcp: { url: "https://docs.factory.com/harness/mcp", lastVerified: "2026-11-14" },
   factoryAgents: { url: "https://docs.factory.com/harness/subagents", lastVerified: "2026-11-14" },
+  gooseMcp: { url: "https://goose-docs.ai/docs/guides/config-files/", lastVerified: "2026-11-14" },
   // No rule cites this page; `spec:check` reads VS Code hook event names from it.
   vscodeHooksGuide: { url: "https://code.visualstudio.com/docs/agent-customization/hooks", lastVerified: "2026-09-02" },
 } as const satisfies Record<string, SpecPage>;

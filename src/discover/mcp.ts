@@ -1048,3 +1048,44 @@ export function discoverNestedContinueMcp(root: string, io: ScanIO): McpFact[] {
   }
   return facts;
 }
+
+/**
+ * Goose user `config.yaml` `extensions:` map. Only called under `--global`.
+ * `stdio` is `cmd`/`args`/`envs`, `streamable_http` is `uri`/`headers`.
+ * `enabled: false`, `builtin`, `platform`, unknown types, and entries without
+ * `cmd`/`uri` (required-ness is unverified) are skipped. `sse` is kept with no
+ * launch field: "SSE is not supported". See docs/spec/goose-mcp.md.
+ */
+export function discoverGooseUserMcp(root: string, io: ScanIO): McpFact[] {
+  const appData = process.env.APPDATA;
+  const dir =
+    process.platform === "win32" && appData !== undefined && appData.length > 0
+      ? join(appData, "Block", "goose", "config")
+      : providerHome("goose");
+  const filePath = join(dir, "config.yaml");
+  const raw = readConfigFile(filePath, io, { optional: true });
+  if (raw === undefined) {
+    return [];
+  }
+  if (!isRecord(raw)) {
+    reportRootShapeOnce(filePath, io, "Goose config root is not a mapping");
+    return [];
+  }
+  if (!isRecord(raw.extensions)) {
+    return [];
+  }
+  const servers: Record<string, unknown> = {};
+  for (const [id, ext] of Object.entries(raw.extensions)) {
+    if (!isRecord(ext) || ext.enabled === false) {
+      continue;
+    }
+    if (ext.type === "stdio" && typeof ext.cmd === "string" && ext.cmd.length > 0) {
+      servers[id] = { command: ext.cmd, args: ext.args, env: ext.envs };
+    } else if (ext.type === "streamable_http" && typeof ext.uri === "string" && ext.uri.length > 0) {
+      servers[id] = { url: ext.uri, headers: ext.headers };
+    } else if (ext.type === "sse") {
+      servers[id] = {};
+    }
+  }
+  return parseMcpServers({ mcpServers: servers }, filePath, root, io, "goose-yaml");
+}

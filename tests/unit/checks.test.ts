@@ -1998,6 +1998,14 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           literalEnvKeys: [],
         }),
         mcpFact({
+          name: "dead-goose",
+          path: "/home/user/.config/goose/config.yaml",
+          schemaProfile: "goose-yaml",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+        }),
+        mcpFact({
           name: "dead-devin",
           path: "/tmp/proj/.devin/mcp_config.json",
           schemaProfile: "devin-json",
