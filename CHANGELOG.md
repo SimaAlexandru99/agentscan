@@ -13,6 +13,27 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+## 2.2.0 — 2026-11-14
+
+Aligned with the vendor docs re-read on 2026-11-14: all 46 drifted spec
+captures were re-read, and `spec:check` is clean. **144 checks**,
+**673 tests**.
+
+- New `codex.agent.missing-field` (error): a Codex custom agent file
+  (`.codex/agents/*.toml`, and `$CODEX_HOME/agents` under `--global`) must
+  define string `name`, `description` and `developer_instructions`.
+- Codex skills come from `.agents/skills` (repo walk and `~/.agents/skills`),
+  as the Codex skills page documents. `.codex/skills` is no longer scanned.
+- Copilot CLI project MCP: `.github/mcp.json` is read as `copilot-json`.
+- `--global` reads `~/.cursor/skills`; Cline also reads `.clinerules/skills`.
+- Antigravity skills: `name` is optional and defaults to the folder name.
+- Command Code agents accept `permissionMode` `accept-edits` and `yolo`.
+- Claude: an `agent` hook on `PermissionRequest` is incompatible; a skill
+  without `description` falls back to the first non-empty line.
+- Kiro accepts the CLI V3 `AgentSpawn` / `agentSpawn` spellings.
+- `windsurf.hook.unknown-event` is a warning: the Cascade event table left the
+  live docs (only `post_setup_worktree` is still quoted).
+
 ## 2.1.0 — 2026-11-14
 
 Fewer false findings when the scan root is a home directory or `--global` is

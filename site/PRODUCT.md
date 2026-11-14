@@ -8,7 +8,7 @@ metrics. Do not mention NDA projects.
 **agentscan** 2.0.0 is a Bun-first TypeScript CLI that audits agent
 configuration — skills, `skills-lock.json`, hooks, MCP servers, agent
 definitions, and policy files, plus the Codex, Antigravity, Cursor, Gemini,
-Kiro, and Devin CLI contracts. 143 checks. Linters read the code your agent
+Kiro, and Devin CLI contracts. 144 checks. Linters read the code your agent
 writes. This reads **the agent itself**.
 
 Published as `@chimix/agentscan` on npm (bare name rejected as too close to an
@@ -33,7 +33,7 @@ locally or in CI.
 
 > Your agent config says the guard is on. The script is gone. Nothing told you.
 
-Version line under the lede: `2.0.0 · 143 checks · offline on check`.
+Version line under the lede: `2.2.0 · 144 checks · offline on check`.
 
 ### Primary CTA
 
@@ -56,7 +56,7 @@ project names beyond the README sample. Do not use the 0.7 id
 
 - No AI, no network on `check`
 - Writes nothing to the scanned tree
-- 143 checks, each labeled spec-required, vendor-recommendation, security,
+- 144 checks, each labeled spec-required, vendor-recommendation, security,
   internal-consistency, or heuristic
 - Spec-required checks cite a published line (`docs/spec/`). Heuristics stay at
   `info` and are labeled.
