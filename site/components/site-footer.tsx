@@ -14,6 +14,18 @@ export function SiteFooter() {
           MIT
         </p>
         <div className="flex flex-wrap gap-x-4 gap-y-2">
+          <Link href="/checks" className="transition-colors hover:text-foreground">
+            Checks
+          </Link>
+          <Link href="/results" className="transition-colors hover:text-foreground">
+            Results
+          </Link>
+          <Link
+            href="/changelog"
+            className="transition-colors hover:text-foreground"
+          >
+            Changelog
+          </Link>
           <Link href="/docs" className="transition-colors hover:text-foreground">
             Docs
           </Link>
