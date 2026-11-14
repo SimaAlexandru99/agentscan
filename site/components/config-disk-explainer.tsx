@@ -49,10 +49,9 @@ export function ConfigDiskExplainer() {
           <div aria-hidden className="relative hidden h-[120px] md:block">
             <svg viewBox="0 0 160 120" width="160" height="120" className="block">
               <path
-                className="explainer-wire"
+                className="explainer-wire stroke-primary"
                 d="M0 60 C 50 60, 110 60, 160 60"
                 fill="none"
-                stroke="var(--primary)"
                 strokeWidth="2"
                 strokeLinecap="round"
               />
@@ -61,7 +60,7 @@ export function ConfigDiskExplainer() {
               <svg viewBox="0 0 24 24" width="16" height="16">
                 <path
                   d="M6 6l12 12M18 6L6 18"
-                  stroke="var(--primary)"
+                  className="stroke-primary"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                 />

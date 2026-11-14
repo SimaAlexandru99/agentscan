@@ -151,9 +151,9 @@ export default function HomePage() {
           </div>
           <dl className="grid grid-cols-2 border-y border-border md:grid-cols-4">
             {HOME_METRICS.map((metric) => (
-              <div key={metric.label} className="flex flex-col-reverse gap-2 py-7 pr-6">
+              <div key={metric.label} className="flex flex-col-reverse justify-end gap-2 py-7 pr-6">
                 <dt className="text-[15px] leading-normal text-muted-foreground">{metric.label}</dt>
-                <dd className="text-4xl font-semibold leading-none tracking-tight text-foreground">
+                <dd className="whitespace-nowrap text-3xl font-semibold leading-none tracking-tight text-foreground sm:text-4xl">
                   {metric.value}
                 </dd>
               </div>

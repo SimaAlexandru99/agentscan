@@ -40,7 +40,7 @@ export function AgentSelector() {
           {current.files.map(([kind, path]) => (
             <li key={`${kind}${path}`} className="grid grid-cols-[64px_minmax(0,1fr)] items-baseline gap-3">
               <span className="font-mono text-xs text-primary">{kind}</span>
-              <code className="font-mono text-sm break-all text-foreground/85">{path}</code>
+              <code className="font-mono text-sm break-words text-foreground/85">{path}</code>
             </li>
           ))}
         </ul>
