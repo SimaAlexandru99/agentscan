@@ -1,15 +1,15 @@
 import { checks, CITED_CHECKS } from "@/lib/checks";
-import { SUPPORTED_AGENTS } from "@/lib/site";
+import { MCP_AGENTS, SUPPORTED_AGENTS } from "@/lib/site";
 
 /** Home copy from the approved mockup (Home.dc.html). */
 export const BENEFITS = [
   {
-    title: "Guards that stopped running, found",
-    body: "A hook still registered after its script was deleted, or a hook under an event the agent never fires. The agent gives no warning; agentscan reports an error.",
+    title: "Hooks that stopped running, found",
+    body: "A hook still registered after its script was deleted, or a hook under an event the agent never fires, is silently not running. The agent gives no warning; agentscan reports an error.",
   },
   {
     title: "MCP servers that can actually start",
-    body: `Entries with no command or url, command paths that do not exist, and transports a vendor does not support, across ${SUPPORTED_AGENTS.length} agents.`,
+    body: `Entries with no command or url, command paths that do not exist, and transports a vendor does not support, across ${MCP_AGENTS.length} agents.`,
   },
   {
     title: "Secrets kept out of config",
@@ -53,7 +53,7 @@ export const AGENT_EXAMPLES: readonly AgentExample[] = [
   { name: "Codex", files: [["hooks", ".codex/hooks.json · config.toml"], ["mcp", "[mcp_servers]"], ["skills", ".agents/skills"], ["agents", ".codex/agents/*.toml"]], sev: "ERROR", rule: "codex.agent.missing-field", msg: "A custom agent without developer_instructions." },
   { name: "Cursor", files: [["hooks", ".cursor/hooks.json"], ["mcp", ".cursor/mcp.json"], ["rules", ".cursor/rules/*.mdc"]], sev: "ERROR", rule: "cursor.hook.missing-script", msg: "A hook that runs a script someone deleted." },
   { name: "Copilot", files: [["hooks", ".github/hooks/*.json"], ["mcp", ".github/mcp.json"], ["agents", ".github/agents/*.agent.md"]], sev: "WARN", rule: "copilot.hook.unknown-event", msg: "Notification is not documented; notification is." },
-  { name: "Gemini CLI", files: [["hooks", ".gemini/settings.json"], ["rules", "GEMINI.md"]], sev: "ERROR", rule: "gemini.mcp.no-launch", msg: "A server with neither command, url nor httpUrl." },
+  { name: "Gemini CLI", files: [["hooks", ".gemini/settings.json"]], sev: "ERROR", rule: "gemini.mcp.no-launch", msg: "A server with neither command, url nor httpUrl." },
   { name: "Grok Build", files: [["hooks", ".grok/hooks"], ["mcp", ".grok/config.toml"], ["skills", ".grok/skills"]], sev: "ERROR", rule: "grok.hook.unknown-event", msg: "StopCancelled is not a Grok Build event." },
   { name: "Qwen Code", files: [["hooks", ".qwen/settings.json"], ["skills", ".qwen/skills"]], sev: "ERROR", rule: "qwen.hook.unknown-event", msg: "A hook under an event Qwen never dispatches." },
   { name: "Factory Droid", files: [["mcp", ".factory/mcp.json"], ["hooks", ".factory/hooks.json"], ["agents", ".factory/droids"]], sev: "ERROR", rule: "factory.droid.invalid-name", msg: "A droid name the CLI will not load." },

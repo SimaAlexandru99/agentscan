@@ -8,7 +8,7 @@ export const RESULTS_INTRO =
 export const RESULTS_SUMMARY = [
   { value: "10", label: "real problems reported" },
   { value: "9", label: "fixed the same day" },
-  { value: "2", label: "secrets taken out of config files" },
+  { value: "2", label: "plaintext secrets found in config files" },
   { value: "0", label: "network calls during check" },
 ] as const;
 

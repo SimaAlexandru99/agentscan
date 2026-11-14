@@ -122,8 +122,8 @@ to a published spec line.
 Source: the author's own setup, 4 machines (one Linux, three Windows) and 29
 project checkouts, 13–14 November 2026, agentscan 2.0.0 to 2.3.1.
 
-- 10 real config problems found; 9 fixed the same day; 2 secrets taken out
-  of config files; 0 network calls during check
+- 10 real config problems found; 9 fixed the same day; 2 plaintext secrets
+  found in config files; 0 network calls during check
 - 692 → 251 findings on one home directory once agentscan's own false alarms
   were fixed; errors 406 → 40
 - 46 vendor pages re-read on 14 November 2026

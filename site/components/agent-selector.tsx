@@ -45,7 +45,7 @@ export function AgentSelector() {
           ))}
         </ul>
         <div className="border-t border-border/60 bg-card p-6 md:border-t-0 md:border-l">
-          <p className="mb-2.5 font-mono text-xs text-muted-foreground">A finding it can raise</p>
+          <p className="mb-2.5 font-mono text-xs text-muted-foreground">Example finding (illustrative)</p>
           <p className="font-mono text-sm leading-relaxed text-foreground/85">
             <span className="rounded bg-primary px-2 py-px text-background">{current.sev}</span>{" "}
             <Link href={`/checks#${current.rule}`} className="underline-offset-4 hover:underline">

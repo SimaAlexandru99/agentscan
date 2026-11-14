@@ -69,3 +69,10 @@ export const SUPPORTED_AGENTS = [
   "Factory Droid", "Zed", "Antigravity", "Windsurf", "Devin CLI", "Kiro", "Command Code", "OpenCode",
   "Continue", "Amp", "Goose", "Cline", "Roo Code", "Kilo Code", "Junie",
 ] as const;
+
+/** Agents with an MCP surface agentscan reads (src/discover/index.ts, src/discover/mcp.ts). */
+export const MCP_AGENTS = [
+  "Claude Code", "Claude Desktop", "Codex", "Cursor", "Copilot", "Gemini CLI", "Grok Build", "Qwen Code",
+  "Factory Droid", "Zed", "Antigravity", "Windsurf", "Devin CLI", "Command Code", "OpenCode",
+  "Continue", "Amp", "Goose",
+] as const satisfies ReadonlyArray<(typeof SUPPORTED_AGENTS)[number]>;
