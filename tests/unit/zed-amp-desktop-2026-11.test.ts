@@ -48,3 +48,61 @@ describe("Zed context_servers", () => {
     });
   });
 });
+
+describe("Amp amp.mcpServers", () => {
+  const officialExample = {
+    "amp.mcpServers": {
+      playwright: { command: "npx", args: ["-y", "@playwright/mcp@latest", "--headless"] },
+      linear: { url: "https://mcp.linear.app/sse" },
+      sourcegraph: {
+        url: "${SRC_ENDPOINT}/.api/mcp/v1",
+        headers: { Authorization: "token ${SRC_ACCESS_TOKEN}" },
+      },
+    },
+  };
+
+  test("the documented example raises nothing; an empty entry is amp.mcp.no-launch", () => {
+    const root = mkPinnedProject("agentscan-amp-project-");
+    write(
+      root,
+      ".amp/settings.json",
+      JSON.stringify({
+        "amp.mcpServers": { ...officialExample["amp.mcpServers"], broken: {} },
+        "amp.skills.path": "x",
+      }),
+    );
+    const analysis = findingsFor(root);
+    expect(analysis.facts.configErrors).toEqual([]);
+    const amp = analysis.facts.mcp.filter((server) => server.schemaProfile === "amp-json");
+    expect(amp.map((server) => server.name).sort()).toEqual(["broken", "linear", "playwright", "sourcegraph"]);
+    expect(analysis.findings.map((f) => f.ruleId)).toEqual(["amp.mcp.no-launch"]);
+  });
+
+  test("only the nearest .amp/settings.jsonc is read, with comments", () => {
+    const root = mkPinnedProject("agentscan-amp-nearest-");
+    write(root, ".amp/settings.json", JSON.stringify({ "amp.mcpServers": { far: {} } }));
+    write(root, "pkg/.amp/settings.jsonc", `{\n  // nearest\n  "amp.mcpServers": { "near": { "command": "npx" } }\n}\n`);
+    const analysis = findingsFor(root, false, `${root}/pkg`);
+    expect(analysis.facts.configErrors).toEqual([]);
+    expect(analysis.facts.mcp.filter((s) => s.schemaProfile === "amp-json").map((s) => s.name)).toEqual(["near"]);
+  });
+
+  test("user settings and skills dirs are read only under --global", () => {
+    const root = mkPinnedProject("agentscan-amp-root-");
+    const home = mkPinnedProject("agentscan-amp-home-");
+    write(home, ".config/amp/settings.json", JSON.stringify({ "amp.mcpServers": { dead: {} } }));
+    const skill = (name: string) => `---\nname: ${name}\ndescription: Does ${name} things\n---\n\nBody\n`;
+    write(home, ".config/amp/skills/amp-one/SKILL.md", skill("amp-one"));
+    write(home, ".config/agents/skills/shared-two/SKILL.md", skill("shared-two"));
+    withHome(home, () => {
+      const off = findingsFor(root, false);
+      expect(off.facts.mcp).toEqual([]);
+      expect(off.facts.skills).toEqual([]);
+      const on = findingsFor(root, true);
+      expect(on.findings.map((f) => f.ruleId)).toContain("amp.mcp.no-launch");
+      const names = on.facts.skills.map((s) => s.frontmatterName);
+      expect(names).toContain("amp-one");
+      expect(names).toContain("shared-two");
+    });
+  });
+});

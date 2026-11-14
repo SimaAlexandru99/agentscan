@@ -1945,6 +1945,14 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           literalEnvKeys: [],
         }),
         mcpFact({
+          name: "dead-amp",
+          path: "/tmp/proj/.amp/settings.json",
+          schemaProfile: "amp-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+        }),
+        mcpFact({
           name: "cc-bad-transport",
           path: "/tmp/proj/.mcp.json",
           schemaProfile: "mcp-json",

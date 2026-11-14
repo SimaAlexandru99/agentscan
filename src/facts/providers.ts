@@ -77,6 +77,11 @@ export const PROVIDERS = {
   copilot: { dotDir: ".github", home: ".copilot", homeEnv: "COPILOT_HOME" },
   /** Zed reads `.agents/skills` only (agent-skills entry). See docs/spec/zed-mcp.md and zed-skills.md. */
   zed: { dotDir: ".zed" },
+  /**
+   * Amp user settings and skills live under `~/.config/amp`. No `dotDir`: project
+   * skills are `.agents/skills`. See docs/spec/amp-mcp.md and amp-skills.md.
+   */
+  amp: { home: ".config/amp", skills: "agent-skills", userSkills: true },
 } satisfies Record<string, ProviderSpec>;
 
 /** Every provider a fact can name. Copilot CLI reports as `vscode`; `unknown` has no entry. */

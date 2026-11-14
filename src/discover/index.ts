@@ -87,6 +87,7 @@ import {
 import { newScanIO, type ScanIO } from "./fs";
 import { ancestorDirsInclusive, type ScanContext } from "./scan-context";
 import { discoverZedProjectMcp, discoverZedUserMcp } from "./zed";
+import { discoverAmpProjectMcp, discoverAmpUserMcp } from "./amp";
 
 export { resolveRoot, resolveScanContext, type ScanContext, type ScanLocation } from "./scan-context";
 
@@ -273,6 +274,14 @@ const SOURCES: Source[] = [
     user: ({ root, io }) => ({ mcp: discoverZedUserMcp(root, io) }),
   },
   {
+    id: "amp",
+    // Nearest workspace file only, so it runs once over the walk-up.
+    nested: ({ startDir, scanBoundary, io }) => ({
+      mcp: discoverAmpProjectMcp(ancestorDirsInclusive(startDir, scanBoundary), io),
+    }),
+    user: ({ root, io }) => ({ mcp: discoverAmpUserMcp(root, io) }),
+  },
+  {
     // Every provider's project MCP file, from the configured `mcpPaths`.
     id: "mcp-paths",
     project: (dir, { config, io }) => ({
@@ -358,6 +367,12 @@ export function discoverAgentSurface(
       }
       configuredRoots.add(resolved);
       skills.push(...discoverSkillsInDir(abs, "global", io, root, provider));
+    }
+    // Amp reads `~/.config/agents/skills` as Agent Skills. See docs/spec/amp-skills.md.
+    const configAgentsSkills = resolve(homedir(), ".config", "agents", "skills");
+    if (!configuredRoots.has(configAgentsSkills)) {
+      configuredRoots.add(configAgentsSkills);
+      skills.push(...discoverSkillsInDir(configAgentsSkills, "global", io, root, "agent-skills"));
     }
   }
 

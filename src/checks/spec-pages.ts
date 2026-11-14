@@ -47,6 +47,7 @@ export const SPEC_PAGES = {
   devinHooks: { url: "https://docs.devin.ai/cli/extensibility/hooks/overview", lastVerified: "2026-11-14" },
   devinMcp: { url: "https://docs.devin.ai/cli/extensibility/mcp/configuration", lastVerified: "2026-11-14" },
   zedMcp: { url: "https://zed.dev/docs/ai/mcp", lastVerified: "2026-11-14" },
+  ampMcp: { url: "https://ampcode.com/docs/customize/mcp", lastVerified: "2026-11-14" },
   // No rule cites this page; `spec:check` reads VS Code hook event names from it.
   vscodeHooksGuide: { url: "https://code.visualstudio.com/docs/agent-customization/hooks", lastVerified: "2026-09-02" },
 } as const satisfies Record<string, SpecPage>;

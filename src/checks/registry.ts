@@ -1063,6 +1063,13 @@ export const STRUCTURAL_CHECKS = [
     provenance: "spec-required",
     ...spec(SPEC_PAGES.zedMcp, "zed-mcp.md"),
   },
+  {
+    id: "amp.mcp.no-launch",
+    description: "Amp MCP server declares neither command nor url",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.ampMcp, "amp-mcp.md"),
+  },
 ] as const satisfies readonly StructuralCheck[];
 
 export type RuleId = (typeof STRUCTURAL_CHECKS)[number]["id"];

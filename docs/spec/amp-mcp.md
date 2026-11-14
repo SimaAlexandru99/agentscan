@@ -3,7 +3,7 @@
 **Source:** https://ampcode.com/docs/customize/mcp
 **Also:** https://ampcode.com/docs/cli/settings (settings file locations, `amp.mcpServers` key)
 **Read:** 2026-11-14
-**Depends on it:** (new)
+**Depends on it:** `amp.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
 ## Config files
 

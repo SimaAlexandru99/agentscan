@@ -99,6 +99,7 @@ const PROFILES = {
     ruleIdPrefix: "vscode",
   },
   "zed-json": { ...COMMAND_OR_URL, sourceProvider: "zed", consumedBy: ["zed"], ruleIdPrefix: "zed" },
+  "amp-json": { ...COMMAND_OR_URL, sourceProvider: "amp", consumedBy: ["amp"], ruleIdPrefix: "amp" },
 } as const satisfies Record<McpSchemaProfile, McpProfileSpec>;
 
 export const MCP_PROFILES: Record<McpSchemaProfile, McpProfileSpec> = PROFILES;

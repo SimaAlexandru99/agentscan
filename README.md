@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-145-111111?style=flat-square" alt="145 checks">
+  <img src="https://img.shields.io/badge/checks-146-111111?style=flat-square" alt="146 checks">
   <img src="https://img.shields.io/badge/tests-673%20passing-111111?style=flat-square" alt="673 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>145 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <strong>146 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
   <sub>An offline linter for Claude Code, Command Code, Grok Build, Windsurf, Kiro, Cline, Roo, Kilo, Junie, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks (including inline settings), and the MCP / hooks / rules surfaces the registry actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
@@ -65,7 +65,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .commandcode/ .grok/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       145 checks, each labeled spec-required, vendor-recommendation,
+3. Check       146 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -610,6 +610,7 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `kiro.hook.unknown-handler-type` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro hook action type is missing or is not command or agent |
 | `kiro.hook.invalid-group` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro hook file is missing version v1 or a hooks array |
 | `zed.mcp.no-launch` | error | spec-required | [zed.dev/docs/ai/mcp](https://zed.dev/docs/ai/mcp) | Zed context server declares neither command nor url |
+| `amp.mcp.no-launch` | error | spec-required | [ampcode.com/docs/customize/mcp](https://ampcode.com/docs/customize/mcp) | Amp MCP server declares neither command nor url |
 <!-- rules:end -->
 
 ### Coverage in 2.0.0
@@ -867,7 +868,7 @@ and `thresholds.skills` are rejected; the listing budget is
 `thresholds.skillListingChars`. It also ships the November 2026 vendor
 contracts: Kiro agents, Antigravity rules, skills, and hooks, Codex hooks,
 Cursor user MCP, Devin CLI hooks / MCP / skills, and the Copilot user MCP
-file. **145 checks**, **647 tests**.
+file. **146 checks**, **647 tests**.
 
 **1.4.0** (2 September 2026) closes two coverage gaps and ships the
 2026-09-02 re-verification: Copilot CLI inline `hooks` in

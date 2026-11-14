@@ -18,7 +18,8 @@ export type McpSchemaProfile =
   | "windsurf-json"
   | "devin-json"
   | "copilot-json"
-  | "zed-json";
+  | "zed-json"
+  | "amp-json";
 
 export function assertNever(value: never, message: string): never {
   throw new Error(message);
@@ -81,6 +82,12 @@ const MCP_FILE_RULES: readonly {
   {
     profile: "zed-json",
     test: (p) => /(?:^|\/)(?:\.zed|\.config\/zed|Zed)\/settings\.json$/.test(p),
+    jsonc: true,
+  },
+  // Amp settings.json or settings.jsonc. See docs/spec/amp-mcp.md.
+  {
+    profile: "amp-json",
+    test: (p) => /(?:^|\/)(?:\.amp|\.config\/amp)\/settings\.jsonc?$/.test(p),
     jsonc: true,
   },
 ];

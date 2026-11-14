@@ -452,6 +452,11 @@ export const SPEC_SURFACES: SpecSurface[] = [
     surface: "mcp",
     ...SPEC_PAGES.zedMcp,
   },
+  {
+    provider: "amp",
+    surface: "mcp",
+    ...SPEC_PAGES.ampMcp,
+  },
 ];
 
 /** Re-read the sources when a capture or surface is older than this. */
