@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-143-111111?style=flat-square" alt="143 checks">
+  <img src="https://img.shields.io/badge/checks-144-111111?style=flat-square" alt="144 checks">
   <img src="https://img.shields.io/badge/tests-656%20passing-111111?style=flat-square" alt="656 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>143 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <strong>144 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
   <sub>An offline linter for Claude Code, Command Code, Grok Build, Windsurf, Kiro, Cline, Roo, Kilo, Junie, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks (including inline settings), and the MCP / hooks / rules surfaces the registry actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
@@ -65,7 +65,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .commandcode/ .grok/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       143 checks, each labeled spec-required, vendor-recommendation,
+3. Check       144 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -592,6 +592,7 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `codex.hook.mcp-tool-without-server-or-tool` | error | spec-required | [learn.chatgpt.com/docs/hooks](https://learn.chatgpt.com/docs/hooks) | Codex MCP tool hook declares no server or tool |
 | `codex.hook.unknown-handler-type` | error | spec-required | [learn.chatgpt.com/docs/hooks](https://learn.chatgpt.com/docs/hooks) | Codex hook handler type is not command, mcp_tool, prompt, or agent |
 | `codex.hook.incompatible-handler` | error | spec-required | [learn.chatgpt.com/docs/hooks](https://learn.chatgpt.com/docs/hooks) | Codex prompt or agent handler is parsed but skipped, or SessionEnd uses mcp_tool |
+| `codex.agent.missing-field` | error | spec-required | [learn.chatgpt.com/docs/agent-configuration/subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents) | Codex custom agent file does not define string name, description, and developer_instructions |
 | `codex.hook.timeout-out-of-bounds` | error | spec-required | [learn.chatgpt.com/docs/hooks](https://learn.chatgpt.com/docs/hooks) | Codex SessionEnd or Interrupt hook timeout is outside 1–3 seconds |
 | `gemini.hook.unknown-event` | error | spec-required | [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/) | Gemini hook registered under an event that is never dispatched |
 | `gemini.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Gemini hook points at a script that does not exist, so it never runs |
@@ -862,7 +863,7 @@ and `thresholds.skills` are rejected; the listing budget is
 `thresholds.skillListingChars`. It also ships the November 2026 vendor
 contracts: Kiro agents, Antigravity rules, skills, and hooks, Codex hooks,
 Cursor user MCP, Devin CLI hooks / MCP / skills, and the Copilot user MCP
-file. **143 checks**, **647 tests**.
+file. **144 checks**, **647 tests**.
 
 **1.4.0** (2 September 2026) closes two coverage gaps and ships the
 2026-09-02 re-verification: Copilot CLI inline `hooks` in

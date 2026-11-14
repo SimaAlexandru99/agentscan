@@ -173,6 +173,11 @@ export const SPEC_SURFACES: SpecSurface[] = [
   },
   {
     provider: "codex",
+    surface: "agents",
+    ...SPEC_PAGES.codexAgents,
+  },
+  {
+    provider: "codex",
     surface: "mcp",
     lastVerified: "2026-09-02",
     url: "https://developers.openai.com/codex/config-advanced",

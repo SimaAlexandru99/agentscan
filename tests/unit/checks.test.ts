@@ -1003,6 +1003,13 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           invalidField: "background",
           commandcodeDefects: ["invalid-field-type"],
         },
+        {
+          name: "reviewer",
+          path: ".codex/agents/reviewer.toml",
+          sourceProvider: "codex",
+          hasFrontmatter: false,
+          codexMissingFields: ["developer_instructions"],
+        },
       ],
       hooks: [
         hookFact({

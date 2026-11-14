@@ -198,6 +198,8 @@ export type AgentFact = {
   frontmatterHooks?: HookFact[];
   permissionMode?: string;
   commandcodeDefects?: CommandcodeAgentDefect[];
+  /** Codex `.codex/agents/*.toml`: required string fields that are absent or not strings. */
+  codexMissingFields?: string[];
   invalidField?: string;
   effective?: boolean;
 };

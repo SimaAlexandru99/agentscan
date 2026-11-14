@@ -80,6 +80,26 @@ function checkCommandcodeAgents(facts: Facts): Finding[] {
   return out;
 }
 
+function checkCodexAgents(facts: Facts): Finding[] {
+  const out: Finding[] = [];
+  for (const agent of facts.agents) {
+    if (agent.sourceProvider !== "codex" || agent.codexMissingFields === undefined) {
+      continue;
+    }
+    const fields = agent.codexMissingFields.join(", ");
+    out.push(
+      make("codex.agent.missing-field", `agent:${agent.path}`, {
+        message: `Codex agent "${agent.name}" does not define string ${fields}`,
+        reason:
+          "Every standalone Codex custom agent file must define name, description, and developer_instructions. See docs/spec/codex-agents.md.",
+        evidence: [{ kind: "agent", value: agent.path }],
+        suggest: `Add ${fields} as strings to ${agent.path}`,
+      }),
+    );
+  }
+  return out;
+}
+
 /**
  * Agent definitions, checked for structure only.
  *
@@ -174,5 +194,5 @@ export function checkAgents(facts: Facts): Finding[] {
       );
     }
   }
-  return [...out, ...checkCommandcodeAgents(facts)];
+  return [...out, ...checkCommandcodeAgents(facts), ...checkCodexAgents(facts)];
 }

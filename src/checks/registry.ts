@@ -934,6 +934,13 @@ export const STRUCTURAL_CHECKS = [
     ...spec(SPEC_PAGES.codexHooks, "codex-hooks.md"),
   },
   {
+    id: "codex.agent.missing-field",
+    description: "Codex custom agent file does not define string name, description, and developer_instructions",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.codexAgents, "codex-agents.md"),
+  },
+  {
     id: "codex.hook.timeout-out-of-bounds",
     description: "Codex SessionEnd or Interrupt hook timeout is outside 1–3 seconds",
     severity: "error",

@@ -241,6 +241,52 @@ function shadowFartherKiroAgents(pending: { fact: AgentFact; hops: number }[]): 
   });
 }
 
+const CODEX_AGENT_REQUIRED = ["name", "description", "developer_instructions"] as const;
+
+/**
+ * Codex custom agents: `*.toml` directly in `.codex/agents` or `$CODEX_HOME/agents`.
+ * Each must define string `name`, `description`, `developer_instructions`.
+ * See docs/spec/codex-agents.md.
+ */
+export function discoverCodexAgentsDir(dir: string, io: ScanIO): AgentFact[] {
+  const facts: AgentFact[] = [];
+  for (const entry of listDir(dir, io, { optional: true }) ?? []) {
+    if (entry.name.startsWith(".") || !entry.name.endsWith(".toml")) {
+      continue;
+    }
+    const filePath = join(dir, entry.name);
+    if (!isFile(filePath)) {
+      continue;
+    }
+    const fact: AgentFact = {
+      name: entry.name.slice(0, -".toml".length),
+      path: filePath,
+      sourceProvider: "codex",
+      namespace: dir,
+      nameSource: "filename",
+      hasFrontmatter: false,
+    };
+    const value = readConfigFile(filePath, io);
+    if (value === undefined) {
+      fact.unreadable = true;
+    } else if (!isRecord(value)) {
+      reportRootShapeOnce(filePath, io, "Codex agent root is not a table");
+      fact.unreadable = true;
+    } else {
+      if (typeof value.name === "string") {
+        fact.name = value.name;
+        fact.nameSource = "frontmatter";
+      }
+      const missing = CODEX_AGENT_REQUIRED.filter((key) => typeof value[key] !== "string");
+      if (missing.length > 0) {
+        fact.codexMissingFields = missing;
+      }
+    }
+    facts.push(fact);
+  }
+  return facts;
+}
+
 /**
  * Claude: every `.claude/agents` from startDir up to root (docs/spec/claude-subagents.md).
  * VS Code: `.github/agents` (docs/spec/vscode-agents.md).
@@ -248,6 +294,7 @@ function shadowFartherKiroAgents(pending: { fact: AgentFact; hops: number }[]): 
  * user dir under `--global`. Nested package `.commandcode/agents` is not
  * Command Code project config.
  * Kiro: `.kiro/agents` on that same walk, plus `~/.kiro/agents` under `--global`.
+ * Codex: `.codex/agents` on that walk, plus `$CODEX_HOME/agents` under `--global`.
  */
 export function discoverAgents(
   root: string,
@@ -270,6 +317,7 @@ export function discoverAgents(
     for (const fact of discoverKiroAgentsDir(join(dir, ".kiro", "agents"), io)) {
       kiroPending.push({ fact, hops: hop });
     }
+    facts.push(...discoverCodexAgentsDir(join(dir, ".codex", "agents"), io));
   }
   facts.push(...discoverCommandcodeAgents(commandcodeProjectRoot, includeGlobal, io));
   if (includeGlobal) {
@@ -277,6 +325,10 @@ export function discoverAgents(
     const claudeGlobal = join(providerHome("claude"), "agents");
     if (!seenDirs.has(claudeGlobal)) {
       facts.push(...discoverClaudeAgentsDir(claudeGlobal, root, io));
+    }
+    const codexGlobal = join(providerHome("codex"), "agents");
+    if (!ancestors.some((dir) => join(dir, ".codex", "agents") === codexGlobal)) {
+      facts.push(...discoverCodexAgentsDir(codexGlobal, io));
     }
     const kiroGlobal = join(providerHome("kiro"), "agents");
     if (!ancestors.some((dir) => join(dir, ".kiro", "agents") === kiroGlobal)) {
