@@ -44,7 +44,7 @@ function commandcodeAgentSuggest(
     case "reserved-name":
       return `Rename ${agent.path} — explore, plan, review, and general are reserved`;
     case "invalid-permission-mode":
-      return `Use permissionMode default, auto-accept, bypass, plan, or dont-ask in ${agent.path}`;
+      return `Use permissionMode default, accept-edits, yolo, plan, or dont-ask in ${agent.path}`;
     case "invalid-field-type":
       return `Fix the type of ${agent.invalidField ?? "the field"} in ${agent.path}`;
     default: {

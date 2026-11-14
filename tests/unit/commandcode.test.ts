@@ -152,7 +152,7 @@ describe("Command Code agents", () => {
     write(
       root,
       ".commandcode/agents/typed.md",
-      "---\nname: typed\npermissionMode: yolo\nbackground: yes\n---\n",
+      "---\nname: typed\npermissionMode: turbo\nbackground: yes\n---\n",
     );
     const ids = ruleIds(root);
     expect(ids).toContain("commandcode.agent.reserved-name");

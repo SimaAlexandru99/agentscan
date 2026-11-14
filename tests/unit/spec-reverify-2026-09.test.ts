@@ -205,3 +205,15 @@ describe("Command Code agent permissionMode: inherit (commandcode.ai/docs/agents
     expect(ruleIds(root)).not.toContain("commandcode.agent.invalid-permission-mode");
   });
 });
+
+describe("Command Code agent permissionMode: accept-edits and yolo (commandcode.ai/docs/agents, 2026-11-14)", () => {
+  test.each(["accept-edits", "yolo", "auto-accept", "bypass"])("%s is accepted", (mode) => {
+    const root = tmpProject("agentscan-cc-mode-");
+    write(
+      root,
+      ".commandcode/agents/researcher.md",
+      `---\nname: researcher\ndescription: Researches\npermissionMode: ${mode}\n---\nbody\n`,
+    );
+    expect(ruleIds(root)).not.toContain("commandcode.agent.invalid-permission-mode");
+  });
+});

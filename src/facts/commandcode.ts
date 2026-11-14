@@ -24,11 +24,14 @@ export const COMMANDCODE_RESERVED_AGENT_NAMES = new Set([
  */
 export const COMMANDCODE_PERMISSION_MODES = new Set([
   "default",
-  "auto-accept",
-  "bypass",
+  "accept-edits",
+  "yolo",
   "plan",
   "dont-ask",
   "inherit",
+  // Aliases the docs still accept for accept-edits and yolo.
+  "auto-accept",
+  "bypass",
 ]);
 
 export const COMMANDCODE_MCP_TRANSPORTS = new Set(["http", "stdio"]);
