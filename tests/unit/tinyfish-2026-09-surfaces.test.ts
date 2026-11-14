@@ -81,6 +81,22 @@ describe("Kiro hook profile is not Claude", () => {
     expect(scan(root).ruleIds).not.toContain("kiro.hook.unknown-event");
   });
 
+  test("CLI V3 compatibility spellings AgentSpawn and agentSpawn are known", () => {
+    const root = mkPinnedProject("agentscan-kiro-spawn-", "kiro");
+    write(
+      root,
+      ".kiro/hooks/spawn.json",
+      JSON.stringify({
+        version: "v1",
+        hooks: [
+          { name: "a", trigger: "AgentSpawn", action: { type: "command", command: "true" } },
+          { name: "b", trigger: "agentSpawn", action: { type: "command", command: "true" } },
+        ],
+      }),
+    );
+    expect(scan(root).ruleIds).not.toContain("kiro.hook.unknown-event");
+  });
+
   test("prose FileSave is unknown, not PostFileSave", () => {
     const root = mkPinnedProject("agentscan-kiro-prose-", "kiro");
     write(

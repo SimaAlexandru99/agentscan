@@ -25,6 +25,9 @@ export const KIRO_HOOK_EVENTS = new Set([
   "PostFileCreate",
   "PostFileSave",
   "PostFileDelete",
+  // https://kiro.dev/docs/hooks/types/ (read 2026-11-14): CLI V3 "accepts AgentSpawn and agentSpawn as compatibility spellings".
+  "AgentSpawn",
+  "agentSpawn",
 ]);
 
 /** Quoted: action.type is `command` or `agent`. */
