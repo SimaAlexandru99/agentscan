@@ -1070,6 +1070,20 @@ export const STRUCTURAL_CHECKS = [
     provenance: "spec-required",
     ...spec(SPEC_PAGES.ampMcp, "amp-mcp.md"),
   },
+  {
+    id: "claude-desktop.mcp.no-launch",
+    description: "Claude Desktop MCP server declares no command",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.claudeDesktopMcp, "claude-desktop-mcp.md"),
+  },
+  {
+    id: "claude-desktop.extension.missing-field",
+    description: "Claude Desktop extension manifest lacks a required field or names an unknown server type",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.claudeDesktopExtensions, "claude-desktop-extensions.md"),
+  },
 ] as const satisfies readonly StructuralCheck[];
 
 export type RuleId = (typeof STRUCTURAL_CHECKS)[number]["id"];

@@ -82,6 +82,8 @@ export const PROVIDERS = {
    * skills are `.agents/skills`. See docs/spec/amp-mcp.md and amp-skills.md.
    */
   amp: { home: ".config/amp", skills: "agent-skills", userSkills: true },
+  /** Per-OS config dir, resolved in discover/claude-desktop.ts. See docs/spec/claude-desktop-mcp.md. */
+  "claude-desktop": {},
 } satisfies Record<string, ProviderSpec>;
 
 /** Every provider a fact can name. Copilot CLI reports as `vscode`; `unknown` has no entry. */

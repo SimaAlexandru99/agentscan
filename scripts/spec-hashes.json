@@ -235,12 +235,20 @@
     "hash": "0488996d6eecd7bd",
     "recorded": "2026-11-12"
   },
+  "https://modelcontextprotocol.io/docs/develop/connect-local-servers": {
+    "hash": "f9f7ad368e0e3c6c",
+    "recorded": "2026-11-14"
+  },
   "https://opencode.ai/docs/mcp-servers/": {
     "hash": "ac9e42884176da36",
     "recorded": "2026-11-14"
   },
   "https://opencode.ai/v2/docs/mcp-servers": {
     "hash": "ac9e42884176da36",
+    "recorded": "2026-11-14"
+  },
+  "https://raw.githubusercontent.com/anthropics/mcpb/main/MANIFEST.md": {
+    "hash": "af83f4dd90d37f0c",
     "recorded": "2026-11-14"
   },
   "https://zed.dev/docs/ai/mcp": {

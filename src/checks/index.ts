@@ -3,6 +3,7 @@ import type { Facts } from "../facts/types";
 import type { Finding } from "../findings";
 import { runBudgets } from "./budgets";
 import { checkAgents } from "./agents";
+import { checkClaudeDesktopExtensions } from "./claude-desktop";
 import { checkConfigErrors } from "./config";
 import { checkHookEvents, checkHooks } from "./hooks";
 import { checkMcp } from "./mcp";
@@ -65,6 +66,7 @@ export function runChecks(
     ...checkDescriptionBudget(facts, config.thresholds),
     ...checkAgents(facts),
     ...checkMcp(facts),
+    ...checkClaudeDesktopExtensions(facts),
     ...checkRules(quiet),
     ...runBudgets(quiet, config.thresholds),
   ];

@@ -3,7 +3,7 @@
 **Source:** https://modelcontextprotocol.io/docs/develop/connect-local-servers
 **Also:** https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp (remote connectors, a separate mechanism; article dateModified 2026-11-13)
 **Read:** 2026-11-14
-**Depends on it:** (new)
+**Depends on it:** `claude-desktop.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
 ## Files
 

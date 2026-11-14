@@ -279,6 +279,14 @@ export type RuleFact = {
 };
 
 /** Everything discovery reads from the agent configuration of one scan. */
+/** One installed Claude Desktop extension manifest. See docs/spec/claude-desktop-extensions.md. */
+export type ClaudeDesktopExtensionFact = {
+  path: string;
+  missingFields: string[];
+  /** `server.type` when it is a string outside node, python, binary, uv. */
+  unknownServerType?: string;
+};
+
 export type AgentSurface = {
   skills: SkillFact[];
   agents: AgentFact[];
@@ -298,6 +306,7 @@ export type AgentSurface = {
    * cwd, at most one per directory. See docs/spec/codex-agents-md.md.
    */
   codexInstructionChain: PolicyFileFact[];
+  claudeDesktopExtensions?: ClaudeDesktopExtensionFact[];
 };
 
 /** The scan snapshot every check reads: package facts plus the agent surface. */

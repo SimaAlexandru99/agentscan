@@ -457,6 +457,16 @@ export const SPEC_SURFACES: SpecSurface[] = [
     surface: "mcp",
     ...SPEC_PAGES.ampMcp,
   },
+  {
+    provider: "claude-desktop",
+    surface: "mcp",
+    ...SPEC_PAGES.claudeDesktopMcp,
+  },
+  {
+    provider: "claude-desktop",
+    surface: "mcp",
+    ...SPEC_PAGES.claudeDesktopExtensions,
+  },
 ];
 
 /** Re-read the sources when a capture or surface is older than this. */

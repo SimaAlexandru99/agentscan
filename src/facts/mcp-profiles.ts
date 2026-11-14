@@ -100,6 +100,15 @@ const PROFILES = {
   },
   "zed-json": { ...COMMAND_OR_URL, sourceProvider: "zed", consumedBy: ["zed"], ruleIdPrefix: "zed" },
   "amp-json": { ...COMMAND_OR_URL, sourceProvider: "amp", consumedBy: ["amp"], ruleIdPrefix: "amp" },
+  // Only command entries are documented; `type`/`url` entries are unverified, so they count as launchable.
+  "claude-desktop-json": {
+    sourceProvider: "claude-desktop",
+    consumedBy: ["claude-desktop"],
+    ruleIdPrefix: "claude-desktop",
+    launchable: (server) => commandOrUrl(server) || server.transport !== undefined,
+    noLaunchDeclares: "no command",
+    noLaunchAdd: "a command",
+  },
 } as const satisfies Record<McpSchemaProfile, McpProfileSpec>;
 
 export const MCP_PROFILES: Record<McpSchemaProfile, McpProfileSpec> = PROFILES;

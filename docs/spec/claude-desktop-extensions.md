@@ -2,7 +2,7 @@
 
 **Source:** https://raw.githubusercontent.com/anthropics/mcpb/main/MANIFEST.md
 **Read:** 2026-11-14
-**Depends on it:** (new)
+**Depends on it:** `claude-desktop.extension.missing-field`
 
 ## Files
 

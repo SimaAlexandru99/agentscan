@@ -1679,6 +1679,9 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           charCount: 24_001,
         },
       ],
+      claudeDesktopExtensions: [
+        { path: "/home/user/.config/Claude/Claude Extensions/x/manifest.json", missingFields: ["author"] },
+      ],
       hasSkillsLock: true,
       lockedSkills: [{ id: "pinned-gone" }],
       skills: [
@@ -1948,6 +1951,14 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           name: "dead-amp",
           path: "/tmp/proj/.amp/settings.json",
           schemaProfile: "amp-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+        }),
+        mcpFact({
+          name: "dead-desktop",
+          path: "/home/user/.config/Claude/claude_desktop_config.json",
+          schemaProfile: "claude-desktop-json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],

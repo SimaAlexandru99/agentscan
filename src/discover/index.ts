@@ -88,6 +88,7 @@ import { newScanIO, type ScanIO } from "./fs";
 import { ancestorDirsInclusive, type ScanContext } from "./scan-context";
 import { discoverZedProjectMcp, discoverZedUserMcp } from "./zed";
 import { discoverAmpProjectMcp, discoverAmpUserMcp } from "./amp";
+import { discoverClaudeDesktopExtensions, discoverClaudeDesktopMcp } from "./claude-desktop";
 
 export { resolveRoot, resolveScanContext, type ScanContext, type ScanLocation } from "./scan-context";
 
@@ -280,6 +281,10 @@ const SOURCES: Source[] = [
       mcp: discoverAmpProjectMcp(ancestorDirsInclusive(startDir, scanBoundary), io),
     }),
     user: ({ root, io }) => ({ mcp: discoverAmpUserMcp(root, io) }),
+  },
+  {
+    id: "claude-desktop",
+    user: ({ root, io }) => ({ mcp: discoverClaudeDesktopMcp(root, io) }),
   },
   {
     // Every provider's project MCP file, from the configured `mcpPaths`.
@@ -485,5 +490,6 @@ export function discoverAgentSurface(
     configErrors: io.errors,
     codexProjectDocMaxBytes: codex.projectDocMaxBytes ?? CODEX_PROJECT_DOC_MAX_BYTES,
     codexInstructionChain: codexInstructionChain(policyFiles, startDir, codexProjectRoot, fallbacks),
+    ...(includeGlobal ? { claudeDesktopExtensions: discoverClaudeDesktopExtensions(io) } : {}),
   };
 }
