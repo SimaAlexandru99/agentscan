@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { chmodSync } from "node:fs";
 import { join } from "node:path";
-import { mkPinnedProject, write } from "../helpers/tmp";
+import { mkPinnedProject, mkPinnedRoot, write } from "../helpers/tmp";
 import { withHome } from "../helpers/env";
 import { findingsFor } from "../helpers/scan";
 
@@ -201,6 +201,7 @@ describe("Kiro hook profile is not Claude", () => {
 describe("Cline/Roo/Kilo Agent Skills", () => {
   for (const [label, rel] of [
     ["Cline", ".cline/skills"],
+    ["Cline", ".clinerules/skills"],
     ["Roo", ".roo/skills"],
     ["Kilo", ".kilo/skills"],
   ] as const) {
@@ -333,5 +334,21 @@ describe("Copilot-only events in Claude settings stay Claude-unknown", () => {
     const { ruleIds } = scan(root);
     expect(ruleIds).toContain("claude.hook.unknown-event");
     expect(ruleIds).not.toContain("copilot.hook.unknown-event");
+  });
+});
+
+describe("Cursor user skills", () => {
+  test("~/.cursor/skills is read only under --global, as Agent Skills", () => {
+    const root = mkPinnedProject("agentscan-cursor-user-skill-");
+    const home = mkPinnedRoot("agentscan-cursor-user-home-");
+    write(home, ".cursor/skills/deploy/SKILL.md", skillMd("other", "Deploy."));
+    withHome(home, () => {
+      expect(scan(root).ruleIds).not.toContain("agent-skills.skill.name-does-not-match-directory");
+      const on = scan(root, true);
+      expect(on.facts.skills.find((skill) => skill.id === "other" || skill.path.endsWith("deploy"))?.sourceProvider).toBe(
+        "cursor",
+      );
+      expect(on.ruleIds).toContain("agent-skills.skill.name-does-not-match-directory");
+    });
   });
 });

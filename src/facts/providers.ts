@@ -18,6 +18,8 @@ type ProviderSpec = {
   userSkills?: true;
   /** Other agents load these skills too, so they are checked even when Command Code shadows them. */
   portableSkills?: true;
+  /** More project dirs whose `skills/` child this provider reads, besides `dotDir`. */
+  skillDotDirs?: string[];
 };
 
 /**
@@ -35,7 +37,8 @@ export const PROVIDERS = {
    * See docs/spec/hook-sources.md, docs/spec/claude-memory.md, and docs/spec/mcp.md.
    */
   claude: { dotDir: ".claude", homeEnv: "CLAUDE_CONFIG_DIR", skills: "claude", userSkills: true },
-  cursor: { dotDir: ".cursor", skills: "agent-skills", portableSkills: true },
+  /** cursor.com/docs/skills: project `.cursor/skills`, user `~/.cursor/skills`. */
+  cursor: { dotDir: ".cursor", skills: "agent-skills", userSkills: true, portableSkills: true },
   /** Config-advanced: `CODEX_HOME` defaults to `~/.codex`. Never used to open `auth.json`. */
   codex: { dotDir: ".codex", homeEnv: "CODEX_HOME", skills: "agent-skills", userSkills: true, portableSkills: true },
   commandcode: { dotDir: ".commandcode", skills: "agent-skills", userSkills: true },
@@ -49,7 +52,8 @@ export const PROVIDERS = {
    */
   devin: { dotDir: ".devin", home: ".config/devin", skills: "agent-skills", userSkills: true },
   kiro: { dotDir: ".kiro", skills: "agent-skills", userSkills: true },
-  cline: { dotDir: ".cline", skills: "agent-skills", userSkills: true },
+  /** docs.cline.bot/customization/skills: `.cline/skills` and `.clinerules/skills`. */
+  cline: { dotDir: ".cline", skillDotDirs: [".clinerules"], skills: "agent-skills", userSkills: true },
   roo: { dotDir: ".roo", skills: "agent-skills", userSkills: true },
   kilo: { dotDir: ".kilo", skills: "agent-skills", userSkills: true },
   junie: { dotDir: ".junie", skills: "agent-skills", userSkills: true },
@@ -88,7 +92,7 @@ const WITH_SKILLS = SPECS.filter(([, spec]) => spec.skills !== undefined) as [Ex
 
 /** Project `skills/` dirs. A provider with `skills` but no `dotDir` is user-only. */
 export const PROJECT_SKILL_DIRS = WITH_SKILLS.flatMap(([, spec]) =>
-  spec.dotDir === undefined ? [] : [`${spec.dotDir}/skills`],
+  [...(spec.dotDir === undefined ? [] : [spec.dotDir]), ...(spec.skillDotDirs ?? [])].map((dir) => `${dir}/skills`),
 );
 
 /**
@@ -111,7 +115,7 @@ export const DEFAULT_SKILL_PATHS = [
  */
 export const SKILL_DOT_DIRS = new Set(
   WITH_SKILLS.flatMap(([id, spec]) =>
-    id === "commandcode" || spec.dotDir === undefined ? [] : [spec.dotDir],
+    id === "commandcode" || spec.dotDir === undefined ? [] : [spec.dotDir, ...(spec.skillDotDirs ?? [])],
   ),
 );
 
@@ -121,8 +125,10 @@ export const AGENT_CONFIG_DOT_DIRS = SPECS.flatMap(([, spec]) => spec.dotDir ?? 
 
 const SKILL_MARKERS = WITH_SKILLS.flatMap(([id, spec]) => {
   const markers: string[] = [];
-  if (spec.dotDir !== undefined) {
-    markers.push(`/${spec.dotDir}/skills`);
+  for (const dir of [spec.dotDir, ...(spec.skillDotDirs ?? [])]) {
+    if (dir !== undefined) {
+      markers.push(`/${dir}/skills`);
+    }
   }
   if (spec.home !== undefined && spec.userSkills) {
     markers.push(`/${spec.home}/skills`);
