@@ -1,21 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AgentSelector } from "@/components/agent-selector";
+import { ConfigDiskExplainer } from "@/components/config-disk-explainer";
 import { CopyCommand } from "@/components/copy-command";
+import { InlineCode } from "@/components/inline-code";
 import { SoftwareApplicationJsonLd } from "@/components/json-ld";
 import { SiteFooter } from "@/components/site-footer";
-import { TerminalDemo } from "@/components/terminal-demo";
 import { buttonVariants } from "@/components/ui/button";
+import { BENEFITS, HOME_METRICS, OTHER_AGENTS, RUNS_NOTE } from "@/lib/home";
+import { releases } from "@/lib/releases";
 import {
   BREAKING_NOTE,
-  COVERAGE_LINES,
+  HOME_DESCRIPTION,
+  HOME_TITLE,
   PRODUCT_CHECKS,
   PRODUCT_VERSION,
-  STILL_UNREAD,
 } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
+  title: { absolute: HOME_TITLE },
+  description: HOME_DESCRIPTION,
   alternates: {
     canonical: "/",
     types: { "text/markdown": "/index.md" },
@@ -23,8 +29,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: "/",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
   },
+  twitter: { card: "summary_large_image", title: HOME_TITLE, description: HOME_DESCRIPTION },
 };
+
+const h2 = "text-3xl font-semibold tracking-tight text-foreground sm:text-4xl";
+const textLink = "text-[15px] text-primary underline-offset-4 hover:underline";
 
 export default function HomePage() {
   return (
@@ -35,117 +47,84 @@ export default function HomePage() {
           aria-hidden
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,oklch(0.795_0.184_86.047_/0.12),transparent_55%),linear-gradient(180deg,oklch(0.14_0.02_91.936),transparent_40%)]"
         />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:linear-gradient(oklch(1_0_0_/80%)_1px,transparent_1px),linear-gradient(90deg,oklch(1_0_0_/80%)_1px,transparent_1px)] [background-size:48px_48px]"
-        />
-
-        <section className="relative mx-auto max-w-3xl px-6 pb-16 pt-16 sm:pb-20 sm:pt-24">
-          <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-700 text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
-            agentscan
-          </p>
-          <h1 className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-100 duration-700 mt-5 max-w-2xl text-balance text-xl font-medium leading-snug text-foreground/95 sm:text-2xl">
-            Your agent config says the guard is on. The script is gone. Nothing
-            told you.
-          </h1>
-          <p className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-200 duration-700 mt-4 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground">
-            Linters read the code your agent writes. This reads the agent itself
-            — skills, hooks, MCP servers, lockfiles, policy files, and the Codex,
-            Antigravity, Cursor, Gemini, Kiro, Devin CLI, Claude Desktop, Amp, Zed,
-            Qwen Code, Goose, and Factory Droid contracts.
-          </p>
-          <p className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-200 duration-700 mt-3 font-mono text-sm text-muted-foreground">
-            {PRODUCT_VERSION} · {PRODUCT_CHECKS} checks · offline on check
-          </p>
-
-          <div className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-300 duration-700 mt-8 space-y-4">
-            <CopyCommand />
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                href="/docs"
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "lg" }),
-                  "rounded-full px-5",
-                )}
-              >
-                Read the docs
-              </Link>
-              <a
-                href="https://github.com/SimaAlexandru99/agentscan"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "lg" }),
-                  "rounded-full px-5",
-                )}
-              >
-                GitHub
-              </a>
+        <div className="relative mx-auto max-w-5xl px-6 pb-8 pt-16 sm:pt-24">
+          <section className="max-w-3xl">
+            <p className="rise text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
+              agentscan
+            </p>
+            <h1
+              className="rise mt-5 text-balance text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-5xl"
+              style={{ animationDelay: "70ms" }}
+            >
+              Your agent config says the guard is on. The script is gone. Nothing
+              told you.
+            </h1>
+            <p
+              className="rise mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-muted-foreground"
+              style={{ animationDelay: "140ms" }}
+            >
+              Linters read the code your agent writes. agentscan reads the agent
+              itself, for 23 coding agents, and checks each config against the
+              disk and the vendor&apos;s own docs. Offline, read-only,
+              deterministic.
+            </p>
+            <div className="rise mt-7 space-y-4" style={{ animationDelay: "210ms" }}>
+              <CopyCommand />
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href="/checks"
+                  className={cn(buttonVariants({ variant: "outline", size: "lg" }), "rounded-full px-5")}
+                >
+                  Browse all {PRODUCT_CHECKS} checks
+                </Link>
+                <Link
+                  href="/docs"
+                  className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "rounded-full px-5")}
+                >
+                  Read the docs
+                </Link>
+              </div>
             </div>
-          </div>
+            <p
+              className="rise mt-4 font-mono text-sm text-muted-foreground"
+              style={{ animationDelay: "280ms" }}
+            >
+              {PRODUCT_VERSION} · {PRODUCT_CHECKS} checks · offline on check
+            </p>
+          </section>
 
-          <div className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both delay-500 duration-700 mt-12">
-            <TerminalDemo />
-          </div>
+          <ConfigDiskExplainer />
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-5xl px-6">
+        <section className="mt-24">
+          <h2 className={h2}>What you get after one run</h2>
+          <p className="mt-2 mb-9 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
+            The failures agentscan finds are the ones nothing else reports: the
+            agent starts normally and quietly skips what you configured.
+          </p>
+          <ol className="border-t border-border">
+            {BENEFITS.map((benefit, index) => (
+              <li
+                key={benefit.title}
+                className="grid grid-cols-1 items-baseline gap-2 border-b border-border py-6 md:grid-cols-[56px_minmax(0,1fr)_minmax(0,1.2fr)] md:gap-6"
+              >
+                <span className="font-mono text-[13px] text-primary">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <h3 className="text-xl font-semibold leading-snug tracking-tight text-foreground">
+                  {benefit.title}
+                </h3>
+                <p className="leading-relaxed text-muted-foreground">{benefit.body}</p>
+              </li>
+            ))}
+          </ol>
         </section>
       </div>
 
       <section className="border-t border-border/60">
-        <div className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            How it works
-          </h2>
-          <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-            No AI, no network on check. Read the config, read the disk, compare.
-            Same tree in, same findings out, every time.
-          </p>
-          <ul className="mt-8 space-y-4 text-base leading-relaxed text-foreground/90">
-            <li className="border-l-2 border-primary/70 pl-4">
-              {PRODUCT_CHECKS} checks, each labeled spec-required, vendor-recommendation,
-              security, internal-consistency, or heuristic.
-            </li>
-            <li className="border-l-2 border-primary/70 pl-4">
-              No network — check never opens a socket.
-            </li>
-            <li className="border-l-2 border-primary/70 pl-4">
-              Writes nothing — the scanned tree is left untouched.
-            </li>
-            <li className="border-l-2 border-primary/70 pl-4">
-              Spec-required checks cite a published line in{" "}
-              <a
-                href="https://github.com/SimaAlexandru99/agentscan/tree/master/docs/spec"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline-offset-4 hover:underline"
-              >
-                docs/spec/
-              </a>
-              . Heuristics stay at info and are labeled.
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <section className="border-t border-border/60">
-        <div className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            What 2.3.1 reads
-          </h2>
-          <ul className="mt-8 space-y-4 text-base leading-relaxed text-foreground/90">
-            {COVERAGE_LINES.map((line) => (
-              <li key={line} className="border-l-2 border-primary/70 pl-4">
-                {line}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-8 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-            {STILL_UNREAD}
-          </p>
-        </div>
-      </section>
-
-      <section className="border-t border-border/60">
-        <div className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
+        <div className="mx-auto max-w-5xl px-6 py-16 sm:py-20">
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
             Why the tool looks like this
           </h2>
@@ -161,62 +140,63 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-t border-border/60">
-        <div className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            Run it in 30 seconds
-          </h2>
-          <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-            Point it at a project with agent config. On Node 20.11+ or Bun — the
-            published bin is a single bundled file.
-          </p>
-          <div className="mt-8">
-            <CopyCommand />
+      <div className="mx-auto max-w-5xl px-6 pb-24">
+        <section aria-label="Results from real runs" className="mt-8">
+          <div className="mb-7 flex flex-wrap items-baseline justify-between gap-4">
+            <h2 className={h2}>From real runs</h2>
+            <Link href="/results" className={textLink}>
+              Every scenario from the real run, in detail
+            </Link>
           </div>
-        </div>
-      </section>
+          <dl className="grid grid-cols-2 border-y border-border md:grid-cols-4">
+            {HOME_METRICS.map((metric) => (
+              <div key={metric.label} className="flex flex-col-reverse gap-2 py-7 pr-6">
+                <dt className="text-[15px] leading-normal text-muted-foreground">{metric.label}</dt>
+                <dd className="text-4xl font-semibold leading-none tracking-tight text-foreground">
+                  {metric.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-3.5 text-[13px] text-muted-foreground">{RUNS_NOTE}</p>
+        </section>
 
-      <section className="border-t border-border/60">
-        <div className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            For agents
-          </h2>
-          <p className="mt-4 max-w-2xl text-pretty leading-relaxed text-muted-foreground">
-            Agents forget the audit. The skill tells them to run it before they
-            edit a hook or claim a guard is on.
-          </p>
-          <div
-            className="mt-8 overflow-hidden rounded-xl border border-border bg-black/40 shadow-[inset_0_1px_0_oklch(1_0_0_/6%)]"
-            aria-label="agentscan skill — when to run the audit"
-          >
-            <div className="flex items-center gap-2 border-b border-border/70 px-4 py-2.5">
-              <span className="size-2.5 rounded-full bg-foreground/15" />
-              <span className="size-2.5 rounded-full bg-foreground/15" />
-              <span className="size-2.5 rounded-full bg-foreground/15" />
-              <span className="ml-2 font-mono text-xs text-muted-foreground">
-                skills/agentscan/SKILL.md
-              </span>
-            </div>
-            <pre className="overflow-x-auto p-4 font-mono text-[13px] leading-relaxed sm:text-sm">
-              {[
-                ["muted", "When   hooks · skills · MCP · AGENTS.md · skills-lock.json"],
-                ["default", "Do     npx @chimix/agentscan@latest --output prompt"],
-                ["muted", "       do not skip claude.hook.missing-script (error)"],
-                ["muted", "Don't  write the tree · guess if a hook is valid"],
-              ].map(([tone, line]) => (
-                <div
-                  key={line}
-                  className={
-                    tone === "muted" ? "text-muted-foreground" : "text-foreground"
-                  }
-                >
-                  {line}
-                </div>
-              ))}
-            </pre>
+        <section id="agents" className="mt-24 scroll-mt-20">
+          <h2 className={cn(h2, "mb-6")}>Pick your agent</h2>
+          <AgentSelector />
+          <p className="mt-3 text-[13px] text-muted-foreground">{OTHER_AGENTS}</p>
+        </section>
+
+        <section className="mt-24">
+          <div className="mb-5 flex flex-wrap items-baseline justify-between gap-4">
+            <h2 className={h2}>Latest releases</h2>
+            <Link href="/changelog" className={textLink}>
+              Full agentscan changelog
+            </Link>
           </div>
-        </div>
-      </section>
+          <ul className="border-t border-border">
+            {releases.slice(0, 3).map((release) => (
+              <li
+                key={release.version}
+                className="grid grid-cols-[72px_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1 border-b border-border py-4 md:grid-cols-[96px_120px_minmax(0,1fr)]"
+              >
+                <Link
+                  href={`/changelog#v${release.version}`}
+                  className="font-mono text-base text-primary underline-offset-4 hover:underline"
+                >
+                  {release.version}
+                </Link>
+                <time dateTime={release.date} className="font-mono text-[13px] text-muted-foreground">
+                  {release.date}
+                </time>
+                <p className="col-span-2 line-clamp-2 leading-relaxed text-foreground/85 md:col-span-1">
+                  <InlineCode text={release.summary} />
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
 
       <SiteFooter />
     </>

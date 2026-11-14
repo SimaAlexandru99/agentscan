@@ -40,7 +40,9 @@ describe("1.0 public copy", () => {
   });
 
   test("React pages were not reverted to Alpha copy", async () => {
-    const home = await Bun.file(new URL("../app/page.tsx", import.meta.url)).text();
+    const home =
+      (await Bun.file(new URL("../app/page.tsx", import.meta.url)).text()) +
+      (await Bun.file(new URL("../components/config-disk-explainer.tsx", import.meta.url)).text());
     const docs = await Bun.file(
       new URL("../app/docs/page.tsx", import.meta.url),
     ).text();
@@ -51,8 +53,7 @@ describe("1.0 public copy", () => {
       expect(source).not.toContain("Alpha");
     }
     expect(home).toContain("Heuristics stay at info and are labeled");
-    expect(home).toContain("What 2.3.1 reads");
-    expect(home).toContain("COVERAGE_LINES");
+    expect(home).toContain("BREAKING_NOTE");
     expect(docs).toContain("BREAKING_NOTE");
     expect(docs).toContain("GLOBAL_FLAG_MEANING");
   });

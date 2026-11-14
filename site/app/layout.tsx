@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { SiteHeader } from "@/components/site-header";
-import { PRODUCT_CHECKS, PRODUCT_VERSION } from "@/lib/site";
+import { HOME_DESCRIPTION, HOME_TITLE } from "@/lib/site";
 
 import "./globals.css";
 
@@ -19,11 +19,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://agentscan.space"),
   title: {
-    default: "agentscan — audit agent config before it fails silently",
+    default: HOME_TITLE,
     template: "%s · agentscan",
   },
-  description:
-    `Find broken agent configuration — hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile. ${PRODUCT_VERSION}, ${PRODUCT_CHECKS} checks. No AI, no network on check, writes nothing.`,
+  description: HOME_DESCRIPTION,
   alternates: {
     canonical: "./",
     types: {
@@ -31,9 +30,8 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "agentscan — audit agent config before it fails silently",
-    description:
-      `Find broken agent configuration — hooks whose scripts are gone, MCP servers that cannot start, skills that disagree with their lockfile. ${PRODUCT_VERSION}, ${PRODUCT_CHECKS} checks. No AI, no network on check, writes nothing.`,
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
     url: "https://agentscan.space",
     siteName: "agentscan",
     type: "website",
@@ -41,9 +39,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "agentscan — audit agent config before it fails silently",
-    description:
-      `Find broken agent configuration. ${PRODUCT_VERSION}, ${PRODUCT_CHECKS} checks. No AI, no network on check, writes nothing.`,
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
   },
 };
 

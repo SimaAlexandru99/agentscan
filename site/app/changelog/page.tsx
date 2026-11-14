@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { InlineCode } from "@/components/inline-code";
 import { JsonLd } from "@/components/json-ld";
 import { SiteFooter } from "@/components/site-footer";
 import { breadcrumbJsonLd, itemListJsonLd } from "@/lib/json-ld";
@@ -20,19 +21,6 @@ export const metadata: Metadata = {
   openGraph: { title: TITLE, description: DESCRIPTION, url: "/changelog", type: "website" },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
-
-/** Release text keeps markdown inline code; render it as `<code>`. */
-function InlineCode({ text }: { text: string }) {
-  return text.split(/(`[^`]+`)/).map((part, index) =>
-    part.startsWith("`") && part.endsWith("`") && part.length > 1 ? (
-      <code key={index} className="font-mono text-[0.9em] text-foreground">
-        {part.slice(1, -1)}
-      </code>
-    ) : (
-      part
-    ),
-  );
-}
 
 export default function ChangelogPage() {
   return (
