@@ -1,0 +1,1469 @@
+[
+  {
+    "id": "agent-skills.skill.body-too-large",
+    "severity": "info",
+    "provenance": "vendor-recommendation",
+    "description": "Portable skill SKILL.md exceeds the 500-line recommendation",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "agent-skills.skill.description-too-long",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Portable skill description exceeds 1024 characters",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "agent-skills.skill.invalid-allowed-tools",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Portable skill allowed-tools is not a string",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "agent-skills.skill.invalid-compatibility",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Portable skill compatibility is not a string of 1–500 characters",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "agent-skills.skill.invalid-metadata",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Portable skill metadata is not a map of string to string",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "agent-skills.skill.invalid-name",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Portable skill name is not a valid identifier",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "agent-skills.skill.missing-description",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Portable skill frontmatter has no required description",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "agent-skills.skill.missing-frontmatter",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Portable skill SKILL.md has no YAML frontmatter block",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "agent-skills.skill.missing-name",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Portable skill frontmatter has no required name",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "agent-skills.skill.name-does-not-match-directory",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Portable skill name does not match its directory",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "agent-skills.skill.name-too-long",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Portable skill name exceeds 64 characters",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "amp.mcp.no-launch",
+    "severity": "warning",
+    "provenance": "internal-consistency",
+    "description": "Amp MCP server declares neither command nor url",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "antigravity.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Antigravity command hook declares no command",
+    "sourceUrl": "https://antigravity.google/docs/hooks",
+    "capture": "antigravity-hooks.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "antigravity.hook.invalid-group",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Antigravity hook group is missing a hooks array, or matcher is not a string",
+    "sourceUrl": "https://antigravity.google/docs/hooks",
+    "capture": "antigravity-hooks.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "antigravity.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Antigravity hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "antigravity.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Antigravity hook registered under an event name that is never dispatched",
+    "sourceUrl": "https://antigravity.google/docs/hooks",
+    "capture": "antigravity-hooks.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "antigravity.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Antigravity hook handler type is not command",
+    "sourceUrl": "https://antigravity.google/docs/hooks",
+    "capture": "antigravity-hooks.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "antigravity.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Antigravity MCP server declares neither command, serverUrl, nor url",
+    "sourceUrl": "https://antigravity.google/docs/mcp",
+    "capture": "antigravity-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "antigravity.rule.invalid-trigger",
+    "severity": "warning",
+    "provenance": "spec-required",
+    "description": "Antigravity modular rule trigger is not always_on, model_decision, glob, or manual",
+    "sourceUrl": "https://antigravity.google/docs/rules",
+    "capture": "antigravity-rules.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "antigravity.rule.missing-description",
+    "severity": "warning",
+    "provenance": "spec-required",
+    "description": "Antigravity model_decision rule is missing a description",
+    "sourceUrl": "https://antigravity.google/docs/rules",
+    "capture": "antigravity-rules.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "antigravity.rule.missing-globs",
+    "severity": "warning",
+    "provenance": "spec-required",
+    "description": "Antigravity glob rule is missing globs",
+    "sourceUrl": "https://antigravity.google/docs/rules",
+    "capture": "antigravity-rules.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "antigravity.rule.missing-trigger",
+    "severity": "warning",
+    "provenance": "spec-required",
+    "description": "Antigravity modular rule is missing a frontmatter trigger",
+    "sourceUrl": "https://antigravity.google/docs/rules",
+    "capture": "antigravity-rules.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "antigravity.rule.too-large",
+    "severity": "warning",
+    "provenance": "spec-required",
+    "description": "Antigravity rule exceeds 24,000 bytes",
+    "sourceUrl": "https://antigravity.google/docs/rules",
+    "capture": "antigravity-rules.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "budget.agents",
+    "severity": "info",
+    "provenance": "heuristic",
+    "description": "More agent definitions than a focused set (>8 files in .claude/agents)",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "budget.agents-md",
+    "severity": "info",
+    "provenance": "heuristic",
+    "description": "AGENTS.md longer than the heuristic line budget (>150 lines)",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "budget.claude-md",
+    "severity": "info",
+    "provenance": "vendor-recommendation",
+    "description": "CLAUDE.md longer than the documented size target (~200 lines)",
+    "sourceUrl": "https://code.claude.com/docs/en/memory",
+    "capture": "claude-memory.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "budget.mcp",
+    "severity": "info",
+    "provenance": "heuristic",
+    "description": "Project MCP server count above the point where tool selection may degrade",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "claude-desktop.extension.missing-field",
+    "severity": "warning",
+    "provenance": "spec-required",
+    "description": "Claude Desktop extension manifest lacks a required field or names an unknown server type",
+    "sourceUrl": "https://raw.githubusercontent.com/anthropics/mcpb/main/MANIFEST.md",
+    "capture": "claude-desktop-extensions.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude-desktop.mcp.no-launch",
+    "severity": "warning",
+    "provenance": "internal-consistency",
+    "description": "Claude Desktop MCP server declares no command",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.agent.duplicate-name",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Agent names are duplicated",
+    "sourceUrl": "https://code.claude.com/docs/en/sub-agents",
+    "capture": "agents.md",
+    "lastVerified": "2026-11-13"
+  },
+  {
+    "id": "claude.agent.invalid-name",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Agent frontmatter name is one Claude Code skips",
+    "sourceUrl": "https://code.claude.com/docs/en/sub-agents",
+    "capture": "agents.md",
+    "lastVerified": "2026-11-13"
+  },
+  {
+    "id": "claude.agent.missing-description",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Agent frontmatter has no description",
+    "sourceUrl": "https://code.claude.com/docs/en/sub-agents",
+    "capture": "agents.md",
+    "lastVerified": "2026-11-13"
+  },
+  {
+    "id": "claude.agent.missing-frontmatter",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Agent definition has no YAML frontmatter block",
+    "sourceUrl": "https://code.claude.com/docs/en/sub-agents",
+    "capture": "agents.md",
+    "lastVerified": "2026-11-13"
+  },
+  {
+    "id": "claude.agent.missing-name",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Agent frontmatter has no name",
+    "sourceUrl": "https://code.claude.com/docs/en/sub-agents",
+    "capture": "agents.md",
+    "lastVerified": "2026-11-13"
+  },
+  {
+    "id": "claude.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Claude command hook is missing the command field",
+    "sourceUrl": "https://code.claude.com/docs/en/hooks",
+    "capture": "hook-events.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.hook.http-without-url",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Claude http hook is missing the url field",
+    "sourceUrl": "https://code.claude.com/docs/en/hooks",
+    "capture": "hook-events.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.hook.incompatible-handler",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Claude hook handler type is not valid for its event",
+    "sourceUrl": "https://code.claude.com/docs/en/hooks",
+    "capture": "hook-events.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.hook.invalid-group",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Claude hook group has a matcher but no hooks array",
+    "sourceUrl": "https://code.claude.com/docs/en/hooks",
+    "capture": "hook-events.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.hook.mcp-tool-without-server-or-tool",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Claude MCP tool hook is missing required server and tool fields",
+    "sourceUrl": "https://code.claude.com/docs/en/hooks",
+    "capture": "hook-events.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "claude.hook.prompt-without-prompt",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Claude prompt or agent hook is missing the required prompt field",
+    "sourceUrl": "https://code.claude.com/docs/en/hooks",
+    "capture": "hook-events.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Hook registered under an event name that is never dispatched",
+    "sourceUrl": "https://code.claude.com/docs/en/hooks",
+    "capture": "hook-events.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Claude hook uses a handler type that is not command, http, mcp_tool, prompt, or agent, or omits the required type",
+    "sourceUrl": "https://code.claude.com/docs/en/hooks",
+    "capture": "hook-events.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "MCP server declares neither command nor url",
+    "sourceUrl": "https://code.claude.com/docs/en/mcp",
+    "capture": "mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.mcp.reserved-name",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Claude MCP server uses a reserved name that Claude skips at load",
+    "sourceUrl": "https://code.claude.com/docs/en/mcp",
+    "capture": "mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.mcp.url-without-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Remote MCP server has a url but no transport type",
+    "sourceUrl": "https://code.claude.com/docs/en/mcp",
+    "capture": "mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.skill.missing-description",
+    "severity": "info",
+    "provenance": "vendor-recommendation",
+    "description": "SKILL.md frontmatter has no description and no first non-empty markdown line",
+    "sourceUrl": "https://code.claude.com/docs/en/skills",
+    "capture": "skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "claude.skill.missing-frontmatter",
+    "severity": "warning",
+    "provenance": "spec-required",
+    "description": "SKILL.md has no YAML frontmatter block",
+    "sourceUrl": "https://code.claude.com/docs/en/skills",
+    "capture": "skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "codex.agent.missing-field",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Codex custom agent file does not define string name, description, and developer_instructions",
+    "sourceUrl": "https://learn.chatgpt.com/docs/agent-configuration/subagents",
+    "capture": "codex-agents.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "codex.budget.instructions",
+    "severity": "info",
+    "provenance": "vendor-recommendation",
+    "description": "Codex AGENTS.md chain exceeds project_doc_max_bytes (32 KiB default)",
+    "sourceUrl": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+    "capture": "codex-agents-md.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "codex.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Codex command hook declares no command",
+    "sourceUrl": "https://learn.chatgpt.com/docs/hooks",
+    "capture": "codex-hooks.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "codex.hook.incompatible-handler",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Codex prompt or agent handler is parsed but skipped, or SessionEnd uses mcp_tool",
+    "sourceUrl": "https://learn.chatgpt.com/docs/hooks",
+    "capture": "codex-hooks.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "codex.hook.invalid-group",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Codex hook group is missing a hooks array, or matcher is not a string",
+    "sourceUrl": "https://learn.chatgpt.com/docs/hooks",
+    "capture": "codex-hooks.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "codex.hook.mcp-tool-without-server-or-tool",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Codex MCP tool hook declares no server or tool",
+    "sourceUrl": "https://learn.chatgpt.com/docs/hooks",
+    "capture": "codex-hooks.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "codex.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Codex hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "codex.hook.timeout-out-of-bounds",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Codex SessionEnd or Interrupt hook timeout is outside 1–3 seconds",
+    "sourceUrl": "https://learn.chatgpt.com/docs/hooks",
+    "capture": "codex-hooks.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "codex.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Codex hook registered under an event name that is never dispatched",
+    "sourceUrl": "https://learn.chatgpt.com/docs/hooks",
+    "capture": "codex-hooks.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "codex.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Codex hook handler type is not command, mcp_tool, prompt, or agent",
+    "sourceUrl": "https://learn.chatgpt.com/docs/hooks",
+    "capture": "codex-hooks.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "codex.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Codex MCP server declares neither command nor url",
+    "sourceUrl": "https://learn.chatgpt.com/docs/extend/mcp",
+    "capture": "codex-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "commandcode.agent.invalid-field-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code agent field has a type the spec does not accept",
+    "sourceUrl": "https://commandcode.ai/docs/agents",
+    "capture": "commandcode-agents.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "commandcode.agent.invalid-permission-mode",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code agent permissionMode is not a documented value",
+    "sourceUrl": "https://commandcode.ai/docs/agents",
+    "capture": "commandcode-agents.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "commandcode.agent.reserved-name",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code custom agent uses a reserved name and is ignored",
+    "sourceUrl": "https://commandcode.ai/docs/agents",
+    "capture": "commandcode-agents.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "commandcode.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code command hook is missing the command field",
+    "sourceUrl": "https://commandcode.ai/docs/hooks",
+    "capture": "commandcode-hooks.md",
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "commandcode.hook.invalid-group",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code hook group is missing the required nested hooks array, or matcher is not a string",
+    "sourceUrl": "https://commandcode.ai/docs/hooks",
+    "capture": "commandcode-hooks.md",
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "commandcode.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Command Code hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "commandcode.hook.timeout-out-of-bounds",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code hook timeout is outside 0–600 seconds",
+    "sourceUrl": "https://commandcode.ai/docs/hooks",
+    "capture": "commandcode-hooks.md",
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "commandcode.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code hook registered under an event that is never dispatched",
+    "sourceUrl": "https://commandcode.ai/docs/hooks",
+    "capture": "commandcode-hooks.md",
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "commandcode.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code hook uses a handler type other than the required string \"command\"",
+    "sourceUrl": "https://commandcode.ai/docs/hooks",
+    "capture": "commandcode-hooks.md",
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "commandcode.mcp.http-without-url",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code HTTP MCP server declares no url",
+    "sourceUrl": "https://commandcode.ai/docs/mcp",
+    "capture": "commandcode-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "commandcode.mcp.invalid-transport",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code MCP transport is not http or stdio",
+    "sourceUrl": "https://commandcode.ai/docs/mcp",
+    "capture": "commandcode-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "commandcode.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code MCP server declares neither command nor url",
+    "sourceUrl": "https://commandcode.ai/docs/mcp",
+    "capture": "commandcode-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "commandcode.mcp.stdio-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Command Code stdio MCP server declares no command",
+    "sourceUrl": "https://commandcode.ai/docs/mcp",
+    "capture": "commandcode-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "config.unreadable",
+    "severity": "error/info",
+    "provenance": "internal-consistency",
+    "description": "Config file is not valid JSON or cannot be read",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "continue.mcp.missing-block-metadata",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Standalone Continue YAML MCP block is missing name, version, or schema",
+    "sourceUrl": "https://docs.continue.dev/customize/deep-dives/mcp",
+    "capture": "continue-mcp.md",
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "continue.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Continue MCP server declares neither command, url, nor uses",
+    "sourceUrl": "https://docs.continue.dev/customize/deep-dives/mcp",
+    "capture": "continue-mcp.md",
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "copilot.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Copilot CLI command hook declares none of bash, powershell, command, or exec",
+    "sourceUrl": "https://docs.github.com/en/copilot/reference/hooks-reference",
+    "capture": "copilot-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "copilot.hook.http-without-url",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Copilot CLI http hook is missing the url field",
+    "sourceUrl": "https://docs.github.com/en/copilot/reference/hooks-reference",
+    "capture": "copilot-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "copilot.hook.incompatible-handler",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Copilot CLI prompt hook is registered on an event other than sessionStart",
+    "sourceUrl": "https://docs.github.com/en/copilot/reference/hooks-reference",
+    "capture": "copilot-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "copilot.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Copilot CLI hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "copilot.hook.prompt-without-prompt",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Copilot CLI prompt hook is missing the prompt field",
+    "sourceUrl": "https://docs.github.com/en/copilot/reference/hooks-reference",
+    "capture": "copilot-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "copilot.hook.unknown-event",
+    "severity": "error/warning",
+    "provenance": "spec-required",
+    "description": "Copilot CLI hook registered under an event name that is never dispatched",
+    "sourceUrl": "https://docs.github.com/en/copilot/reference/hooks-reference",
+    "capture": "copilot-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "copilot.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Copilot CLI hook uses a handler type that is not command, http, or prompt",
+    "sourceUrl": "https://docs.github.com/en/copilot/reference/hooks-reference",
+    "capture": "copilot-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "cursor.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Cursor hook is missing the required command field",
+    "sourceUrl": "https://cursor.com/docs/hooks",
+    "capture": "cursor-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "cursor.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Cursor hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-03"
+  },
+  {
+    "id": "cursor.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Cursor hook registered under an event that is never dispatched",
+    "sourceUrl": "https://cursor.com/docs/hooks",
+    "capture": "cursor-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "cursor.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Cursor hook declares a type other than command or prompt",
+    "sourceUrl": "https://cursor.com/docs/hooks",
+    "capture": "cursor-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "cursor.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Cursor MCP server declares neither command nor url",
+    "sourceUrl": "https://cursor.com/docs/context/mcp",
+    "capture": "cursor-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "cursor.rule.too-large",
+    "severity": "info",
+    "provenance": "vendor-recommendation",
+    "description": "Cursor project rule exceeds the 500-line recommendation",
+    "sourceUrl": "https://cursor.com/docs/rules",
+    "capture": "cursor-rules.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "devin.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Devin command hook declares no command",
+    "sourceUrl": "https://docs.devin.ai/cli/extensibility/hooks/overview",
+    "capture": "devin-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "devin.hook.invalid-group",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Devin hook group is missing a hooks array",
+    "sourceUrl": "https://docs.devin.ai/cli/extensibility/hooks/overview",
+    "capture": "devin-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "devin.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Devin hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "devin.hook.prompt-without-prompt",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Devin prompt hook declares no prompt",
+    "sourceUrl": "https://docs.devin.ai/cli/extensibility/hooks/overview",
+    "capture": "devin-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "devin.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Devin hook registered under an event name that is never dispatched",
+    "sourceUrl": "https://docs.devin.ai/cli/extensibility/hooks/overview",
+    "capture": "devin-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "devin.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Devin hook handler type is not command or prompt",
+    "sourceUrl": "https://docs.devin.ai/cli/extensibility/hooks/overview",
+    "capture": "devin-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "devin.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Devin MCP server declares neither command nor url",
+    "sourceUrl": "https://docs.devin.ai/cli/extensibility/mcp/configuration",
+    "capture": "devin-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "factory.droid.empty-body",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Factory custom droid has an empty system prompt body",
+    "sourceUrl": "https://docs.factory.com/harness/subagents",
+    "capture": "factory-agents.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "factory.droid.invalid-name",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Factory custom droid name is missing or does not match ^[a-z0-9-_]+$",
+    "sourceUrl": "https://docs.factory.com/harness/subagents",
+    "capture": "factory-agents.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "factory.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Factory Droid command hook is missing the command field",
+    "sourceUrl": "https://docs.factory.com/harness/hooks",
+    "capture": "factory-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "factory.hook.invalid-group",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Factory Droid hook group has no hooks array",
+    "sourceUrl": "https://docs.factory.com/harness/hooks",
+    "capture": "factory-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "factory.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Factory Droid hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "factory.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Factory Droid hook registered under an event name that is never dispatched",
+    "sourceUrl": "https://docs.factory.com/harness/hooks",
+    "capture": "factory-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "factory.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Factory Droid hook type is missing or is not command",
+    "sourceUrl": "https://docs.factory.com/harness/hooks",
+    "capture": "factory-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "factory.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Factory Droid MCP server has neither command nor url",
+    "sourceUrl": "https://docs.factory.com/harness/mcp",
+    "capture": "factory-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "gemini.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Gemini command hook is missing the command field",
+    "sourceUrl": "https://geminicli.com/docs/hooks/",
+    "capture": "gemini-hooks.md",
+    "lastVerified": "2026-09-03"
+  },
+  {
+    "id": "gemini.hook.invalid-group",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Gemini hook group is missing the required nested hooks array, or matcher is not a string",
+    "sourceUrl": "https://geminicli.com/docs/hooks/",
+    "capture": "gemini-hooks.md",
+    "lastVerified": "2026-09-03"
+  },
+  {
+    "id": "gemini.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Gemini hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-03"
+  },
+  {
+    "id": "gemini.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Gemini hook registered under an event that is never dispatched",
+    "sourceUrl": "https://geminicli.com/docs/hooks/",
+    "capture": "gemini-hooks.md",
+    "lastVerified": "2026-09-03"
+  },
+  {
+    "id": "gemini.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Gemini hook omits the required type or uses a value other than command",
+    "sourceUrl": "https://geminicli.com/docs/hooks/",
+    "capture": "gemini-hooks.md",
+    "lastVerified": "2026-09-03"
+  },
+  {
+    "id": "gemini.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Gemini MCP server declares neither command, url, nor httpUrl",
+    "sourceUrl": "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md",
+    "capture": "gemini-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "gemini.mcp.underscore-alias",
+    "severity": "warning",
+    "provenance": "vendor-recommendation",
+    "description": "Gemini MCP server alias contains an underscore, which can make policies fail silently",
+    "sourceUrl": "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md",
+    "capture": "gemini-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "goose.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Goose extension declares type sse, which Goose does not support",
+    "sourceUrl": "https://goose-docs.ai/docs/guides/config-files/",
+    "capture": "goose-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "grok.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Grok command hook is missing the command field",
+    "sourceUrl": "https://docs.x.ai/build/features/hooks",
+    "capture": "grok-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "grok.hook.http-without-url",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Grok http hook is missing the url field",
+    "sourceUrl": "https://docs.x.ai/build/features/hooks",
+    "capture": "grok-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "grok.hook.invalid-group",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Grok hook group is missing the required nested hooks array, or matcher is not a string",
+    "sourceUrl": "https://docs.x.ai/build/features/hooks",
+    "capture": "grok-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "grok.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Grok hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "grok.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Grok hook registered under an event that is never dispatched",
+    "sourceUrl": "https://docs.x.ai/build/features/hooks",
+    "capture": "grok-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "grok.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Grok hook uses a handler type other than command or http, or omits the required type",
+    "sourceUrl": "https://docs.x.ai/build/features/hooks",
+    "capture": "grok-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "grok.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Grok MCP server declares neither command nor url",
+    "sourceUrl": "https://docs.x.ai/build/features/mcp-servers",
+    "capture": "grok-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "grok.skill.missing-frontmatter",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Grok SKILL.md has no YAML frontmatter block",
+    "sourceUrl": "https://docs.x.ai/build/features/skills-plugins-marketplaces",
+    "capture": "grok-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "kiro.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Kiro command hook is missing the command field",
+    "sourceUrl": "https://kiro.dev/docs/hooks/",
+    "capture": "kiro-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "kiro.hook.invalid-group",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Kiro hook file is missing version v1 or a hooks array",
+    "sourceUrl": "https://kiro.dev/docs/hooks/",
+    "capture": "kiro-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "kiro.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Kiro command hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-07"
+  },
+  {
+    "id": "kiro.hook.prompt-without-prompt",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Kiro agent hook is missing the required prompt field",
+    "sourceUrl": "https://kiro.dev/docs/hooks/",
+    "capture": "kiro-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "kiro.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Kiro hook registered under a trigger that is never dispatched",
+    "sourceUrl": "https://kiro.dev/docs/ide/whats-new-v1/hooks/",
+    "capture": "kiro-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "kiro.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Kiro hook action type is missing or is not command or agent",
+    "sourceUrl": "https://kiro.dev/docs/hooks/",
+    "capture": "kiro-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "mcp.command-missing",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "MCP server command is a path that does not exist on disk",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-03"
+  },
+  {
+    "id": "mcp.literal-credential",
+    "severity": "warning",
+    "provenance": "security",
+    "description": "MCP headers, http_headers, or auth value is a literal secret instead of interpolation",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-03"
+  },
+  {
+    "id": "mcp.literal-env",
+    "severity": "warning",
+    "provenance": "security",
+    "description": "MCP env value is a literal secret-shaped key instead of interpolation",
+    "sourceUrl": "https://code.claude.com/docs/en/mcp",
+    "capture": "mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "opencode.mcp.command-not-array",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "OpenCode V2 local MCP command is not an argv array",
+    "sourceUrl": "https://opencode.ai/v2/docs/mcp-servers",
+    "capture": "opencode-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "opencode.mcp.invalid-launch-for-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "OpenCode MCP server launch field does not match its type",
+    "sourceUrl": "https://opencode.ai/v2/docs/mcp-servers",
+    "capture": "opencode-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "opencode.mcp.local-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "OpenCode local MCP server declares no command",
+    "sourceUrl": "https://opencode.ai/v2/docs/mcp-servers",
+    "capture": "opencode-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "opencode.mcp.missing-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "OpenCode MCP server is missing type local or remote",
+    "sourceUrl": "https://opencode.ai/v2/docs/mcp-servers",
+    "capture": "opencode-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "opencode.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "OpenCode MCP server declares neither command nor url",
+    "sourceUrl": "https://opencode.ai/v2/docs/mcp-servers",
+    "capture": "opencode-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "opencode.mcp.remote-without-url",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "OpenCode remote MCP server declares no url",
+    "sourceUrl": "https://opencode.ai/v2/docs/mcp-servers",
+    "capture": "opencode-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "qwen.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Qwen Code command hook is missing the command field",
+    "sourceUrl": "https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/",
+    "capture": "qwen-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "qwen.hook.http-without-url",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Qwen Code http hook is missing the url field",
+    "sourceUrl": "https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/",
+    "capture": "qwen-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "qwen.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Qwen Code hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "qwen.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Qwen Code hook registered under an event name that is never dispatched",
+    "sourceUrl": "https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/",
+    "capture": "qwen-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "qwen.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Qwen Code hook type is missing or is not command, http, or prompt",
+    "sourceUrl": "https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/",
+    "capture": "qwen-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "qwen.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Qwen Code MCP server has neither command, url, nor httpUrl",
+    "sourceUrl": "https://qwenlm.github.io/qwen-code-docs/en/users/features/mcp/",
+    "capture": "qwen-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "scan.truncated",
+    "severity": "info",
+    "provenance": "internal-consistency",
+    "description": "File is larger than the scan cap, so body checks read only a prefix of it",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "security.hardcoded-secret",
+    "severity": "error",
+    "provenance": "security",
+    "description": "MCP config contains a token-shaped literal",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-03"
+  },
+  {
+    "id": "skill.broken-reference",
+    "severity": "warning",
+    "provenance": "internal-consistency",
+    "description": "SKILL.md points at a bundled file that does not exist",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "skill.description-budget",
+    "severity": "info",
+    "provenance": "vendor-recommendation",
+    "description": "Claude skill names + descriptions exceed the listing character budget",
+    "sourceUrl": "https://code.claude.com/docs/en/skills",
+    "capture": "skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "skill.duplicate-description",
+    "severity": "info",
+    "provenance": "heuristic",
+    "description": "Two or more skills share an identical description",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "skill.locked-not-installed",
+    "severity": "warning",
+    "provenance": "internal-consistency",
+    "description": "skills-lock.json pins a skill that is not installed",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "skill.missing-skill-md",
+    "severity": "warning",
+    "provenance": "internal-consistency",
+    "description": "Skill directory has no SKILL.md",
+    "sourceUrl": "https://agentskills.io/specification",
+    "capture": "agent-skills.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "skill.no-lockfile",
+    "severity": "info",
+    "provenance": "heuristic",
+    "description": "Skills present with no skills-lock.json (requireLock only)",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "skill.not-in-lock",
+    "severity": "info",
+    "provenance": "heuristic",
+    "description": "Skill on disk is not tracked by skills-lock.json",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "vscode.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "VS Code command hook is missing the command field",
+    "sourceUrl": "https://code.visualstudio.com/docs/agents/reference/hooks-reference",
+    "capture": "vscode-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "vscode.hook.invalid-group",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "VS Code hook group has a matcher but no hooks array",
+    "sourceUrl": "https://code.visualstudio.com/docs/agents/reference/hooks-reference",
+    "capture": "vscode-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "vscode.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "VS Code hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-09-02"
+  },
+  {
+    "id": "vscode.hook.unknown-event",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "VS Code hook registered under an event name that is never dispatched",
+    "sourceUrl": "https://code.visualstudio.com/docs/agents/reference/hooks-reference",
+    "capture": "vscode-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "vscode.hook.unknown-handler-type",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "VS Code hook uses a handler type other than the required type command",
+    "sourceUrl": "https://code.visualstudio.com/docs/agents/reference/hooks-reference",
+    "capture": "vscode-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "vscode.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "VS Code MCP server declares neither command nor url",
+    "sourceUrl": "https://code.visualstudio.com/docs/agents/reference/mcp-configuration",
+    "capture": "vscode-mcp.md",
+    "lastVerified": "2026-11-12"
+  },
+  {
+    "id": "windsurf.hook.command-without-command",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Windsurf hook declares neither command nor powershell",
+    "sourceUrl": "https://docs.devin.ai/desktop/cascade/hooks",
+    "capture": "windsurf-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "windsurf.hook.missing-script",
+    "severity": "error",
+    "provenance": "internal-consistency",
+    "description": "Windsurf hook points at a script that does not exist, so it never runs",
+    "sourceUrl": null,
+    "capture": null,
+    "lastVerified": "2026-08-31"
+  },
+  {
+    "id": "windsurf.hook.unknown-event",
+    "severity": "warning",
+    "provenance": "spec-required",
+    "description": "Windsurf hook registered under an event name outside the legacy Cascade event table",
+    "sourceUrl": "https://docs.devin.ai/desktop/cascade/hooks",
+    "capture": "windsurf-hooks.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "windsurf.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Windsurf MCP server declares neither command, serverUrl, nor url",
+    "sourceUrl": "https://docs.windsurf.com/windsurf/cascade/mcp",
+    "capture": "windsurf-mcp.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "windsurf.rule.global-too-large",
+    "severity": "info",
+    "provenance": "vendor-recommendation",
+    "description": "Windsurf global_rules.md exceeds the 6,000-character limit",
+    "sourceUrl": "https://docs.windsurf.com/windsurf/cascade/memories",
+    "capture": "windsurf-rules.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "windsurf.rule.missing-trigger",
+    "severity": "info",
+    "provenance": "spec-required",
+    "description": "Windsurf workspace rule is missing frontmatter trigger",
+    "sourceUrl": "https://docs.windsurf.com/windsurf/cascade/memories",
+    "capture": "windsurf-rules.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "windsurf.rule.too-large",
+    "severity": "info",
+    "provenance": "vendor-recommendation",
+    "description": "Windsurf workspace rule exceeds the 12,000-character limit",
+    "sourceUrl": "https://docs.windsurf.com/windsurf/cascade/memories",
+    "capture": "windsurf-rules.md",
+    "lastVerified": "2026-11-14"
+  },
+  {
+    "id": "zed.mcp.no-launch",
+    "severity": "error",
+    "provenance": "spec-required",
+    "description": "Zed context server declares neither command nor url",
+    "sourceUrl": "https://zed.dev/docs/ai/mcp",
+    "capture": "zed-mcp.md",
+    "lastVerified": "2026-11-14"
+  }
+]

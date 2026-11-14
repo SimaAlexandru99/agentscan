@@ -1,0 +1,98 @@
+[
+  {
+    "version": "2.3.1",
+    "date": "2026-11-14",
+    "summary": "",
+    "items": [
+      "Codex: `[hooks.state]`, the per-hook trust record Codex writes into `config.toml`, is no longer read as a hook group (it raised `config.unreadable` on every machine that had trusted a hook)."
+    ],
+    "breaking": false
+  },
+  {
+    "version": "2.3.0",
+    "date": "2026-11-14",
+    "summary": "Six more agents, each from a capture of its official docs read on 2026-11-14 (`docs/spec/`). Anything a capture lists as unverified never raises an error. 163 checks, 694 tests.",
+    "items": [
+      "Claude Desktop: `claude_desktop_config.json` MCP servers under `--global` (macOS, Windows `%APPDATA%\\Claude`, Linux); unknown top-level keys are ignored. Installed extension manifests (`Claude Extensions/<id>/manifest.json`): `claude-desktop.extension.missing-field` (warning; `dxt_version` is accepted).",
+      "Amp: `amp.mcpServers` in the nearest `.amp/settings.json` and, under `--global`, `~/.config/amp/settings.json`; `~/.config/amp/skills` and `~/.config/agents/skills` as Agent Skills.",
+      "Zed: `context_servers` in `.zed/settings.json` and the user settings (JSONC). Extension-provided servers and the `{path, args}` command form are launchable.",
+      "Qwen Code: `.qwen/settings.json` MCP (`command` / `url` / `httpUrl`) and hooks (23 events, `command` / `http` / `prompt`), `.qwen/skills`.",
+      "Goose: `config.yaml` extensions under `--global`; `sse` is flagged because Goose does not support it.",
+      "Factory Droid: `.factory/mcp.json`, unwrapped `.factory/hooks.json` (user `settings.json` fallback), `.factory/skills`, and custom droids (`factory.droid.invalid-name`, `factory.droid.empty-body`)."
+    ],
+    "breaking": false
+  },
+  {
+    "version": "2.2.0",
+    "date": "2026-11-14",
+    "summary": "Aligned with the vendor docs re-read on 2026-11-14: all 46 drifted spec captures were re-read, and `spec:check` is clean. 144 checks, 673 tests.",
+    "items": [
+      "New `codex.agent.missing-field` (error): a Codex custom agent file (`.codex/agents/*.toml`, and `$CODEX_HOME/agents` under `--global`) must define string `name`, `description` and `developer_instructions`.",
+      "Codex skills come from `.agents/skills` (repo walk and `~/.agents/skills`), as the Codex skills page documents. `.codex/skills` is no longer scanned.",
+      "Copilot CLI project MCP: `.github/mcp.json` is read as `copilot-json`.",
+      "`--global` reads `~/.cursor/skills`; Cline also reads `.clinerules/skills`.",
+      "Antigravity skills: `name` is optional and defaults to the folder name.",
+      "Command Code agents accept `permissionMode` `accept-edits` and `yolo`.",
+      "Claude: an `agent` hook on `PermissionRequest` is incompatible; a skill without `description` falls back to the first non-empty line.",
+      "Kiro accepts the CLI V3 `AgentSpawn` / `agentSpawn` spellings.",
+      "`windsurf.hook.unknown-event` is a warning: the Cascade event table left the live docs (only `post_setup_worktree` is still quoted)."
+    ],
+    "breaking": false
+  },
+  {
+    "version": "2.1.0",
+    "date": "2026-11-14",
+    "summary": "Fewer false findings when the scan root is a home directory or `--global` is on, from an audit of four machines (692 findings on one home, about 440 of them false or noise). 143 checks, 656 tests. No rule id was added or removed.",
+    "items": [
+      "`check --global` with no project in the working directory scans the documented global locations instead of exiting 2.",
+      "`claude.agent.duplicate-name`: `~/.claude/agents` is read once when the scan root is home, so one file is no longer reported as its own duplicate.",
+      "`claude.hook.missing-script`: a quoted script operand such as `\"${CLAUDE_PLUGIN_ROOT}/scripts/x\"` is unquoted before it is resolved.",
+      "`config.unreadable`: `EACCES` and `EPERM` are an `info` permission note, once per path, and podman storage under `~/.local/share/containers` is skipped.",
+      "`skill.locked-not-installed`: a `skills-lock.json` entry resolves beside the lock's own directory, so a lock inside a worktree or dot-directory finds its skills.",
+      "`skill.broken-reference`: a reference into a sibling skill named earlier in the same sentence resolves there, also across a line wrap; under `--global` a Claude skill's reference also resolves against the repo that owns its `.claude/skills`.",
+      "`claude.agent.invalid-name` follows the current sub-agents page: an error only for an empty name, a name over 256 characters, or one containing `:`. Digits, capitals and spaces are accepted.",
+      "`copilot.hook.unknown-event`: a PascalCase twin of a documented camelCase event (for example `Notification`) is a `warning` that names the documented spelling.",
+      "`windsurf.rule.missing-trigger` is `info`. Under `--global`, plugin caches, marketplaces, backups and installed-plugin copies are skipped for Windsurf rules, `budget.*` and `scan.truncated`."
+    ],
+    "breaking": false
+  },
+  {
+    "version": "2.0.0",
+    "date": "2026-11-12",
+    "summary": "Breaking for configs that still name the 0.7 rule ids or the old threshold keys. `ignoreRules`, `ignoreFindings`, and `explain` accept only the printed ids (`claude.hook.missing-script`, not `hook.missing-script`). `thresholds.skillDescriptionBytes` and `thresholds.skills` are rejected; the listing budget is `thresholds.skillListingChars`. 143 checks, 647 tests.",
+    "items": [
+      "Kiro agents: `.kiro/agents/**/*.json` and `*.md` on the ancestor walk, and `~/.kiro/agents/` under `--global`. The name is the path relative to that directory, without the extension. A nearer workspace file shadows a farther workspace file and a global file with the same name. No field is required. No new rule id. A `.json` and a `.md` with the same stem in one directory are both kept.",
+      "Antigravity rules and skills. Workspace `GEMINI.md` and `.agents/GEMINI.md`, one level of `.agents/rules/*.md` and legacy `.agent/rules/*.md`, and `.agents/rules.json` as shape only (`inherits` and `entries` paths are not opened). `--global` adds `~/.gemini/AGENTS.md`, `~/.gemini/GEMINI.md`, `~/.gemini/config/AGENTS.md`, `~/.gemini/config/GEMINI.md`, `~/.gemini/config/rules/*.md`, and `~/.gemini/config/skills/`. Workspace `AGENTS.md` stays the portable policy file, so the 24,000-byte check does not apply to it. The byte check counts the raw file, before `@[label](path)` expansion. The 20,000-token aggregate is not checked. Plugin rules and plugin skills stay unread, as do `~/.gemini/antigravity-cli/skills/`, `~/.gemini/skills/`, and `~/.gemini/antigravity/skills/`. Global skills use the Agent Skills contract. New: `antigravity.rule.missing-trigger`, `antigravity.rule.invalid-trigger`, `antigravity.rule.missing-description`, `antigravity.rule.missing-globs`, `antigravity.rule.too-large`.",
+      "Antigravity hooks: `.agents/hooks.json` on the ancestor walk, and `~/.gemini/config/hooks.json` under `--global`. The file maps hook names to definitions. Direct handlers and matcher groups are both valid. `enabled: false` skips a definition. `type` defaults to `command`. Six events. Plugin hooks stay unread. New: `antigravity.hook.unknown-event`, `antigravity.hook.missing-script`, `antigravity.hook.invalid-group`, `antigravity.hook.command-without-command`, `antigravity.hook.unknown-handler-type`.",
+      "Codex hooks: project `.codex/hooks.json` and inline `[hooks]` in `.codex/config.toml`, plus the same two files under `$CODEX_HOME` or `~/.codex` with `--global`. Both files in a layer are inventoried. Fourteen events. `command` and `mcp_tool` run; `prompt` and `agent` are parsed but skipped; `SessionEnd` does not run `mcp_tool`. SessionEnd and Interrupt timeouts must be 1–3 seconds. Other events are not timeout-checked. Plugins, `requirements.toml`, and the trust gate stay unread. New: `codex.hook.unknown-event`, `codex.hook.missing-script`, `codex.hook.invalid-group`, `codex.hook.command-without-command`, `codex.hook.mcp-tool-without-server-or-tool`, `codex.hook.unknown-handler-type`, `codex.hook.incompatible-handler`, `codex.hook.timeout-out-of-bounds`.",
+      "Cursor user MCP under `--global`: `~/.cursor/mcp.json` uses the same `cursor-json` profile as the project file. A missing `version` is not a finding.",
+      "Kiro hook triggers `SessionEnd`, `PreCompact`, and `PostCompact`, quoted on the types page (2026-11-12). `PreTaskExec` and `PostTaskExec` stay: that table still lists Pre/Post Task Execution and does not quote a replacement token.",
+      "`CLAUDE_CONFIG_DIR` also relocates `~/.claude.json` to `$CLAUDE_CONFIG_DIR/.claude.json` under `--global`. Unset, the file stays `~/.claude.json`.",
+      "Devin CLI, beside the legacy Windsurf contract: `.devin/hooks.v1.json` and `\"hooks\"` in `.devin/config.json` / `config.local.json` (user `~/.config/devin/config.json` under `--global`); MCP `.devin/mcp_config.json`, `.devin/mcp_config.local.json`, and a `mcpServers` key still sitting in those config files. Launch is `command` or `url` (`sse` is a valid transport, not a check). Skills: `.devin/skills` and `--global` `~/.config/devin/skills`. New: `devin.hook.unknown-event`, `devin.hook.missing-script`, `devin.hook.invalid-group`, `devin.hook.command-without-command`, `devin.hook.prompt-without-prompt`, `devin.hook.unknown-handler-type`, `devin.mcp.no-launch`. `.windsurf/hooks.json` and `~/.codeium/windsurf/mcp_config.json` stay the Cascade contract. `.claude/settings.json` stays Claude.",
+      "Antigravity MCP: `url` is an alias of `serverUrl`. `httpUrl` alone is still `antigravity.mcp.no-launch`.",
+      "Copilot portable user MCP under `--global`: `$COPILOT_HOME/mcp-config.json` or `~/.copilot/mcp-config.json` (`mcpServers`, `command` or `url`), reported as `vscode.mcp.no-launch`. `.vscode/mcp.json` stays the `servers` file. Legacy Local hooks stay the eight PascalCase command-only events; `version: 1` stays Copilot.",
+      "Kiro hooks (`.kiro/hooks/*.json`, `--global` `~/.kiro/hooks/`) on their own profile: 13 PascalCase triggers, `command` / `agent` actions, array-of-hooks files. New: `kiro.hook.unknown-event`, `kiro.hook.missing-script`, `kiro.hook.command-without-command`, `kiro.hook.prompt-without-prompt`, `kiro.hook.unknown-handler-type`, `kiro.hook.invalid-group`. Agents are inventoried on their own walk (above). Skills: `.kiro/skills` as Agent Skills.",
+      "Cline / Roo / Kilo / Junie skill directories (`.cline/skills`, `.roo/skills`, `.kilo/skills`, `.junie/skills`, plus `--global` home copies). Junie does not require `description` and does not require `name` to match the folder. Cline hooks and Cline agents stay unread.",
+      "VS Code `.github/agents/*.agent.md` frontmatter hooks parse as vscode-native. Marketplace plugin `hooks.json` stays unread.",
+      "`--global` Cursor `~/.cursor/hooks.json`, Gemini `~/.gemini/settings.json` (hooks and MCP together), and Antigravity `~/.gemini/config/mcp_config.json`. Credential siblings are never opened. Copilot-consumed `.claude/settings.json` stays Claude.",
+      "Spec provenance: VS Code hooks-reference, geminicli.com (GitHub MCP page kept for the underscore warning), both OpenCode MCP URLs.",
+      "Claude user `~/.claude/settings.json` hooks under `--global` / `includeGlobal`. Same Claude schema as project settings; `${CLAUDE_PROJECT_DIR}` resolves against the scanned project. Same-event user and project hooks coexist. Managed policy and marketplace plugins stay unread.",
+      "Claude user `~/.claude.json` MCP under `--global` / `includeGlobal`: top-level `mcpServers` (user) and matching `projects.<scanned-path>.mcpServers` (local). Absent keys are not `config.unreadable`. Same-name project, user, and local servers are all inventoried. Other projects' local servers stay unread.",
+      "Claude `--global` user agents, `CLAUDE.md`, rules, and commands (`$CLAUDE_CONFIG_DIR` or `~/.claude`). `CLAUDE_CONFIG_DIR` relocates that directory; `~/.claude.json` stays in the home directory.",
+      "Project `.claude/commands/*.md` inventoried as Claude slash commands; frontmatter hooks use the skill source. In-tree plugin `skills/`, root `SKILL.md`, `agents/` (no frontmatter hooks), `commands/`, and `.mcp.json` (`claude-json`). Marketplace plugins stay unread.",
+      "Gemini CLI hooks: the `hooks` object in project `.gemini/settings.json`, the same file the MCP scan already opens. Nested `{ matcher?, sequential?, hooks: [...] }` groups, required `type` whose only documented value is `command`, and `$GEMINI_PROJECT_DIR` script resolution. Eleven events (`SessionStart`, `SessionEnd`, `BeforeAgent`, `AfterAgent`, `BeforeModel`, `AfterModel`, `BeforeToolSelection`, `BeforeTool`, `AfterTool`, `PreCompress`, `Notification`) on their own profile — Claude's names are never accepted here, and Gemini's are never validated against Claude's. New: `gemini.hook.unknown-event`, `gemini.hook.missing-script`, `gemini.hook.invalid-group`, `gemini.hook.command-without-command`, `gemini.hook.unknown-handler-type`. User `~/.gemini/settings.json` is opened under `--global` together with that file's MCP servers. `/etc/gemini-cli/settings.json` and extension hooks stay unread.",
+      "Cursor hooks: project `.cursor/hooks.json`. Flat arrays, not Claude groups; `command` required on every entry, `type` optional and defaulting to `command` (`command` / `prompt`), scripts resolved against the project root as the page documents. Twenty-one camelCase events across agent, Tab, and app-lifecycle families. New: `cursor.hook.unknown-event`, `cursor.hook.missing-script`, `cursor.hook.command-without-command`, `cursor.hook.unknown-handler-type`. User `~/.cursor/hooks.json` is opened under `--global`. MDM paths and dashboard-synced team hooks stay unread.",
+      "`spec:check` now diffs the Gemini, Cursor, and Kiro event sets against their live pages, and those pages are tracked by content hash.",
+      "Every finding now says where its rule comes from. `StructuralCheck` gains a required `source`: either `{ kind: \"spec\", url, capture }` naming the vendor page and the `docs/spec` file holding the verbatim quote, or `{ kind: \"derived\", detail }` stating plainly that no vendor page asserts it. Required, so a new rule that cannot say where it came from does not compile. `make()` copies it, with `provenance` and `lastVerified`, onto every finding.",
+      "All 28 pages cited by a rule are already in `SPEC_SURFACES`, so every source a user sees is re-fetched and hash-compared by `bun run spec:check`. A test enforces it, along with: every capture file exists, the capture names the rule, `lastVerified` matches the capture's `Read:` date, and a `spec-required` rule may not claim it has no source.",
+      "`bun run readme:rules` generates the README rule table from the registry; a test fails the build when it drifts. This recovers the three `windsurf.hook.*` rows the hand-maintained table had been missing since #13, and the check count is now asserted against the registry in the three README places it is written by hand. `site/lib/site.ts` deliberately stays at the published release's count; the test only forbids the site advertising more checks than the registry holds.",
+      "`ignoreRules`, `ignoreFindings`, and `explain` no longer accept 0.7 rule ids (`hook.missing-script`, `skill.missing-frontmatter`, and the rest of that set). Use the id the finding prints (`claude.hook.missing-script`).",
+      "`thresholds.skillDescriptionBytes` and `thresholds.skills` are rejected. The listing budget key is `thresholds.skillListingChars`.",
+      "The README \"Catches\" column is the registry description. `bun run readme:rules` no longer keeps a second, hand-written sentence.",
+      "An explicit `--config <path>` that does not exist now exits 2 with `config file not found: <path>` instead of silently scanning with defaults. A missing implicit `.agentscanrc.json` still means defaults. A config that parses as JSON but breaks the schema exits 2 with `Invalid config at <path>: <key>: <problem>` instead of a raw zod dump.",
+      "54 rules recorded a `lastVerified` older than the `Read:` date of the capture they rest on: the 2026-09-03 re-read of those pages never reached the registry. Synced, with a test that keeps the two in step.",
+      "Three `tests/unit/codex-mcp.test.ts` cases failed on any machine with `CODEX_HOME` exported: they mock `os.homedir()`, but `codexHomeDir()` correctly prefers the env override. A `tests/helpers/env.ts` preload clears `CODEX_HOME`, `GROK_HOME`, `CLAUDE_CONFIG_DIR`, and `COPILOT_HOME` for the whole suite; the tests that need one still set and restore it themselves."
+    ],
+    "breaking": true
+  }
+]
