@@ -6,18 +6,18 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/checks-163-111111?style=flat-square" alt="163 checks">
-  <img src="https://img.shields.io/badge/tests-673%20passing-111111?style=flat-square" alt="673 tests">
+  <img src="https://img.shields.io/badge/tests-694%20passing-111111?style=flat-square" alt="694 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
   <img src="https://img.shields.io/npm/v/@chimix/agentscan?style=flat-square&color=111111&label=npm" alt="npm version">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-2.2.0-111111?style=flat-square" alt="Changelog"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-2.3.0-111111?style=flat-square" alt="Changelog"></a>
 </p>
 
 <p align="center">
   <strong>163 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
-  <sub>An offline linter for Claude Code, Command Code, Grok Build, Windsurf, Kiro, Cline, Roo, Kilo, Junie, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks (including inline settings), and the MCP / hooks / rules surfaces the registry actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
+  <sub>An offline linter for Claude Code, Claude Desktop, Command Code, Grok Build, Windsurf, Kiro, Qwen Code, Factory Droid, Amp, Zed, Goose, Cline, Roo, Kilo, Junie, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks (including inline settings), and the MCP / hooks / rules surfaces the registry actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
 ---
@@ -871,6 +871,9 @@ first.
 Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
 GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
+
+**2.3.0** (14 November 2026) adds Claude Desktop, Amp, Zed, Qwen Code,
+Goose and Factory Droid; see the changelog.
 
 **2.2.0** (14 November 2026) aligns every surface with the vendor docs
 re-read that day and adds `codex.agent.missing-field`; see the changelog.

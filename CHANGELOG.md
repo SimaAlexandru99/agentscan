@@ -13,6 +13,31 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+## 2.3.0 — 2026-11-14
+
+Six more agents, each from a capture of its official docs read on
+2026-11-14 (`docs/spec/`). Anything a capture lists as unverified never
+raises an error. **163 checks**, **694 tests**.
+
+- **Claude Desktop:** `claude_desktop_config.json` MCP servers under
+  `--global` (macOS, Windows `%APPDATA%\Claude`, Linux); unknown top-level keys
+  are ignored. Installed extension manifests
+  (`Claude Extensions/<id>/manifest.json`):
+  `claude-desktop.extension.missing-field` (warning; `dxt_version` is accepted).
+- **Amp:** `amp.mcpServers` in the nearest `.amp/settings.json` and, under
+  `--global`, `~/.config/amp/settings.json`; `~/.config/amp/skills` and
+  `~/.config/agents/skills` as Agent Skills.
+- **Zed:** `context_servers` in `.zed/settings.json` and the user settings
+  (JSONC). Extension-provided servers and the `{path, args}` command form are
+  launchable.
+- **Qwen Code:** `.qwen/settings.json` MCP (`command` / `url` / `httpUrl`) and
+  hooks (23 events, `command` / `http` / `prompt`), `.qwen/skills`.
+- **Goose:** `config.yaml` extensions under `--global`; `sse` is flagged
+  because Goose does not support it.
+- **Factory Droid:** `.factory/mcp.json`, unwrapped `.factory/hooks.json` (user
+  `settings.json` fallback), `.factory/skills`, and custom droids
+  (`factory.droid.invalid-name`, `factory.droid.empty-body`).
+
 ## 2.2.0 — 2026-11-14
 
 Aligned with the vendor docs re-read on 2026-11-14: all 46 drifted spec

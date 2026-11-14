@@ -45,15 +45,15 @@ describe("1.0 public copy", () => {
       expect(source).not.toContain("Alpha");
     }
     expect(home).toContain("Heuristics stay at info and are labeled");
-    expect(home).toContain("What 2.2.0 reads");
+    expect(home).toContain("What 2.3.0 reads");
     expect(home).toContain("COVERAGE_LINES");
     expect(docs).toContain("BREAKING_NOTE");
     expect(docs).toContain("GLOBAL_FLAG_MEANING");
   });
 
-  test("markdown names the 2.2.0 surfaces and the breaking ids", () => {
+  test("markdown names the 2.3.0 surfaces and the breaking ids", () => {
     for (const body of [HOME_MARKDOWN, ABOUT_MARKDOWN, LLMS_TXT]) {
-      expect(body).toContain("What 2.2.0 reads");
+      expect(body).toContain("What 2.3.0 reads");
       for (const line of COVERAGE_LINES) {
         expect(body).toContain(line);
       }

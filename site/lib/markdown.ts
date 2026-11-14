@@ -61,7 +61,7 @@ No AI, no network on check. Read the config, read the disk, compare. Same tree i
 - Writes nothing — the scanned tree is left untouched.
 - Spec-required checks cite a published line in [docs/spec/](${GITHUB_REPO}/tree/master/docs/spec). Heuristics stay at info and are labeled.
 
-## What 2.2.0 reads
+## What 2.3.0 reads
 
 ${COVERAGE_LINES.map((line) => `- ${line}`).join("\n")}
 
@@ -203,7 +203,7 @@ export const ABOUT_MARKDOWN = `# About ${PRODUCT_NAME}
 
 ${PRODUCT_NAME} is a local command-line linter for agent configuration. ${PRODUCT_VERSION} ships ${PRODUCT_CHECKS} checks. It reads skills, \`skills-lock.json\`, hooks, MCP server configs, agent definitions, and instruction files such as \`AGENTS.md\`, then reports where the config disagrees with the disk.
 
-## What 2.2.0 reads
+## What 2.3.0 reads
 
 ${COVERAGE_LINES.map((line) => `- ${line}`).join("\n")}
 

@@ -1,13 +1,16 @@
 export const SITE_ORIGIN = "https://agentscan.space";
 export const SITE_LASTMOD = "2026-11-12";
 export const PRODUCT_NAME = "agentscan";
-export const PRODUCT_VERSION = "2.2.0";
+export const PRODUCT_VERSION = "2.3.0";
 // The published release, not the repo. The site advertises the package a
 // visitor can install.
-export const PRODUCT_CHECKS = 144;
+export const PRODUCT_CHECKS = 163;
 
 /** Surfaces 2.0.0 reads, in the README coverage matrix. Not a card grid. */
 export const COVERAGE_LINES = [
+  "Claude Desktop: claude_desktop_config.json MCP servers and installed extension manifests under --global.",
+  "Amp, Zed, and Factory Droid: MCP servers; Factory also hooks, skills, and custom droids.",
+  "Qwen Code: MCP and hooks in .qwen/settings.json, and .qwen/skills. Goose: config.yaml extensions under --global.",
   "Codex: .codex/hooks.json and [hooks] in config.toml, and the same files under --global.",
   "Antigravity: rules, skills, and hooks. url is an alias of serverUrl.",
   "Cursor: ~/.cursor/hooks.json and ~/.cursor/mcp.json under --global.",
@@ -22,7 +25,7 @@ export const COVERAGE_LINES = [
 ] as const;
 
 export const GLOBAL_FLAG_MEANING =
-  "Also open documented user locations: Claude, Codex, Command Code, Cursor hooks and mcp.json, Gemini settings, Copilot mcp-config.json, Kiro, Devin CLI, Antigravity, and Cline, Roo, Kilo, and Junie skill directories. The README coverage matrix lists every path.";
+  "Also open documented user locations: Claude, Codex, Command Code, Cursor hooks and mcp.json, Gemini settings, Copilot mcp-config.json, Kiro, Devin CLI, Antigravity, Claude Desktop, Amp, Zed, Qwen Code, Goose, Factory Droid, and Cline, Roo, Kilo, and Junie skill directories. The README coverage matrix lists every path.";
 
 export const BREAKING_NOTE =
   "2.0.0 accepts only printed rule ids in ignoreRules, ignoreFindings, and explain. thresholds.skillDescriptionBytes and thresholds.skills are rejected; the listing budget is thresholds.skillListingChars.";
