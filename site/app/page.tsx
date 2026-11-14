@@ -51,7 +51,8 @@ export default function HomePage() {
           <p className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-200 duration-700 mt-4 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground">
             Linters read the code your agent writes. This reads the agent itself
             — skills, hooks, MCP servers, lockfiles, policy files, and the Codex,
-            Antigravity, Cursor, Gemini, Kiro, and Devin CLI contracts.
+            Antigravity, Cursor, Gemini, Kiro, Devin CLI, Claude Desktop, Amp, Zed,
+            Qwen Code, Goose, and Factory Droid contracts.
           </p>
           <p className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both delay-200 duration-700 mt-3 font-mono text-sm text-muted-foreground">
             {PRODUCT_VERSION} · {PRODUCT_CHECKS} checks · offline on check

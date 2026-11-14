@@ -8,7 +8,8 @@ metrics. Do not mention NDA projects.
 **agentscan** 2.0.0 is a Bun-first TypeScript CLI that audits agent
 configuration — skills, `skills-lock.json`, hooks, MCP servers, agent
 definitions, and policy files, plus the Codex, Antigravity, Cursor, Gemini,
-Kiro, and Devin CLI contracts. 163 checks. Linters read the code your agent
+Kiro, Devin CLI, Claude Desktop, Amp, Zed, Qwen Code, Goose, and Factory Droid
+contracts. 163 checks. Linters read the code your agent
 writes. This reads **the agent itself**.
 
 Published as `@chimix/agentscan` on npm (bare name rejected as too close to an

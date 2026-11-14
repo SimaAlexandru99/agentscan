@@ -42,7 +42,7 @@ Your agent config says the guard is on. The script is gone. Nothing told you.
 
 ${PRODUCT_VERSION} · ${PRODUCT_CHECKS} checks · offline on check
 
-Linters read the code your agent writes. This reads the agent itself — skills, hooks, MCP servers, lockfiles, policy files, and the Codex, Antigravity, Cursor, Gemini, Kiro, and Devin CLI contracts.
+Linters read the code your agent writes. This reads the agent itself — skills, hooks, MCP servers, lockfiles, policy files, and the Codex, Antigravity, Cursor, Gemini, Kiro, Devin CLI, Claude Desktop, Amp, Zed, Qwen Code, Goose, and Factory Droid contracts.
 
 ## How to run
 
@@ -266,7 +266,7 @@ Lint agent configuration on disk. Best-fit jobs:
 - MCP server configs in the project (audit, not a remote MCP of ${PRODUCT_NAME} itself)
 - Skills and \`skills-lock.json\`
 - \`AGENTS.md\` and other instruction files
-- Codex, Antigravity, Cursor, Gemini, Kiro, and Devin CLI contracts shipped in ${PRODUCT_VERSION}
+- Codex, Antigravity, Cursor, Gemini, Kiro, Devin CLI, Claude Desktop, Amp, Zed, Qwen Code, Goose, and Factory Droid contracts shipped in ${PRODUCT_VERSION}
 
 ## What ${PRODUCT_VERSION} reads
 
