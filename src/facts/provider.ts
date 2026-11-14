@@ -20,7 +20,10 @@ export type McpSchemaProfile =
   | "copilot-json"
   | "zed-json"
   | "amp-json"
-  | "claude-desktop-json";
+  | "claude-desktop-json"
+  | "qwen-json"
+  | "factory-json"
+  | "goose-yaml";
 
 export function assertNever(value: never, message: string): never {
   throw new Error(message);
@@ -91,6 +94,8 @@ const MCP_FILE_RULES: readonly {
     test: (p) => /(?:^|\/)(?:\.amp|\.config\/amp)\/settings\.jsonc?$/.test(p),
     jsonc: true,
   },
+  { profile: "qwen-json", test: (p) => /(?:^|\/)\.qwen\/settings\.json$/.test(p), jsonc: true },
+  { profile: "factory-json", test: (p) => /(?:^|\/)\.factory\/mcp\.json$/.test(p) },
 ];
 
 /** Default `mcpPaths`. Order is the order project files are read. */

@@ -3,7 +3,7 @@
 **Source:** https://goose-docs.ai/docs/guides/config-files/
 **Also:** https://github.com/aaif-goose/goose/blob/main/documentation/docs/getting-started/using-extensions.md (Config Entry, Remote extensions with a pre-registered OAuth client)
 **Read:** 2026-11-14
-**Depends on it:** (new)
+**Depends on it:** `goose.mcp.no-launch`
 
 Goose calls MCP servers "extensions". They live under the top-level
 `extensions:` key of `config.yaml`. The key is a map: the map key is the

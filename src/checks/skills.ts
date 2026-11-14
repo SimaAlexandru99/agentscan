@@ -182,7 +182,8 @@ function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
           suggest: "Shorten the frontmatter name",
         }),
       );
-    } else if (!isValidAgentSkillsName(name)) {
+    } else if (!isValidAgentSkillsName(name) && skill.sourceProvider !== "qwen") {
+      // Qwen allows `/^[\p{L}\p{N}_:.-]+$/u`, a superset; see docs/spec/qwen-skills.md.
       out.push(
         make("agent-skills.skill.invalid-name", skillSubject(skill), {
           message: `Skill name "${name}" is not a valid Agent Skills identifier`,
@@ -193,7 +194,8 @@ function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
         }),
       );
     }
-    if (name !== dirName && skill.sourceProvider !== "junie") {
+    // Neither Qwen nor Factory documents a name-directory match (docs/spec/{qwen,factory}-skills.md).
+    if (name !== dirName && skill.sourceProvider !== "junie" && skill.sourceProvider !== "qwen" && skill.sourceProvider !== "factory") {
       out.push(
         make("agent-skills.skill.name-does-not-match-directory", skillSubject(skill), {
           message: `Skill name "${name}" does not match directory "${dirName}"`,

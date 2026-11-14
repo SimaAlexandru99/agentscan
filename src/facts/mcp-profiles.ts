@@ -109,6 +109,31 @@ const PROFILES = {
     noLaunchDeclares: "no command",
     noLaunchAdd: "a command",
   },
+  // Gemini's launch trio; no `%VAR%` and no underscore warning. See docs/spec/qwen-mcp.md.
+  "qwen-json": {
+    sourceProvider: "qwen",
+    consumedBy: ["qwen"],
+    ruleIdPrefix: "qwen",
+    launchable: (server) => commandOrUrl(server) || server.hasHttpUrl === true,
+    noLaunchDeclares: "neither command, url, nor httpUrl",
+    noLaunchAdd: "a command, url, or httpUrl",
+  },
+  // `type` stdio (default, `command`) | http | sse (`url`). See docs/spec/factory-mcp.md.
+  "factory-json": {
+    ...COMMAND_OR_URL,
+    sourceProvider: "factory",
+    consumedBy: ["factory"],
+    ruleIdPrefix: "factory",
+  },
+  // `extensions:` normalised to command/url; builtin and platform are not launch entries.
+  "goose-yaml": {
+    ...COMMAND_OR_URL,
+    sourceProvider: "goose",
+    consumedBy: ["goose"],
+    ruleIdPrefix: "goose",
+    noLaunchDeclares: "type sse, which Goose does not support",
+    noLaunchAdd: "type streamable_http with uri",
+  },
 } as const satisfies Record<McpSchemaProfile, McpProfileSpec>;
 
 export const MCP_PROFILES: Record<McpSchemaProfile, McpProfileSpec> = PROFILES;

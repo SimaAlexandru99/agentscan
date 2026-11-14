@@ -84,6 +84,12 @@ export const PROVIDERS = {
   amp: { home: ".config/amp", skills: "agent-skills", userSkills: true },
   /** Per-OS config dir, resolved in discover/claude-desktop.ts. See docs/spec/claude-desktop-mcp.md. */
   "claude-desktop": {},
+  /** Qwen Code: `.qwen/settings.json` (MCP, hooks) and `.qwen/skills`. See docs/spec/qwen-*.md. */
+  qwen: { dotDir: ".qwen", skills: "agent-skills", userSkills: true },
+  /** Factory Droid: `.factory/{mcp,hooks}.json`, `skills/`, `droids/`. See docs/spec/factory-*.md. */
+  factory: { dotDir: ".factory", skills: "agent-skills", userSkills: true },
+  /** Goose: user `config.yaml` only (Windows `%APPDATA%\\Block\\goose\\config`). See docs/spec/goose-mcp.md. */
+  goose: { home: ".config/goose" },
 } satisfies Record<string, ProviderSpec>;
 
 /** Every provider a fact can name. Copilot CLI reports as `vscode`; `unknown` has no entry. */

@@ -13,6 +13,11 @@ export function lineCount(text: string): number {
 
 // `%VAR%` is Gemini CLI's documented Windows-only env syntax (docs/spec/gemini-mcp.md).
 // `{{var}}` is Grok's documented header / env interpolation (docs/spec/grok-mcp.md).
+const NON_PERCENT_INTERPOLATED =
+  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$\{(?:userHome|workspaceFolder|workspaceFolderBasename|pathSeparator|\/)\}|\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{\{\s*secrets\.[A-Za-z0-9_.]+\s*\}\}|\{\{[^{}]+\}\}|\$[A-Za-z_][A-Za-z0-9_]*/;
+
 /** A value that is an interpolated reference rather than a literal. */
-export const INTERPOLATED =
-  /\$\{[A-Za-z_][A-Za-z0-9_]*(?::-[^}]*)?\}|\$\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{file:[^}]+\}|\$\{input:[A-Za-z0-9_-]+\}|\$\{(?:userHome|workspaceFolder|workspaceFolderBasename|pathSeparator|\/)\}|\{env:[A-Za-z_][A-Za-z0-9_]*\}|\$\{\{\s*secrets\.[A-Za-z0-9_.]+\s*\}\}|\{\{[^{}]+\}\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%/;
+export const INTERPOLATED = new RegExp(`${NON_PERCENT_INTERPOLATED.source}|%[A-Za-z_][A-Za-z0-9_]*%`);
+
+/** Qwen Code documents only `$VAR` and `${VAR}`; `%VAR%` stays literal (docs/spec/qwen-mcp.md). */
+export const INTERPOLATED_NO_PERCENT = NON_PERCENT_INTERPOLATED;

@@ -8,7 +8,7 @@ import {
   type McpLaunchKind,
   type McpSchemaProfile,
 } from "../facts/provider";
-import { INTERPOLATED } from "../facts/text";
+import { INTERPOLATED, INTERPOLATED_NO_PERCENT } from "../facts/text";
 import type { McpFact } from "../facts/types";
 import {
   CLAUDE_MCP_TRANSPORTS,
@@ -109,31 +109,31 @@ function isSecretNamedKey(key: string): boolean {
   return SECRET_NAMED_KEY.test(key) || AUTH_HEADER_NAME.test(key);
 }
 
-function isLiteralCredentialValue(val: unknown): boolean {
-  return typeof val === "string" && val.length > 0 && !INTERPOLATED.test(val);
+function isLiteralCredentialValue(val: unknown, interpolated: RegExp): boolean {
+  return typeof val === "string" && val.length > 0 && !interpolated.test(val);
 }
 
-function literalEnvKeysFrom(entry: Record<string, unknown>): string[] {
+function literalEnvKeysFrom(entry: Record<string, unknown>, interpolated: RegExp): string[] {
   const env = entry.env;
   if (!isRecord(env)) {
     return [];
   }
   const keys: string[] = [];
   for (const [key, val] of Object.entries(env as Record<string, unknown>)) {
-    if (isLiteralCredentialValue(val) && SECRET_NAMED_KEY.test(key)) {
+    if (isLiteralCredentialValue(val, interpolated) && SECRET_NAMED_KEY.test(key)) {
       keys.push(key);
     }
   }
   return keys;
 }
 
-function literalFieldsFromMap(obj: unknown, prefix: string): string[] {
+function literalFieldsFromMap(obj: unknown, prefix: string, interpolated: RegExp): string[] {
   if (!isRecord(obj)) {
     return [];
   }
   const fields: string[] = [];
   for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
-    if (isLiteralCredentialValue(val) && isSecretNamedKey(key)) {
+    if (isLiteralCredentialValue(val, interpolated) && isSecretNamedKey(key)) {
       fields.push(`${prefix}.${key}`);
     }
   }
@@ -144,11 +144,11 @@ function literalFieldsFromMap(obj: unknown, prefix: string): string[] {
  * Secret-named string values under `headers`, `http_headers`, or `auth`.
  * Paths only — never the values. See docs/spec/mcp.md.
  */
-function literalCredentialFieldsFrom(entry: Record<string, unknown>): string[] {
+function literalCredentialFieldsFrom(entry: Record<string, unknown>, interpolated: RegExp): string[] {
   return [
-    ...literalFieldsFromMap(entry.headers, "headers"),
-    ...literalFieldsFromMap(entry.http_headers, "http_headers"),
-    ...literalFieldsFromMap(entry.auth, "auth"),
+    ...literalFieldsFromMap(entry.headers, "headers", interpolated),
+    ...literalFieldsFromMap(entry.http_headers, "http_headers", interpolated),
+    ...literalFieldsFromMap(entry.auth, "auth", interpolated),
   ];
 }
 
@@ -301,8 +301,9 @@ function parseMcpServers(
       if (typeof entry.uses === "string" && entry.uses.length > 0) {
         uses = entry.uses;
       }
-      literalEnvKeys = literalEnvKeysFrom(entry);
-      literalCredentialFields = literalCredentialFieldsFrom(entry);
+      const interpolated = profile === "qwen-json" ? INTERPOLATED_NO_PERCENT : INTERPOLATED;
+      literalEnvKeys = literalEnvKeysFrom(entry, interpolated);
+      literalCredentialFields = literalCredentialFieldsFrom(entry, interpolated);
     }
     const launchKind: McpLaunchKind =
       profile === "continue-yaml" && uses !== undefined
@@ -1051,4 +1052,45 @@ export function discoverNestedContinueMcp(root: string, io: ScanIO): McpFact[] {
     addUniqueMcp(facts, seen, parseMcpFile(abs, root, io));
   }
   return facts;
+}
+
+/**
+ * Goose user `config.yaml` `extensions:` map. Only called under `--global`.
+ * `stdio` is `cmd`/`args`/`envs`, `streamable_http` is `uri`/`headers`.
+ * `enabled: false`, `builtin`, `platform`, unknown types, and entries without
+ * `cmd`/`uri` (required-ness is unverified) are skipped. `sse` is kept with no
+ * launch field: "SSE is not supported". See docs/spec/goose-mcp.md.
+ */
+export function discoverGooseUserMcp(root: string, io: ScanIO): McpFact[] {
+  const appData = process.env.APPDATA;
+  const dir =
+    process.platform === "win32" && appData !== undefined && appData.length > 0
+      ? join(appData, "Block", "goose", "config")
+      : providerHome("goose");
+  const filePath = join(dir, "config.yaml");
+  const raw = readConfigFile(filePath, io, { optional: true });
+  if (raw === undefined) {
+    return [];
+  }
+  if (!isRecord(raw)) {
+    reportRootShapeOnce(filePath, io, "Goose config root is not a mapping");
+    return [];
+  }
+  if (!isRecord(raw.extensions)) {
+    return [];
+  }
+  const servers: Record<string, unknown> = {};
+  for (const [id, ext] of Object.entries(raw.extensions)) {
+    if (!isRecord(ext) || ext.enabled === false) {
+      continue;
+    }
+    if (ext.type === "stdio" && typeof ext.cmd === "string" && ext.cmd.length > 0) {
+      servers[id] = { command: ext.cmd, args: ext.args, env: ext.envs };
+    } else if (ext.type === "streamable_http" && typeof ext.uri === "string" && ext.uri.length > 0) {
+      servers[id] = { url: ext.uri, headers: ext.headers };
+    } else if (ext.type === "sse") {
+      servers[id] = {};
+    }
+  }
+  return parseMcpServers({ mcpServers: servers }, filePath, root, io, "goose-yaml");
 }

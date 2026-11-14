@@ -1010,6 +1010,13 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           hasFrontmatter: false,
           codexMissingFields: ["developer_instructions"],
         },
+        {
+          name: "Bad Droid",
+          path: ".factory/droids/bad.md",
+          sourceProvider: "factory",
+          hasFrontmatter: true,
+          factoryDroidDefects: ["invalid-name", "empty-body"],
+        },
       ],
       hooks: [
         hookFact({
@@ -1434,6 +1441,52 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "invalid-group",
           defectDetail: "missing-version",
         },
+        ...(["NopeQwen", "PreToolUse"] as const).map((event) =>
+          hookFact({
+            path: "/tmp/proj/.qwen/settings.json",
+            event,
+            source: "qwen-settings",
+            sourceProvider: "qwen",
+            schemaProfile: "qwen",
+            ...(event === "PreToolUse"
+              ? { handlerType: "command" as const, command: "node gone.js", scriptPath: "./gone-qwen.js", scriptExists: false }
+              : {}),
+          }),
+        ),
+        ...(["command-without-command", "http-without-url", "unknown-handler-type"] as const).map((defect) =>
+          hookFact({
+            path: "/tmp/proj/.qwen/settings.json",
+            event: "Stop",
+            source: "qwen-settings",
+            sourceProvider: "qwen",
+            schemaProfile: "qwen",
+            defect,
+            ...(defect === "unknown-handler-type" ? { unknownHandlerType: "widget" } : {}),
+          }),
+        ),
+        ...(["NopeFactory", "PreToolUse"] as const).map((event) =>
+          hookFact({
+            path: "/tmp/proj/.factory/hooks.json",
+            event,
+            source: "factory-hooks",
+            sourceProvider: "factory",
+            schemaProfile: "factory",
+            ...(event === "PreToolUse"
+              ? { handlerType: "command" as const, command: "node gone.js", scriptPath: "./gone-factory.js", scriptExists: false }
+              : {}),
+          }),
+        ),
+        ...(["invalid-group", "command-without-command", "unknown-handler-type"] as const).map((defect) =>
+          hookFact({
+            path: "/tmp/proj/.factory/hooks.json",
+            event: "Stop",
+            source: "factory-hooks",
+            sourceProvider: "factory",
+            schemaProfile: "factory",
+            defect,
+            ...(defect === "unknown-handler-type" ? { unknownHandlerType: "prompt" } : {}),
+          }),
+        ),
         hookFact({
           path: "/tmp/proj/.devin/hooks.v1.json",
           event: "NopeDevin",
@@ -1927,6 +1980,30 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           name: "dead-windsurf",
           path: "/home/user/.codeium/windsurf/mcp_config.json",
           schemaProfile: "windsurf-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+        }),
+        mcpFact({
+          name: "dead-qwen",
+          path: "/tmp/proj/.qwen/settings.json",
+          schemaProfile: "qwen-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+        }),
+        mcpFact({
+          name: "dead-factory",
+          path: "/tmp/proj/.factory/mcp.json",
+          schemaProfile: "factory-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+        }),
+        mcpFact({
+          name: "dead-goose",
+          path: "/home/user/.config/goose/config.yaml",
+          schemaProfile: "goose-yaml",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],
