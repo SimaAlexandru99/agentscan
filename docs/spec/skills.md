@@ -1,7 +1,7 @@
 # Skills — SKILL.md frontmatter
 
 **Source:** https://code.claude.com/docs/en/skills
-**Read:** 2026-09-03
+**Read:** 2026-11-14
 **Depends on it:** `claude.skill.missing-frontmatter`, `claude.skill.missing-description`,
 `skill.description-budget`
 
@@ -9,8 +9,9 @@
 
 > Every skill needs a `SKILL.md` file with two parts: YAML frontmatter between
 > `---` markers that tells Claude when to use the skill, and markdown content
-> with the instructions Claude follows when the skill runs. **The directory name
-> becomes the command you type**, and the `description` helps Claude decide when
+> with the instructions Claude follows when the skill runs. **The directory name,
+> or the frontmatter `name` when you set one, becomes the command you type**, and
+> the `description` helps Claude decide when
 > to load the skill automatically.
 
 `SKILL.md` is required in a skill directory. Other files are optional:
@@ -18,12 +19,12 @@ templates, example outputs, scripts, reference documentation.
 
 ## Frontmatter fields
 
-Quoted (2026-08-31): all fields are optional. Only `description` is recommended.
+Quoted (2026-11-14): all fields are optional. Only `description` is recommended.
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| `name` | **No** | Display name. Defaults to the directory name. |
-| `description` | **Recommended** | What the skill does and when to use it. **If omitted, uses the first paragraph of markdown content.** Combined `description` and `when_to_use` is truncated at 1,536 characters in the skill listing. |
+| `name` | **No** | Command name shown in the `/` menu. Defaults to the directory name. |
+| `description` | **Recommended** | What the skill does and when to use it. **If omitted, uses the first non-empty line of the markdown content.** Combined `description` and `when_to_use` is truncated at 1,536 characters in the skill listing. |
 | `when_to_use` | No | Appended to `description` in the listing; counts toward the 1,536-character cap. |
 
 `claude.skill.missing-description` fires only when frontmatter has no
@@ -52,7 +53,7 @@ This is **not** applied to Agent Skills schema profiles. See
 
 | Location | Command name from |
 |----------|-------------------|
-| `.claude/skills/<dir>/SKILL.md` | **the directory name** |
+| `.claude/skills/<dir>/SKILL.md` | frontmatter `name` **or** the directory name (the page: "the frontmatter `name` when you set one") |
 | Nested `.claude/skills/`, on a clash | subdirectory path, then the directory name |
 | Plugin `skills/<dir>/SKILL.md` | frontmatter `name` **or** the directory name, namespaced by plugin |
 | Plugin root `SKILL.md` | frontmatter `name`, falling back to the plugin directory name |
@@ -66,9 +67,9 @@ Quoted (read 2026-09-03):
 > `.claude/commands/deploy.md` and a skill at `.claude/skills/deploy/SKILL.md`
 > both create `/deploy` and work the same way.
 
-> Files in `.claude/commands/` support the same frontmatter, except `name`
-> and `paths`, which Claude Code ignores in a command file. You invoke a
-> command file by its file name.
+> Command files: a Markdown file in `.claude/commands/` is the older format and
+> still works. It supports the same frontmatter except `name` and `paths`. To
+> find the name you type to invoke it, see How a skill gets its command name.
 
 agentscan inventories walk-up `.claude/commands/*.md` as slash commands
 (`sourceProvider: "claude"`). Frontmatter `hooks` use `source: "skill"`.
@@ -90,9 +91,10 @@ agentscan reads those two layouts on in-tree plugin roots (a
 ## Two checks this killed
 
 `skill.name-mismatch` enforced "frontmatter `name` must equal the directory
-name". The spec says the opposite: `name` is optional, it is a *display* name,
-and it defaults to the directory. For a non-plugin skill the command comes from
-the directory regardless, so a difference is by design. **24 of 37 findings
+name". The 2026-08-31 page said the opposite: `name` was optional, a *display*
+name, and the command came from the directory regardless. The 2026-11-14 page
+says that in a personal or project skill directory the frontmatter `name` sets
+the command shown in the `/` menu, so a difference is no longer clearly by design. **24 of 37 findings
 across 17 projects, every one false.**
 
 `skill.missing-name` enforced an optional field.

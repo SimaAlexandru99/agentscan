@@ -1,7 +1,7 @@
 # MCP configuration
 
 **Source:** https://code.claude.com/docs/en/mcp
-**Read:** 2026-09-03
+**Read:** 2026-11-14
 **Depends on it:** `claude.mcp.no-launch`, `claude.mcp.url-without-type`, `claude.mcp.reserved-name`, `mcp.hardcoded-secret`, `mcp.literal-env`, `mcp.literal-credential`, `mcp.command-missing`
 
 ## Shared path `.mcp.json`

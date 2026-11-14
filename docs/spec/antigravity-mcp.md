@@ -1,7 +1,7 @@
 # Antigravity MCP
 
 **Source:** https://antigravity.google/docs/mcp
-**Read:** 2026-11-12
+**Read:** 2026-11-14
 **Re-read:** 2026-09-07
 **Depends on it:** `antigravity.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
@@ -26,7 +26,11 @@ Quoted (2026-11-12):
 > **`serverUrl`** … You can also use `url`.
 
 `url` is an alias of `serverUrl`. An entry with only `url` is launchable.
-`httpUrl` is not listed. An entry that has only `httpUrl` is
+Quoted (2026-11-14):
+
+> The legacy HTTP+SSE transport and the httpUrl field aren't supported.
+
+An entry that has only `httpUrl` is
 `antigravity.mcp.no-launch`.
 
 Optional fields include `args`, `env`, `cwd`, `headers`, `authProviderType`,

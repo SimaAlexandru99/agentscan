@@ -1,20 +1,20 @@
 # Claude Code subagent discovery
 
 **Source:** https://code.claude.com/docs/en/sub-agents
-**Read:** 2026-11-13
+**Read:** 2026-11-14
 **Depends on it:** walk-up `.claude/agents` discovery, `--global` `~/.claude/agents`, `claude.agent.duplicate-name` scope
 
 Quoted (read 2026-08-30):
 
 > Project subagents are discovered by walking up from the current working
 > directory, so every `.claude/agents/` between there and the repository root
-> is scanned. As of v2.1.178, when more than one of these nested directories
+> is scanned. When more than one of these nested directories
 > defines the same `name`, Claude Code uses the definition closest to the
 > working directory.
 
 > Keep `name` values unique across the whole tree: if two files under the same
 > `.claude/agents/` directory, including its subfolders, declare the same name,
-> Claude Code loads only one of them
+> Claude Code loads only one of them, chosen by filesystem read order rather than a documented precedence
 
 Duplicate-name errors are therefore scoped to one `.claude/agents` directory
 (including its subfolders), not across walk-up layers.

@@ -125,7 +125,7 @@ describe("renderPrompt", () => {
     });
 
     expect(text).toContain(
-      "- Source: https://cursor.com/docs/hooks (spec-required, read 2026-09-03)",
+      "- Source: https://cursor.com/docs/hooks (spec-required, read 2026-11-14)",
     );
   });
 

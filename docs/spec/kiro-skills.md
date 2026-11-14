@@ -1,10 +1,10 @@
 # Kiro skills
 
 **Source:** https://kiro.dev/docs/skills/
-**Read:** 2026-09-07
+**Read:** 2026-11-14
 **Depends on it:** `agent-skills.skill.*` on `.kiro/skills`
 
-Quoted: Kiro supports the Agent Skills open standard.
+Quoted (2026-11-14): Kiro supports the Agent Skills open standard.
 
 ## Locations
 
@@ -13,7 +13,12 @@ Quoted: Kiro supports the Agent Skills open standard.
 | Workspace | `.kiro/skills/` | yes |
 | User | `~/.kiro/skills/` | `--global` only |
 
-Quoted: `name` must match folder name; `description` required (max 1024).
+Quoted (2026-11-14): `name` | Yes | Must match folder name. Lowercase letters,
+numbers, and hyphens only (max 64 chars). `description` | Yes | When to use this
+skill … (max 1024 chars). `license` is optional.
+
+Custom agents do not load skills by default; they need `skill://` in their
+`resources`. Source: https://kiro.dev/docs/skills/ (unchanged URL).
 
 Workspace skills take priority over global skills of the same name. This
 scanner inventories both; it does not simulate override as runtime.

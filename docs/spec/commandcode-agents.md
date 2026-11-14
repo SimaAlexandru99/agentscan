@@ -1,7 +1,7 @@
 # Command Code custom agents
 
 **Source:** https://commandcode.ai/docs/agents
-**Read:** 2026-09-03
+**Read:** 2026-11-14
 **Depends on it:** `commandcode.agent.reserved-name`,
 `commandcode.agent.invalid-permission-mode`,
 `commandcode.agent.invalid-field-type`
@@ -49,18 +49,33 @@ Reserved names: `explore`, `plan`, `review`, `general`. Quoted:
 | `tools` | string or string[] | no | `"*"` or a list; do not enumerate tool ids |
 | `disallowedTools` | string or string[] | no | same format |
 | `model` | string | no | any `/model` id — **do not enumerate** |
-| `maxTurns` | positive integer | no | default 100; `0` and `-1` are invalid |
-| `permissionMode` | string | no | default `inherit`; overrides: `default`, `auto-accept`, `bypass`, `plan`, `dont-ask` |
+| `maxTurns` | positive integer | no | default: `subagentMaxTurns` setting, else 200 (was 100 on 2026-09-03); `0` and `-1` are invalid |
+| `permissionMode` | string | no | default `inherit`; overrides: `default`, `accept-edits`, `yolo`, `plan`, `dont-ask` (`auto-accept`, `bypass` are aliases) |
 | `reasoningEffort` | string | no | invalid values fall back with a warning; file still loads — no check |
 | `background` | boolean | no | |
 | `showOutput` | boolean | no | |
 
-Quoted row (2026-09-02): "permissionMode | string | No | inherit | Overrides the
-session mode: default, auto-accept, bypass, plan, dont-ask." The Default column
-names `inherit`, the same way `model` documents "Omit or set inherit".
-`COMMANDCODE_PERMISSION_MODES` therefore accepts `inherit` alongside the five
-override values; before 2026-09-02 an explicit `permissionMode: inherit` was
-reported as `commandcode.agent.invalid-permission-mode` at severity error.
+CHANGED-MEANING (read 2026-11-14), `permissionMode` enum. Previous capture
+(2026-09-02): "Overrides the session mode: default, auto-accept, bypass, plan,
+dont-ask." Live (2026-11-14): "Overrides the session mode: default,
+accept-edits, yolo, plan, dont-ask (auto-accept and bypass accepted as
+aliases). A session already in plan/yolo wins." Affected rule:
+`commandcode.agent.invalid-permission-mode` (`src/discover/commandcode.ts`
+checks `COMMANDCODE_PERMISSION_MODES`, which must now include `accept-edits`
+and `yolo`; the code is not changed by this doc refresh).
+
+The Default column names `inherit`, the same way `model` documents "Omit or
+set inherit". `COMMANDCODE_PERMISSION_MODES` therefore accepts `inherit`
+alongside the override values; before 2026-09-02 an explicit
+`permissionMode: inherit` was reported as
+`commandcode.agent.invalid-permission-mode` at severity error.
+
+CHANGED-MEANING (read 2026-11-14), `maxTurns` default. Previous capture: "default
+100". Live: "subagentMaxTurns setting, else 200. Caps the agent's loop. Set
+subagentMaxTurns in settings.json (1 to 1000 ...)". The live page does not
+state a rule for `0` or `-1` on the per-agent field; that prior claim is
+unverified by this refresh. Rule-affected: none found in `commandcode.agent.*`
+(`invalid-field-type` covers type only).
 
 Validate documented types and the `permissionMode` enum. Do not invent
 unknown-model or unknown-tool checks (same failure class as the 9-of-31 hook

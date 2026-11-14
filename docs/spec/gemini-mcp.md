@@ -2,7 +2,7 @@
 
 **Source:** https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md
 **Also:** https://geminicli.com/docs/tools/mcp-server/
-**Read:** 2026-09-03
+**Read:** 2026-11-14
 **Re-read:** 2026-09-07
 **Depends on it:** `gemini.mcp.no-launch`, `gemini.mcp.underscore-alias`, `mcp.literal-env`
 

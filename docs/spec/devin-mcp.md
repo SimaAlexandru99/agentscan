@@ -1,8 +1,14 @@
 # Devin CLI MCP
 
 **Source:** https://docs.devin.ai/cli/extensibility/mcp/configuration
-**Read:** 2026-11-12
+**Read:** 2026-11-14
 **Depends on it:** `devin.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
+
+Re-read 2026-11-14: URL unchanged. Paths, `url`/`transport` fields and the
+pre-v3000.3 note still match. Added: `mcpServers` entries found in the main
+config files are migrated to the dedicated files automatically on startup.
+Also confirmed: `${env:VAR}` and `${file:/path}` expansion applies to
+`oauthClientSecret` and `oauthResource`.
 
 JetBrains Cascade `serverUrl` stays [windsurf-mcp.md](windsurf-mcp.md). This
 page's remote field is `url`.

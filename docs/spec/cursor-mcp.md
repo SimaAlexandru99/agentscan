@@ -1,7 +1,7 @@
 # Cursor MCP
 
-**Source:** https://cursor.com/docs/context/mcp
-**Read:** 2026-09-02
+**Source:** https://cursor.com/docs/mcp (moved 2026-11-14 from `/docs/context/mcp`, 308 redirect)
+**Read:** 2026-11-14
 **Re-read:** 2026-11-12. The page still says create `~/.cursor/mcp.json` for
 tools available everywhere. `version` is not a required field.
 **Depends on it:** `cursor.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`, `mcp.literal-credential`
@@ -16,7 +16,8 @@ A missing `version` is not a finding.
 
 Top-level `mcpServers`. Official examples:
 
-- stdio: `command`, optional `args`, `env`
+- stdio: `command`, optional `args`, `env`, `envFile` (STDIO only; added to the
+  live page 2026-11-14; "Remote servers (HTTP/SSE) do not support envFile.")
 - remote: `url`, optional `headers`
 - OAuth / `auth` object with secret-named keys such as `CLIENT_SECRET`
 

@@ -1,7 +1,7 @@
 # Grok Build project rules and AGENTS.md family
 
 **Source:** https://docs.x.ai/build/features/project-rules
-**Read:** 2026-08-31
+**Read:** 2026-11-14
 **Depends on it:** discovery of `.grok/rules/*.md`, `Agents.md`, `AGENT.md`
 
 Also consulted: https://docs.x.ai/build/features/skills-plugins-marketplaces
@@ -13,7 +13,18 @@ Quoted family walked from cwd to the repo root:
 
 `AGENTS.md`, `Agents.md`, `AGENT.md`
 
-Claude names (`CLAUDE.md`, `Claude.md`, `CLAUDE.local.md`) stay Claude-owned.
+CHANGED-MEANING (2026-11-14): the live page now also reads the Claude names
+in each directory. Quoted:
+
+> Within each directory, Grok reads any of `AGENTS.md`, `Agents.md`, `AGENT.md`,
+> `CLAUDE.md`, `Claude.md`, and `CLAUDE.local.md`, plus every `*.md` file in a
+> `.grok/rules/` directory (`.claude/rules/` and `.cursor/rules/` are read for
+> compatibility).
+
+Previously captured (2026-08-31): `CLAUDE.md`, `Claude.md`, `CLAUDE.local.md`
+stay Claude-owned. `src/discover/policy.ts` still attributes `CLAUDE.md` and
+`CLAUDE.local.md` to `claude`; whether they also become Grok sources is a code
+decision, not made here. No `grok.*` rule id is listed in `Depends on it`.
 This scanner already walks `AGENTS.md`. `Agents.md` and `AGENT.md` are
 inventoried as Grok instruction files (`sourceProvider: grok`).
 

@@ -1,14 +1,15 @@
 # Claude Code memory — CLAUDE.md and `.claude/rules/`
 
 **Source:** https://code.claude.com/docs/en/memory
-**Read:** 2026-09-03
+**Read:** 2026-11-14
 **Depends on it:** `budget.claude-md`, walk-up `CLAUDE.md` discovery, `.claude/rules/` inventory, `--global` user memory
 
 ## Project locations
 
 Quoted:
 
-> Project instructions: `./CLAUDE.md` or `./.claude/CLAUDE.md`
+> **Project instructions** | `./CLAUDE.md` or `./.claude/CLAUDE.md`. See AGENTS.md
+> for when `./AGENTS.md` loads instead of or alongside them
 
 > CLAUDE.md and CLAUDE.local.md files in the directory hierarchy above the
 > working directory are loaded at launch.

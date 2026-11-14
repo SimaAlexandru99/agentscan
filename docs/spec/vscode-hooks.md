@@ -2,13 +2,14 @@
 
 **Source:** https://code.visualstudio.com/docs/agents/reference/hooks-reference
 **Also:** https://code.visualstudio.com/docs/agent-customization/hooks
-**Read:** 2026-11-12
+**Read:** 2026-11-14
 **Re-read:** 2026-09-07 (agent frontmatter hooks parsed as vscode-native)
 
 The source page is now titled "Legacy Local hooks reference". Quoted
-(2026-11-12, customization guide): the older Local harness has a separate
-Local hooks reference, used to interpret existing hooks during migration,
-not as the schema for a new Copilot hook. New Copilot hooks are `version: 1`
+(2026-11-14): "Use this reference to interpret an existing Local hook while
+migrating to the Copilot harness. For new hooks, start with Configure agent
+hooks, which uses the shared Copilot runtime." Also quoted: "The Local harness
+is deprecated and will be removed in February 2027." New Copilot hooks are `version: 1`
 camelCase files, documented in [copilot-hooks.md](copilot-hooks.md). A
 numeric `version` does not select a different Local payload. This profile
 stays the eight PascalCase command-only events. Do not delete them to match
@@ -41,9 +42,14 @@ Official example (no `version` field):
 }
 ```
 
-Each handler must specify `type: "command"` and a command. This is a flat
-array of handlers, not Claude's matcher-group wrapper (though Claude-format
-settings files are also loaded from `.claude/settings.json`).
+Use an explicit `type: "command"` and at least one command property. Changed
+2026-11-14: "The Local parser also accepts entries without type as command
+hooks." So `type` is no longer required by the page; check
+`vscode.hook.unknown-handler-type` before relying on the old wording. This is a
+flat array of handlers, not Claude's matcher-group wrapper. The Local reference
+also says it "accepts nested Claude command groups but ignores matcher values"
+(Claude-format settings files are read from `.claude/settings.json`, gated by
+`chat.useClaudeHooks` on the Local harness).
 
 Quoted locations also include custom-agent frontmatter `hooks` in
 `.github/agents/*.agent.md` (scanned as vscode-native) and plugin
@@ -53,7 +59,9 @@ install directories are unread (path changes; not a project file).
 
 Quoted command properties: `cwd`, `env`, `timeout`, and OS-specific overrides
 (`windows` / `linux` / `osx`). Official docs select the OS-specific command
-from the extension host platform.
+from the extension host platform. Added 2026-11-14: "It accepts `timeoutSec`
+when `timeout` is absent. Do not specify both timeout aliases when migrating;
+the Copilot runtime gives them the opposite precedence."
 
 A launch whose `windows` / `linux` / `osx` platform does not match
 `process.platform` is still inventoried, but `scriptExists` stays unset and
@@ -71,6 +79,15 @@ check rather than inventing a folder under the project.
 Do not validate these files against the Claude 33-event set, and do not
 accept Copilot camelCase names (`sessionStart`) unless the file is Copilot
 CLI (`version: 1`).
+
+**CHANGED-MEANING (2026-11-14, not yet acted on):** the Local reference now
+says: "Local accepts PascalCase and Copilot event aliases in hook files; a
+numeric version does not select a different Local payload schema." The
+customization guide repeats it: "The Local parser accepts PascalCase and Copilot
+event aliases, command aliases, and nested Claude command groups." If "Copilot
+event aliases" covers camelCase names, the rule above and
+`vscode.hook.unknown-event` need an owner decision. The page does not say which
+names count.
 
 ## Other locations (read 2026-09-02)
 

@@ -2,7 +2,7 @@
 
 **Source:** https://cursor.com/docs/hooks
 **Also:** https://cursor.com/docs/reference/third-party-hooks
-**Read:** 2026-09-03
+**Read:** 2026-11-14
 **Re-read:** 2026-09-07
 **Depends on it:** `cursor.hook.unknown-event`, `cursor.hook.missing-script`,
 `cursor.hook.command-without-command`, `cursor.hook.unknown-handler-type`
@@ -28,7 +28,9 @@ root, matching Claude user hooks.
 
 Quoted, split by the three families the page names.
 
-**Agent hooks** — "apply to Cmd+K and Agent Chat operations":
+**Agent hooks** — "apply to Agent Chat operations" (2026-11-14: the earlier
+"Cmd+K and" wording is gone from the page; see the CHANGED-MEANING note in the
+report, not yet acted on):
 
 ```
 sessionStart          sessionEnd            preToolUse
@@ -75,8 +77,9 @@ Flat arrays, not Claude's nested `{ matcher, hooks: [...] }` groups. Quoted:
 }
 ```
 
-Quoted global option: `version`, number, default `1` — "Config schema version".
-Inventoried, not checked; the page documents no rejected value.
+Quoted global option (2026-11-14): `version`, number, "required" — "Config
+schema version. Must be a positive integer (use 1)." Inventoried, not checked.
+Before 2026-11-14 the page listed a default of `1` and no rejected value.
 
 ## Handler shape
 
@@ -87,9 +90,9 @@ Quoted per-script options:
 | `command`    | `string`                 | **required**     | "Script path or command"                 |
 | `type`       | `"command" \| "prompt"` | `"command"`      | "Hook execution type"                    |
 | `timeout`    | `number`                 | platform default | "Execution timeout in seconds"           |
-| `loop_limit` | `number \| null`        | `5`              | per-script loop limit for stop/subagentStop |
-| `failClosed` | `boolean`                | `false`          | hook failures block the action           |
-| `matcher`    | —                        | —                | "Filter criteria for when hook runs"     |
+| `loop_limit` | `number \| null`        | `5`              | "Per-script loop limit for stop/subagentStop hooks." |
+| `failClosed` | `boolean`                | `false`          | "When true, hook failures (crash, timeout, non-zero exit code, no output) block the action instead of allowing it through." |
+| `matcher`    | `string`                 | —                | "Regex that filters when the hook runs. An empty string or \"*\" matches everything." |
 
 `command` is required for **every** entry, including `type: "prompt"` — the
 table marks it required with no per-type exception, and documents no separate
@@ -101,10 +104,11 @@ table marks it required with no per-type exception, and documents no separate
 `"prompt"` is `cursor.hook.unknown-handler-type`. Never emit the Claude
 "required `type`" rule against this file.
 
-`matcher` is typed `object` in the options table while every documented example
-passes a string (`"Shell"`, `"explore|shell"`, `"curl|wget|nc "`). The two
-disagree, so `matcher` is not shape-checked — a rule cannot be built on a
-contradiction.
+Until 2026-11-14 the options table typed `matcher` as `object`, which
+contradicted every documented example (`"Shell"`, `"explore|shell"`,
+`"curl|wget|nc "`), so `matcher` was not shape-checked. The live table now
+types it `string`. The contradiction is gone, but the shape check is not added
+here: that is a decision for the owner.
 
 `timeout` is **seconds** here, against Gemini's milliseconds.
 
