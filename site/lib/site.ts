@@ -8,7 +8,7 @@ export const PRODUCT_CHECKS = 163;
 
 export const HOME_TITLE = "agentscan: lint Claude Code hooks, MCP configs and skills";
 export const HOME_DESCRIPTION =
-  "Find agent hooks that no longer run, MCP servers that cannot start, and skills out of sync with their lockfile. Offline, read-only, 23 coding agents.";
+  `Find agent hooks that no longer run, MCP servers that cannot start, and skills out of sync with their lockfile. Offline, read-only, ${PRODUCT_CHECKS} checks.`;
 
 /** Surfaces 2.0.0 reads, in the README coverage matrix. Not a card grid. */
 export const COVERAGE_LINES = [

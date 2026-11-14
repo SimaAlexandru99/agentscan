@@ -34,7 +34,7 @@ locally or in CI.
 
 > Your agent config says the guard is on. The script is gone. Nothing told you.
 
-Version line under the lede: `2.3.1 · 163 checks · offline on check`.
+Version line under the copy command: `2.3.1 · 163 checks · offline on check`.
 
 ### Primary CTA
 
@@ -46,14 +46,17 @@ npx @chimix/agentscan check
 
 Secondary: link to `/docs`, GitHub, npm.
 
-### Proof (static terminal)
+### Proof (config-vs-disk explainer)
 
-Show the README killer-case sample for `claude.hook.missing-script` — registered
+`ConfigDiskExplainer` shows the README killer-case sample for `claude.hook.missing-script` — registered
 hook, missing script, **error** + score 90/100. Do not invent other findings or
 project names beyond the README sample. Do not use the 0.7 id
 `hook.missing-script` or a WARN sample.
 
 ### Trust (prose / list — not a card grid)
+
+On the home this is the ordered "What you get after one run" list; the points
+below stay true of every claim there.
 
 - No AI, no network on `check`
 - Writes nothing to the scanned tree
