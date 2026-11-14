@@ -210,6 +210,11 @@ export const SPEC_SURFACES: SpecSurface[] = [
     ...SPEC_PAGES.vscodeMcp,
   },
   {
+    provider: "copilot",
+    surface: "mcp",
+    ...SPEC_PAGES.copilotCliConfigDir,
+  },
+  {
     provider: "cursor",
     surface: "skills",
     lastVerified: "2026-09-02",

@@ -35,3 +35,11 @@ There is no separate Codex skill schema in this capture. Do not invent
 Codex-only frontmatter fields.
 
 ## Staleness risk: HIGH
+
+## Not scanned (2026-11-14)
+
+agentscan no longer reads `.codex/skills` or `~/.codex/skills` for any
+provider: Codex does not document them. Cursor and the Devin CLI still load
+`.codex/skills` for compatibility ([cursor-skills.md](cursor-skills.md),
+[windsurf-skills.md](windsurf-skills.md)), but neither states the Agent Skills
+contract for that folder, so skills there go unchecked by design.

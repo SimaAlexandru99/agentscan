@@ -39,6 +39,7 @@ to appear in real projects.** When adding a check:
 | [commandcode-commands.md](commandcode-commands.md) | `.commandcode/commands` inventory | none |
 | [commandcode-mods.md](commandcode-mods.md) | Mods inventory-only; never execute | none |
 | [vscode-mcp.md](vscode-mcp.md) | VS Code `.vscode/mcp.json` `servers`; Copilot user `mcp-config.json` `mcpServers` | `vscode.mcp.no-launch` |
+| [copilot-mcp.md](copilot-mcp.md) | Copilot CLI project `.github/mcp.json` and `.mcp.json` precedence | `vscode.mcp.no-launch` |
 | [cursor-mcp.md](cursor-mcp.md) | Cursor `.cursor/mcp.json` | `cursor.mcp.no-launch` |
 | [antigravity-mcp.md](antigravity-mcp.md) | Antigravity `serverUrl`, with `url` as an alias | `antigravity.mcp.no-launch` |
 | [antigravity-hooks.md](antigravity-hooks.md) | `.agents/hooks.json` and `~/.gemini/config/hooks.json`; 6 events; direct handlers; `command` only | `antigravity.hook.*` |
@@ -62,7 +63,7 @@ to appear in real projects.** When adding a check:
 | [opencode-mcp.md](opencode-mcp.md) | `opencode.json(c)` V1 vs V2; command must be an array | `opencode.mcp.*` |
 | [continue-mcp.md](continue-mcp.md) | `.continue/config.yaml` and standalone YAML block metadata | `continue.mcp.no-launch`, `continue.mcp.missing-block-metadata` |
 | [cursor-skills.md](cursor-skills.md) | Nested `.cursor/skills` / `.agents/skills` Agent Skills contract | `agent-skills.skill.*` |
-| [codex-skills.md](codex-skills.md) | Codex `.codex/skills` Agent Skills contract | `agent-skills.skill.*` |
+| [codex-skills.md](codex-skills.md) | Codex `.agents/skills` Agent Skills contract | `agent-skills.skill.*` |
 | [grok-mcp.md](grok-mcp.md) | Grok `[mcp_servers.*]` TOML; project walk-up; user under `--global` | `grok.mcp.no-launch` |
 | [grok-hooks.md](grok-hooks.md) | 14 events; command/http; `.grok/hooks/*.json` | `grok.hook.*` |
 | [grok-skills.md](grok-skills.md) | `.grok/skills`; optional name/description; frontmatter required | `grok.skill.missing-frontmatter` |

@@ -29,6 +29,7 @@ export const SPEC_PAGES = {
   geminiMcp: { url: "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md", lastVerified: "2026-11-14" },
   vscodeHooks: { url: "https://code.visualstudio.com/docs/agents/reference/hooks-reference", lastVerified: "2026-11-14" },
   vscodeMcp: { url: "https://code.visualstudio.com/docs/agents/reference/mcp-configuration", lastVerified: "2026-11-12" },
+  copilotCliConfigDir: { url: "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference", lastVerified: "2026-11-14" },
   windsurfRules: { url: "https://docs.windsurf.com/windsurf/cascade/memories", lastVerified: "2026-11-14" },
   windsurfMcp: { url: "https://docs.windsurf.com/windsurf/cascade/mcp", lastVerified: "2026-11-14" },
   windsurfHooks: { url: "https://docs.devin.ai/desktop/cascade/hooks", lastVerified: "2026-11-14" },
