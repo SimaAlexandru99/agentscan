@@ -38,6 +38,7 @@ import {
 } from "./commandcode";
 import { discoverCursorHooksFile, discoverCursorUserMcp } from "./cursor";
 import { discoverDevinProject, discoverDevinUser } from "./devin";
+import { discoverFactoryProject, discoverFactoryUser } from "./factory";
 import { discoverKiroHooksDir } from "./kiro";
 import { applyGrokMcpPrecedence, discoverGrokUserMcp } from "./grok";
 import {
@@ -284,6 +285,11 @@ const SOURCES: Source[] = [
         mcp: parseProfiledMcpFile(file, root, io, "qwen-json", { optional: true, mcpServersOptional: true }),
       };
     },
+  },
+  {
+    id: "factory",
+    project: (dir, { io }) => discoverFactoryProject(dir, io),
+    user: ({ root, io }) => discoverFactoryUser(root, io),
   },
   {
     // Every provider's project MCP file, from the configured `mcpPaths`.

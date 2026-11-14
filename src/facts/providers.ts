@@ -77,6 +77,8 @@ export const PROVIDERS = {
   copilot: { dotDir: ".github", home: ".copilot", homeEnv: "COPILOT_HOME" },
   /** Qwen Code: `.qwen/settings.json` (MCP, hooks) and `.qwen/skills`. See docs/spec/qwen-*.md. */
   qwen: { dotDir: ".qwen", skills: "agent-skills", userSkills: true },
+  /** Factory Droid: `.factory/{mcp,hooks}.json`, `skills/`, `droids/`. See docs/spec/factory-*.md. */
+  factory: { dotDir: ".factory", skills: "agent-skills", userSkills: true },
 } satisfies Record<string, ProviderSpec>;
 
 /** Every provider a fact can name. Copilot CLI reports as `vscode`; `unknown` has no entry. */

@@ -2,7 +2,7 @@
 
 **Source:** https://docs.factory.com/harness/mcp (same text at https://docs.factory.com/cli/configuration/mcp)
 **Read:** 2026-11-14
-**Depends on it:** (new)
+**Depends on it:** `factory.mcp.no-launch`
 
 Quoted:
 

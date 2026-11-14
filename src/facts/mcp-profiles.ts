@@ -107,6 +107,13 @@ const PROFILES = {
     noLaunchDeclares: "neither command, url, nor httpUrl",
     noLaunchAdd: "a command, url, or httpUrl",
   },
+  // `type` stdio (default, `command`) | http | sse (`url`). See docs/spec/factory-mcp.md.
+  "factory-json": {
+    ...COMMAND_OR_URL,
+    sourceProvider: "factory",
+    consumedBy: ["factory"],
+    ruleIdPrefix: "factory",
+  },
 } as const satisfies Record<McpSchemaProfile, McpProfileSpec>;
 
 export const MCP_PROFILES: Record<McpSchemaProfile, McpProfileSpec> = PROFILES;

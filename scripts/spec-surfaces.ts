@@ -455,6 +455,10 @@ export const SPEC_SURFACES: SpecSurface[] = [
     lastVerified: "2026-11-14",
     url: "https://qwenlm.github.io/qwen-code-docs/en/users/features/skills/",
   },
+  { provider: "factory", surface: "hooks", ...SPEC_PAGES.factoryHooks },
+  { provider: "factory", surface: "mcp", ...SPEC_PAGES.factoryMcp },
+  { provider: "factory", surface: "agents", ...SPEC_PAGES.factoryAgents },
+  { provider: "factory", surface: "skills", lastVerified: "2026-11-14", url: "https://docs.factory.com/harness/skills" },
 ];
 
 /** Re-read the sources when a capture or surface is older than this. */

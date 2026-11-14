@@ -581,6 +581,14 @@ function qwenHookFromEntry(item: Record<string, unknown>, ctx: HookContext): Hoo
   return commandFactsFromLaunches(ctx, item, "command-without-command");
 }
 
+/** Factory Droid: `type` must be `"command"` with a `command`. See docs/spec/factory-hooks.md. */
+function factoryHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
+  if (item.type !== "command") {
+    return [baseFact(ctx, { defect: "unknown-handler-type", unknownHandlerType: unknownTypeLabel(item) })];
+  }
+  return [commandHook(baseFact(ctx), nonemptyString(item.command), ctx.bases.project)];
+}
+
 /** One handler entry -> facts, for profiles whose layout is `nested` or `flat-array`. */
 const ENTRY_READERS: Record<PipedProfile, (item: Record<string, unknown>, ctx: HookContext) => HookFact[]> = {
   claude: claudeHookFromEntry,
@@ -592,6 +600,7 @@ const ENTRY_READERS: Record<PipedProfile, (item: Record<string, unknown>, ctx: H
   devin: devinHookFromEntry,
   codex: codexHookFromEntry,
   qwen: qwenHookFromEntry,
+  factory: factoryHookFromEntry,
 };
 
 function isPipedProfile(profile: HookSchemaProfile): profile is PipedProfile {

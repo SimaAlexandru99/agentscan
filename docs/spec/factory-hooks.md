@@ -2,7 +2,7 @@
 
 **Source:** https://docs.factory.com/harness/hooks (same text at https://docs.factory.com/cli/configuration/hooks-guide)
 **Read:** 2026-11-14
-**Depends on it:** (new)
+**Depends on it:** `factory.hook.*`
 
 Quoted:
 

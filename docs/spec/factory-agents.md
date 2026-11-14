@@ -2,7 +2,7 @@
 
 **Source:** https://docs.factory.com/harness/subagents (same text at https://docs.factory.com/cli/configuration/custom-droids)
 **Read:** 2026-11-14
-**Depends on it:** (new)
+**Depends on it:** `factory.droid.*`
 
 Quoted:
 

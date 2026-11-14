@@ -18,7 +18,8 @@ export type McpSchemaProfile =
   | "windsurf-json"
   | "devin-json"
   | "copilot-json"
-  | "qwen-json";
+  | "qwen-json"
+  | "factory-json";
 
 export function assertNever(value: never, message: string): never {
   throw new Error(message);
@@ -78,6 +79,7 @@ const MCP_FILE_RULES: readonly {
     test: (p) => /(?:^|\/)\.copilot\/mcp-config\.json$/.test(p),
   },
   { profile: "qwen-json", test: (p) => /(?:^|\/)\.qwen\/settings\.json$/.test(p), jsonc: true },
+  { profile: "factory-json", test: (p) => /(?:^|\/)\.factory\/mcp\.json$/.test(p) },
 ];
 
 /** Default `mcpPaths`. Order is the order project files are read. */

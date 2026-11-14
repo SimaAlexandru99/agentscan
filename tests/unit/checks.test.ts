@@ -1010,6 +1010,13 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           hasFrontmatter: false,
           codexMissingFields: ["developer_instructions"],
         },
+        {
+          name: "Bad Droid",
+          path: ".factory/droids/bad.md",
+          sourceProvider: "factory",
+          hasFrontmatter: true,
+          factoryDroidDefects: ["invalid-name", "empty-body"],
+        },
       ],
       hooks: [
         hookFact({
@@ -1455,6 +1462,29 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
             schemaProfile: "qwen",
             defect,
             ...(defect === "unknown-handler-type" ? { unknownHandlerType: "widget" } : {}),
+          }),
+        ),
+        ...(["NopeFactory", "PreToolUse"] as const).map((event) =>
+          hookFact({
+            path: "/tmp/proj/.factory/hooks.json",
+            event,
+            source: "factory-hooks",
+            sourceProvider: "factory",
+            schemaProfile: "factory",
+            ...(event === "PreToolUse"
+              ? { handlerType: "command" as const, command: "node gone.js", scriptPath: "./gone-factory.js", scriptExists: false }
+              : {}),
+          }),
+        ),
+        ...(["invalid-group", "command-without-command", "unknown-handler-type"] as const).map((defect) =>
+          hookFact({
+            path: "/tmp/proj/.factory/hooks.json",
+            event: "Stop",
+            source: "factory-hooks",
+            sourceProvider: "factory",
+            schemaProfile: "factory",
+            defect,
+            ...(defect === "unknown-handler-type" ? { unknownHandlerType: "prompt" } : {}),
           }),
         ),
         hookFact({
@@ -1955,6 +1985,14 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           name: "dead-qwen",
           path: "/tmp/proj/.qwen/settings.json",
           schemaProfile: "qwen-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+        }),
+        mcpFact({
+          name: "dead-factory",
+          path: "/tmp/proj/.factory/mcp.json",
+          schemaProfile: "factory-json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],

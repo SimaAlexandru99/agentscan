@@ -1099,6 +1099,63 @@ export const STRUCTURAL_CHECKS = [
     provenance: "spec-required",
     ...spec(SPEC_PAGES.qwenHooks, "qwen-hooks.md"),
   },
+  {
+    id: "factory.mcp.no-launch",
+    description: "Factory Droid MCP server has neither command nor url",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.factoryMcp, "factory-mcp.md"),
+  },
+  {
+    id: "factory.hook.unknown-event",
+    description: "Factory Droid hook registered under an event name that is never dispatched",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.factoryHooks, "factory-hooks.md"),
+  },
+  {
+    id: "factory.hook.missing-script",
+    description: "Factory Droid hook points at a script that does not exist, so it never runs",
+    severity: "error",
+    provenance: "internal-consistency",
+    lastVerified: "2026-11-14",
+    source: { kind: "derived", detail: "agentscan inference" },
+  },
+  {
+    id: "factory.hook.invalid-group",
+    description: "Factory Droid hook group has no hooks array",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.factoryHooks, "factory-hooks.md"),
+  },
+  {
+    id: "factory.hook.command-without-command",
+    description: "Factory Droid command hook is missing the command field",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.factoryHooks, "factory-hooks.md"),
+  },
+  {
+    id: "factory.hook.unknown-handler-type",
+    description: "Factory Droid hook type is missing or is not command",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.factoryHooks, "factory-hooks.md"),
+  },
+  {
+    id: "factory.droid.invalid-name",
+    description: "Factory custom droid name is missing or does not match ^[a-z0-9-_]+$",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.factoryAgents, "factory-agents.md"),
+  },
+  {
+    id: "factory.droid.empty-body",
+    description: "Factory custom droid has an empty system prompt body",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.factoryAgents, "factory-agents.md"),
+  },
 ] as const satisfies readonly StructuralCheck[];
 
 export type RuleId = (typeof STRUCTURAL_CHECKS)[number]["id"];

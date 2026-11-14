@@ -274,6 +274,7 @@ const HOOK_EVENT_PAGES: Record<HookSchemaProfile, HookEventPage | null> = {
   codex: { label: "Codex", url: SPEC_PAGES.codexHooks.url },
   antigravity: { label: "Antigravity", url: SPEC_PAGES.antigravityHooks.url },
   qwen: { label: "Qwen Code", url: SPEC_PAGES.qwenHooks.url, mentions: pageMentionsEvent },
+  factory: { label: "Factory Droid", url: SPEC_PAGES.factoryHooks.url, mentions: pageMentionsEvent },
 };
 
 /** Names the page ties to hooks, minus the ones we know; filtered to keep the noise survivable. */

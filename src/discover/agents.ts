@@ -4,6 +4,7 @@ import { toPosix } from "../facts/paths";
 import { providerHome } from "../facts/providers";
 import type { AgentFact } from "../facts/types";
 import { discoverCommandcodeAgents } from "./commandcode";
+import { discoverFactoryDroidsDir } from "./factory";
 import { ancestorDirsInclusive } from "./scan-context";
 import { hooksFromObject } from "./hooks";
 import { readFrontmatter } from "./frontmatter";
@@ -318,6 +319,7 @@ export function discoverAgents(
       kiroPending.push({ fact, hops: hop });
     }
     facts.push(...discoverCodexAgentsDir(join(dir, ".codex", "agents"), io));
+    facts.push(...discoverFactoryDroidsDir(join(dir, ".factory", "droids"), io));
   }
   facts.push(...discoverCommandcodeAgents(commandcodeProjectRoot, includeGlobal, io));
   if (includeGlobal) {
@@ -336,6 +338,10 @@ export function discoverAgents(
         kiroPending.push({ fact, hops: KIRO_GLOBAL_HOPS });
       }
     }
+  }
+  const factoryGlobal = join(providerHome("factory"), "droids");
+  if (includeGlobal && !ancestors.some((dir) => join(dir, ".factory", "droids") === factoryGlobal)) {
+    facts.push(...discoverFactoryDroidsDir(factoryGlobal, io));
   }
   facts.push(...shadowFartherKiroAgents(kiroPending));
   return facts;

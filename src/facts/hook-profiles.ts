@@ -20,6 +20,7 @@ import { DEVIN_HOOK_EVENTS } from "./devin";
 import { KIRO_HOOK_EVENTS } from "./kiro";
 import { WINDSURF_HOOK_EVENTS } from "./windsurf";
 import { QWEN_HOOK_EVENTS } from "./qwen";
+import { FACTORY_HOOK_EVENTS } from "./factory";
 
 export type HookRuleKind = HookDefect | "unknown-event" | "missing-script" | "timeout-out-of-bounds";
 
@@ -238,6 +239,17 @@ export const PROFILES = {
     defects: ["command-without-command", "http-without-url", "unknown-handler-type"],
     layout: "nested",
     fileSource: "qwen-settings",
+  },
+  /**
+   * Standalone `hooks.json` is the event map itself; `settings.json` wraps it
+   * in `hooks`. Only `type: "command"`. See docs/spec/factory-hooks.md.
+   */
+  factory: {
+    events: FACTORY_HOOK_EVENTS,
+    ruleIdPrefix: "factory",
+    defects: ["invalid-group", "command-without-command", "unknown-handler-type"],
+    layout: "nested",
+    fileSource: "factory-hooks",
   },
 } as const satisfies Record<string, HookProfileSpec>;
 

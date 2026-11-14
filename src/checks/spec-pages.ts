@@ -48,6 +48,9 @@ export const SPEC_PAGES = {
   devinMcp: { url: "https://docs.devin.ai/cli/extensibility/mcp/configuration", lastVerified: "2026-11-14" },
   qwenHooks: { url: "https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/", lastVerified: "2026-11-14" },
   qwenMcp: { url: "https://qwenlm.github.io/qwen-code-docs/en/users/features/mcp/", lastVerified: "2026-11-14" },
+  factoryHooks: { url: "https://docs.factory.com/harness/hooks", lastVerified: "2026-11-14" },
+  factoryMcp: { url: "https://docs.factory.com/harness/mcp", lastVerified: "2026-11-14" },
+  factoryAgents: { url: "https://docs.factory.com/harness/subagents", lastVerified: "2026-11-14" },
   // No rule cites this page; `spec:check` reads VS Code hook event names from it.
   vscodeHooksGuide: { url: "https://code.visualstudio.com/docs/agent-customization/hooks", lastVerified: "2026-09-02" },
 } as const satisfies Record<string, SpecPage>;

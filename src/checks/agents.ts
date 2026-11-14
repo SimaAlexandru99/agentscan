@@ -194,5 +194,35 @@ export function checkAgents(facts: Facts): Finding[] {
       );
     }
   }
-  return [...out, ...checkCommandcodeAgents(facts), ...checkCodexAgents(facts)];
+  return [...out, ...checkCommandcodeAgents(facts), ...checkCodexAgents(facts), ...checkFactoryDroids(facts)];
+}
+
+/** See docs/spec/factory-agents.md. */
+function checkFactoryDroids(facts: Facts): Finding[] {
+  const out: Finding[] = [];
+  for (const agent of facts.agents) {
+    if (agent.sourceProvider !== "factory") {
+      continue;
+    }
+    for (const defect of agent.factoryDroidDefects ?? []) {
+      out.push(
+        defect === "invalid-name"
+          ? make("factory.droid.invalid-name", `agent:${agent.path}`, {
+              message: `Droid "${agent.name}" has no frontmatter name matching ^[a-z0-9-_]+$`,
+              reason:
+                "Factory requires `name` (lowercase letters, digits, `-`, `_`); it drives the `subagent_type` value. The CLI validates every definition and exposes only valid droids. See docs/spec/factory-agents.md.",
+              evidence: [{ kind: "agent", value: agent.path }],
+              suggest: `Set a lowercase name in ${agent.path}`,
+            })
+          : make("factory.droid.empty-body", `agent:${agent.path}`, {
+              message: `Droid "${agent.name}" has an empty system prompt`,
+              reason:
+                "The body after the frontmatter is the droid's system prompt and cannot be empty. See docs/spec/factory-agents.md.",
+              evidence: [{ kind: "agent", value: agent.path }],
+              suggest: `Write the system prompt below the frontmatter in ${agent.path}`,
+            }),
+      );
+    }
+  }
+  return out;
 }

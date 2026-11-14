@@ -127,6 +127,22 @@
     "hash": "c263674e2de083a3",
     "recorded": "2026-11-14"
   },
+  "https://docs.factory.com/harness/hooks": {
+    "hash": "bad397eefa611935",
+    "recorded": "2026-11-14"
+  },
+  "https://docs.factory.com/harness/mcp": {
+    "hash": "17928dfbc49bcf2a",
+    "recorded": "2026-11-14"
+  },
+  "https://docs.factory.com/harness/skills": {
+    "hash": "01f15b8d7ddf2ed6",
+    "recorded": "2026-11-14"
+  },
+  "https://docs.factory.com/harness/subagents": {
+    "hash": "2584f664d83a8f9f",
+    "recorded": "2026-11-14"
+  },
   "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference": {
     "hash": "a6a4708527f58d3e",
     "recorded": "2026-11-14"

@@ -194,8 +194,8 @@ function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
         }),
       );
     }
-    // Qwen does not document a name-directory match (docs/spec/qwen-skills.md).
-    if (name !== dirName && skill.sourceProvider !== "junie" && skill.sourceProvider !== "qwen") {
+    // Neither Qwen nor Factory documents a name-directory match (docs/spec/{qwen,factory}-skills.md).
+    if (name !== dirName && skill.sourceProvider !== "junie" && skill.sourceProvider !== "qwen" && skill.sourceProvider !== "factory") {
       out.push(
         make("agent-skills.skill.name-does-not-match-directory", skillSubject(skill), {
           message: `Skill name "${name}" does not match directory "${dirName}"`,

@@ -200,6 +200,8 @@ export type AgentFact = {
   commandcodeDefects?: CommandcodeAgentDefect[];
   /** Codex `.codex/agents/*.toml`: required string fields that are absent or not strings. */
   codexMissingFields?: string[];
+  /** Factory `droids/*.md`: missing or invalid `name`, or an empty prompt body. */
+  factoryDroidDefects?: ("invalid-name" | "empty-body")[];
   invalidField?: string;
   effective?: boolean;
 };
