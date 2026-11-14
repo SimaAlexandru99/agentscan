@@ -490,7 +490,7 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `copilot.hook.incompatible-handler` | error | spec-required | [docs.github.com/en/copilot/reference/hooks-reference](https://docs.github.com/en/copilot/reference/hooks-reference) | Copilot CLI prompt hook is registered on an event other than sessionStart |
 | `skill.missing-skill-md` | warning | internal-consistency | [agentskills.io/specification](https://agentskills.io/specification) | Skill directory has no SKILL.md |
 | `claude.skill.missing-frontmatter` | warning | spec-required | [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills) | SKILL.md has no YAML frontmatter block |
-| `claude.skill.missing-description` | info | vendor-recommendation | [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills) | SKILL.md frontmatter has no description and no first markdown paragraph |
+| `claude.skill.missing-description` | info | vendor-recommendation | [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills) | SKILL.md frontmatter has no description and no first non-empty markdown line |
 | `agent-skills.skill.missing-frontmatter` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill SKILL.md has no YAML frontmatter block |
 | `agent-skills.skill.missing-name` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill frontmatter has no required name |
 | `agent-skills.skill.missing-description` | error | spec-required | [agentskills.io/specification](https://agentskills.io/specification) | Portable skill frontmatter has no required description |

@@ -51,19 +51,11 @@ export function skillReferences(body: string): string[] {
 }
 
 /**
- * First prose paragraph after frontmatter. Headings and blank lines are skipped.
- * Used when Claude omits `description`. See docs/spec/skills.md.
+ * First non-empty line after frontmatter, a heading included. Used when Claude
+ * omits `description` (code.claude.com/docs/en/skills.md, read 2026-11-14).
  */
-export function firstMarkdownParagraph(body: string): string | undefined {
-  const blocks = body.replace(/\r\n/g, "\n").trim().split(/\n\s*\n/);
-  for (const block of blocks) {
-    const lines = block.split("\n").filter((line) => !/^#{1,6}\s/.test(line.trim()));
-    const text = lines.map((line) => line.trim()).filter((line) => line.length > 0).join(" ");
-    if (text.length > 0) {
-      return text;
-    }
-  }
-  return undefined;
+export function firstNonEmptyLine(body: string): string | undefined {
+  return body.split(/\r?\n/).map((line) => line.trim()).find((line) => line.length > 0);
 }
 
 /**
@@ -244,9 +236,9 @@ function skillFactFromDir(
     if (broken.length > 0) {
       fact.brokenReferences = broken;
     }
-    const paragraph = firstMarkdownParagraph(fm.body);
-    if (paragraph !== undefined) {
-      fact.firstMarkdownParagraph = paragraph;
+    const firstLine = firstNonEmptyLine(fm.body);
+    if (firstLine !== undefined) {
+      fact.firstNonEmptyLine = firstLine;
     }
   }
   if (fm.lineCount !== undefined) {

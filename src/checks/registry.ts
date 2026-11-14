@@ -199,7 +199,7 @@ export const STRUCTURAL_CHECKS = [
   },
   {
     id: "claude.skill.missing-description",
-    description: "SKILL.md frontmatter has no description and no first markdown paragraph",
+    description: "SKILL.md frontmatter has no description and no first non-empty markdown line",
     severity: "info",
     provenance: "vendor-recommendation",
     ...spec(SPEC_PAGES.claudeSkills, "skills.md"),

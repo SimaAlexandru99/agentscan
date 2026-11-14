@@ -40,8 +40,8 @@ export type SkillFact = {
   nameKind?: YamlScalarKind;
   descriptionKind?: YamlScalarKind;
   whenToUse?: string;
-  /** First markdown paragraph after frontmatter, used when Claude omits description. */
-  firstMarkdownParagraph?: string;
+  /** First non-empty body line after frontmatter, used when Claude omits description. */
+  firstNonEmptyLine?: string;
   bodyLines?: number;
   compatibility?: string;
   compatibilityKind?: YamlScalarKind;

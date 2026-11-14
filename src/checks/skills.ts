@@ -138,14 +138,14 @@ export function checkSkillStructure(facts: Facts): Finding[] {
       out.push(...checkAgentSkillsFrontmatter(skill));
     } else if (schema === "grok") {
       // name / description optional (directory / first-paragraph fallback).
-    } else if (skill.description === undefined && skill.firstMarkdownParagraph === undefined) {
+    } else if (skill.description === undefined && skill.firstNonEmptyLine === undefined) {
       out.push(
         make("claude.skill.missing-description", skillSubject(skill), {
-          message: "SKILL.md frontmatter has no `description` and no first markdown paragraph",
+          message: "SKILL.md frontmatter has no `description` and no first non-empty markdown line",
           reason:
-            "The description is what Claude matches against when deciding to load a skill automatically. If it is omitted, Claude uses the first markdown paragraph. Without either, the skill still works when invoked directly, but it will not be picked up on its own. The spec marks description Recommended, not required — see docs/spec/skills.md.",
+            "The description is what Claude matches against when deciding to load a skill automatically. If it is omitted, Claude uses the first non-empty markdown line. Without either, the skill still works when invoked directly, but it will not be picked up on its own. The spec marks description Recommended, not required — see docs/spec/skills.md.",
           evidence: skillEvidence(skill, `${skill.path}/SKILL.md`),
-          suggest: "Add a one-line description to the frontmatter, or a first markdown paragraph",
+          suggest: "Add a one-line description to the frontmatter, or a first non-empty markdown line",
         }),
       );
     }
@@ -469,7 +469,7 @@ export function checkDuplicateDescriptions(facts: Facts): Finding[] {
 }
 
 /**
- * Claude loads each skill's description (or first markdown paragraph) plus
+ * Claude loads each skill's description (or first non-empty markdown line) plus
  * `when_to_use` into a listing budget of 1% of the model context window.
  * When the window is unknown the fallback is 8000 characters. Each entry is
  * truncated at 1536 characters. Not applied to Agent Skills (those cap a
@@ -517,7 +517,7 @@ export function checkDescriptionBudget(
       make("skill.description-budget", subject, {
         message: `Skill listing text totals ${chars} characters across ${skills.length} skills in ${where} (over ${ceiling}; per-entry cap ${perEntryCap})`,
         reason:
-          "Claude loads description (or the first markdown paragraph) plus when_to_use for every skill at listing time. That listing is 1% of the model context window, with an 8000-character fallback when the window is unknown, and each entry is truncated at 1536 characters. Past the budget, matching keywords are lost. See docs/spec/skills.md.",
+          "Claude loads description (or the first non-empty markdown line) plus when_to_use for every skill at listing time. That listing is 1% of the model context window, with an 8000-character fallback when the window is unknown, and each entry is truncated at 1536 characters. Past the budget, matching keywords are lost. See docs/spec/skills.md.",
         evidence: [
           { kind: "count", value: `listingChars=${chars}` },
           { kind: "threshold", value: String(ceiling) },
@@ -531,7 +531,7 @@ export function checkDescriptionBudget(
 }
 
 function listingText(skill: SkillFact): string {
-  const description = skill.description ?? skill.firstMarkdownParagraph ?? "";
+  const description = skill.description ?? skill.firstNonEmptyLine ?? "";
   const when = skill.whenToUse ?? "";
   return `${description}${when}`;
 }

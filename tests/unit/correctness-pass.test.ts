@@ -307,10 +307,16 @@ describe("Claude skills description fallback and listing budget", () => {
     expect(ruleIds(root)).not.toContain("claude.skill.missing-description");
   });
 
-  test("no description and no paragraph is missing-description", () => {
+  test("no description and an empty body is missing-description", () => {
     const root = tmpProject("agentscan-claude-nodesc-");
-    write(root, ".claude/skills/empty/SKILL.md", "---\nname: empty\n---\n\n# Heading only\n");
+    write(root, ".claude/skills/empty/SKILL.md", "---\nname: empty\n---\n\n");
     expect(ruleIds(root)).toContain("claude.skill.missing-description");
+  });
+
+  test("a heading is a first non-empty line (code.claude.com/docs/en/skills.md, 2026-11-14)", () => {
+    const root = tmpProject("agentscan-claude-heading-");
+    write(root, ".claude/skills/heading/SKILL.md", "---\nname: heading\n---\n\n# Heading only\n");
+    expect(ruleIds(root)).not.toContain("claude.skill.missing-description");
   });
 });
 
