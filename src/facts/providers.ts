@@ -39,8 +39,13 @@ export const PROVIDERS = {
   claude: { dotDir: ".claude", homeEnv: "CLAUDE_CONFIG_DIR", skills: "claude", userSkills: true },
   /** cursor.com/docs/skills: project `.cursor/skills`, user `~/.cursor/skills`. */
   cursor: { dotDir: ".cursor", skills: "agent-skills", userSkills: true, portableSkills: true },
-  /** Config-advanced: `CODEX_HOME` defaults to `~/.codex`. Never used to open `auth.json`. */
-  codex: { dotDir: ".codex", homeEnv: "CODEX_HOME", skills: "agent-skills", userSkills: true, portableSkills: true },
+  /**
+   * Config-advanced: `CODEX_HOME` defaults to `~/.codex`. Never used to open `auth.json`.
+   * developers.openai.com/codex/skills (2026-11-14): Codex reads `.agents/skills` and
+   * `~/.agents/skills` (the agent-skills entry), not `.codex/skills`; only its bundled
+   * `.system` set lives under `~/.codex/skills`, so no skills here.
+   */
+  codex: { dotDir: ".codex", homeEnv: "CODEX_HOME" },
   commandcode: { dotDir: ".commandcode", skills: "agent-skills", userSkills: true },
   /** Settings page: `$GROK_HOME`, or `~/.grok` when unset. Never used to open credential files. */
   grok: { dotDir: ".grok", homeEnv: "GROK_HOME", skills: "grok", userSkills: true },

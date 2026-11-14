@@ -319,8 +319,8 @@ export function discoverSkillsInDir(
   );
 
   for (const name of names) {
-    // `.system` under ~/.codex/skills is a container holding six real skills,
-    // not a skill — reporting it suggested deleting them.
+    // A dot dir such as `.system` (Codex's bundled set) is a container of
+    // real skills, not a skill — reporting it suggested deleting them.
     if (name.startsWith(".") || NESTED_DISCOVERY_SKIP.has(name)) {
       continue;
     }
