@@ -156,7 +156,8 @@ export function checkSkillStructure(facts: Facts): Finding[] {
 function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
   const out: Finding[] = [];
   const dirName = basename(toPosix(skill.path));
-  if (skill.frontmatterName === undefined) {
+  // Antigravity documents `name` as optional, defaulting to the folder name.
+  if (skill.frontmatterName === undefined && skill.sourceProvider !== "antigravity") {
     const typeNote =
       skill.nameKind !== undefined && skill.nameKind !== "string"
         ? ` (found ${skill.nameKind}, not a string)`
@@ -170,7 +171,7 @@ function checkAgentSkillsFrontmatter(skill: SkillFact): Finding[] {
         suggest: `Add name: ${dirName}`,
       }),
     );
-  } else {
+  } else if (skill.frontmatterName !== undefined) {
     const name = skill.frontmatterName;
     if (name.length > AGENT_SKILLS_NAME_MAX) {
       out.push(

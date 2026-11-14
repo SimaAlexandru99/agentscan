@@ -203,3 +203,19 @@ describe("Antigravity rules and skills", () => {
     });
   });
 });
+
+describe("Antigravity skill name", () => {
+  test("a global Antigravity skill without name defaults to its folder", () => {
+    const root = mkPinnedProject("agentscan-ag-noname-");
+    const home = mkPinnedRoot("agentscan-ag-noname-home-");
+    write(home, ".gemini/config/skills/no-name/SKILL.md", "---\ndescription: Folder is the name.\n---\n");
+    withHome(home, () => {
+      const ids = ruleIds(root, true);
+      expect(ids).not.toContain("agent-skills.skill.missing-name");
+      expect(ids).not.toContain("agent-skills.skill.name-does-not-match-directory");
+    });
+    // The workspace Agent Skills provider still requires name.
+    write(root, ".agents/skills/no-name/SKILL.md", "---\ndescription: Needs a name.\n---\n");
+    expect(ruleIds(root)).toContain("agent-skills.skill.missing-name");
+  });
+});
