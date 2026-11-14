@@ -33,7 +33,8 @@ function present(value: unknown): boolean {
 
 /** Required-field defects of one parsed MCPB manifest. Unknown keys and the version value are not checked. */
 export function manifestDefects(raw: Record<string, unknown>): Omit<ClaudeDesktopExtensionFact, "path"> {
-  const missingFields: string[] = REQUIRED.filter((key) => !present(raw[key]));
+  // Extensions packaged before the DXT→MCPB rename carry `dxt_version` instead of `manifest_version`.
+  const missingFields: string[] = REQUIRED.filter((key) => !present(raw[key]) && !(key === "manifest_version" && present(raw.dxt_version)));
   if (present(raw.author) && !(isRecord(raw.author) && present(raw.author.name))) {
     missingFields.push("author.name");
   }

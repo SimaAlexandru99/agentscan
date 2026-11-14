@@ -107,3 +107,6 @@ An installed extension's entry in `context_servers` carries only `settings`
 (plus `enabled` / `remote`), with no `command` or `url`. agentscan treats such
 an entry as launchable, so `zed.mcp.no-launch` does not fire on it. Secrets in
 `settings` are still checked.
+
+`command` as an object with a string `path` (`{path, args, env}`) is under
+Unverified above, so agentscan treats it as launchable rather than erroring.

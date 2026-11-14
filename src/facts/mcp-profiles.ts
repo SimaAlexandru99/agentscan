@@ -104,7 +104,7 @@ const PROFILES = {
     sourceProvider: "zed",
     consumedBy: ["zed"],
     ruleIdPrefix: "zed",
-    launchable: (server) => commandOrUrl(server) || server.extensionProvided === true,
+    launchable: (server) => commandOrUrl(server) || server.extensionProvided === true || server.commandPathObject === true,
   },
   "amp-json": { ...COMMAND_OR_URL, sourceProvider: "amp", consumedBy: ["amp"], ruleIdPrefix: "amp" },
   // Only command entries are documented; `type`/`url` entries are unverified, so they count as launchable.

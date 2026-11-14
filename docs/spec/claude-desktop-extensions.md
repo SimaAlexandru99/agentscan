@@ -78,3 +78,12 @@ version number.
 - **Whether Claude Desktop reads `manifest.json` from disk or only from the `.mcpb` archive:** the spec does not say.
 - **Whether Claude Desktop honors the `mcp_config` override and `user_config` values:** the spec is written for "implementing app" in general.
 - **Unknown top-level manifest keys such as `preferences`:** not in the spec. A linter must not reject unknown top-level keys.
+
+## Observed on a real install (2026-11-14)
+
+A Windows Claude Desktop install had `%APPDATA%\Claude\Claude Extensions\<id>\manifest.json`
+with `manifest_version` "0.2", `server.type` "node" and every required field.
+Another installed extension directory had no `manifest.json`; agentscan skips
+such a directory. Because the install path is still not in Anthropic's docs,
+`claude-desktop.extension.missing-field` is a **warning**, and `dxt_version`
+(the pre-rename field) counts as `manifest_version`.

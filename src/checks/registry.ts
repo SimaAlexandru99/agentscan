@@ -1066,7 +1066,7 @@ export const STRUCTURAL_CHECKS = [
   {
     id: "amp.mcp.no-launch",
     description: "Amp MCP server declares neither command nor url",
-    severity: "error",
+    severity: "warning",
     // amp-mcp.md lists required-field rules as unverified: every example has command or url.
     provenance: "internal-consistency",
     lastVerified: "2026-11-14",
@@ -1075,7 +1075,7 @@ export const STRUCTURAL_CHECKS = [
   {
     id: "claude-desktop.mcp.no-launch",
     description: "Claude Desktop MCP server declares no command",
-    severity: "error",
+    severity: "warning",
     // claude-desktop-mcp.md documents only command entries and states no required field.
     provenance: "internal-consistency",
     lastVerified: "2026-11-14",
@@ -1084,7 +1084,7 @@ export const STRUCTURAL_CHECKS = [
   {
     id: "claude-desktop.extension.missing-field",
     description: "Claude Desktop extension manifest lacks a required field or names an unknown server type",
-    severity: "error",
+    severity: "warning",
     provenance: "spec-required",
     ...spec(SPEC_PAGES.claudeDesktopExtensions, "claude-desktop-extensions.md"),
   },

@@ -198,3 +198,18 @@ describe("Claude Desktop (Linux path)", () => {
     });
   });
 });
+
+describe("review fixes 2026-11-14", () => {
+  test("Zed command as {path, args} is launchable", () => {
+    const root = mkPinnedProject("agentscan-zed-pathobj-");
+    write(root, ".zed/settings.json", `{"context_servers":{"a":{"command":{"path":"npx","args":["-y","x"]}}}}`);
+    expect(findingsFor(root).findings.map((f) => f.ruleId)).not.toContain("zed.mcp.no-launch");
+  });
+});
+
+test("an extension manifest with the pre-rename dxt_version is not missing manifest_version", async () => {
+  const { manifestDefects } = await import("../../src/discover/claude-desktop");
+  const base = { name: "x", version: "1", description: "d", author: { name: "a" }, server: { type: "node" } };
+  expect(manifestDefects({ ...base, dxt_version: "0.1" }).missingFields).toEqual([]);
+  expect(manifestDefects(base).missingFields).toEqual(["manifest_version"]);
+});

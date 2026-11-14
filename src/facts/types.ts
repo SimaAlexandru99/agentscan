@@ -103,6 +103,8 @@ export type McpFact = {
   hasHttpUrl?: boolean;
   /** Zed: no command or url but `settings`; the server comes from an installed extension (zed.dev/docs/ai/mcp, "As Extensions"). */
   extensionProvided?: boolean;
+  /** `command` given as an object with a string `path` (Zed's `{path, args, env}` form, unverified in zed-mcp.md). */
+  commandPathObject?: boolean;
   command?: string;
   /**
    * false only when `command` was a resolvable path-like value and that path

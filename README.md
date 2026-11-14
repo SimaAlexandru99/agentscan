@@ -610,9 +610,9 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `kiro.hook.unknown-handler-type` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro hook action type is missing or is not command or agent |
 | `kiro.hook.invalid-group` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro hook file is missing version v1 or a hooks array |
 | `zed.mcp.no-launch` | error | spec-required | [zed.dev/docs/ai/mcp](https://zed.dev/docs/ai/mcp) | Zed context server declares neither command nor url |
-| `amp.mcp.no-launch` | error | internal-consistency | _agentscan inference_ | Amp MCP server declares neither command nor url |
-| `claude-desktop.mcp.no-launch` | error | internal-consistency | _agentscan inference_ | Claude Desktop MCP server declares no command |
-| `claude-desktop.extension.missing-field` | error | spec-required | [raw.githubusercontent.com/anthropics/mcpb/main/MANIFEST.md](https://raw.githubusercontent.com/anthropics/mcpb/main/MANIFEST.md) | Claude Desktop extension manifest lacks a required field or names an unknown server type |
+| `amp.mcp.no-launch` | warning | internal-consistency | _agentscan inference_ | Amp MCP server declares neither command nor url |
+| `claude-desktop.mcp.no-launch` | warning | internal-consistency | _agentscan inference_ | Claude Desktop MCP server declares no command |
+| `claude-desktop.extension.missing-field` | warning | spec-required | [raw.githubusercontent.com/anthropics/mcpb/main/MANIFEST.md](https://raw.githubusercontent.com/anthropics/mcpb/main/MANIFEST.md) | Claude Desktop extension manifest lacks a required field or names an unknown server type |
 | `qwen.mcp.no-launch` | error | spec-required | [qwenlm.github.io/qwen-code-docs/en/users/features/mcp](https://qwenlm.github.io/qwen-code-docs/en/users/features/mcp/) | Qwen Code MCP server has neither command, url, nor httpUrl |
 | `qwen.hook.unknown-event` | error | spec-required | [qwenlm.github.io/qwen-code-docs/en/users/features/hooks](https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/) | Qwen Code hook registered under an event name that is never dispatched |
 | `qwen.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Qwen Code hook points at a script that does not exist, so it never runs |

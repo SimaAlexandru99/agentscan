@@ -31,7 +31,8 @@ describe("Factory Droid (docs/spec/factory-*.md)", () => {
 
     const settingsOnly = mkPinnedProject("agentscan-factory-settings-");
     write(settingsOnly, ".factory/settings.json", JSON.stringify({ hooks: { NopeEvent: [{ hooks: [{ type: "command", command: "echo" }] }] } }));
-    expect(ids(settingsOnly)).toContain("factory.hook.unknown-event:hook:NopeEvent");
+    // The settings.json fallback is documented for the user file only, so a project one is not read.
+    expect(ids(settingsOnly).some((id) => id.includes("NopeEvent"))).toBe(false);
 
     // Droid reads no `hooks` wrapper in hooks.json, so a wrapped file is a shape error.
     const wrapped = mkPinnedProject("agentscan-factory-wrapped-");

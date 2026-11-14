@@ -30,6 +30,8 @@ function standaloneHooks(filePath: string, projectRoot: string, io: ScanIO, unwr
 function factoryHooks(factoryDir: string, projectRoot: string, io: ScanIO, legacy: boolean): HookFact[] {
   const files = [join(factoryDir, "hooks.json"), ...(legacy ? [join(factoryDir, "hooks", "hooks.json")] : [])];
   if (!files.some((file) => existsSync(file))) {
+    // The settings.json fallback is documented for the user file only (factory-hooks.md, Unverified for projects).
+    if (legacy) return [];
     return readHooksFile(
       join(factoryDir, "settings.json"),
       { source: "settings", sourceProvider: "factory", profile: "factory" },
