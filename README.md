@@ -576,7 +576,7 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `antigravity.rule.too-large` | warning | spec-required | [antigravity.google/docs/rules](https://antigravity.google/docs/rules) | Antigravity rule exceeds 24,000 bytes |
 | `windsurf.mcp.no-launch` | error | spec-required | [docs.windsurf.com/windsurf/cascade/mcp](https://docs.windsurf.com/windsurf/cascade/mcp) | Windsurf MCP server declares neither command, serverUrl, nor url |
 | `devin.mcp.no-launch` | error | spec-required | [docs.devin.ai/cli/extensibility/mcp/configuration](https://docs.devin.ai/cli/extensibility/mcp/configuration) | Devin MCP server declares neither command nor url |
-| `windsurf.hook.unknown-event` | error | spec-required | [docs.devin.ai/desktop/cascade/hooks](https://docs.devin.ai/desktop/cascade/hooks) | Windsurf hook registered under an event name that is never dispatched |
+| `windsurf.hook.unknown-event` | warning | spec-required | [docs.devin.ai/desktop/cascade/hooks](https://docs.devin.ai/desktop/cascade/hooks) | Windsurf hook registered under an event name outside the legacy Cascade event table |
 | `windsurf.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Windsurf hook points at a script that does not exist, so it never runs |
 | `windsurf.hook.command-without-command` | error | spec-required | [docs.devin.ai/desktop/cascade/hooks](https://docs.devin.ai/desktop/cascade/hooks) | Windsurf hook declares neither command nor powershell |
 | `devin.hook.unknown-event` | error | spec-required | [docs.devin.ai/cli/extensibility/hooks/overview](https://docs.devin.ai/cli/extensibility/hooks/overview) | Devin hook registered under an event name that is never dispatched |

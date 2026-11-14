@@ -820,8 +820,9 @@ export const STRUCTURAL_CHECKS = [
   },
   {
     id: "windsurf.hook.unknown-event",
-    description: "Windsurf hook registered under an event name that is never dispatched",
-    severity: "error",
+    // warning: the 12-event Cascade table left the live docs on 2026-11-14 (only post_setup_worktree is still quoted).
+    description: "Windsurf hook registered under an event name outside the legacy Cascade event table",
+    severity: "warning",
     provenance: "spec-required",
     ...spec(SPEC_PAGES.windsurfHooks, "windsurf-hooks.md"),
   },
