@@ -19,6 +19,7 @@ import {
 import { DEVIN_HOOK_EVENTS } from "./devin";
 import { KIRO_HOOK_EVENTS } from "./kiro";
 import { WINDSURF_HOOK_EVENTS } from "./windsurf";
+import { QWEN_HOOK_EVENTS } from "./qwen";
 
 export type HookRuleKind = HookDefect | "unknown-event" | "missing-script" | "timeout-out-of-bounds";
 
@@ -225,6 +226,18 @@ export const PROFILES = {
     layout: "own",
     fileSource: "kiro-hooks",
     invalidGroupHasNoEvent: true,
+  },
+  /**
+   * `hooks` in `.qwen/settings.json`, Claude-style groups. The inner `hooks`
+   * array is not marked required, so no `invalid-group`. Timeout is seconds
+   * with no quoted range. See docs/spec/qwen-hooks.md.
+   */
+  qwen: {
+    events: QWEN_HOOK_EVENTS,
+    ruleIdPrefix: "qwen",
+    defects: ["command-without-command", "http-without-url", "unknown-handler-type"],
+    layout: "nested",
+    fileSource: "qwen-settings",
   },
 } as const satisfies Record<string, HookProfileSpec>;
 

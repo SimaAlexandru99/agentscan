@@ -447,6 +447,14 @@ export const SPEC_SURFACES: SpecSurface[] = [
     lastVerified: "2026-09-07",
     url: "https://junie.jetbrains.com/docs/agent-skills.html",
   },
+  { provider: "qwen", surface: "hooks", ...SPEC_PAGES.qwenHooks },
+  { provider: "qwen", surface: "mcp", ...SPEC_PAGES.qwenMcp },
+  {
+    provider: "qwen",
+    surface: "skills",
+    lastVerified: "2026-11-14",
+    url: "https://qwenlm.github.io/qwen-code-docs/en/users/features/skills/",
+  },
 ];
 
 /** Re-read the sources when a capture or surface is older than this. */

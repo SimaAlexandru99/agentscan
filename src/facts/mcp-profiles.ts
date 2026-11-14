@@ -98,6 +98,15 @@ const PROFILES = {
     consumedBy: ["vscode"],
     ruleIdPrefix: "vscode",
   },
+  // Gemini's launch trio; no `%VAR%` and no underscore warning. See docs/spec/qwen-mcp.md.
+  "qwen-json": {
+    sourceProvider: "qwen",
+    consumedBy: ["qwen"],
+    ruleIdPrefix: "qwen",
+    launchable: (server) => commandOrUrl(server) || server.hasHttpUrl === true,
+    noLaunchDeclares: "neither command, url, nor httpUrl",
+    noLaunchAdd: "a command, url, or httpUrl",
+  },
 } as const satisfies Record<McpSchemaProfile, McpProfileSpec>;
 
 export const MCP_PROFILES: Record<McpSchemaProfile, McpProfileSpec> = PROFILES;

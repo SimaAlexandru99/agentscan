@@ -8,6 +8,7 @@ import { DEVIN_HOOK_HANDLER_TYPES } from "../facts/devin";
 import { providerHome } from "../facts/providers";
 import { GEMINI_HOOK_HANDLER_TYPES } from "../facts/gemini";
 import { GROK_HOOK_HANDLER_TYPES } from "../facts/grok";
+import { QWEN_HOOK_HANDLER_TYPES } from "../facts/qwen";
 import {
   HOOK_PROFILES,
   PROFILES,
@@ -554,6 +555,32 @@ function devinHookFromEntry(item: Record<string, unknown>, ctx: HookContext): Ho
   return [commandHook(baseFact(ctx), nonemptyString(item.command), ctx.bases.project)];
 }
 
+/**
+ * Qwen Code: `command` needs `command`, `http` needs `url`. `prompt` and the
+ * internal `function` are accepted as written. See docs/spec/qwen-hooks.md.
+ */
+function qwenHookFromEntry(item: Record<string, unknown>, ctx: HookContext): HookFact[] {
+  const typeRaw = typeof item.type === "string" ? item.type : undefined;
+  if (typeRaw === undefined || !QWEN_HOOK_HANDLER_TYPES.has(typeRaw)) {
+    return [baseFact(ctx, { defect: "unknown-handler-type", unknownHandlerType: unknownTypeLabel(item) })];
+  }
+  if (typeRaw === "http") {
+    return [
+      baseFact(ctx, {
+        handlerType: "http",
+        ...(nonemptyString(item.url) === undefined ? { defect: "http-without-url" as const } : {}),
+      }),
+    ];
+  }
+  if (typeRaw === "prompt") {
+    return [baseFact(ctx, { handlerType: "prompt" })];
+  }
+  if (typeRaw === "function") {
+    return [baseFact(ctx)];
+  }
+  return commandFactsFromLaunches(ctx, item, "command-without-command");
+}
+
 /** One handler entry -> facts, for profiles whose layout is `nested` or `flat-array`. */
 const ENTRY_READERS: Record<PipedProfile, (item: Record<string, unknown>, ctx: HookContext) => HookFact[]> = {
   claude: claudeHookFromEntry,
@@ -564,6 +591,7 @@ const ENTRY_READERS: Record<PipedProfile, (item: Record<string, unknown>, ctx: H
   gemini: geminiHookFromEntry,
   devin: devinHookFromEntry,
   codex: codexHookFromEntry,
+  qwen: qwenHookFromEntry,
 };
 
 function isPipedProfile(profile: HookSchemaProfile): profile is PipedProfile {
@@ -964,5 +992,19 @@ export function discoverGrokHooks(
       { project: projectRoot, own: dir },
       io,
     ),
+  );
+}
+
+/**
+ * Qwen Code `settings.json` hooks: project `.qwen/settings.json`, or the user
+ * file under `--global`. Relative scripts resolve against `projectRoot`.
+ * See docs/spec/qwen-hooks.md.
+ */
+export function discoverQwenHooksFile(filePath: string, projectRoot: string, io: ScanIO): HookFact[] {
+  return readHooksFile(
+    filePath,
+    { source: "qwen-settings", sourceProvider: "qwen", profile: "qwen" },
+    { project: projectRoot },
+    io,
   );
 }

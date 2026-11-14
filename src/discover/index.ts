@@ -49,6 +49,7 @@ import {
   discoverGeminiUserHooks,
   discoverGrokHooks,
   discoverHooks,
+  discoverQwenHooksFile,
   discoverVscodeHooks,
 } from "./hooks";
 import {
@@ -265,6 +266,24 @@ const SOURCES: Source[] = [
     nested: ({ scanBoundary, io }) => ({
       mcp: discoverNestedContinueMcp(scanBoundary, io),
     }),
+  },
+  {
+    // Settings files without `mcpServers` are normal, so they stay out of `mcpPaths`.
+    id: "qwen",
+    project: (dir, { io }) => {
+      const file = join(dir, ".qwen", "settings.json");
+      return {
+        hooks: discoverQwenHooksFile(file, dir, io),
+        mcp: parseProfiledMcpFile(file, dir, io, "qwen-json", { optional: true, mcpServersOptional: true }),
+      };
+    },
+    user: ({ root, io }) => {
+      const file = join(providerHome("qwen"), "settings.json");
+      return {
+        hooks: discoverQwenHooksFile(file, root, io),
+        mcp: parseProfiledMcpFile(file, root, io, "qwen-json", { optional: true, mcpServersOptional: true }),
+      };
+    },
   },
   {
     // Every provider's project MCP file, from the configured `mcpPaths`.

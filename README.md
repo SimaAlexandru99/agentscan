@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/checks-144-111111?style=flat-square" alt="144 checks">
+  <img src="https://img.shields.io/badge/checks-150-111111?style=flat-square" alt="150 checks">
   <img src="https://img.shields.io/badge/tests-673%20passing-111111?style=flat-square" alt="673 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <strong>144 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
+  <strong>150 checks &middot; offline &middot; 0 network calls on <code>check</code> &middot; provenance on every rule</strong><br>
   <sub>An offline linter for Claude Code, Command Code, Grok Build, Windsurf, Kiro, Cline, Roo, Kilo, Junie, portable Agent Skills, nested AGENTS.md, Copilot CLI hooks (including inline settings), and the MCP / hooks / rules surfaces the registry actually implements. Spec-required checks cite a published line in <a href="docs/spec/">docs/spec/</a>. Heuristics stay at <code>info</code> and say so. The coverage matrix below is the honesty contract — five dimensions, and a documented global location that is not scanned stays unread.</sub>
 </p>
 
@@ -65,7 +65,7 @@ No AI, no network on `check`. Read the config, read the disk, compare:
 ```
 1. Discover    .claude/ .commandcode/ .grok/ .agents/ .vscode/ .cursor/ .codex/ .gemini/ .github/ .continue/ AGENTS.md skills-lock.json
 2. Extract     immutable facts — never re-read during checking
-3. Check       144 checks, each labeled spec-required, vendor-recommendation,
+3. Check       150 checks, each labeled spec-required, vendor-recommendation,
                security, internal-consistency, or heuristic
 4. Report      text · --json · --output prompt (handoff for a fixing agent)
 ```
@@ -609,6 +609,12 @@ fails CI instead of quietly turning a quoted rule into a false positive.
 | `kiro.hook.prompt-without-prompt` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro agent hook is missing the required prompt field |
 | `kiro.hook.unknown-handler-type` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro hook action type is missing or is not command or agent |
 | `kiro.hook.invalid-group` | error | spec-required | [kiro.dev/docs/hooks](https://kiro.dev/docs/hooks/) | Kiro hook file is missing version v1 or a hooks array |
+| `qwen.mcp.no-launch` | error | spec-required | [qwenlm.github.io/qwen-code-docs/en/users/features/mcp](https://qwenlm.github.io/qwen-code-docs/en/users/features/mcp/) | Qwen Code MCP server has neither command, url, nor httpUrl |
+| `qwen.hook.unknown-event` | error | spec-required | [qwenlm.github.io/qwen-code-docs/en/users/features/hooks](https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/) | Qwen Code hook registered under an event name that is never dispatched |
+| `qwen.hook.missing-script` | error | internal-consistency | _agentscan inference_ | Qwen Code hook points at a script that does not exist, so it never runs |
+| `qwen.hook.command-without-command` | error | spec-required | [qwenlm.github.io/qwen-code-docs/en/users/features/hooks](https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/) | Qwen Code command hook is missing the command field |
+| `qwen.hook.http-without-url` | error | spec-required | [qwenlm.github.io/qwen-code-docs/en/users/features/hooks](https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/) | Qwen Code http hook is missing the url field |
+| `qwen.hook.unknown-handler-type` | error | spec-required | [qwenlm.github.io/qwen-code-docs/en/users/features/hooks](https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/) | Qwen Code hook type is missing or is not command, http, or prompt |
 <!-- rules:end -->
 
 ### Coverage in 2.0.0

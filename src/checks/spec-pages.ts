@@ -46,6 +46,8 @@ export const SPEC_PAGES = {
   antigravityRules: { url: "https://antigravity.google/docs/rules", lastVerified: "2026-11-12" },
   devinHooks: { url: "https://docs.devin.ai/cli/extensibility/hooks/overview", lastVerified: "2026-11-14" },
   devinMcp: { url: "https://docs.devin.ai/cli/extensibility/mcp/configuration", lastVerified: "2026-11-14" },
+  qwenHooks: { url: "https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/", lastVerified: "2026-11-14" },
+  qwenMcp: { url: "https://qwenlm.github.io/qwen-code-docs/en/users/features/mcp/", lastVerified: "2026-11-14" },
   // No rule cites this page; `spec:check` reads VS Code hook event names from it.
   vscodeHooksGuide: { url: "https://code.visualstudio.com/docs/agent-customization/hooks", lastVerified: "2026-09-02" },
 } as const satisfies Record<string, SpecPage>;

@@ -1056,6 +1056,49 @@ export const STRUCTURAL_CHECKS = [
     provenance: "spec-required",
     ...spec(SPEC_PAGES.kiroHooks, "kiro-hooks.md"),
   },
+  {
+    id: "qwen.mcp.no-launch",
+    description: "Qwen Code MCP server has neither command, url, nor httpUrl",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.qwenMcp, "qwen-mcp.md"),
+  },
+  {
+    id: "qwen.hook.unknown-event",
+    description: "Qwen Code hook registered under an event name that is never dispatched",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.qwenHooks, "qwen-hooks.md"),
+  },
+  {
+    id: "qwen.hook.missing-script",
+    description: "Qwen Code hook points at a script that does not exist, so it never runs",
+    severity: "error",
+    provenance: "internal-consistency",
+    lastVerified: "2026-11-14",
+    source: { kind: "derived", detail: "agentscan inference" },
+  },
+  {
+    id: "qwen.hook.command-without-command",
+    description: "Qwen Code command hook is missing the command field",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.qwenHooks, "qwen-hooks.md"),
+  },
+  {
+    id: "qwen.hook.http-without-url",
+    description: "Qwen Code http hook is missing the url field",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.qwenHooks, "qwen-hooks.md"),
+  },
+  {
+    id: "qwen.hook.unknown-handler-type",
+    description: "Qwen Code hook type is missing or is not command, http, or prompt",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.qwenHooks, "qwen-hooks.md"),
+  },
 ] as const satisfies readonly StructuralCheck[];
 
 export type RuleId = (typeof STRUCTURAL_CHECKS)[number]["id"];

@@ -238,5 +238,17 @@
   "https://opencode.ai/v2/docs/mcp-servers": {
     "hash": "ac9e42884176da36",
     "recorded": "2026-11-14"
+  },
+  "https://qwenlm.github.io/qwen-code-docs/en/users/features/hooks/": {
+    "hash": "6e168e2e112b8997",
+    "recorded": "2026-11-14"
+  },
+  "https://qwenlm.github.io/qwen-code-docs/en/users/features/mcp/": {
+    "hash": "6d96ce730276ad98",
+    "recorded": "2026-11-14"
+  },
+  "https://qwenlm.github.io/qwen-code-docs/en/users/features/skills/": {
+    "hash": "9113864c375e1656",
+    "recorded": "2026-11-14"
   }
 }

@@ -1434,6 +1434,29 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           defect: "invalid-group",
           defectDetail: "missing-version",
         },
+        ...(["NopeQwen", "PreToolUse"] as const).map((event) =>
+          hookFact({
+            path: "/tmp/proj/.qwen/settings.json",
+            event,
+            source: "qwen-settings",
+            sourceProvider: "qwen",
+            schemaProfile: "qwen",
+            ...(event === "PreToolUse"
+              ? { handlerType: "command" as const, command: "node gone.js", scriptPath: "./gone-qwen.js", scriptExists: false }
+              : {}),
+          }),
+        ),
+        ...(["command-without-command", "http-without-url", "unknown-handler-type"] as const).map((defect) =>
+          hookFact({
+            path: "/tmp/proj/.qwen/settings.json",
+            event: "Stop",
+            source: "qwen-settings",
+            sourceProvider: "qwen",
+            schemaProfile: "qwen",
+            defect,
+            ...(defect === "unknown-handler-type" ? { unknownHandlerType: "widget" } : {}),
+          }),
+        ),
         hookFact({
           path: "/tmp/proj/.devin/hooks.v1.json",
           event: "NopeDevin",
@@ -1924,6 +1947,14 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           name: "dead-windsurf",
           path: "/home/user/.codeium/windsurf/mcp_config.json",
           schemaProfile: "windsurf-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+        }),
+        mcpFact({
+          name: "dead-qwen",
+          path: "/tmp/proj/.qwen/settings.json",
+          schemaProfile: "qwen-json",
           hasCommand: false,
           hasUrl: false,
           literalEnvKeys: [],

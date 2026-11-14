@@ -75,6 +75,8 @@ export const PROVIDERS = {
   antigravity: { home: ".gemini/config", userSkills: true, skills: "agent-skills" },
   /** `$COPILOT_HOME`, otherwise `~/.copilot`. See docs/spec/copilot-hooks.md. */
   copilot: { dotDir: ".github", home: ".copilot", homeEnv: "COPILOT_HOME" },
+  /** Qwen Code: `.qwen/settings.json` (MCP, hooks) and `.qwen/skills`. See docs/spec/qwen-*.md. */
+  qwen: { dotDir: ".qwen", skills: "agent-skills", userSkills: true },
 } satisfies Record<string, ProviderSpec>;
 
 /** Every provider a fact can name. Copilot CLI reports as `vscode`; `unknown` has no entry. */
