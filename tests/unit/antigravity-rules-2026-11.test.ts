@@ -219,3 +219,17 @@ describe("Antigravity skill name", () => {
     expect(ruleIds(root)).toContain("agent-skills.skill.missing-name");
   });
 });
+
+describe("Gemini CLI GEMINI.md", () => {
+  test("GEMINI.md is read in the start dir and each ancestor up to the scan root", () => {
+    const root = mkPinnedProject("agentscan-gemini-ancestors-");
+    const start = join(root, "packages", "app");
+    write(root, "GEMINI.md", "# root\n");
+    write(root, "packages/GEMINI.md", "# packages\n");
+    write(root, "packages/app/GEMINI.md", "# app\n");
+    const paths = antigravityRules(findingsFor(root, false, start).facts).map((rule) => rule.path);
+    expect(paths.sort()).toEqual(
+      [join(root, "GEMINI.md"), join(root, "packages", "GEMINI.md"), join(start, "GEMINI.md")].sort(),
+    );
+  });
+});
