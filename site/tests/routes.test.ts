@@ -95,7 +95,15 @@ describe("public routes", () => {
   });
 
   test("Accept: text/markdown returns markdown with Vary: Accept", async () => {
-    for (const path of ["/", "/docs", "/about", "/contact", "/privacy"]) {
+    for (const path of [
+      "/",
+      "/docs",
+      "/checks",
+      "/changelog",
+      "/about",
+      "/contact",
+      "/privacy",
+    ]) {
       const res = await probe(path, { headers: { Accept: "text/markdown" } });
       expect(res.status).toBe(200);
       expect(res.contentType).toMatch(/text\/markdown/);
@@ -216,5 +224,29 @@ describe("public routes", () => {
         expect(res.body).toContain("Kiro agents are inventory only");
       }
     }
+  });
+
+  test("checks and changelog render one h1, canonical, and JSON-LD lists", async () => {
+    for (const [path, h1] of [
+      ["/checks", `All ${PRODUCT_CHECKS} agentscan checks`],
+      ["/changelog", "agentscan changelog"],
+    ] as const) {
+      const res = await probe(path, { headers: { Accept: "text/html" } });
+      expect(res.status).toBe(200);
+      expect(res.body.match(/<h1[\s>]/g)?.length).toBe(1);
+      expect(res.body).toContain(h1);
+      expect(res.body).toContain(`<link rel="canonical" href="https://agentscan.space${path}"`);
+      expect(res.body).toContain('"@type":"ItemList"');
+      expect(res.body).toContain('"@type":"BreadcrumbList"');
+      const md = await probe(`${path}.md`);
+      expect(md.status).toBe(200);
+      expect(md.contentType).toMatch(/text\/markdown/);
+    }
+    const checks = await probe("/checks", { headers: { Accept: "text/html" } });
+    expect(checks.body).toContain('id="claude.hook.missing-script"');
+    expect(checks.body).toContain("agentscan inference");
+    const changelog = await probe("/changelog", { headers: { Accept: "text/html" } });
+    expect(changelog.body).toContain('id="v2.3.1"');
+    expect(changelog.body).toContain('id="v2.0.0"');
   });
 });

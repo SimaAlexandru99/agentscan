@@ -34,3 +34,37 @@ export const softwareApplicationJsonLd = {
 export function softwareApplicationJsonLdScript(): string {
   return JSON.stringify(softwareApplicationJsonLd);
 }
+
+export function breadcrumbJsonLd(name: string, path: string) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: PRODUCT_NAME, item: `${SITE_ORIGIN}/` },
+      { "@type": "ListItem", position: 2, name, item: `${SITE_ORIGIN}${path}` },
+    ],
+  };
+}
+
+export function itemListJsonLd(
+  name: string,
+  items: ReadonlyArray<{ name: string; url: string }>,
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name,
+    numberOfItems: items.length,
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      url: item.url,
+    })),
+  };
+}
+
+/** `<` is escaped so rule text such as `<id>` cannot close the script tag. */
+export function jsonLdScript(data: unknown): string {
+  return JSON.stringify(data).replace(/</g, "\\u003c");
+}

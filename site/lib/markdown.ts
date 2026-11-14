@@ -1,3 +1,5 @@
+import { checks, CITED_CHECKS } from "@/lib/checks";
+import { NPM_NOTE, releases } from "@/lib/releases";
 import { AGENTSCAN_SKILL_MD } from "@/lib/skill";
 import {
   absoluteUrl,
@@ -252,6 +254,39 @@ If you file an issue on GitHub, GitHub's privacy policy applies to that content.
 Questions about this page: open a GitHub issue at [${GITHUB_ISSUES}](${GITHUB_ISSUES}).
 `;
 
+export const CHECKS_MARKDOWN = `# All ${checks.length} ${PRODUCT_NAME} checks
+
+Every rule ${PRODUCT_NAME} ${PRODUCT_VERSION} can raise, where it comes from, and how loud it is. ${CITED_CHECKS} of ${checks.length} cite a vendor docs page captured in docs/spec/. Heuristics stay at info and are labeled. HTML with filters: [${absoluteUrl("/checks")}](${absoluteUrl("/checks")}).
+
+| Rule id | Severity | Provenance | What it catches | Source |
+| --- | --- | --- | --- | --- |
+${checks
+  .map(
+    (check) =>
+      `| \`${check.id}\` | ${check.severity} | ${check.provenance} | ${check.description.replace(/\|/g, "\\|")} | ${check.sourceUrl ? `[${new URL(check.sourceUrl).host}](${check.sourceUrl})` : "agentscan inference"} |`,
+  )
+  .join("\n")}
+`;
+
+export const CHANGELOG_MARKDOWN = `# ${PRODUCT_NAME} changelog
+
+Every release, newest first. The check path stays offline and read-only in each one. ${NPM_NOTE}
+
+${releases
+  .map((release) =>
+    [
+      `## ${release.version} — ${release.date}${release.breaking ? " (breaking)" : ""}`,
+      release.summary,
+      release.items.map((item) => `- ${item}`).join("\n"),
+    ]
+      .filter((part) => part !== "")
+      .join("\n\n"),
+  )
+  .join("\n\n")}
+
+Older releases: [CHANGELOG.md](${GITHUB_REPO}/blob/master/CHANGELOG.md).
+`;
+
 export const LLMS_TXT = `# ${PRODUCT_NAME}
 
 > Offline linter for agent configuration. ${PRODUCT_VERSION}, ${PRODUCT_CHECKS} checks. No AI, no network on check, writes nothing to the scanned tree.
@@ -287,6 +322,8 @@ Do not skip \`claude.hook.missing-script\` (error). Heuristics stay at info and 
 ## Docs
 
 - [agentscan docs](${absoluteUrl("/docs.md")}): Quickstart, check flags, skill, CI
+- [All ${checks.length} checks](${absoluteUrl("/checks.md")}): Every rule id with severity, provenance, and source
+- [Changelog](${absoluteUrl("/changelog.md")}): Releases since ${releases.at(-1)?.version}, newest first
 - [Homepage](${absoluteUrl("/index.md")}): What the tool is and the failure it exists for
 - [Skill](${absoluteUrl("/.well-known/agent-skills/agentscan/SKILL.md")}): When to run the audit
 
@@ -312,6 +349,8 @@ Do not skip \`claude.hook.missing-script\` (error). Heuristics stay at info and 
 const PAGES: Record<string, string> = {
   "/": HOME_MARKDOWN,
   "/docs": DOCS_MARKDOWN,
+  "/checks": CHECKS_MARKDOWN,
+  "/changelog": CHANGELOG_MARKDOWN,
   "/about": ABOUT_MARKDOWN,
   "/contact": CONTACT_MARKDOWN,
   "/privacy": PRIVACY_MARKDOWN,

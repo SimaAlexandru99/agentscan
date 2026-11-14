@@ -128,3 +128,68 @@
     @apply font-sans;
   }
 }
+
+/* Motion: transform/opacity only. Base states are visible; `both` fill only
+   applies the start frame while the animation can run. */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.bar-grow {
+  transform-origin: left;
+  animation: bar-grow 600ms var(--ease-in-out) 150ms both;
+}
+
+.rise {
+  animation: rise 500ms var(--ease-out) both;
+}
+
+.chip {
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    transform 140ms var(--ease-out);
+}
+
+.chip:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chip:hover {
+    border-color: color-mix(in oklch, var(--primary) 60%, transparent);
+  }
+  .check-row:hover {
+    background-color: oklch(1 0 0 / 3%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-grow {
+    animation: none;
+  }
+  .rise {
+    animation: fade 160ms ease both;
+  }
+}

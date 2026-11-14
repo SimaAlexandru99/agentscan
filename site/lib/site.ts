@@ -1,5 +1,5 @@
 export const SITE_ORIGIN = "https://agentscan.space";
-export const SITE_LASTMOD = "2026-11-12";
+export const SITE_LASTMOD = "2026-11-14";
 export const PRODUCT_NAME = "agentscan";
 export const PRODUCT_VERSION = "2.3.1";
 // The published release, not the repo. The site advertises the package a
@@ -42,6 +42,8 @@ export const CHECK_COMMAND = "npx @chimix/agentscan check";
 export const INDEXABLE_PATHS = [
   "/",
   "/docs",
+  "/checks",
+  "/changelog",
   "/about",
   "/contact",
   "/privacy",

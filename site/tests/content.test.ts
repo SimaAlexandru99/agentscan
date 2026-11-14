@@ -1,8 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
-import { softwareApplicationJsonLd } from "../lib/json-ld";
+import { metadata as changelogMetadata } from "../app/changelog/page";
+import { metadata as checksMetadata } from "../app/checks/page";
+import checksData from "../data/checks.json";
+import releasesData from "../data/releases.json";
+import { jsonLdScript, softwareApplicationJsonLd } from "../lib/json-ld";
 import {
   ABOUT_MARKDOWN,
+  CHANGELOG_MARKDOWN,
+  CHECKS_MARKDOWN,
   CONTACT_MARKDOWN,
   DOCS_MARKDOWN,
   HOME_MARKDOWN,
@@ -144,5 +150,41 @@ describe("skill discovery", () => {
     expect(AGENTSCAN_SKILL_DIGEST.startsWith("sha256:")).toBe(true);
     expect(AGENTSCAN_SKILL_MD).toContain("npx @chimix/agentscan@latest");
     expect(AGENTSCAN_SKILL_MD).toContain("claude.hook.missing-script");
+  });
+});
+
+describe("checks and changelog pages", () => {
+  test("are indexable with the current lastmod", () => {
+    expect(INDEXABLE_PATHS).toContain("/checks");
+    expect(INDEXABLE_PATHS).toContain("/changelog");
+    expect(SITE_LASTMOD).toBe("2026-11-14");
+  });
+
+  test("titles fit 60 chars with the template, descriptions are 120-160", () => {
+    for (const meta of [checksMetadata, changelogMetadata]) {
+      expect(`${String(meta.title)} · agentscan`.length).toBeLessThanOrEqual(60);
+      const description = meta.description ?? "";
+      expect(description.length).toBeGreaterThanOrEqual(120);
+      expect(description.length).toBeLessThanOrEqual(160);
+    }
+    expect(String(checksMetadata.title)).toBe(`All ${checksData.length} agentscan checks`);
+  });
+
+  test("markdown variants come from the generated data", () => {
+    expect(markdownForPath("/checks.md").body).toBe(CHECKS_MARKDOWN);
+    expect(markdownForPath("/changelog").body).toBe(CHANGELOG_MARKDOWN);
+    for (const check of checksData) {
+      expect(CHECKS_MARKDOWN).toContain(`\`${check.id}\``);
+    }
+    for (const release of releasesData) {
+      expect(CHANGELOG_MARKDOWN).toContain(`## ${release.version} — ${release.date}`);
+    }
+    expect(CHANGELOG_MARKDOWN).toContain("Only 2.0.0 and 2.3.1 were published to npm");
+    expect(LLMS_TXT).toContain("https://agentscan.space/checks.md");
+    expect(LLMS_TXT).toContain("https://agentscan.space/changelog.md");
+  });
+
+  test("JSON-LD script text cannot close its tag", () => {
+    expect(jsonLdScript({ text: "</script><x>" })).not.toContain("<");
   });
 });
