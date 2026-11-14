@@ -20,7 +20,7 @@ describe("site data matches the registry and CHANGELOG — run `bun run site:dat
     );
   });
 
-  test("releases parse summary, top-level bullets, and the breaking flag", () => {
+  test("releases parse summary (first bullet when no paragraph), top-level bullets, and the breaking flag", () => {
     const releases = buildReleases(
       [
         "## Unreleased",
@@ -29,6 +29,7 @@ describe("site data matches the registry and CHANGELOG — run `bun run site:dat
         "",
         "- `a` first",
         "  wraps",
+        "- second",
         "",
         "## 2.0.0 — 2026-11-12",
         "",
@@ -44,7 +45,7 @@ describe("site data matches the registry and CHANGELOG — run `bun run site:dat
       ].join("\n"),
     );
     expect(releases).toEqual([
-      { version: "2.1.0", date: "2026-11-14", summary: "", items: ["`a` first wraps"], breaking: false },
+      { version: "2.1.0", date: "2026-11-14", summary: "`a` first wraps", items: ["second"], breaking: false },
       { version: "2.0.0", date: "2026-11-12", summary: "Breaking for old configs.", items: ["top", "next"], breaking: true },
     ]);
   });

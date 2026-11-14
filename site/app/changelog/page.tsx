@@ -95,13 +95,15 @@ export default function ChangelogPage() {
                       <InlineCode text={release.summary} />
                     </p>
                   ) : null}
-                  <ul className="mt-4 flex max-w-3xl list-none flex-col gap-2 p-0 text-[15px] leading-relaxed text-foreground/85 first:mt-0">
-                    {release.items.map((item) => (
-                      <li key={item} className="border-l-2 border-border pl-4">
-                        <InlineCode text={item} />
-                      </li>
-                    ))}
-                  </ul>
+                  {release.items.length > 0 ? (
+                    <ul className="mt-4 flex max-w-3xl list-none flex-col gap-2 p-0 text-[15px] leading-relaxed text-foreground/85 first:mt-0">
+                      {release.items.map((item) => (
+                        <li key={item} className="border-l-2 border-border pl-4">
+                          <InlineCode text={item} />
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </div>
               </article>
             </li>

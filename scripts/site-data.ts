@@ -77,7 +77,7 @@ export function buildReleases(changelog: string): SiteRelease[] {
 }
 
 function parseSection(version: string, date: string, lines: string[]): SiteRelease {
-  // Summary: the first paragraph before any bullet; empty when the section opens with bullets.
+  // Summary: the first paragraph before any bullet.
   const summaryLines: string[] = [];
   let i = 0;
   while (i < lines.length && (lines[i] ?? "").trim() === "") i++;
@@ -103,7 +103,9 @@ function parseSection(version: string, date: string, lines: string[]): SiteRelea
     }
   }
   if (item) items.push(clean(item.join(" ")));
-  const summary = clean(summaryLines.join(" "));
+  let summary = clean(summaryLines.join(" "));
+  // A section with bullets only (2.3.1): its first bullet stands in as the summary.
+  if (summary === "" && items.length > 0) summary = items.shift() ?? "";
   return { version, date, summary, items, breaking: /breaking/i.test(summary) };
 }
 

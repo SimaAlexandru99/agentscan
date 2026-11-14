@@ -2,10 +2,8 @@
   {
     "version": "2.3.1",
     "date": "2026-11-14",
-    "summary": "",
-    "items": [
-      "Codex: `[hooks.state]`, the per-hook trust record Codex writes into `config.toml`, is no longer read as a hook group (it raised `config.unreadable` on every machine that had trusted a hook)."
-    ],
+    "summary": "Codex: `[hooks.state]`, the per-hook trust record Codex writes into `config.toml`, is no longer read as a hook group (it raised `config.unreadable` on every machine that had trusted a hook).",
+    "items": [],
     "breaking": false
   },
   {
