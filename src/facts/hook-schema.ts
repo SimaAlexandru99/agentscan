@@ -127,7 +127,6 @@ export const COPILOT_HOOK_EVENTS = new Set([
  */
 const CLAUDE_ALL_HANDLER_EVENTS = new Set([
   "PermissionDenied",
-  "PermissionRequest",
   "PostToolBatch",
   "PostToolUse",
   "PostToolUseFailure",
@@ -140,6 +139,9 @@ const CLAUDE_ALL_HANDLER_EVENTS = new Set([
   "UserPromptExpansion",
   "UserPromptSubmit",
 ]);
+
+/** hooks.md (2026-11-14): an `agent` hook on PermissionRequest is skipped. */
+const CLAUDE_NO_AGENT_EVENTS = new Set(["PermissionRequest"]);
 
 /** Claude events that accept command, http, and mcp_tool only. */
 const CLAUDE_COMMAND_HTTP_MCP_EVENTS = new Set([
@@ -172,6 +174,9 @@ export function claudeHandlerCompatible(event: string, type: HookHandlerType): b
   }
   if (CLAUDE_ALL_HANDLER_EVENTS.has(event)) {
     return true;
+  }
+  if (CLAUDE_NO_AGENT_EVENTS.has(event)) {
+    return type !== "agent";
   }
   if (CLAUDE_COMMAND_MCP_EVENTS.has(event)) {
     return type === "command" || type === "mcp_tool";

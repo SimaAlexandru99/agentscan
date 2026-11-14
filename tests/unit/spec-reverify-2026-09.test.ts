@@ -217,3 +217,20 @@ describe("Command Code agent permissionMode: accept-edits and yolo (commandcode.
     expect(ruleIds(root)).not.toContain("commandcode.agent.invalid-permission-mode");
   });
 });
+
+describe("Claude PermissionRequest skips agent hooks (code.claude.com/docs/en/hooks.md, 2026-11-14)", () => {
+  const settings = (type: string) =>
+    JSON.stringify({ hooks: { PermissionRequest: [{ hooks: [{ type, prompt: "Decide." }] }] } });
+
+  test("type agent is incompatible", () => {
+    const root = tmpProject("agentscan-claude-permreq-agent-");
+    write(root, ".claude/settings.json", settings("agent"));
+    expect(ruleIds(root)).toContain("claude.hook.incompatible-handler");
+  });
+
+  test("type prompt is still accepted", () => {
+    const root = tmpProject("agentscan-claude-permreq-prompt-");
+    write(root, ".claude/settings.json", settings("prompt"));
+    expect(ruleIds(root)).not.toContain("claude.hook.incompatible-handler");
+  });
+});
