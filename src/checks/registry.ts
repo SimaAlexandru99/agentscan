@@ -1056,6 +1056,13 @@ export const STRUCTURAL_CHECKS = [
     provenance: "spec-required",
     ...spec(SPEC_PAGES.kiroHooks, "kiro-hooks.md"),
   },
+  {
+    id: "zed.mcp.no-launch",
+    description: "Zed context server declares neither command nor url",
+    severity: "error",
+    provenance: "spec-required",
+    ...spec(SPEC_PAGES.zedMcp, "zed-mcp.md"),
+  },
 ] as const satisfies readonly StructuralCheck[];
 
 export type RuleId = (typeof STRUCTURAL_CHECKS)[number]["id"];

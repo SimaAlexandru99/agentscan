@@ -447,6 +447,11 @@ export const SPEC_SURFACES: SpecSurface[] = [
     lastVerified: "2026-09-07",
     url: "https://junie.jetbrains.com/docs/agent-skills.html",
   },
+  {
+    provider: "zed",
+    surface: "mcp",
+    ...SPEC_PAGES.zedMcp,
+  },
 ];
 
 /** Re-read the sources when a capture or surface is older than this. */

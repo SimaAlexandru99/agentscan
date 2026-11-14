@@ -690,7 +690,7 @@ export function parseProfiledMcpFile(
   root: string,
   io: ScanIO,
   profile: McpSchemaProfile,
-  opts: { optional?: boolean; mcpServersOptional?: boolean } = {},
+  opts: { optional?: boolean; mcpServersOptional?: boolean; serversKey?: string } = {},
 ): McpFact[] {
   const raw = readConfigFile(filePath, io, opts);
   if (raw === undefined) {
@@ -699,6 +699,11 @@ export function parseProfiledMcpFile(
   if (!isRecord(raw)) {
     reportRootShapeOnce(filePath, io, "MCP config root is not an object");
     return [];
+  }
+  // Settings files that keep servers under another key (Zed `context_servers`). Absent key: no servers, no error.
+  if (opts.serversKey !== undefined) {
+    const servers = raw[opts.serversKey];
+    return isRecord(servers) ? parseMcpServers({ mcpServers: servers }, filePath, root, io, profile) : [];
   }
   if (opts.mcpServersOptional === true && !isRecord(raw.mcpServers)) {
     return [];

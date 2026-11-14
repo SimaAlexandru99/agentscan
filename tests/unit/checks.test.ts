@@ -1937,6 +1937,14 @@ describe("STRUCTURAL_CHECKS stays in sync with what runChecks emits", () => {
           literalEnvKeys: [],
         }),
         mcpFact({
+          name: "dead-zed",
+          path: "/tmp/proj/.zed/settings.json",
+          schemaProfile: "zed-json",
+          hasCommand: false,
+          hasUrl: false,
+          literalEnvKeys: [],
+        }),
+        mcpFact({
           name: "cc-bad-transport",
           path: "/tmp/proj/.mcp.json",
           schemaProfile: "mcp-json",

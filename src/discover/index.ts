@@ -86,6 +86,7 @@ import {
 } from "./skills";
 import { newScanIO, type ScanIO } from "./fs";
 import { ancestorDirsInclusive, type ScanContext } from "./scan-context";
+import { discoverZedProjectMcp, discoverZedUserMcp } from "./zed";
 
 export { resolveRoot, resolveScanContext, type ScanContext, type ScanLocation } from "./scan-context";
 
@@ -265,6 +266,11 @@ const SOURCES: Source[] = [
     nested: ({ scanBoundary, io }) => ({
       mcp: discoverNestedContinueMcp(scanBoundary, io),
     }),
+  },
+  {
+    id: "zed",
+    project: (dir, { io }) => ({ mcp: discoverZedProjectMcp(dir, io) }),
+    user: ({ root, io }) => ({ mcp: discoverZedUserMcp(root, io) }),
   },
   {
     // Every provider's project MCP file, from the configured `mcpPaths`.

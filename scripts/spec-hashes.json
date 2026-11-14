@@ -238,5 +238,9 @@
   "https://opencode.ai/v2/docs/mcp-servers": {
     "hash": "ac9e42884176da36",
     "recorded": "2026-11-14"
+  },
+  "https://zed.dev/docs/ai/mcp": {
+    "hash": "2c3015eaa6e167b7",
+    "recorded": "2026-11-14"
   }
 }

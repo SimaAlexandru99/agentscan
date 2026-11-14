@@ -75,6 +75,8 @@ export const PROVIDERS = {
   antigravity: { home: ".gemini/config", userSkills: true, skills: "agent-skills" },
   /** `$COPILOT_HOME`, otherwise `~/.copilot`. See docs/spec/copilot-hooks.md. */
   copilot: { dotDir: ".github", home: ".copilot", homeEnv: "COPILOT_HOME" },
+  /** Zed reads `.agents/skills` only (agent-skills entry). See docs/spec/zed-mcp.md and zed-skills.md. */
+  zed: { dotDir: ".zed" },
 } satisfies Record<string, ProviderSpec>;
 
 /** Every provider a fact can name. Copilot CLI reports as `vscode`; `unknown` has no entry. */

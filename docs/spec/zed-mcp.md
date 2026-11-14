@@ -4,7 +4,7 @@
 **Also:** https://github.com/zed-industries/zed/blob/main/docs/src/ai/mcp.md (same text, read 2026-11-14)
 **Settings file:** https://zed.dev/docs/configuring-zed (raw: https://github.com/zed-industries/zed/blob/main/docs/src/configuring-zed.md)
 **Read:** 2026-11-14
-**Depends on it:** (new)
+**Depends on it:** `zed.mcp.no-launch`, `mcp.command-missing`, `security.hardcoded-secret`, `mcp.literal-env`
 
 ## Files
 

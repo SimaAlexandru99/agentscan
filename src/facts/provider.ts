@@ -17,7 +17,8 @@ export type McpSchemaProfile =
   | "grok-toml"
   | "windsurf-json"
   | "devin-json"
-  | "copilot-json";
+  | "copilot-json"
+  | "zed-json";
 
 export function assertNever(value: never, message: string): never {
   throw new Error(message);
@@ -75,6 +76,12 @@ const MCP_FILE_RULES: readonly {
   {
     profile: "copilot-json",
     test: (p) => /(?:^|\/)\.copilot\/mcp-config\.json$/.test(p),
+  },
+  // Zed settings: "JSON with support for `//` comments". See docs/spec/zed-mcp.md.
+  {
+    profile: "zed-json",
+    test: (p) => /(?:^|\/)(?:\.zed|\.config\/zed|Zed)\/settings\.json$/.test(p),
+    jsonc: true,
   },
 ];
 
