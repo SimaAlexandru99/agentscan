@@ -61,13 +61,21 @@ export function buildReleases(changelog: string): SiteRelease[] {
   const finish = () => {
     if (current) releases.push(parseSection(current.version, current.date, current.lines));
   };
+  let sawUnreleased = false;
   for (const line of changelog.split("\n")) {
     if (line.startsWith("## ")) {
       finish();
       current = undefined;
       if (releases.at(-1)?.version === LAST_VERSION) return releases;
+      if (line.trim() === "## Unreleased") {
+        sawUnreleased = true;
+        continue;
+      }
       const match = HEADING.exec(line);
       if (match?.[1] && match[2]) current = { version: match[1], date: match[2], lines: [] };
+      else if (sawUnreleased) {
+        throw new Error(`CHANGELOG.md: "${line}" does not match "## X.Y.Z — YYYY-MM-DD"`);
+      }
       continue;
     }
     current?.lines.push(line);
@@ -81,16 +89,26 @@ function parseSection(version: string, date: string, lines: string[]): SiteRelea
   const summaryLines: string[] = [];
   let i = 0;
   while (i < lines.length && (lines[i] ?? "").trim() === "") i++;
-  while (i < lines.length && (lines[i] ?? "").trim() !== "" && !(lines[i] ?? "").startsWith("- ")) {
+  const isBreak = (line: string) => line.trim() === "" || line.startsWith("- ") || line.startsWith("#");
+  while (i < lines.length && !isBreak(lines[i] ?? "")) {
     summaryLines.push(lines[i] ?? "");
     i++;
   }
   const items: string[] = [];
   let item: string[] | undefined;
   let nested = false;
+  let label = "";
+  const push = (parts: string[]) => {
+    const text = clean(parts.join(" "));
+    if (!namesOnlyTestFiles(text)) items.push(label + text);
+  };
   for (const line of lines.slice(i)) {
-    if (line.startsWith("- ")) {
-      if (item) items.push(clean(item.join(" ")));
+    if (line.startsWith("### ")) {
+      if (item) push(item);
+      item = undefined;
+      label = `${line.slice(4).trim()}: `;
+    } else if (line.startsWith("- ")) {
+      if (item) push(item);
       item = [line.slice(2)];
       nested = false;
     } else if (item && /^ {2}- /.test(line)) {
@@ -98,15 +116,21 @@ function parseSection(version: string, date: string, lines: string[]): SiteRelea
     } else if (item && !nested && /^ {2}\S/.test(line)) {
       item.push(line);
     } else if (item && line.trim() !== "" && !line.startsWith(" ")) {
-      items.push(clean(item.join(" ")));
+      push(item);
       item = undefined;
     }
   }
-  if (item) items.push(clean(item.join(" ")));
+  if (item) push(item);
   let summary = clean(summaryLines.join(" "));
   // A section with bullets only (2.3.1): its first bullet stands in as the summary.
   if (summary === "" && items.length > 0) summary = items.shift() ?? "";
   return { version, date, summary, items, breaking: /breaking/i.test(summary) };
+}
+
+/** A bullet whose only paths are under tests/ is about the test suite, not the product. */
+function namesOnlyTestFiles(text: string): boolean {
+  const paths = [...text.matchAll(/`([^`]*\/[^`]*)`/g)].map((m) => m[1] ?? "");
+  return paths.length > 0 && paths.every((path) => path.startsWith("tests/"));
 }
 
 export function serialize(value: unknown): string {
