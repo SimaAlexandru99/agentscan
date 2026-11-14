@@ -13,6 +13,12 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+## 2.3.1 — 2026-11-14
+
+- Codex: `[hooks.state]`, the per-hook trust record Codex writes into
+  `config.toml`, is no longer read as a hook group (it raised
+  `config.unreadable` on every machine that had trusted a hook).
+
 ## 2.3.0 — 2026-11-14
 
 Six more agents, each from a capture of its official docs read on

@@ -120,7 +120,10 @@ function hooksFromCodexToml(filePath: string, projectRoot: string, io: ScanIO): 
   if (raw.hooks === undefined) {
     return [];
   }
-  return hooksFromObject(raw.hooks, filePath, "codex-hooks", { project: projectRoot }, io, {
+  // `[hooks.state]` is the per-hook trust record Codex writes itself ("Codex records trust against the
+  // hook's current hash", codex-hooks.md); it is not an event.
+  const hooks = isRecord(raw.hooks) ? Object.fromEntries(Object.entries(raw.hooks).filter(([key]) => key !== "state")) : raw.hooks;
+  return hooksFromObject(hooks, filePath, "codex-hooks", { project: projectRoot }, io, {
     sourceProvider: "codex",
     schemaProfile: "codex",
   });

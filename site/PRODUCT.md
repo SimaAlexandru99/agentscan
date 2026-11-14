@@ -33,7 +33,7 @@ locally or in CI.
 
 > Your agent config says the guard is on. The script is gone. Nothing told you.
 
-Version line under the lede: `2.3.0 · 163 checks · offline on check`.
+Version line under the lede: `2.3.1 · 163 checks · offline on check`.
 
 ### Primary CTA
 

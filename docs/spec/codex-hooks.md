@@ -34,3 +34,11 @@ Tool names in matchers (`Bash`, `apply_patch`) are not events.
 ## Timeout
 
 Omitted timeouts default to 600 seconds for most hooks, and the page quotes no maximum, so those values are not `codex.hook.timeout-out-of-bounds`. `SessionEnd` and `Interrupt` default to 1 second and a configured timeout must be in the closed range 1–3 seconds. The finding text says "want 1–3" only for those two events.
+
+## `[hooks.state]` (2026-11-14)
+
+Quoted (https://developers.openai.com/codex/hooks): "Codex records trust
+against the hook's current hash, so new or changed hooks are marked for review
+and skipped until trusted." Real `config.toml` files on two Windows machines
+store that record as `[hooks.state."<file>:<event>:<i>:<j>"]` tables. agentscan
+skips the `state` key under `[hooks]`; it is not a hook event.

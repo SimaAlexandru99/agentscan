@@ -1,7 +1,7 @@
 export const SITE_ORIGIN = "https://agentscan.space";
 export const SITE_LASTMOD = "2026-11-12";
 export const PRODUCT_NAME = "agentscan";
-export const PRODUCT_VERSION = "2.3.0";
+export const PRODUCT_VERSION = "2.3.1";
 // The published release, not the repo. The site advertises the package a
 // visitor can install.
 export const PRODUCT_CHECKS = 163;

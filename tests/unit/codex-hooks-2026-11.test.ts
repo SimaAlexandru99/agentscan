@@ -16,6 +16,29 @@ const NESTED = {
 };
 
 describe("Codex hooks.json and inline config.toml hooks", () => {
+  test("[hooks.state] trust records Codex writes are not hook groups", () => {
+    const root = mkPinnedProject("agentscan-codex-hookstate-");
+    write(
+      root,
+      ".codex/config.toml",
+      `
+[hooks.state]
+
+[hooks.state."/repo/.codex/hooks.json:pre_tool_use:0:0"]
+trusted_hash = "abc"
+
+[[hooks.SessionStart]]
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "echo ok"
+`,
+    );
+    const scan = findingsFor(root);
+    expect(scan.facts.configErrors).toEqual([]);
+    expect(scan.facts.hooks.map((h) => h.event)).toEqual(["SessionStart"]);
+  });
+
   test("both files in one layer are inventoried, and MCP in the toml still parses", () => {
     const root = mkPinnedProject("agentscan-codex-hooks-");
     write(root, ".codex/hooks.json", JSON.stringify(NESTED));

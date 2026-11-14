@@ -39,7 +39,7 @@ export default function AboutPage() {
         reports where the config disagrees with the disk.
       </p>
       <h2 className="mt-10 text-xl font-semibold tracking-tight text-foreground">
-        What 2.3.0 reads
+        What 2.3.1 reads
       </h2>
       <ul className="mt-4 list-disc space-y-2 pl-5">
         {COVERAGE_LINES.map((line) => (

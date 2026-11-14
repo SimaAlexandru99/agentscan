@@ -128,7 +128,7 @@ export default function HomePage() {
       <section className="border-t border-border/60">
         <div className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            What 2.3.0 reads
+            What 2.3.1 reads
           </h2>
           <ul className="mt-8 space-y-4 text-base leading-relaxed text-foreground/90">
             {COVERAGE_LINES.map((line) => (

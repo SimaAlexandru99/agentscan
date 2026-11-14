@@ -6,13 +6,13 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/checks-163-111111?style=flat-square" alt="163 checks">
-  <img src="https://img.shields.io/badge/tests-694%20passing-111111?style=flat-square" alt="694 tests">
+  <img src="https://img.shields.io/badge/tests-695%20passing-111111?style=flat-square" alt="695 tests">
   <img src="https://img.shields.io/badge/network-none-111111?style=flat-square" alt="No network">
   <img src="https://img.shields.io/badge/writes-none-111111?style=flat-square" alt="Writes nothing">
   <img src="https://img.shields.io/badge/runs%20on-node%20%C2%B7%20bun-111111?style=flat-square" alt="Node or Bun">
   <img src="https://img.shields.io/npm/v/@chimix/agentscan?style=flat-square&color=111111&label=npm" alt="npm version">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-2.3.0-111111?style=flat-square" alt="Changelog"></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/changelog-2.3.1-111111?style=flat-square" alt="Changelog"></a>
 </p>
 
 <p align="center">
@@ -871,6 +871,9 @@ first.
 Notes for every published version are in [CHANGELOG.md](CHANGELOG.md).
 GitHub already has pages for [v0.1.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.1.0)
 and [v0.4.0](https://github.com/SimaAlexandru99/agentscan/releases/tag/v0.4.0).
+
+**2.3.1** (14 November 2026) stops reading Codex's `[hooks.state]` trust
+record as a hook group.
 
 **2.3.0** (14 November 2026) adds Claude Desktop, Amp, Zed, Qwen Code,
 Goose and Factory Droid; see the changelog.
