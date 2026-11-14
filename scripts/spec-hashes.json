@@ -1,171 +1,171 @@
 {
   "https://agents.md/": {
-    "hash": "1ef86cd0c5acbb3c",
-    "recorded": "2026-09-06"
+    "hash": "77958250354cce29",
+    "recorded": "2026-11-14"
   },
   "https://agentskills.io/specification": {
-    "hash": "3cb2d7e80855affd",
-    "recorded": "2026-09-02"
+    "hash": "6ab624944b159389",
+    "recorded": "2026-11-14"
   },
   "https://antigravity.google/docs/hooks": {
     "hash": "122ee0e8ff4f57cb",
     "recorded": "2026-11-12"
   },
   "https://antigravity.google/docs/mcp": {
-    "hash": "db1280723ee1809f",
-    "recorded": "2026-09-02"
+    "hash": "67ee86ff995ad076",
+    "recorded": "2026-11-14"
   },
   "https://antigravity.google/docs/rules": {
     "hash": "d898cd5199d10b65",
     "recorded": "2026-11-12"
   },
   "https://code.claude.com/docs/en/hooks": {
-    "hash": "10243f8091c2755f",
-    "recorded": "2026-09-06"
+    "hash": "ef86f4c28b7bdcac",
+    "recorded": "2026-11-14"
   },
   "https://code.claude.com/docs/en/mcp": {
-    "hash": "9a6f170549bf6785",
-    "recorded": "2026-09-06"
+    "hash": "5d186af2220defe9",
+    "recorded": "2026-11-14"
   },
   "https://code.claude.com/docs/en/memory": {
-    "hash": "c7072c19d764a8a7",
-    "recorded": "2026-09-06"
+    "hash": "19b59f73e2ca1d4c",
+    "recorded": "2026-11-14"
   },
   "https://code.claude.com/docs/en/skills": {
-    "hash": "8dfcf246b11b546f",
-    "recorded": "2026-09-06"
+    "hash": "88bb469bdbb40740",
+    "recorded": "2026-11-14"
   },
   "https://code.claude.com/docs/en/sub-agents": {
-    "hash": "ae5a3ccb1f8c267d",
-    "recorded": "2026-09-06"
+    "hash": "f9c4563eb82cb375",
+    "recorded": "2026-11-14"
   },
   "https://code.visualstudio.com/docs/agent-customization/custom-agents": {
-    "hash": "eb26ad9512ada8d3",
-    "recorded": "2026-09-02"
+    "hash": "f8198bee31ff9688",
+    "recorded": "2026-11-14"
   },
   "https://code.visualstudio.com/docs/agent-customization/custom-instructions": {
-    "hash": "82397ca78e717f37",
-    "recorded": "2026-09-02"
+    "hash": "71700ab01e4c2632",
+    "recorded": "2026-11-14"
   },
   "https://code.visualstudio.com/docs/agent-customization/hooks": {
-    "hash": "bf93132adfe0e77f",
-    "recorded": "2026-09-02"
+    "hash": "4fd5f7a79bb18e26",
+    "recorded": "2026-11-14"
   },
   "https://code.visualstudio.com/docs/agents/reference/hooks-reference": {
-    "hash": "a4afc56928cacb3b",
-    "recorded": "2026-09-06"
+    "hash": "36948029b5d5be00",
+    "recorded": "2026-11-14"
   },
   "https://code.visualstudio.com/docs/agents/reference/mcp-configuration": {
     "hash": "5d160895cbbe1631",
     "recorded": "2026-11-12"
   },
   "https://commandcode.ai/docs/agents": {
-    "hash": "fb1ad25a17cf1a87",
-    "recorded": "2026-09-06"
+    "hash": "984f4f2deaf6fadf",
+    "recorded": "2026-11-14"
   },
   "https://commandcode.ai/docs/hooks": {
     "hash": "eefacdf543b7fd5a",
     "recorded": "2026-09-06"
   },
   "https://commandcode.ai/docs/mcp": {
-    "hash": "a4924b801ec41564",
-    "recorded": "2026-09-06"
+    "hash": "05b1c2b0dbcc777b",
+    "recorded": "2026-11-14"
   },
   "https://commandcode.ai/docs/memory": {
     "hash": "0c574d4a85bb664f",
     "recorded": "2026-09-06"
   },
   "https://commandcode.ai/docs/skills": {
-    "hash": "4d10c7ae5b2e034a",
-    "recorded": "2026-09-06"
+    "hash": "32e134b19e7cf6c9",
+    "recorded": "2026-11-14"
   },
   "https://cursor.com/docs/context/mcp": {
-    "hash": "adbfe6aef830928c",
-    "recorded": "2026-09-02"
+    "hash": "981dd73a5eda5461",
+    "recorded": "2026-11-14"
   },
   "https://cursor.com/docs/hooks": {
-    "hash": "302e97ef1933578e",
-    "recorded": "2026-09-03"
+    "hash": "d22de96f64da9e2e",
+    "recorded": "2026-11-14"
   },
   "https://cursor.com/docs/reference/third-party-hooks": {
-    "hash": "91cb2a74916ba72f",
-    "recorded": "2026-09-06"
+    "hash": "a601c2ffc321afa2",
+    "recorded": "2026-11-14"
   },
   "https://cursor.com/docs/rules": {
-    "hash": "8a80707a4e9c528c",
-    "recorded": "2026-09-02"
+    "hash": "9913631a69d10f6b",
+    "recorded": "2026-11-14"
   },
   "https://cursor.com/docs/skills": {
-    "hash": "32d0a389cab496d9",
-    "recorded": "2026-09-06"
+    "hash": "5e4f8e4d04d2669f",
+    "recorded": "2026-11-14"
   },
   "https://developers.openai.com/codex/config-advanced": {
-    "hash": "4791186a54c01fd9",
-    "recorded": "2026-09-02"
+    "hash": "6e8825787879e131",
+    "recorded": "2026-11-14"
   },
   "https://docs.cline.bot/customization/skills": {
-    "hash": "e7559d26e24fb08f",
-    "recorded": "2026-09-06"
+    "hash": "03fad8a3270d19ef",
+    "recorded": "2026-11-14"
   },
   "https://docs.continue.dev/customize/deep-dives/mcp": {
     "hash": "e5f1a409ff2c5949",
     "recorded": "2026-09-02"
   },
   "https://docs.devin.ai/cli/extensibility/hooks/overview": {
-    "hash": "9d417101effd5d17",
-    "recorded": "2026-11-12"
+    "hash": "a5d8a1a6da1c5fea",
+    "recorded": "2026-11-14"
   },
   "https://docs.devin.ai/cli/extensibility/mcp/configuration": {
-    "hash": "60ca673201ba8098",
-    "recorded": "2026-11-12"
+    "hash": "a3c4be52a40b7e6f",
+    "recorded": "2026-11-14"
   },
   "https://docs.devin.ai/desktop/cascade/hooks": {
-    "hash": "47b06bdb69741e78",
-    "recorded": "2026-09-02"
+    "hash": "c263674e2de083a3",
+    "recorded": "2026-11-14"
   },
   "https://docs.devin.ai/desktop/cascade/skills": {
-    "hash": "57b3254ec9da81fa",
-    "recorded": "2026-09-02"
+    "hash": "c263674e2de083a3",
+    "recorded": "2026-11-14"
   },
   "https://docs.github.com/en/copilot/reference/hooks-reference": {
-    "hash": "fb7db37c2bb73f55",
-    "recorded": "2026-09-02"
+    "hash": "7424ebafbf9c1274",
+    "recorded": "2026-11-14"
   },
   "https://docs.roocode.com/features/skills": {
     "hash": "983201deec6cf963",
     "recorded": "2026-09-06"
   },
   "https://docs.windsurf.com/windsurf/cascade/agents-md": {
-    "hash": "6ae8b0762b050993",
-    "recorded": "2026-09-02"
+    "hash": "c263674e2de083a3",
+    "recorded": "2026-11-14"
   },
   "https://docs.windsurf.com/windsurf/cascade/mcp": {
-    "hash": "fd3ebcfd7ee40ae4",
-    "recorded": "2026-09-02"
+    "hash": "c263674e2de083a3",
+    "recorded": "2026-11-14"
   },
   "https://docs.windsurf.com/windsurf/cascade/memories": {
-    "hash": "e2f5d8efbfce7164",
-    "recorded": "2026-09-02"
+    "hash": "c263674e2de083a3",
+    "recorded": "2026-11-14"
   },
   "https://docs.x.ai/build/features/hooks": {
-    "hash": "0d86c4e54cca4852",
-    "recorded": "2026-09-02"
+    "hash": "8daf7cf6da1411f4",
+    "recorded": "2026-11-14"
   },
   "https://docs.x.ai/build/features/mcp-servers": {
-    "hash": "8fd78f7b35096d9e",
-    "recorded": "2026-09-02"
+    "hash": "35c9e90d786efd70",
+    "recorded": "2026-11-14"
   },
   "https://docs.x.ai/build/features/project-rules": {
-    "hash": "9d0f1a6d1cb53514",
-    "recorded": "2026-09-02"
+    "hash": "8cbf47cf3141597a",
+    "recorded": "2026-11-14"
   },
   "https://docs.x.ai/build/features/skills-plugins-marketplaces": {
-    "hash": "863803f8ee4d409b",
-    "recorded": "2026-09-02"
+    "hash": "7514f31f9351dd9c",
+    "recorded": "2026-11-14"
   },
   "https://docs.x.ai/build/features/subagents": {
-    "hash": "77738a57ab6847fa",
-    "recorded": "2026-09-02"
+    "hash": "7dceb6be9e3813d1",
+    "recorded": "2026-11-14"
   },
   "https://geminicli.com/docs/hooks/": {
     "hash": "82f7b952e8f973c6",
@@ -176,8 +176,8 @@
     "recorded": "2026-09-06"
   },
   "https://geminicli.com/docs/tools/mcp-server/": {
-    "hash": "b28ac91df02f5e25",
-    "recorded": "2026-09-06"
+    "hash": "fb7fec3632b45bfa",
+    "recorded": "2026-11-14"
   },
   "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/index.md": {
     "hash": "2d6fcfe7e08190f7",
@@ -188,47 +188,47 @@
     "recorded": "2026-09-03"
   },
   "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md": {
-    "hash": "e06f5d588af70902",
-    "recorded": "2026-09-03"
+    "hash": "528a908204e035cb",
+    "recorded": "2026-11-14"
   },
   "https://junie.jetbrains.com/docs/agent-skills.html": {
-    "hash": "d5a78af94dc59de1",
-    "recorded": "2026-09-06"
+    "hash": "a514cbedbab7a8ca",
+    "recorded": "2026-11-14"
   },
   "https://kilo.ai/docs/customize/skills": {
-    "hash": "6dd1c25bf9f90929",
-    "recorded": "2026-09-06"
+    "hash": "2a0233c2856e0742",
+    "recorded": "2026-11-14"
   },
   "https://kiro.dev/docs/hooks/": {
-    "hash": "2c0ea2a8562ce2aa",
-    "recorded": "2026-09-06"
+    "hash": "28c7e3cf6f3eb219",
+    "recorded": "2026-11-14"
   },
   "https://kiro.dev/docs/ide/whats-new-v1/hooks/": {
     "hash": "6dc7b0b410273e97",
     "recorded": "2026-09-06"
   },
   "https://kiro.dev/docs/skills/": {
-    "hash": "75cafdf7635953a9",
-    "recorded": "2026-09-06"
+    "hash": "5482d4265b152b57",
+    "recorded": "2026-11-14"
   },
   "https://learn.chatgpt.com/docs/agent-configuration/agents-md": {
-    "hash": "e29c8f5519a6cd3f",
-    "recorded": "2026-09-02"
+    "hash": "6f867f0d8ce0364e",
+    "recorded": "2026-11-14"
   },
   "https://learn.chatgpt.com/docs/extend/mcp": {
-    "hash": "4552797adf68eefe",
-    "recorded": "2026-09-03"
+    "hash": "02403100c24826be",
+    "recorded": "2026-11-14"
   },
   "https://learn.chatgpt.com/docs/hooks": {
     "hash": "0488996d6eecd7bd",
     "recorded": "2026-11-12"
   },
   "https://opencode.ai/docs/mcp-servers/": {
-    "hash": "fea42ea3d9074534",
-    "recorded": "2026-09-06"
+    "hash": "ac9e42884176da36",
+    "recorded": "2026-11-14"
   },
   "https://opencode.ai/v2/docs/mcp-servers": {
-    "hash": "46af7fbfb78ef075",
-    "recorded": "2026-09-02"
+    "hash": "ac9e42884176da36",
+    "recorded": "2026-11-14"
   }
 }

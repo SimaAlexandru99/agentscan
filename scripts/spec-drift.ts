@@ -50,6 +50,8 @@ const REVIEWED_NOT_EVENTS = new Set([
   "TaskCreate",
   // A tool name mentioned on TaskCompleted; the event is still `TaskCompleted`.
   "TaskUpdate",
+  // A tool a subagent calls to hand its report back (auto mode); hooks match it by tool name. Checked 2026-11-14.
+  "SubagentHandback",
 ]);
 
 type Report = { drift: string[]; notes: string[] };

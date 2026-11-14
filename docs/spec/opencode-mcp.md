@@ -1,14 +1,14 @@
 # OpenCode MCP (V1 and V2)
 
-**Source:** https://opencode.ai/v2/docs/mcp-servers
-**Also:** https://opencode.ai/docs/mcp-servers/
-**Read:** 2026-09-03
+**Source:** https://opencode.ai/docs/mcp-servers/ (V2 canonical; `/v2/docs/mcp-servers` 301s here)
+**Also:** https://opencode.ai/v1/docs/mcp-servers/ (V1; moved from `/docs/mcp-servers/`, which now serves V2)
+**Read:** 2026-11-14
 **Re-read:** 2026-09-07
 **Depends on it:** `opencode.mcp.no-launch`, `opencode.mcp.missing-type`,
 `opencode.mcp.local-without-command`, `opencode.mcp.remote-without-url`,
 `opencode.mcp.invalid-launch-for-type`, `opencode.mcp.command-not-array`
 
-Also consulted for V1 shape: https://opencode.ai/docs/mcp-servers/
+Also consulted for V1 shape: https://opencode.ai/v1/docs/mcp-servers/
 
 ## Project files
 
@@ -35,6 +35,10 @@ error. Missing type is `opencode.mcp.missing-type`, not a generic no-launch.
 
 V1 places named servers directly under `mcp`, with `type: "local"` + `command`
 array, or `type: "remote"` + `url`, and an `enabled` flag (not V2 `disabled`).
+
+Verified 2026-11-14. V1 page: `enabled` — "Enable or disable the MCP server
+on startup." V2 page: "Use disabled, not an enabled field, to keep one
+configured without connecting it." V2 `disabled` defaults to `false`.
 
 Never apply V1 required fields to a V2 `mcp.servers` map.
 

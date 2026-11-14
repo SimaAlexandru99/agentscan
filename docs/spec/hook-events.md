@@ -1,8 +1,8 @@
 # Hook events
 
 **Source:** https://code.claude.com/docs/en/hooks
-**Read:** 2026-09-03 (all 33 names, the required `type` enum, per-type required
-fields, and the three compatibility tiers re-read and unchanged)
+**Read:** 2026-11-14 (all 33 names and the required `type` enum re-read and
+unchanged; the all-five compatibility tier changed, see below). Earlier: 2026-09-03.
 **Depends on it:** `claude.hook.unknown-event`, `claude.hook.unknown-handler-type`,
 `claude.hook.command-without-command`, `claude.hook.http-without-url`,
 `claude.hook.mcp-tool-without-server-or-tool`, `claude.hook.prompt-without-prompt`,
@@ -64,10 +64,14 @@ The 2026-08-31 page does not document a flat handler array. Flat arrays are
 Quoted:
 
 > Events that support all five hook types (`command`, `http`, `mcp_tool`,
-> `prompt`, and `agent`): PermissionDenied, PermissionRequest, PostToolBatch,
+> `prompt`, and `agent`): PermissionDenied, PostToolBatch,
 > PostToolUse, PostToolUseFailure, PreToolUse, Stop, SubagentStop,
 > TaskCompleted, TaskCreated, TeammateIdle, UserPromptExpansion,
 > UserPromptSubmit.
+
+> `PermissionRequest` supports `command`, `http`, `mcp_tool`, and `prompt` hooks
+> but not `agent` hooks. If you configure an agent hook on this event, Claude
+> Code skips it and the permission flow proceeds unchanged.
 
 > Events that support `command`, `http`, and `mcp_tool` hooks but not `prompt`
 > or `agent`: ConfigChange, CwdChanged, DirectoryAdded, Elicitation,

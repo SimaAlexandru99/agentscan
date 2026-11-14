@@ -1,7 +1,7 @@
 # Grok Build subagents
 
 **Source:** https://docs.x.ai/build/features/subagents
-**Read:** 2026-08-31
+**Read:** 2026-11-14
 **Depends on it:** none — agents stay unread
 
 Quoted:

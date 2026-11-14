@@ -1,8 +1,8 @@
 # Codex AGENTS.md instruction chain
 
 **Source:** https://learn.chatgpt.com/docs/agent-configuration/agents-md
-**Also:** https://learn.chatgpt.com/docs/config-file/config-advanced
-**Read:** 2026-09-02
+**Also:** https://developers.openai.com/codex/config-advanced (moved from https://learn.chatgpt.com/docs/config-file/config-advanced)
+**Read:** 2026-11-14
 **Depends on it:** `codex.budget.instructions`
 
 ## Discovery
@@ -12,7 +12,8 @@ Quoted precedence:
 1. Global scope (`~/.codex`, or `CODEX_HOME`): `AGENTS.override.md` if it
    exists, otherwise `AGENTS.md`. Only the first non-empty file at this level.
    Scanned under `--global`.
-2. Project scope: starting at the project root, walk down to cwd. In each
+2. Project scope: starting at the project root (typically the Git root), walk
+   down to cwd. If no project root is found, only cwd is checked. In each
    directory: `AGENTS.override.md`, then `AGENTS.md`, then
    `project_doc_fallback_filenames`. At most one file per directory.
 3. Merge order: root down, later files override earlier guidance.

@@ -2,7 +2,7 @@
 
 **Source:** https://agentskills.io/specification
 **Also:** https://github.com/agentskills/agentskills/blob/main/skills-ref/src/skills_ref/validator.py (reference validator)
-**Read:** 2026-09-03
+**Read:** 2026-11-14
 **Depends on it:** `agent-skills.skill.missing-frontmatter`, `agent-skills.skill.missing-name`,
 `agent-skills.skill.missing-description`, `agent-skills.skill.invalid-name`,
 `agent-skills.skill.name-does-not-match-directory`, `agent-skills.skill.name-too-long`,
@@ -14,8 +14,8 @@ This is **not** the Claude Code skills page. Claude native `name` is optional an
 defaults to the directory; see [skills.md](skills.md). Applying this file's
 required-name rules to `.claude/skills` is a false positive. Cursor
 `.cursor/skills` uses this contract; see [cursor-skills.md](cursor-skills.md).
-Codex `.codex/skills` (project-local and `~/.codex/skills`) uses this contract
-too; see [codex-skills.md](codex-skills.md).
+Codex reads skills from `.agents/skills` and requires `name` and `description`
+in `SKILL.md`; see [codex-skills.md](codex-skills.md).
 
 ## Directory structure
 
@@ -77,6 +77,14 @@ Quoted:
 
 `agent-skills.skill.body-too-large` reports this at **info**
 (vendor-recommendation). It is not a load failure.
+
+Quoted (2026-11-14, progressive disclosure):
+
+> Metadata (~100 tokens): The name and description fields are loaded at startup for all skills
+>
+> Instructions (< 5000 tokens recommended): The full SKILL.md body is loaded when the skill is activated
+
+No check counts tokens. `agent-skills.skill.body-too-large` stays on the 500-line rule.
 
 Quoted:
 

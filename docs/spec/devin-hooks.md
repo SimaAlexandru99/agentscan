@@ -1,8 +1,13 @@
 # Devin CLI hooks
 
 **Source:** https://docs.devin.ai/cli/extensibility/hooks/overview
-**Read:** 2026-11-12
+**Read:** 2026-11-14
 **Depends on it:** `devin.hook.*`
+
+Re-read 2026-11-14: URL unchanged. Event table, file locations and the
+`hooks.v1.json` root shape still match. Devin Local's page
+(https://docs.devin.ai/desktop/devin-local/customizations) links here for its
+hook events.
 
 Not the legacy Cascade snake_case file. That contract stays
 [windsurf-hooks.md](windsurf-hooks.md). `.claude/settings.json` and

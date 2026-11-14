@@ -4,7 +4,7 @@
 https://code.claude.com/docs/en/plugins ·
 https://code.visualstudio.com/docs/agent-customization/hooks ·
 https://docs.github.com/en/copilot/reference/hooks-reference
-**Read:** 2026-09-02 (seven locations unchanged)
+**Read:** 2026-11-14 (seven locations unchanged; the page now renders them as a table)
 **Depends on it:** `hook.missing-script` and `hook.unknown-event` for every
 source below (`src/discover/hooks.ts`)
 
@@ -100,7 +100,8 @@ from a settings file, so `collectHookCommands` reads it unchanged.
 > Use these placeholders to reference hook scripts relative to the project or
 > plugin root, regardless of the working directory when the hook runs:
 > * `${CLAUDE_PLUGIN_ROOT}`: the plugin's installation directory, for scripts
->   bundled with a plugin. **Changes on each plugin update.**
+>   bundled with a plugin. See plugin environment variables for how the path
+>   behaves across updates.
 
 `${CLAUDE_PLUGIN_ROOT}` has a defined value only for a hook that came from a
 plugin. In a settings file there is no plugin and therefore no base, so the
@@ -163,7 +164,8 @@ file stays in the home directory. MCP only, still `--global`.
 
 - Managed policy settings — organization-wide, not the project's to fix.
 - Installed marketplace plugins under `~/.claude/plugins` — outside the project,
-  and the docs say the install directory "changes on each plugin update".
+  and the plugins reference says `${CLAUDE_PLUGIN_ROOT}` "changes when the plugin updates"
+  (not on the hooks page as of 2026-11-14).
   Measured above: 17 plugins, 0 broken paths.
 
 ## Confidence

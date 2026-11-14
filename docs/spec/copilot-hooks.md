@@ -1,7 +1,7 @@
 # Copilot CLI hooks
 
 **Source:** https://docs.github.com/en/copilot/reference/hooks-reference
-**Read:** 2026-09-02
+**Read:** 2026-11-14
 **Re-read:** 2026-09-07
 **Depends on it:** `copilot.hook.*`, `.github/hooks` `version: 1` detection,
 inline settings hooks (`src/facts/hook-schema.ts`, `src/discover/hooks.ts`)
@@ -33,16 +33,21 @@ camelCase event names without `version: 1` stay native VS Code and fire
 Quoted (Copilot CLI sources, combined; same event from every source runs):
 
 - Policy: `/etc/github-copilot/policy.d/*.json` (Linux/macOS) or
-  `C:\ProgramData\GitHub\Copilot\policy.d\*.json` (Windows). Unread —
-  machine-wide admin files, not project config.
-- User: `~/.copilot/hooks/*.json` (or `$COPILOT_HOME/hooks/`). Scanned only
-  under `--global`. VS Code also lists this directory as its user location;
+  `C:\ProgramData\GitHub\Copilot\policy.d\*.json` (Windows). Also a Windows
+  Registry source: values under `HKLM\Software\Policies\GitHub\Copilot`
+  (added 2026-11-14). Unread — machine-wide admin files, not project config.
+- User: `~/.copilot/hooks/*.json` (or `$COPILOT_HOME/hooks/`). Changed
+  2026-11-14: the page lists this directory as an unconditional source; the
+  former "Scanned only under `--global`" gating is not on the page.
+  VS Code also lists this directory as its user location;
   files without `version: 1` are parsed as native VS Code.
 - Project: `.github/hooks/*.json`.
 - Inline `hooks` in `.github/copilot/settings.json` and
   `.github/copilot/settings.local.json` (project, always scanned) and
-  `$COPILOT_HOME/settings.json` or `~/.copilot/settings.json` (user, only
-  under `--global`). Source `copilot-settings`. Always `copilot-cli` —
+  `~/.copilot/settings.json` (user). Changed 2026-11-14: the page names
+  neither `$COPILOT_HOME/settings.json` nor a `--global` condition for this
+  file; it says the CLI "no longer reads `~/.copilot/config.json` for hooks."
+  Source `copilot-settings`. Always `copilot-cli` —
   these files are Copilot CLI settings, so they do not need `version: 1`.
   Quoted (CLI config-dir reference): the `hooks` key "Uses the same schema
   as `.github/hooks/*.json` files." Quoted (hooks-reference): "When the
@@ -58,7 +63,9 @@ Quoted (Copilot CLI sources, combined; same event from every source runs):
   required nested groups.
 - Plugin `hooks.json`. Unread.
 
-Cloud agent loads only `.github/hooks/*.json` from the cloned repository.
+Quoted (cloud agent, 2026-11-14): "Hook configuration is loaded from
+`.github/hooks/*.json` files in the cloned repository." Quoted: "Cloud agent
+does not load `settings.json`."
 
 ## Command handlers
 
@@ -66,8 +73,10 @@ Quoted fields: one of `bash`, `powershell`, or `command` is required
 **"unless `exec` is specified"**. `command` is the cross-platform fallback.
 `cwd`, `env`, `timeoutSec` (default 30), and `timeout` (alias; `timeoutSec`
 wins) are optional. `type` may be omitted and defaults to command.
+Quoted (2026-11-14, `timeout` row): "Used only when `timeoutSec` is absent;
+`timeoutSec` takes precedence when both are present." Unchanged in meaning.
 
-### `exec` form (read 2026-09-02)
+### `exec` form (read 2026-11-14)
 
 Quoted:
 
@@ -78,7 +87,11 @@ Quoted:
 > name or path. Runs the executable directly without a shell. Only supported
 > in Copilot CLI.
 
-> `args` | array of strings | No | Arguments passed directly to `exec`.
+> `args` | array of strings | No | Arguments passed directly to `exec`. Only
+> supported in Copilot CLI.
+
+> Do not combine exec with bash, powershell, or command. Arguments are passed
+> directly to the executable without shell interpretation.
 
 A handler with `exec` and none of `bash` / `powershell` / `command` is
 complete. `copilot.hook.command-without-command` fires only when all four are
@@ -121,7 +134,13 @@ PascalCase VS Code names are also accepted in a `version: 1` file (quoted:
 "VS Code compatible format — Configure the event name in PascalCase (for
 example, `SessionStart`)").
 
-### PascalCase spellings of Copilot-only events (read 2026-09-02)
+CHANGED-MEANING (2026-11-14, Event names row, Behavior Details table): new
+quote "Runtime names such as postToolUse and aliases such as PostToolUse are
+accepted." The row does not restrict aliases to `version: 1` files. The
+`version: 1` limit for the Copilot-only aliases below is still spec-side and
+not stated on this page.
+
+### PascalCase spellings of Copilot-only events (read 2026-11-14)
 
 The payload reference documents these Copilot-only events with a PascalCase
 configuration name as well, in the same `camelCase` / `PascalCase` headers it

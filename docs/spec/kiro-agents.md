@@ -1,12 +1,14 @@
 # Kiro agents
 
-**Source:** https://kiro.dev/docs/agents
-**Read:** 2026-11-12
+**Source:** https://kiro.dev/docs/custom-agents/ (moved; the old
+https://kiro.dev/docs/agents returns a client-side redirect to it, not an HTTP redirect)
+**Read:** 2026-11-14
 **Depends on it:** discovery only. No new rule id. This page is not in
 `SPEC_SURFACES`.
 
-The page was updated November 3, 2026. JSON and Markdown support the same
-fields. The example (`name`, `description`, `tools`, and the rest) is not a
+The page was updated November 12, 2026. JSON and Markdown support the same
+fields. Added 2026-11-14: workspace agents load only if the workspace is
+trusted. The scanner does not simulate trust. The example (`name`, `description`, `tools`, and the rest) is not a
 required-field table. This scanner does not check those fields and does not
 emit `claude.agent.*` for these files.
 

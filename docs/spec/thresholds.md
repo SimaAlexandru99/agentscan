@@ -1,10 +1,11 @@
 # Numeric thresholds and their evidence
 
-**Read:** 2026-09-02. Every number a check asserts is listed here with what
+**Read:** 2026-11-14. Every number a check asserts is listed here with what
 backs it. A threshold with no entry is a bug in this file or in the check.
 Every vendor figure below (200 lines, 1% / 1,536, 500 lines, 32 KiB, 500
 lines, 12,000 / 6,000 characters) was re-read on the source page on
-2026-09-02 and is unchanged.
+2026-09-02 and is unchanged. The code.claude.com figures (200 lines, 1% /
+1,536) were re-read on 2026-11-14 and are unchanged.
 
 Provenance on these rules is also on `STRUCTURAL_CHECKS`: heuristic rows stay
 `info` and must not be described as published requirements.
@@ -25,7 +26,7 @@ Confidence: **low as a requirement, adequate as a hint.**
 
 **Source:** https://code.claude.com/docs/en/memory
 
-Quoted (read 2026-08-30):
+Quoted (read 2026-11-14):
 
 > Size: target under 200 lines per CLAUDE.md file. Longer files consume more
 > context and reduce adherence.
@@ -39,12 +40,12 @@ Confidence: **high as a vendor recommendation.**
 ## Claude skill listing budget — `skill.description-budget` (vendor-recommendation)
 
 **Source:** https://code.claude.com/docs/en/skills
-**Read:** 2026-08-31
+**Read:** 2026-11-14
 
 Quoted:
 
 > The budget scales at 1% of the model's context window. […] To raise the
-> budget, set the `skillListingBudgetFraction` setting (e.g. `0.02` = 2%) or
+> budget, set the `skillListingBudgetFraction` setting (for example, `0.02` = 2%) or
 > the `SLASH_COMMAND_TOOL_CHAR_BUDGET` environment variable to a fixed character
 > count. […] each entry's combined text is capped at 1,536 characters
 > regardless of budget. The cap is configurable with `skillListingMaxDescChars`.
@@ -108,7 +109,7 @@ Configurable from `.codex/config.toml`. Cumulative across the effective chain
 
 **Source:** https://cursor.com/docs/rules
 
-Quoted (read 2026-08-30):
+Quoted (read 2026-11-14):
 
 > Keep rules under 500 lines
 

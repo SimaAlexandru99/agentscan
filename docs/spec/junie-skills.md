@@ -1,7 +1,7 @@
 # Junie skills
 
 **Source:** https://junie.jetbrains.com/docs/agent-skills.html
-**Read:** 2026-09-07
+**Read:** 2026-11-14
 **Depends on it:** `agent-skills.skill.*` on `.junie/skills`, except
 `missing-description` and `name-does-not-match-directory` (not quoted)
 
@@ -16,7 +16,11 @@ Agent Skills with required `description`).
 ## Frontmatter
 
 Quoted table: `name` is required (unique identifier). `description` is
-**optional** ("No" — a short summary Junie can use).
+**optional** ("No" — a short summary Junie can use). Live page (2026-11-14)
+adds: without `description`, Junie "extracts the first paragraph of the body
+content"; a skill whose body is empty or only headings "will fail to load".
+This is a load condition, not a frontmatter-field requirement; not turned into
+a rule here.
 
 Do not emit `agent-skills.skill.missing-description` for
 `sourceProvider === "junie"`. Do not emit
