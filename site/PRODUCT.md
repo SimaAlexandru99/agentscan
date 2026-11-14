@@ -104,6 +104,31 @@ to a published spec line.
   are scanned
 - Do not claim `.claude/settings.json` is validated as Copilot CLI
 
+## Pages
+
+- `/checks` — every rule from `site/data/checks.json` (generated from the
+  registry by `bun run site:data`): id anchor, severity, provenance,
+  description, vendor source or "agentscan inference". Counts are computed.
+- `/results` — the owner-approved write-up of one real run, copy in
+  `lib/results.ts`. Anonymised: no project names, no secrets.
+- `/changelog` — `site/data/releases.json` (from `CHANGELOG.md`), 2.0.0 to
+  the latest. Only 2.0.0 and 2.3.1 were published to npm.
+
+## Real-results figures (allowed, with their source)
+
+Source: the author's own setup, 4 machines (one Linux, three Windows) and 29
+project checkouts, 13–14 November 2026, agentscan 2.0.0 to 2.3.1.
+
+- 10 real config problems found; 9 fixed the same day; 2 secrets taken out
+  of config files; 0 network calls during check
+- 692 → 251 findings on one home directory once agentscan's own false alarms
+  were fixed; errors 406 → 40
+- 46 vendor pages re-read on 14 November 2026
+- "N / M checks cite the vendor page they come from" — computed from
+  `checks.json` (`sourceUrl` count / rule count), never typed
+
+Do not generalise these to other users' setups or present them as adoption.
+
 ## Read mode (`/docs`)
 
 Quickstart (npx / bunx / local checkout), `check` flags table from README, skill
