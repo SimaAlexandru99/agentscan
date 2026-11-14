@@ -137,8 +137,14 @@ describe("public routes", () => {
     // places and the last hand-edit missed two of them.
     expect(res.body).toContain(PRODUCT_VERSION);
     expect(res.body).toContain(`${PRODUCT_CHECKS} checks`);
-    expect(res.body).toContain("What 2.3.1 reads");
-    expect(res.body).toContain("Devin CLI: hooks, MCP, and skills");
+    expect(res.body).toContain(
+      "<title>agentscan: lint Claude Code hooks, MCP configs and skills</title>",
+    );
+    expect(res.body).toContain('og:title" content="agentscan: lint Claude Code hooks');
+    expect(res.body).toContain("claude.hook.missing-script");
+    expect(res.body).toContain('href="/results"');
+    expect(res.body).toContain('href="/changelog#v2.3.1"');
+    expect(res.body).toContain('"price":"0"');
     expect(res.body).toContain("skillListingChars");
     expect(res.body).not.toContain("Alpha");
   });
@@ -250,5 +256,25 @@ describe("public routes", () => {
     const changelog = await probe("/changelog", { headers: { Accept: "text/html" } });
     expect(changelog.body).toContain('id="v2.3.1"');
     expect(changelog.body).toContain('id="v2.0.0"');
+  });
+
+  test("every internal header and footer link resolves", async () => {
+    const home = await probe("/", { headers: { Accept: "text/html" } });
+    const chrome = [
+      home.body.match(/<header[\s\S]*?<\/header>/)?.[0] ?? "",
+      home.body.match(/<footer[\s\S]*?<\/footer>/)?.[0] ?? "",
+    ].join("");
+    const hrefs = new Set([...chrome.matchAll(/href="(\/[^"#]*)"/g)].map((m) => m[1] ?? ""));
+    expect(hrefs.has("/results")).toBe(true);
+    expect(hrefs.size).toBeGreaterThanOrEqual(8);
+    for (const href of hrefs) {
+      const res = await probe(href, { headers: { Accept: "text/html" }, redirect: "manual" });
+      expect(`${href} ${res.status}`).toBe(`${href} 200`);
+    }
+  });
+
+  test("the header marks the current page", async () => {
+    const res = await probe("/results", { headers: { Accept: "text/html" } });
+    expect(res.body).toMatch(/<a[^>]*aria-current="page"[^>]*href="\/results"|<a[^>]*href="\/results"[^>]*aria-current="page"/);
   });
 });
