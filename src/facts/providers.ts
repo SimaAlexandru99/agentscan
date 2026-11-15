@@ -1,4 +1,4 @@
-import { homedir } from "node:os";
+import { userEnv, userHome } from "../home";
 import { join } from "node:path";
 import { toPosix } from "./paths";
 
@@ -33,7 +33,7 @@ export const PROVIDERS = {
    * (`settings`, skills, agents, `CLAUDE.md`, rules) somewhere other than
    * `~/.claude`. The SDK page (read 2026-11-12) also relocates
    * `~/.claude.json` to `$CLAUDE_CONFIG_DIR/.claude.json`. Unset, that file
-   * stays `join(homedir(), ".claude.json")`.
+   * stays `join(userHome(), ".claude.json")`.
    * See docs/spec/hook-sources.md, docs/spec/claude-memory.md, and docs/spec/mcp.md.
    */
   claude: { dotDir: ".claude", homeEnv: "CLAUDE_CONFIG_DIR", skills: "claude", userSkills: true },
@@ -101,11 +101,11 @@ const SPECS = Object.entries(PROVIDERS) as [ProviderKey, ProviderSpec][];
 
 export function providerHome(id: ProviderKey): string {
   const spec: ProviderSpec = PROVIDERS[id];
-  const override = spec.homeEnv === undefined ? undefined : process.env[spec.homeEnv]?.trim();
+  const override = spec.homeEnv === undefined ? undefined : userEnv(spec.homeEnv)?.trim();
   if (override !== undefined && override.length > 0) {
     return override;
   }
-  return join(homedir(), spec.home ?? spec.dotDir ?? "");
+  return join(userHome(), spec.home ?? spec.dotDir ?? "");
 }
 
 const WITH_SKILLS = SPECS.filter(([, spec]) => spec.skills !== undefined) as [Exclude<Provider, "unknown">, ProviderSpec][];

@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { Provider } from "../facts/provider";
 import { isInside } from "../facts/paths";
@@ -380,7 +381,8 @@ export function discoverNestedClaudeSkills(
       walk(child, depth + 1);
     }
   };
-  walk(root, 0);
+  // Only `--global-only` passes a root that does not exist: nothing to walk, nothing unreadable.
+  if (existsSync(root)) walk(root, 0);
   return out;
 }
 

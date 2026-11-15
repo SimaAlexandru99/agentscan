@@ -1,4 +1,4 @@
-import { homedir } from "node:os";
+import { userHome } from "../home";
 import { basename, isAbsolute, join, posix, win32 } from "node:path";
 import { COMMANDCODE_PROJECT_DIR } from "../facts/commandcode";
 import { GEMINI_PROJECT_DIR } from "../facts/gemini";
@@ -97,7 +97,7 @@ function isPathLike(candidate: string, interpreted: boolean): boolean {
 }
 
 export function expandHome(path: string): string {
-  return path.startsWith("~/") ? join(homedir(), path.slice(2)) : path;
+  return path.startsWith("~/") ? join(userHome(), path.slice(2)) : path;
 }
 
 export function isProjectDirPlaceholder(value: string): boolean {

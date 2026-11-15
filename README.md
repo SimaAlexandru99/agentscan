@@ -187,6 +187,7 @@ Flags for `check`:
 | `--fail-on <level>` | `never` (default) · `warning` · `error` |
 | `--fail-under <0-100>` | Fail when the score drops below this floor |
 | `--global` | Also scan user skills (`$CLAUDE_CONFIG_DIR/skills` or `~/.claude/skills`, `~/.commandcode/skills`, `~/.agents/skills`, `$GROK_HOME/skills`, `~/.codeium/windsurf/skills`), Claude user settings / agents / `CLAUDE.md` / rules / commands and `$CLAUDE_CONFIG_DIR/.claude.json` or `~/.claude.json` (user + matching local `mcpServers`), Copilot `$COPILOT_HOME` / `~/.copilot/hooks` and `settings.json`, Codex `$CODEX_HOME` / `~/.codex/hooks.json` and `config.toml` (MCP plus inline `[hooks]`), Grok `$GROK_HOME` / `~/.grok` (hooks + `config.toml`), Command Code user MCP/agents/memory, Antigravity `~/.gemini/config/hooks.json`, `rules/`, and `skills/`, plus `~/.gemini/AGENTS.md` and `GEMINI.md`, Kiro `~/.kiro/agents`, and Windsurf `~/.codeium/windsurf` MCP + `global_rules.md` + `hooks.json` (see below) |
+| `--global-only` | Scan only those global locations: no project, no walk-up, so a home directory with `.claude/` in it is not read as a project. Same as `analyze({ globalOnly: true })` from the library |
 | `--config <path>` | Config file path |
 
 **v1 does not write the tree** — no `apply`, no skill delete/install. Findings may *suggest* shell commands; you run them yourself.

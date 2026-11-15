@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { AGENT_CONFIG_DOT_DIRS } from "../facts/providers";
 
@@ -123,6 +124,17 @@ export function resolveScanContext(
     scanBoundary,
     root: projectRoot,
   };
+}
+
+/**
+ * `--global-only`: no project at all. Every location is a directory that does
+ * not exist, so project discovery reads nothing and only the documented
+ * global locations are scanned, whatever directory the caller runs from. A
+ * home directory is not a project here, even with `.claude/` in it.
+ */
+export function globalOnlyLocation(): ScanLocation {
+  const none = resolve(tmpdir(), ".agentscan-global-only");
+  return { startDir: none, workspaceBoundary: undefined, repositoryBoundary: undefined, scanBoundary: none, root: none };
 }
 
 export function resolveRoot(startDir: string): string {

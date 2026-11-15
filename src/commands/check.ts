@@ -15,6 +15,7 @@ export type CheckOptions = {
   failOn?: FailOn;
   failUnder?: number;
   global?: boolean;
+  globalOnly?: boolean;
   configPath?: string;
   colour?: boolean;
 };
@@ -37,6 +38,7 @@ export function runCheck(options: CheckOptions): CheckResult {
   const { root, resolvedFrom, config, facts, findings } = analyze({
     dir: options.dir,
     global: options.global,
+    globalOnly: options.globalOnly,
     configPath: options.configPath,
     failOn: options.failOn,
   });

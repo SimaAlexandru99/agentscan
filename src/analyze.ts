@@ -4,13 +4,18 @@ import { runChecks } from "./checks/index";
 import { loadConfig } from "./config/load";
 import type { AgentscanConfig } from "./config/schema";
 import { extractFacts } from "./discover/extract";
-import { resolveScanContext, type ScanLocation } from "./discover/scan-context";
+import { globalOnlyLocation, resolveScanContext, type ScanLocation } from "./discover/scan-context";
 import type { Facts } from "./facts/types";
 import { sortFindings, type Finding } from "./findings";
+import { withScannedHome } from "./home";
 
 export type AnalyzeOptions = {
   dir?: string;
   global?: boolean;
+  /** Only the global locations: no project, no walk-up from `dir` (which is ignored). Implies `global`. */
+  globalOnly?: boolean;
+  /** Scan this home instead of the current user's. Env overrides such as `CODEX_HOME` and `APPDATA` are then ignored. */
+  home?: string;
   configPath?: string;
   failOn?: AgentscanConfig["failOn"];
 };
@@ -37,14 +42,17 @@ export type Project = {
  * needs only this; `analyze` builds on it.
  */
 export function loadProject(options: AnalyzeOptions = {}): Project {
-  const requested = resolve(options.dir ?? process.cwd());
-  const location = resolveScanContext(requested, { allowNoProject: options.global === true });
+  const globalOnly = options.globalOnly === true;
+  const location = globalOnly
+    ? globalOnlyLocation()
+    : resolveScanContext(resolve(options.dir ?? process.cwd()), { allowNoProject: options.global === true });
+  const requested = globalOnly ? location.root : resolve(options.dir ?? process.cwd());
   const root = location.root;
   const loaded = loadConfig(root, options.configPath);
   const config: AgentscanConfig = {
     ...loaded,
     ...(options.failOn !== undefined ? { failOn: options.failOn } : {}),
-    ...(options.global !== undefined ? { includeGlobal: options.global } : {}),
+    ...(globalOnly ? { includeGlobal: true } : options.global !== undefined ? { includeGlobal: options.global } : {}),
   };
   return {
     root,
@@ -60,6 +68,10 @@ export function loadProject(options: AnalyzeOptions = {}): Project {
  * Every command that reports on a project goes through here.
  */
 export function analyze(options: AnalyzeOptions = {}): Analysis {
+  return withScannedHome(options.home, () => analyzeHere(options));
+}
+
+function analyzeHere(options: AnalyzeOptions): Analysis {
   const { location, ...project } = loadProject(options);
   const { config } = project;
   const facts = extractFacts(location, config);
