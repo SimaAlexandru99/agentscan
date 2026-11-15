@@ -36,6 +36,7 @@ check options:
   --fail-on <level>      never | warning | error (default: never)
   --fail-under <0-100>   Fail when the score drops below this floor
   --global               Also scan global skill dirs
+  --global-only          Scan only the global locations, no project
   --config <path>        Config file path
 
 rules options:
@@ -68,6 +69,7 @@ export async function main(argv: string[]): Promise<number> {
     "fail-on"?: string;
     "fail-under"?: string;
     global?: boolean;
+    "global-only"?: boolean;
     config?: string;
     force?: boolean;
     help?: boolean;
@@ -91,6 +93,7 @@ export async function main(argv: string[]): Promise<number> {
         // in analyze() can fall through. With `default: false` the flag always
         // overwrote the config key, making `includeGlobal` unreachable.
         global: { type: "boolean" },
+        "global-only": { type: "boolean", default: false },
         config: { type: "string" },
         force: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
@@ -162,6 +165,7 @@ export async function main(argv: string[]): Promise<number> {
           ...(failOn.success ? { failOn: failOn.data } : {}),
           ...(failUnder === undefined ? {} : { failUnder }),
           global: values.global,
+          globalOnly: values["global-only"],
           configPath: values.config,
           colour: shouldColour({
             isTTY: process.stdout.isTTY === true,

@@ -1,5 +1,14 @@
 [
   {
+    "version": "2.4.0",
+    "date": "2026-11-15",
+    "summary": "`check --global-only` scans only the documented global locations, with no project and no walk-up, from any directory. A home directory that has `.claude/` in it is no longer read as a project. The library equivalent is `analyze({ globalOnly: true })`.",
+    "items": [
+      "The package now has a library entry: `import { analyze, VERSION } from \"@chimix/agentscan\"` with type declarations. It keeps the `check` guarantees: read-only, no network. `dist/cli.js` is unchanged."
+    ],
+    "breaking": false
+  },
+  {
     "version": "2.3.1",
     "date": "2026-11-14",
     "summary": "Codex: `[hooks.state]`, the per-hook trust record Codex writes into `config.toml`, is no longer read as a hook group (it raised `config.unreadable` on every machine that had trusted a hook).",

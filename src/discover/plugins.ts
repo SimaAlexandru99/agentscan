@@ -59,7 +59,8 @@ export function findPluginRoots(
       walk(child, depth + 1);
     }
   };
-  walk(root, 0);
+  // Only `--global-only` passes a root that does not exist: nothing to walk, nothing unreadable.
+  if (existsSync(root)) walk(root, 0);
   return found;
 }
 

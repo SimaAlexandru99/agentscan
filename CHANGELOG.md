@@ -13,6 +13,16 @@ intermediate commit that this train does not cut.
 
 ## Unreleased
 
+## 2.4.0 — 2026-11-15
+
+- `check --global-only` scans only the documented global locations, with no
+  project and no walk-up, from any directory. A home directory that has
+  `.claude/` in it is no longer read as a project. The library equivalent is
+  `analyze({ globalOnly: true })`.
+- The package now has a library entry: `import { analyze, VERSION } from
+  "@chimix/agentscan"` with type declarations. It keeps the `check` guarantees:
+  read-only, no network. `dist/cli.js` is unchanged.
+
 ## 2.3.1 — 2026-11-14
 
 - Codex: `[hooks.state]`, the per-hook trust record Codex writes into
