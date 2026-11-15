@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { analyze } from "../../src/analyze";
 import { main } from "../../src/cli";
-import { withHome } from "../helpers/env";
+import { withEnv, withHome } from "../helpers/env";
 import { tmpProject, write } from "../helpers/tmp";
 
 const BROKEN_HOOK = JSON.stringify({ hooks: { PreToolUse: [{ hooks: [{ type: "command", command: "/nowhere/guard.js" }] }] } });
@@ -54,4 +54,20 @@ test("check --global-only prints the same report from any directory", async () =
   const report = JSON.parse(chunks.join("")) as { findings: { subject: string }[] };
   expect(report.findings.some((f) => f.subject.includes("/nowhere/guard.js"))).toBe(true);
   expect(report.findings.some((f) => f.subject.includes("project-guard.js"))).toBe(false);
+});
+
+test("home scans another user's home and ignores this user's relocations", () => {
+  const mine = mkdtempSync(join(tmpdir(), "agentscan-mine-"));
+  write(mine, ".claude/settings.json", JSON.stringify({ hooks: { PreToolUse: [{ hooks: [{ type: "command", command: "/mine/guard.js" }] }] } }));
+  const relocated = mkdtempSync(join(tmpdir(), "agentscan-codex-"));
+  const other = mkdtempSync(join(tmpdir(), "agentscan-other-"));
+  write(other, ".claude/settings.json", BROKEN_HOOK);
+  const a = withEnv({ CODEX_HOME: relocated, CLAUDE_CONFIG_DIR: mine }, () => withHome(mine, () => analyze({ globalOnly: true, home: other })));
+  const subjects = a.findings.map((f) => f.subject).join("\n");
+  expect(subjects).toContain("/nowhere/guard.js");
+  expect(subjects).not.toContain("/mine/guard.js");
+  expect(JSON.stringify(a.facts)).not.toContain(relocated);
+  // The override ends with the call.
+  const after = withHome(mine, () => analyze({ globalOnly: true }));
+  expect(after.findings.map((f) => f.subject).join("\n")).toContain("/mine/guard.js");
 });

@@ -22,6 +22,10 @@ intermediate commit that this train does not cut.
 - The package now has a library entry: `import { analyze, VERSION } from
   "@chimix/agentscan"` with type declarations. It keeps the `check` guarantees:
   read-only, no network. `dist/cli.js` is unchanged.
+- `analyze({ home })` scans another user's home (for example a Windows home
+  read from WSL) instead of the current one. The relocation variables of the
+  user running the scan (`CODEX_HOME`, `CLAUDE_CONFIG_DIR`, `APPDATA`, ...) are
+  ignored for that call. Library only; the CLI is unchanged.
 
 ## 2.3.1 — 2026-11-14
 

@@ -1,4 +1,4 @@
-import { homedir } from "node:os";
+import { userEnv, userHome } from "../home";
 import { join } from "node:path";
 import type { McpFact } from "../facts/types";
 import type { ScanIO } from "./fs";
@@ -19,10 +19,10 @@ export function discoverZedProjectMcp(dir: string, io: ScanIO): McpFact[] {
  * shortcut: `$XDG_CONFIG_HOME/zed` is not read; add it if a user reports a relocated config.
  */
 export function discoverZedUserMcp(root: string, io: ScanIO): McpFact[] {
-  const appData = process.env.APPDATA;
+  const appData = userEnv("APPDATA");
   const path =
     process.platform === "win32" && appData !== undefined
       ? join(appData, "Zed", "settings.json")
-      : join(homedir(), ".config", "zed", "settings.json");
+      : join(userHome(), ".config", "zed", "settings.json");
   return zedSettingsMcp(path, root, io);
 }

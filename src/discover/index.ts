@@ -1,4 +1,4 @@
-import { homedir } from "node:os";
+import { userHome } from "../home";
 import { dirname, join, resolve } from "node:path";
 import type { AgentscanConfig } from "../config/schema";
 import { isInside } from "../facts/paths";
@@ -387,7 +387,7 @@ export function discoverAgentSurface(
       continue;
     }
     configuredRoots.add(abs);
-    const source = isInside(abs, homedir()) ? "global" : "project";
+    const source = isInside(abs, userHome()) ? "global" : "project";
     // Command Code reads extra dirs as Agent Skills, whatever the path suggests.
     skills.push(
       ...discoverSkillsInDir(abs, source, io, root, undefined, "agent-skills"),
@@ -405,7 +405,7 @@ export function discoverAgentSurface(
       skills.push(...discoverSkillsInDir(abs, "global", io, root, provider));
     }
     // Amp reads `~/.config/agents/skills` as Agent Skills. See docs/spec/amp-skills.md.
-    const configAgentsSkills = resolve(homedir(), ".config", "agents", "skills");
+    const configAgentsSkills = resolve(userHome(), ".config", "agents", "skills");
     if (!configuredRoots.has(configAgentsSkills)) {
       configuredRoots.add(configAgentsSkills);
       skills.push(...discoverSkillsInDir(configAgentsSkills, "global", io, root, "agent-skills"));
@@ -415,7 +415,7 @@ export function discoverAgentSurface(
   const agentsSkillsRoots = commandcodeAgentsSkillsRoots(
     startDir,
     scanBoundary,
-    homedir(),
+    userHome(),
   );
   const lock = discoverSkillsLocks(scanBoundary, root, io);
   const agents = discoverAgents(

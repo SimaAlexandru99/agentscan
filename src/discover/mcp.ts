@@ -1,4 +1,4 @@
-import { homedir } from "node:os";
+import { userEnv, userHome } from "../home";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { MCP_PROFILES } from "../facts/mcp-profiles";
 import { providerHome } from "../facts/providers";
@@ -500,11 +500,11 @@ function parseClaudeUserJsonMcp(
  * See docs/spec/mcp.md.
  */
 function claudeUserJsonPath(): string {
-  const override = process.env.CLAUDE_CONFIG_DIR?.trim();
+  const override = userEnv("CLAUDE_CONFIG_DIR")?.trim();
   if (override !== undefined && override.length > 0) {
     return join(override, ".claude.json");
   }
-  return join(homedir(), ".claude.json");
+  return join(userHome(), ".claude.json");
 }
 
 /**
@@ -1068,7 +1068,7 @@ export function discoverNestedContinueMcp(root: string, io: ScanIO): McpFact[] {
  * launch field: "SSE is not supported". See docs/spec/goose-mcp.md.
  */
 export function discoverGooseUserMcp(root: string, io: ScanIO): McpFact[] {
-  const appData = process.env.APPDATA;
+  const appData = userEnv("APPDATA");
   const dir =
     process.platform === "win32" && appData !== undefined && appData.length > 0
       ? join(appData, "Block", "goose", "config")

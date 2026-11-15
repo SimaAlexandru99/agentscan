@@ -1,4 +1,4 @@
-import { homedir } from "node:os";
+import { userEnv, userHome } from "../home";
 import { join } from "node:path";
 import type { ClaudeDesktopExtensionFact, McpFact } from "../facts/types";
 import { isRecord, listDir, readConfigFile, type ScanIO } from "./fs";
@@ -7,13 +7,13 @@ import { parseProfiledMcpFile } from "./mcp";
 /** Per-OS user config dir. See docs/spec/claude-desktop-mcp.md. */
 export function claudeDesktopConfigDir(): string {
   if (process.platform === "darwin") {
-    return join(homedir(), "Library", "Application Support", "Claude");
+    return join(userHome(), "Library", "Application Support", "Claude");
   }
-  const appData = process.env.APPDATA;
+  const appData = userEnv("APPDATA");
   if (process.platform === "win32" && appData !== undefined) {
     return join(appData, "Claude");
   }
-  return join(homedir(), ".config", "Claude");
+  return join(userHome(), ".config", "Claude");
 }
 
 /** `mcpServers` in `claude_desktop_config.json`. `--global` only; other top-level keys are ignored. */
